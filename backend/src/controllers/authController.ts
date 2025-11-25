@@ -76,6 +76,16 @@ const acceptInviteSchema = z.object({
   password: z.string().min(8),
 });
 
+const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string(),
+  email: z.string().email(),
+  password: z.string().min(8),
+});
+
 const getPermissionsForRole = (role: string): Permission[] =>
   ROLE_PERMISSIONS[role] ?? [];
 
@@ -845,4 +855,66 @@ export const deleteUser = async (req: AuthenticatedRequest, res: Response) => {
     throw err;
   }
   return res.json({ message: "User removed" });
+};
+
+export const forgotPassword = async (req: Request, res: Response) => {
+  const parsed = forgotPasswordSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ errors: parsed.error.flatten() });
+  }
+  const { email } = parsed.data;
+  const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+  if (user) {
+    const token = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { resetToken: token, resetTokenExpires: expiresAt },
+    });
+    const resetUrl = `${process.env.ADMIN_APP_ORIGIN ?? "http://localhost:3001"}/reset-password?token=${token}&email=${encodeURIComponent(
+      email
+    )}`;
+    await sendEmail({
+      to: email,
+      subject: "Reset your Wanzami password",
+      html: verifyEmailTemplate({ name: user.name, verifyUrl: resetUrl }),
+    });
+  }
+  return res.json({ message: "If that account exists, a reset link has been sent." });
+};
+
+export const resetPassword = async (req: Request, res: Response) => {
+  const parsed = resetPasswordSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ errors: parsed.error.flatten() });
+  }
+  const { token, email, password } = parsed.data;
+  const emailLower = email.toLowerCase();
+  const user = await prisma.user.findUnique({ where: { email: emailLower } });
+  if (
+    !user ||
+    !user.resetToken ||
+    user.resetToken !== token ||
+    !user.resetTokenExpires ||
+    user.resetTokenExpires.getTime() < Date.now()
+  ) {
+    return res.status(400).json({ message: "Invalid or expired reset token" });
+  }
+  if (!isPasswordStrong(password)) {
+    return res.status(400).json({
+      message: "Password too weak. Use at least 8 chars, upper, lower, number, and symbol.",
+    });
+  }
+  const passwordHash = await hashPassword(password);
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      password: passwordHash,
+      resetToken: null,
+      resetTokenExpires: null,
+      emailVerified: true,
+    },
+  });
+  await prisma.session.deleteMany({ where: { userId: user.id } });
+  return res.json({ message: "Password updated. Please log in." });
 };

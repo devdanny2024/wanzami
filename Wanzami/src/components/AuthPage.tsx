@@ -141,9 +141,9 @@ export function AuthPage({ onAuth, onShowSignup }: AuthPageProps) {
             </div>
 
             <div className="text-right">
-              <button type="button" className="text-[#fd7e14] hover:text-[#e86f0f] text-sm transition-colors">
+              <a href="/forgot-password" className="text-[#fd7e14] hover:text-[#e86f0f] text-sm transition-colors">
                 Forgot Password?
-              </button>
+              </a>
             </div>
 
             <div className="flex items-center gap-2 text-sm text-gray-300">

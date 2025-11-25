@@ -17,6 +17,8 @@ import {
   updateUserRole,
   deleteUser,
   listAllUsers,
+  forgotPassword,
+  resetPassword,
 } from "../controllers/authController.js";
 import {
   requireAdmin,
@@ -35,6 +37,8 @@ router.post("/auth/logout", logout);
 router.post("/auth/verify-email", verifyEmail);
 router.post("/auth/resend-verification", resendVerification);
 router.post("/auth/device-label", requireAuth, updateDeviceLabel);
+router.post("/auth/forgot-password", forgotPassword);
+router.post("/auth/reset-password", resetPassword);
 router.get("/auth/me", requireAuth, me);
 
 // Admin auth (same service but locked down)
