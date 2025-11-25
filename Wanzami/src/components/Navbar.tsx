@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { Search, User, Menu, X, LogIn, Power } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import wanzamiLogo from '../assets/logo.png';
@@ -52,10 +53,13 @@ export function Navbar({
               onClick={() => onNavigate('home')}
               className="flex items-center gap-2 group"
             >
-              <img
+              <Image
                 src={wanzamiLogo}
                 alt="Wanzami"
-                className="h-8 w-auto transition-transform duration-300 group-hover:scale-105"
+                className="transition-transform duration-300 group-hover:scale-105"
+                width={120}
+                height={32}
+                priority
               />
             </button>
 
