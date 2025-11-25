@@ -1,7 +1,7 @@
 'use client';
 
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ const isStrong = (pwd: string) =>
   /[0-9]/.test(pwd) &&
   /[^A-Za-z0-9]/.test(pwd);
 
-export default function AcceptInvitePage() {
+function AcceptInviteContent() {
   const search = useSearchParams();
   const router = useRouter();
   const token = search.get("token") ?? "";
@@ -102,5 +102,13 @@ export default function AcceptInvitePage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function AcceptInvitePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-neutral-950 text-white flex items-center justify-center">Loading...</div>}>
+      <AcceptInviteContent />
+    </Suspense>
   );
 }
