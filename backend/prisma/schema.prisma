@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  SUPER_ADMIN
+  CONTENT_MANAGER
+  BLOG_EDITOR
+  MODERATOR
+  SUPPORT
+  FINANCE
+  ANALYTICS
+  OPS
+}
+
+model User {
+  id        BigInt   @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(USER)
+  emailVerified Boolean @default(false)
+  verificationToken String? @unique
+  verificationTokenExpires DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions Session[]
+  devices  Device[]
+}
+
+model Session {
+  id           BigInt   @id @default(autoincrement())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       BigInt
+  deviceId     String
+  refreshToken String
+  userAgent    String?
+  ipAddress    String?
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
+
+  @@index([userId, deviceId])
+}
+
+model Device {
+  id        BigInt   @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    BigInt
+  deviceId  String
+  label     String?
+  lastSeen  DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@unique([userId, deviceId])
+}
+
+model Invitation {
+  id        BigInt   @id @default(autoincrement())
+  email     String
+  role      Role
+  token     String   @unique
+  expiresAt DateTime
+  acceptedAt DateTime?
+  createdBy BigInt
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}

@@ -1,0 +1,313 @@
+import { useEffect, useState } from 'react';
+import { SplashScreen } from './components/SplashScreen';
+import { AuthPage } from './components/AuthPage';
+import { RegistrationFlow } from './components/RegistrationFlow';
+import { HomePage } from './components/HomePage';
+import { SearchPage } from './components/SearchPage';
+import { Dashboard } from './components/Dashboard';
+import { MovieDetailPage } from './components/MovieDetailPage';
+import { PPVMoviePage } from './components/PPVMoviePage';
+import { Navbar } from './components/Navbar';
+import { Footer } from './components/Footer';
+import { BlogHomePage, BlogPost } from './components/BlogHomePage';
+import { BlogPostPage } from './components/BlogPostPage';
+import { BlogCategoryPage } from './components/BlogCategoryPage';
+import { BlogSearchPage } from './components/BlogSearchPage';
+import { PaymentPage } from './components/PaymentPage';
+import { DeviceProfilePrompt } from './components/DeviceProfilePrompt';
+
+export default function App() {
+  const [showSplash, setShowSplash] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [pendingVerification, setPendingVerification] = useState<{ email: string; name: string } | null>(null);
+  const [currentPage, setCurrentPage] = useState('home');
+  const [selectedMovie, setSelectedMovie] = useState<any>(null);
+  const [purchasedMovies, setPurchasedMovies] = useState<number[]>([]);
+  const [ownedMovies, setOwnedMovies] = useState<number[]>([]);
+  const [selectedBlogPost, setSelectedBlogPost] = useState<BlogPost | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [showRegistration, setShowRegistration] = useState(false);
+  const [showDevicePrompt, setShowDevicePrompt] = useState(false);
+
+  const handleSplashComplete = () => {
+    setShowSplash(false);
+    setShowRegistration(true); // Show registration after splash
+  };
+
+  const handleSplashLogin = () => {
+    setShowSplash(false);
+    setShowRegistration(false);
+  };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('signup') === '1') {
+      setShowSplash(false);
+      setShowRegistration(true);
+      setPendingVerification(null);
+    }
+  }, []);
+
+  const handleRegistrationComplete = (data: { email: string; name: string }) => {
+    setShowRegistration(false);
+    setIsAuthenticated(false);
+    setPendingVerification(data);
+  };
+
+  const handleAuth = () => {
+    setIsAuthenticated(true);
+    setPendingVerification(null);
+    const hasLabel = typeof window !== 'undefined' ? localStorage.getItem('deviceLabel') : null;
+    if (!hasLabel) {
+      setShowDevicePrompt(true);
+    }
+  };
+
+  const handleShowSignup = () => {
+    setShowRegistration(true);
+    setPendingVerification(null);
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setCurrentPage('home');
+    setSelectedMovie(null);
+    setShowRegistration(true);
+    setPendingVerification(null);
+    setShowDevicePrompt(false);
+  };
+
+  const handleNavigate = (page: string) => {
+    setCurrentPage(page);
+    setSelectedMovie(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleMovieClick = (movie: any) => {
+    setSelectedMovie(movie);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCloseMovie = () => {
+    setSelectedMovie(null);
+  };
+
+  const handlePlayClick = (movie: any) => {
+    // In a real app, this would navigate to a video player
+    alert(`Playing: ${movie.title}`);
+  };
+
+  const handleRentMovie = (movie: any) => {
+    // Simulate rental
+    setPurchasedMovies([...purchasedMovies, movie.id]);
+    const currencySymbol = movie.currency === 'NGN' ? '₦' : movie.currency === 'USDC' ? 'USDC ' : '$';
+    alert(`Successfully rented "${movie.title}" for ${currencySymbol}${movie.price.toLocaleString()}. You have 48 hours to watch!`);
+  };
+
+  const handleBuyMovie = (movie: any) => {
+    // Simulate purchase
+    setOwnedMovies([...ownedMovies, movie.id]);
+    const currencySymbol = movie.currency === 'NGN' ? '₦' : movie.currency === 'USDC' ? 'USDC ' : '$';
+    alert(`Successfully purchased "${movie.title}" for ${currencySymbol}${movie.buyPrice.toLocaleString()}. You own this movie forever!`);
+  };
+
+  const isPurchased = (movieId: number) => {
+    return purchasedMovies.includes(movieId);
+  };
+
+  const isOwned = (movieId: number) => {
+    return ownedMovies.includes(movieId);
+  };
+
+  const handleBlogPostClick = (post: BlogPost) => {
+    setSelectedBlogPost(post);
+    setCurrentPage('blogpost');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCategoryClick = (category: string) => {
+    setSelectedCategory(category);
+    setCurrentPage('blogcategory');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleBlogSearchClick = () => {
+    setCurrentPage('blogsearch');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleBackToBlog = () => {
+    setCurrentPage('blog');
+    setSelectedBlogPost(null);
+    setSelectedCategory(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Show splash screen
+  if (showSplash) {
+    return <SplashScreen onStartRegistration={handleSplashComplete} onLogin={handleSplashLogin} />;
+  }
+
+  // Show registration page if not authenticated
+  if (!isAuthenticated && showRegistration) {
+    return <RegistrationFlow onAuth={handleRegistrationComplete} />;
+  }
+
+  // Show auth page if not authenticated
+  if (!isAuthenticated) {
+    if (pendingVerification) {
+      return (
+        <div className="min-h-screen bg-black text-white flex items-center justify-center px-6 py-20">
+          <div className="max-w-lg w-full bg-white/5 border border-white/10 rounded-2xl p-8">
+            <h1 className="text-2xl font-semibold mb-4">Verify your email</h1>
+            <p className="text-gray-300 mb-6">
+              We sent a verification link to <span className="text-[#fd7e14]">{pendingVerification.email}</span>. Please verify to continue.
+            </p>
+            <a
+              href="/login"
+              className="inline-flex items-center justify-center px-6 py-3 bg-[#fd7e14] text-white rounded-xl font-semibold hover:bg-[#e86f0f] transition-colors"
+            >
+              Go to Login
+            </a>
+          </div>
+        </div>
+      );
+    }
+    return <AuthPage onAuth={handleAuth} onShowSignup={handleShowSignup} />;
+  }
+
+  // Check if selected movie is a PPV movie
+  const isPPVMovie = selectedMovie && selectedMovie.price !== undefined;
+
+  return (
+    <div className="min-h-screen bg-black">
+      {showDevicePrompt && (
+        <DeviceProfilePrompt
+          onClose={() => setShowDevicePrompt(false)}
+          onSaved={() => setShowDevicePrompt(false)}
+        />
+      )}
+      {/* Navbar - shown on all pages except movie detail */}
+      {!selectedMovie && (
+        <Navbar
+          currentPage={currentPage}
+          onNavigate={handleNavigate}
+          onLogout={handleLogout}
+          isAuthenticated={isAuthenticated}
+        />
+      )}
+
+      {/* Main content */}
+      {selectedMovie ? (
+        isPPVMovie ? (
+          <PPVMoviePage
+            key="ppv-detail"
+            movie={selectedMovie}
+            onClose={handleCloseMovie}
+            onRent={handleRentMovie}
+            onBuy={handleBuyMovie}
+            isPurchased={isPurchased(selectedMovie.id)}
+            isOwned={isOwned(selectedMovie.id)}
+            timeRemaining={isPurchased(selectedMovie.id) && !isOwned(selectedMovie.id) ? "1 day 13 hours" : undefined}
+          />
+        ) : (
+          <MovieDetailPage
+            key="movie-detail"
+            movie={selectedMovie}
+            onClose={handleCloseMovie}
+            onPlayClick={handlePlayClick}
+          />
+        )
+      ) : currentPage === 'home' ? (
+        <div key="home">
+          <HomePage onMovieClick={handleMovieClick} />
+          <Footer />
+        </div>
+      ) : currentPage === 'search' ? (
+        <div key="search">
+          <SearchPage onMovieClick={handleMovieClick} />
+          <Footer />
+        </div>
+      ) : currentPage === 'dashboard' ? (
+        <div key="dashboard">
+          <Dashboard onMovieClick={handleMovieClick} />
+          <Footer />
+        </div>
+      ) : currentPage === 'ppv' ? (
+        <div key="ppv">
+          <div className="min-h-screen bg-black pt-24 md:pt-32 pb-12 px-4 md:px-12 lg:px-16">
+            <h1 className="text-white text-3xl md:text-4xl mb-4">Pay-Per-View</h1>
+            <p className="text-gray-400 mb-8">Rent premium movies and watch for 48 hours</p>
+            <div className="text-gray-500">Browse all PPV content - Full catalog coming soon!</div>
+          </div>
+          <Footer />
+        </div>
+      ) : currentPage === 'payment' ? (
+        <div key="payment">
+          <PaymentPage />
+          <Footer />
+        </div>
+      ) : currentPage === 'movies' ? (
+        <div key="movies">
+          <div className="min-h-screen bg-black pt-24 md:pt-32 pb-12 px-4 md:px-12 lg:px-16">
+            <h1 className="text-white text-3xl md:text-4xl mb-8">Movies</h1>
+            <p className="text-gray-400">Browse all movies - Coming soon!</p>
+          </div>
+          <Footer />
+        </div>
+      ) : currentPage === 'series' ? (
+        <div key="series">
+          <div className="min-h-screen bg-black pt-24 md:pt-32 pb-12 px-4 md:px-12 lg:px-16">
+            <h1 className="text-white text-3xl md:text-4xl mb-8">Series</h1>
+            <p className="text-gray-400">Browse all series - Coming soon!</p>
+          </div>
+          <Footer />
+        </div>
+      ) : currentPage === 'kids' ? (
+        <div key="kids">
+          <div className="min-h-screen bg-black pt-24 md:pt-32 pb-12 px-4 md:px-12 lg:px-16">
+            <h1 className="text-white text-3xl md:text-4xl mb-8">Kids</h1>
+            <p className="text-gray-400">Kids content - Coming soon!</p>
+          </div>
+          <Footer />
+        </div>
+      ) : currentPage === 'originals' ? (
+        <div key="originals">
+          <div className="min-h-screen bg-black pt-24 md:pt-32 pb-12 px-4 md:px-12 lg:px-16">
+            <h1 className="text-white text-3xl md:text-4xl mb-8">Wanzami Originals</h1>
+            <p className="text-gray-400">Exclusive original content - Coming soon!</p>
+          </div>
+          <Footer />
+        </div>
+      ) : currentPage === 'mylist' ? (
+        <div key="mylist">
+          <div className="min-h-screen bg-black pt-24 md:pt-32 pb-12 px-4 md:px-12 lg:px-16">
+            <h1 className="text-white text-3xl md:text-4xl mb-8">My List</h1>
+            <p className="text-gray-400">Your saved content - Coming soon!</p>
+          </div>
+          <Footer />
+        </div>
+      ) : currentPage === 'blog' ? (
+        <div key="blog">
+          <BlogHomePage onPostClick={handleBlogPostClick} onCategoryClick={handleCategoryClick} onSearchClick={handleBlogSearchClick} />
+          <Footer />
+        </div>
+      ) : currentPage === 'blogpost' ? (
+        <div key="blogpost">
+          <BlogPostPage post={selectedBlogPost} onBack={handleBackToBlog} />
+          <Footer />
+        </div>
+      ) : currentPage === 'blogcategory' ? (
+        <div key="blogcategory">
+          <BlogCategoryPage category={selectedCategory} onPostClick={handleBlogPostClick} onBack={handleBackToBlog} />
+          <Footer />
+        </div>
+      ) : currentPage === 'blogsearch' ? (
+        <div key="blogsearch">
+          <BlogSearchPage onPostClick={handleBlogPostClick} onBack={handleBackToBlog} />
+          <Footer />
+        </div>
+      ) : null}
+    </div>
+  );
+}
