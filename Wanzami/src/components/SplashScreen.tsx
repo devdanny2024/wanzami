@@ -1,5 +1,6 @@
 import { motion } from 'motion/react';
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import wanzamiLogo from '../assets/logo.png';
 
 interface SplashScreenProps {
@@ -37,10 +38,13 @@ export function SplashScreen({ onStartRegistration, onLogin }: SplashScreenProps
           {/* Glow effect behind logo */}
           <div className="absolute inset-0 blur-[80px] bg-[#fd7e14]/30 scale-150" />
           
-          <img
+          <Image
             src={wanzamiLogo}
             alt="Wanzami"
-            className="relative w-64 md:w-80 lg:w-96 h-auto drop-shadow-2xl"
+            className="relative drop-shadow-2xl"
+            width={384}
+            height={200}
+            priority
           />
         </motion.div>
 
