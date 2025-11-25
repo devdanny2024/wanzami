@@ -48,7 +48,7 @@ function AcceptInviteContent() {
     localStorage.setItem("refreshToken", data.refreshToken);
     localStorage.setItem("deviceId", data.deviceId);
     toast.success("Welcome to Wanzami Admin");
-    router.push("/admin");
+    router.push("/admin/login");
   };
 
   return (
