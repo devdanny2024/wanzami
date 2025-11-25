@@ -6,6 +6,8 @@ import { Loader } from './ui/loader';
 
 interface RegistrationFlowProps {
   onAuth: (data: { email: string; name: string }) => void;
+  onBack?: () => void;
+  onLogin?: () => void;
 }
 
 const genres = [
@@ -19,7 +21,7 @@ const genres = [
   { id: 'horror', label: 'Horror', icon: Zap }
 ];
 
-export function RegistrationFlow({ onAuth }: RegistrationFlowProps) {
+export function RegistrationFlow({ onAuth, onBack, onLogin }: RegistrationFlowProps) {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     name: '',
@@ -96,6 +98,20 @@ export function RegistrationFlow({ onAuth }: RegistrationFlowProps) {
 
       <div className="relative h-full flex items-center justify-center px-4 py-12 overflow-y-auto">
         <div className="w-full max-w-2xl">
+          <div className="flex items-center justify-between mb-4">
+            <button
+              onClick={() => onBack?.()}
+              className="text-gray-300 hover:text-white text-sm"
+            >
+              ← Back
+            </button>
+            <button
+              onClick={() => onLogin?.()}
+              className="text-sm text-[#fd7e14] hover:text-[#ff9f4d] font-semibold"
+            >
+              Already have an account? Login
+            </button>
+          </div>
           <AnimatePresence mode="wait">
             {/* Step 1: Welcome */}
             {step === 1 && (

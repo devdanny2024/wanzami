@@ -54,6 +54,17 @@ export default function App() {
     setPendingVerification(data);
   };
 
+  const handleRegistrationBack = () => {
+    setShowRegistration(false);
+    setShowSplash(true);
+    setPendingVerification(null);
+  };
+
+  const handleShowLoginFromRegistration = () => {
+    setShowRegistration(false);
+    setPendingVerification(null);
+  };
+
   const handleAuth = () => {
     setIsAuthenticated(true);
     setPendingVerification(null);
@@ -150,7 +161,13 @@ export default function App() {
 
   // Show registration page if not authenticated
   if (!isAuthenticated && showRegistration) {
-    return <RegistrationFlow onAuth={handleRegistrationComplete} />;
+    return (
+      <RegistrationFlow
+        onAuth={handleRegistrationComplete}
+        onBack={handleRegistrationBack}
+        onLogin={handleShowLoginFromRegistration}
+      />
+    );
   }
 
   // Show auth page if not authenticated
