@@ -814,7 +814,7 @@ export const updateUserRole = async (req: AuthenticatedRequest, res: Response) =
   await ensureNotLastSuperAdmin(userId);
   const user = await prisma.user.update({
     where: { id: userId },
-    data: { role },
+    data: { role: role as any },
   });
   return res.json({
     user: {

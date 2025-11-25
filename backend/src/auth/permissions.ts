@@ -19,16 +19,6 @@ export enum Permission {
 
 export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   SUPER_ADMIN: Object.values(Permission),
-  OPS: [
-    Permission.DASHBOARD_VIEW,
-    Permission.ADMIN_INVITES_MANAGE,
-    Permission.MOVIES_VIEW,
-    Permission.BLOG_VIEW,
-    Permission.USERS_VIEW,
-    Permission.ANALYTICS_VIEW,
-    Permission.SETTINGS_MANAGE,
-    Permission.OPS_MANAGE,
-  ],
   CONTENT_MANAGER: [
     Permission.DASHBOARD_VIEW,
     Permission.MOVIES_MANAGE,

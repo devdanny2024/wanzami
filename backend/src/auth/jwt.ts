@@ -21,7 +21,7 @@ export const signAccessToken = (payload: AccessTokenPayload) =>
     {
       ...payload,
       userId: payload.userId.toString(),
-    },
+    } as jwt.JwtPayload,
     config.accessSecret,
     { expiresIn: config.accessTokenTtl }
   );
@@ -31,7 +31,7 @@ export const signRefreshToken = (payload: RefreshTokenPayload) =>
     {
       ...payload,
       userId: payload.userId.toString(),
-    },
+    } as jwt.JwtPayload,
     config.refreshSecret,
     { expiresIn: config.refreshTokenTtl }
   );
