@@ -7,3 +7,4 @@ export function Loader({ size = 16 }: { size?: number }) {
     />
   );
 }
+
