@@ -1,4 +1,4 @@
-import jwt from "jsonwebtoken";
+import jwt, { type SignOptions, type Secret } from "jsonwebtoken";
 import { config } from "../config.js";
 import { Permission } from "./permissions.js";
 
@@ -16,24 +16,30 @@ export type RefreshTokenPayload = {
   tokenId: string;
 };
 
+const signJwt = (
+  payload: jwt.JwtPayload,
+  secret: Secret,
+  expiresIn: string | number
+) => jwt.sign(payload, secret, { expiresIn } as SignOptions);
+
 export const signAccessToken = (payload: AccessTokenPayload) =>
-  jwt.sign(
+  signJwt(
     {
       ...payload,
       userId: payload.userId.toString(),
-    } as jwt.JwtPayload,
-    config.accessSecret as jwt.Secret,
-    { expiresIn: config.accessTokenTtl }
+    },
+    config.accessSecret as Secret,
+    config.accessTokenTtl
   );
 
 export const signRefreshToken = (payload: RefreshTokenPayload) =>
-  jwt.sign(
+  signJwt(
     {
       ...payload,
       userId: payload.userId.toString(),
-    } as jwt.JwtPayload,
-    config.refreshSecret as jwt.Secret,
-    { expiresIn: config.refreshTokenTtl }
+    },
+    config.refreshSecret as Secret,
+    config.refreshTokenTtl
   );
 
 export const verifyAccessToken = (token: string): AccessTokenPayload => {
