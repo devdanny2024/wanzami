@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import logoImage from '../assets/2215741b8da2bc4285ab58bd4c4d390d4183910f.png';
 
 interface LogoProps {
@@ -6,18 +7,22 @@ interface LogoProps {
 }
 
 export function Logo({ size = 'medium', className = '' }: LogoProps) {
-  const sizeClasses = {
-    small: 'h-8 w-auto',
-    medium: 'h-10 w-auto',
-    large: 'h-16 w-auto',
-    splash: 'h-24 md:h-32 w-auto'
+  const sizeMap = {
+    small: 32,
+    medium: 40,
+    large: 64,
+    splash: 128,
   };
+  const dimension = sizeMap[size] ?? sizeMap.medium;
 
   return (
-    <img
+    <Image
       src={logoImage}
       alt="Wanzami"
-      className={`${sizeClasses[size]} ${className}`}
+      width={dimension}
+      height={dimension}
+      className={className}
+      priority={size === 'splash'}
     />
   );
 }
