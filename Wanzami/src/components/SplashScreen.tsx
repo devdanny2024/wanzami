@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import wanzamiLogo from '../assets/logo.png';
 
@@ -10,12 +10,22 @@ interface SplashScreenProps {
 
 export function SplashScreen({ onStartRegistration, onLogin }: SplashScreenProps) {
   const [showButtons, setShowButtons] = useState(false);
+  const audioPlayedRef = useRef(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowButtons(true);
     }, 2000);
     return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (audioPlayedRef.current) return;
+    audioPlayedRef.current = true;
+    const audio = new Audio('/Wanzami%20Surround.wav');
+    audio.play().catch(() => {
+      // Autoplay might be blocked; ignore silently
+    });
   }, []);
 
   return (
