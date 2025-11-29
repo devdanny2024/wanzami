@@ -127,7 +127,8 @@ export const createProfile = async (req: AuthenticatedRequest, res: Response) =>
       kidMode: parsed.data.kidMode ?? false,
       language: parsed.data.language ?? "en",
       autoplay: parsed.data.autoplay ?? true,
-      preferences: parsed.data.preferences,
+      preferences:
+        parsed.data.preferences !== undefined ? parsed.data.preferences : undefined,
     },
   });
 
@@ -173,7 +174,10 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response) =>
       kidMode: parsed.data.kidMode ?? profile.kidMode,
       language: parsed.data.language ?? profile.language,
       autoplay: parsed.data.autoplay ?? profile.autoplay,
-      preferences: parsed.data.preferences ?? profile.preferences,
+      preferences:
+        parsed.data.preferences !== undefined
+          ? parsed.data.preferences
+          : profile.preferences ?? undefined,
     },
   });
 
