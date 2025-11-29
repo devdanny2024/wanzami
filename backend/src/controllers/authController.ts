@@ -822,6 +822,7 @@ export const listAllUsers = async (_req: AuthenticatedRequest, res: Response) =>
         orderBy: { createdAt: "desc" },
         select: { createdAt: true },
       });
+      const profileCount = await prisma.profile.count({ where: { userId: u.id } });
       return {
         id: u.id.toString(),
         email: u.email,
@@ -833,6 +834,7 @@ export const listAllUsers = async (_req: AuthenticatedRequest, res: Response) =>
         totalSpent: null,
         status,
         lastLogin: lastSession?.createdAt ?? null,
+        profileCount,
       };
     })
   );

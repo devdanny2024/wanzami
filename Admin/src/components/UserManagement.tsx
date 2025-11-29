@@ -19,6 +19,7 @@ type UserRow = {
   totalSpent?: number | null;
   status?: string | null;
   lastLogin?: string | null;
+  profileCount?: number | null;
 };
 
 export function UserManagement() {
@@ -117,6 +118,7 @@ export function UserManagement() {
                   <th className="text-left py-3 px-4 text-neutral-400">User</th>
                   <th className="text-left py-3 px-4 text-neutral-400">Email</th>
                   <th className="text-left py-3 px-4 text-neutral-400">Join Date</th>
+                  <th className="text-left py-3 px-4 text-neutral-400">Profiles</th>
                   <th className="text-left py-3 px-4 text-neutral-400">Watch Time</th>
                   <th className="text-left py-3 px-4 text-neutral-400">PPV Purchases</th>
                   <th className="text-left py-3 px-4 text-neutral-400">Total Spent (NGN)</th>
@@ -129,8 +131,11 @@ export function UserManagement() {
                   <tr key={user.id} className="border-b border-neutral-800 hover:bg-neutral-800/50 transition-colors">
                     <td className="py-3 px-4 text-white">{user.name || '—'}</td>
                     <td className="py-3 px-4 text-neutral-300">{user.email}</td>
+                  <td className="py-3 px-4 text-neutral-300">
+                    {new Date(user.createdAt).toLocaleDateString()}
+                  </td>
                     <td className="py-3 px-4 text-neutral-300">
-                      {new Date(user.createdAt).toLocaleDateString()}
+                      {user.profileCount ?? 'â€”'}
                     </td>
                     <td className="py-3 px-4 text-neutral-300">
                       {user.totalWatchTime ?? '—'}
