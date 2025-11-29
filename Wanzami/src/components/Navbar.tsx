@@ -130,13 +130,13 @@ export function Navbar({
                 <Search className="w-5 h-5 text-gray-400 group-hover:text-[#fd7e14] transition-colors" />
               </button>
 
-              {/* Profile */}
-              <button
-                onClick={() => onNavigate('dashboard')}
+              {/* Settings */}
+              <a
+                href="/settings"
                 className="hidden md:flex w-10 h-10 items-center justify-center bg-gradient-to-br from-[#fd7e14] to-[#ff9f4d] hover:shadow-lg hover:shadow-[#fd7e14]/30 rounded-xl transition-all duration-300 group"
               >
                 <User className="w-5 h-5 text-white" />
-              </button>
+              </a>
 
               {/* Desktop Logout (icon) */}
               {isAuthenticated && onLogout && (
@@ -201,15 +201,13 @@ export function Navbar({
                 
                 <hr className="border-white/10 my-2" />
                 
-                <button
-                  onClick={() => {
-                    onNavigate('dashboard');
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className="w-full text-left px-4 py-3 rounded-xl text-gray-400 hover:bg-white/5 hover:text-white transition-all"
+                <a
+                  href="/settings"
+                  className="block w-full text-left px-4 py-3 rounded-xl text-gray-400 hover:bg-white/5 hover:text-white transition-all"
+                  onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  Profile
-                </button>
+                  Settings
+                </a>
                 {!isAuthenticated && (
                   <a
                     href="/login"
