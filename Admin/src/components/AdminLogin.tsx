@@ -5,6 +5,7 @@ import { Label } from './ui/label';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { toast } from 'sonner';
 import { Loader } from './ui/loader';
+import Link from 'next/link';
 
 interface AdminLoginProps {
   onLogin: () => void;

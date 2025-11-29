@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
+import Link from 'next/link';
 import { Logo } from './Logo';
 import { Loader } from './ui/loader';
 
@@ -141,9 +142,12 @@ export function AuthPage({ onAuth, onShowSignup }: AuthPageProps) {
             </div>
 
             <div className="text-right">
-              <a href="/forgot-password" className="text-[#fd7e14] hover:text-[#e86f0f] text-sm transition-colors">
+              <Link
+                href="/forgot-password"
+                className="text-[#fd7e14] hover:text-[#e86f0f] text-sm transition-colors"
+              >
                 Forgot Password?
-              </a>
+              </Link>
             </div>
 
             <div className="flex items-center gap-2 text-sm text-gray-300">

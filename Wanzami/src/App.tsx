@@ -15,6 +15,7 @@ import { BlogCategoryPage } from './components/BlogCategoryPage';
 import { BlogSearchPage } from './components/BlogSearchPage';
 import { PaymentPage } from './components/PaymentPage';
 import { DeviceProfilePrompt } from './components/DeviceProfilePrompt';
+import { ProfileChooser } from './components/ProfileChooser';
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -28,6 +29,7 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showRegistration, setShowRegistration] = useState(false);
   const [showDevicePrompt, setShowDevicePrompt] = useState(false);
+  const [activeProfile, setActiveProfile] = useState<{ id: string; name: string; avatarUrl?: string | null } | null>(null);
 
   const handleSplashComplete = () => {
     setShowSplash(false);
@@ -72,6 +74,7 @@ export default function App() {
     if (!hasLabel) {
       setShowDevicePrompt(true);
     }
+    setActiveProfile(null);
   };
 
   const handleShowSignup = () => {
@@ -86,6 +89,12 @@ export default function App() {
     setShowRegistration(true);
     setPendingVerification(null);
     setShowDevicePrompt(false);
+    setActiveProfile(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('activeProfileId');
+      localStorage.removeItem('activeProfileName');
+      localStorage.removeItem('activeProfileAvatar');
+    }
   };
 
   const handleNavigate = (page: string) => {
@@ -191,6 +200,11 @@ export default function App() {
       );
     }
     return <AuthPage onAuth={handleAuth} onShowSignup={handleShowSignup} />;
+  }
+
+  // Force profile selection before entering the app
+  if (isAuthenticated && !activeProfile) {
+    return <ProfileChooser onSelected={(p) => setActiveProfile(p)} onLogout={handleLogout} />;
   }
 
   // Check if selected movie is a PPV movie

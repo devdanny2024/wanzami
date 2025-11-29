@@ -21,6 +21,16 @@ import {
   resetPassword,
 } from "../controllers/authController.js";
 import {
+  createProfile,
+  deleteProfile,
+  getBilling,
+  listDevicesWithProfiles,
+  listProfiles,
+  setDeviceProfile,
+  upsertBilling,
+  updateProfile,
+} from "../controllers/profileController.js";
+import {
   requireAdmin,
   requireAuth,
   requirePermission,
@@ -104,5 +114,19 @@ router.delete(
   requirePermission(Permission.ADMIN_USERS_MANAGE),
   deleteUser
 );
+
+// User profiles (Netflix-style)
+router.get("/user/profiles", requireAuth, listProfiles);
+router.post("/user/profiles", requireAuth, createProfile);
+router.patch("/user/profiles/:id", requireAuth, updateProfile);
+router.delete("/user/profiles/:id", requireAuth, deleteProfile);
+
+// Device profile assignment
+router.get("/user/devices", requireAuth, listDevicesWithProfiles);
+router.post("/user/devices/:deviceId/profile", requireAuth, setDeviceProfile);
+
+// Billing metadata (Paystack / Flutterwave references)
+router.get("/user/billing", requireAuth, getBilling);
+router.put("/user/billing", requireAuth, upsertBilling);
 
 export default router;

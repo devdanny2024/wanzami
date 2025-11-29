@@ -101,6 +101,28 @@ const farFutureDate = () =>
 
 const isIndefinite = (d: Date) => d.getFullYear() > 2099;
 
+const formatProfile = (p: any) => ({
+  id: p.id.toString(),
+  name: p.name,
+  avatarUrl: p.avatarUrl,
+  kidMode: p.kidMode,
+  language: p.language,
+  autoplay: p.autoplay,
+  preferences: p.preferences,
+});
+
+const getProfilesForUser = async (userId: bigint) => {
+  const profiles = await prisma.profile.findMany({
+    where: { userId },
+    orderBy: { createdAt: "asc" },
+  });
+  if (profiles.length) return profiles.map(formatProfile);
+  const created = await prisma.profile.create({
+    data: { userId, name: "Primary" },
+  });
+  return [formatProfile(created)];
+};
+
 const upsertDevice = async (userId: bigint, deviceId: string) => {
   const existing = await prisma.device.findUnique({
     where: {
@@ -213,6 +235,10 @@ export const signup = async (req: Request, res: Response) => {
     html: verifyEmailTemplate({ name, verifyUrl }),
   });
 
+  await prisma.profile.create({
+    data: { userId: user.id, name },
+  });
+
   return res.status(201).json({
     user: {
       id: user.id.toString(),
@@ -221,6 +247,7 @@ export const signup = async (req: Request, res: Response) => {
       name: user.name,
       emailVerified: user.emailVerified,
     },
+    profiles: await getProfilesForUser(user.id),
     message: "Account created. Check your email to verify your account.",
   });
 };
@@ -290,6 +317,7 @@ export const login = async (req: Request, res: Response) => {
     refreshToken,
     deviceId: resolvedDeviceId,
     permissions,
+    profiles: await getProfilesForUser(user.id),
   });
 };
 
@@ -358,6 +386,7 @@ export const adminLogin = async (req: Request, res: Response) => {
     refreshToken,
     deviceId: resolvedDeviceId,
     permissions,
+    profiles: await getProfilesForUser(user.id),
   });
 };
 
@@ -384,6 +413,7 @@ export const me = async (req: AuthenticatedRequest, res: Response) => {
       id: user.id.toString(),
     },
     permissions: getPermissionsForRole(user.role),
+    profiles: await getProfilesForUser(user.id),
   });
 };
 
