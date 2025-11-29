@@ -16,6 +16,8 @@ type SeriesTitle = {
   type: string;
   thumbnailUrl?: string | null;
   posterUrl?: string | null;
+  description?: string | null;
+  archived?: boolean;
   createdAt?: string;
 };
 
@@ -178,8 +180,54 @@ export function SeriesManagement() {
                       <Button size="sm" variant="ghost" className="text-[#fd7e14] hover:text-[#ff9940] hover:bg-[#fd7e14]/10">
                         <Edit className="w-4 h-4" />
                       </Button>
-                      <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-300 hover:bg-red-500/10">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                        onClick={async () => {
+                          if (!confirm("Delete this series?")) return;
+                          await fetch(`/api/admin/titles/${item.id}`, {
+                            method: "DELETE",
+                            headers: token ? { Authorization: `Bearer ${token}` } : {},
+                          });
+                          setSelectedSeries(null);
+                          // refresh list
+                          const res = await fetch('/api/admin/titles', {
+                            headers: token ? { Authorization: `Bearer ${token}` } : {},
+                          });
+                          const data = await res.json();
+                          if (res.ok) {
+                            const onlySeries = (data.titles ?? []).filter((t: any) => t.type === 'SERIES');
+                            setSeries(onlySeries);
+                          }
+                        }}
+                      >
                         <Trash2 className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-neutral-300 hover:text-white hover:bg-neutral-700"
+                        onClick={async () => {
+                          await fetch(`/api/admin/titles/${item.id}`, {
+                            method: "PATCH",
+                            headers: {
+                              "Content-Type": "application/json",
+                              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                            },
+                            body: JSON.stringify({ archived: !item.archived }),
+                          });
+                          const res = await fetch('/api/admin/titles', {
+                            headers: token ? { Authorization: `Bearer ${token}` } : {},
+                          });
+                          const data = await res.json();
+                          if (res.ok) {
+                            const onlySeries = (data.titles ?? []).filter((t: any) => t.type === 'SERIES');
+                            setSeries(onlySeries);
+                          }
+                        }}
+                      >
+                        {item.archived ? "Unarchive" : "Archive"}
                       </Button>
                     </div>
                   </div>

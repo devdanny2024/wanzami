@@ -18,6 +18,11 @@ export const listTitles = async (_req: Request, res: Response) => {
       id: t.id.toString(),
       name: t.name,
       type: t.type,
+      description: t.description,
+      posterUrl: t.posterUrl,
+      thumbnailUrl: t.thumbnailUrl,
+      trailerUrl: t.trailerUrl,
+      archived: t.archived,
       createdAt: t.createdAt,
       updatedAt: t.updatedAt,
       episodeCount: t.episodes.length,
@@ -73,6 +78,7 @@ export const createTitle = async (req: Request, res: Response) => {
       posterUrl,
       thumbnailUrl,
       trailerUrl,
+      archived: false,
     },
   });
   return res
@@ -83,12 +89,13 @@ export const createTitle = async (req: Request, res: Response) => {
 export const updateTitle = async (req: Request, res: Response) => {
   const id = req.params.id ? BigInt(req.params.id) : null;
   if (!id) return res.status(400).json({ message: "Missing title id" });
-  const { name, description, posterUrl, thumbnailUrl, trailerUrl } = req.body as {
+  const { name, description, posterUrl, thumbnailUrl, trailerUrl, archived } = req.body as {
     name?: string;
     description?: string;
     posterUrl?: string;
     thumbnailUrl?: string;
     trailerUrl?: string;
+    archived?: boolean;
   };
   const data: any = {};
   if (name !== undefined) data.name = name;
@@ -96,6 +103,7 @@ export const updateTitle = async (req: Request, res: Response) => {
   if (posterUrl !== undefined) data.posterUrl = posterUrl;
   if (thumbnailUrl !== undefined) data.thumbnailUrl = thumbnailUrl;
   if (trailerUrl !== undefined) data.trailerUrl = trailerUrl;
+  if (archived !== undefined) data.archived = archived;
   const title = await prisma.title.update({ where: { id }, data });
   return res.json({ title: { id: title.id.toString(), name: title.name, type: title.type } });
 };
@@ -110,4 +118,11 @@ export const presignAsset = async (req: Request, res: Response) => {
   } catch (err: any) {
     return res.status(500).json({ message: "Failed to presign asset upload", error: err?.message });
   }
+};
+
+export const deleteTitle = async (req: Request, res: Response) => {
+  const id = req.params.id ? BigInt(req.params.id) : null;
+  if (!id) return res.status(400).json({ message: "Missing title id" });
+  await prisma.title.delete({ where: { id } });
+  return res.status(204).send();
 };

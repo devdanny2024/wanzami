@@ -20,12 +20,16 @@ type MovieTitle = {
   type: string;
   thumbnailUrl?: string | null;
   posterUrl?: string | null;
+  description?: string | null;
+  trailerUrl?: string | null;
+  archived?: boolean;
   createdAt?: string;
   episodeCount?: number;
 };
 
 export function MoviesManagement() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [editingMovie, setEditingMovie] = useState<MovieTitle | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [uploads, setUploads] = useState<(UploadTask & { file?: File; targetId?: number })[]>([]);
   const [movies, setMovies] = useState<MovieTitle[]>([]);
@@ -137,7 +141,9 @@ export function MoviesManagement() {
               onSaved={() => {
                 void reloadMovies();
                 setIsAddDialogOpen(false);
+                setEditingMovie(null);
               }}
+              movie={editingMovie ?? undefined}
             />
           </DialogContent>
         </Dialog>
@@ -199,6 +205,10 @@ export function MoviesManagement() {
                           size="sm"
                           variant="ghost"
                           className="text-[#fd7e14] hover:text-[#ff9940] hover:bg-[#fd7e14]/10"
+                          onClick={() => {
+                            setEditingMovie(movie);
+                            setIsAddDialogOpen(true);
+                          }}
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
@@ -206,8 +216,34 @@ export function MoviesManagement() {
                           size="sm"
                           variant="ghost"
                           className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                          onClick={async () => {
+                            if (!confirm("Delete this title?")) return;
+                            await fetch(`/api/admin/titles/${movie.id}`, {
+                              method: "DELETE",
+                              headers: token ? { Authorization: `Bearer ${token}` } : {},
+                            });
+                            void reloadMovies();
+                          }}
                         >
                           <Trash2 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-neutral-300 hover:text-white hover:bg-neutral-700"
+                          onClick={async () => {
+                            await fetch(`/api/admin/titles/${movie.id}`, {
+                              method: "PATCH",
+                              headers: {
+                                "Content-Type": "application/json",
+                                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                              },
+                              body: JSON.stringify({ archived: !movie.archived }),
+                            });
+                            void reloadMovies();
+                          }}
+                        >
+                          {movie.archived ? "Unarchive" : "Archive"}
                         </Button>
                         <label className="text-xs text-[#fd7e14] hover:text-[#ff9940] cursor-pointer">
                           <input
@@ -238,17 +274,19 @@ function AddEditMovieForm({
   token,
   onClose,
   onSaved,
+  movie,
 }: {
   token?: string;
   onClose: () => void;
   onSaved: () => void;
+  movie?: MovieTitle;
 }) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [title, setTitle] = useState(movie?.name ?? "");
+  const [description, setDescription] = useState(movie?.description ?? "");
   const [posterFile, setPosterFile] = useState<File | null>(null);
   const [thumbFile, setThumbFile] = useState<File | null>(null);
   const [trailerFile, setTrailerFile] = useState<File | null>(null);
-  const [trailerUrlText, setTrailerUrlText] = useState("");
+  const [trailerUrlText, setTrailerUrlText] = useState(movie?.trailerUrl ?? "");
   const [ppvEnabled, setPpvEnabled] = useState(false);
   const [price, setPrice] = useState("");
   const [rentalPeriod, setRentalPeriod] = useState("");
@@ -259,6 +297,12 @@ function AddEditMovieForm({
   const [contentWarnings, setContentWarnings] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setTitle(movie?.name ?? "");
+    setDescription(movie?.description ?? "");
+    setTrailerUrlText(movie?.trailerUrl ?? "");
+  }, [movie?.id]);
 
   const uploadAsset = async (file: File, kind: "poster" | "thumbnail" | "trailer") => {
     const res = await fetch("/api/admin/assets/presign", {
@@ -314,8 +358,11 @@ function AddEditMovieForm({
         if (rentalPeriod) payload.rentalPeriod = rentalPeriod;
       }
 
-      const res = await fetch("/api/admin/titles", {
-        method: "POST",
+      const isEdit = !!movie?.id;
+      const endpoint = isEdit ? `/api/admin/titles/${movie.id}` : "/api/admin/titles";
+      const method = isEdit ? "PATCH" : "POST";
+      const res = await fetch(endpoint, {
+        method,
         headers: {
           "Content-Type": "application/json",
           Authorization: token ? `Bearer ${token}` : "",

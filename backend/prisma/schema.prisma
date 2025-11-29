@@ -173,6 +173,7 @@ model Title {
   posterUrl   String?
   thumbnailUrl String?
   trailerUrl   String?
+  archived    Boolean   @default(false)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
