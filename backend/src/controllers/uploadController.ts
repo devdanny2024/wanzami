@@ -193,8 +193,8 @@ export const completeUpload = async (req: Request, res: Response) => {
       prisma.assetVersion.upsert({
         where: {
           titleId_episodeId_rendition: {
-            titleId: job.titleId ?? null,
-            episodeId: job.episodeId ?? null,
+            titleId: job.titleId ?? undefined,
+            episodeId: job.episodeId ?? undefined,
             rendition: r,
           },
         },
@@ -211,7 +211,10 @@ export const completeUpload = async (req: Request, res: Response) => {
 
   const updated = await prisma.uploadJob.update({
     where: { id: jobId },
-    data: { status: UploadStatus.COMPLETED, bytesUploaded: job.bytesTotal ?? job.bytesUploaded },
+    data: {
+      status: UploadStatus.COMPLETED,
+      bytesUploaded: job.bytesTotal ?? job.bytesUploaded ?? BigInt(0),
+    },
   });
 
   return res.json({
