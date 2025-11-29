@@ -171,6 +171,8 @@ model Title {
   description String?
   releaseDate DateTime?
   posterUrl   String?
+  thumbnailUrl String?
+  trailerUrl   String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
