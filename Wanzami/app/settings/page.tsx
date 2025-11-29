@@ -41,6 +41,15 @@ type Billing = {
   nextPaymentAt?: string | null;
 } | null;
 
+const AVATAR_OPTIONS = [
+  "/avatars/avatar1.svg",
+  "/avatars/avatar2.svg",
+  "/avatars/avatar3.svg",
+  "/avatars/avatar4.svg",
+  "/avatars/avatar5.svg",
+  "/avatars/avatar6.svg",
+];
+
 const authHeaders = () => {
   const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
   const deviceId = typeof window !== "undefined" ? localStorage.getItem("deviceId") : null;
@@ -57,6 +66,8 @@ export default function SettingsPage() {
   const [billing, setBilling] = useState<Billing>(null);
   const [profileName, setProfileName] = useState("");
   const [kidMode, setKidMode] = useState(false);
+  const [selectedAvatar, setSelectedAvatar] = useState("/avatars/avatar1.svg");
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [billingForm, setBillingForm] = useState({
     provider: "PAYSTACK",
     providerCustomerId: "",
@@ -144,11 +155,13 @@ export default function SettingsPage() {
     try {
       const data = await fetcher("/api/user/profiles", {
         method: "POST",
-        body: JSON.stringify({ name: profileName, kidMode }),
+        body: JSON.stringify({ name: profileName, kidMode, avatarUrl: selectedAvatar }),
       });
       setProfiles((prev) => [...prev, data.profile]);
       setProfileName("");
       setKidMode(false);
+      setSelectedAvatar("/avatars/avatar1.svg");
+      setShowProfileModal(false);
       toast.success("Profile created");
     } catch (err: any) {
       toast.error(err.message ?? "Unable to create profile");
@@ -238,16 +251,34 @@ export default function SettingsPage() {
                     Create and edit viewing profiles (Netflix-style, up to 4).
                   </p>
                 </div>
+                {profiles.length < 4 && (
+                  <button
+                    onClick={() => setShowProfileModal(true)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/10 hover:bg-white/15 text-sm"
+                  >
+                    <span className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center">+</span>
+                    Add profile
+                  </button>
+                )}
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {profiles.map((p) => (
                   <div
                     key={p.id}
-                    className="border border-gray-800 rounded-lg p-4 bg-[#0f0f10]"
+                    className="border border-gray-800 rounded-lg p-4 bg-[#0f0f10] space-y-3"
                   >
-                    <div className="flex items-center justify-between">
-                      <div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-14 h-14 rounded-full overflow-hidden border border-white/10">
+                        {p.avatarUrl ? (
+                          <img src={p.avatarUrl} alt={p.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full bg-[#fd7e14]/20 flex items-center justify-center text-white text-xl font-semibold">
+                            {p.name.slice(0, 1).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1">
                         <div className="text-lg font-semibold">{p.name}</div>
                         {p.kidMode ? (
                           <div className="text-xs text-emerald-400 mt-1">Kids</div>
@@ -265,34 +296,6 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 ))}
-              </div>
-
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
-                <div className="flex-1">
-                  <label className="text-sm text-gray-300">New profile name</label>
-                  <input
-                    className="w-full mt-1 rounded-lg bg-[#0f0f10] border border-gray-700 px-3 py-2"
-                    placeholder="e.g. Peter"
-                    value={profileName}
-                    onChange={(e) => setProfileName(e.target.value)}
-                  />
-                </div>
-                <label className="flex items-center gap-2 text-sm text-gray-300">
-                  <input
-                    type="checkbox"
-                    checked={kidMode}
-                    onChange={(e) => setKidMode(e.target.checked)}
-                    className="rounded"
-                  />
-                  Kids profile
-                </label>
-                <button
-                  onClick={createProfile}
-                  disabled={profiles.length >= 4}
-                  className="bg-[#fd7e14] hover:bg-[#ff9f4d] disabled:opacity-60 disabled:cursor-not-allowed text-black font-semibold px-4 py-2 rounded-lg"
-                >
-                  {profiles.length >= 4 ? "Profile limit reached" : "Add profile"}
-                </button>
               </div>
             </section>
 
@@ -494,6 +497,79 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
+      {showProfileModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center px-4">
+          <div className="w-full max-w-lg bg-[#111]/90 border border-white/10 rounded-2xl p-6 text-white shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-xl font-semibold">Create profile</h3>
+                <p className="text-gray-400 text-sm">Pick an avatar and name.</p>
+              </div>
+              <button
+                onClick={() => setShowProfileModal(false)}
+                className="w-9 h-9 rounded-full border border-white/15 bg-white/5 hover:bg-white/10"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              {AVATAR_OPTIONS.map((src) => (
+                <button
+                  key={src}
+                  onClick={() => setSelectedAvatar(src)}
+                  className={`rounded-xl border ${
+                    selectedAvatar === src
+                      ? "border-[#fd7e14] bg-[#fd7e14]/10"
+                      : "border-white/10 hover:border-white/30"
+                  } overflow-hidden`}
+                >
+                  <img src={src} alt="Avatar option" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <label className="text-sm text-gray-300">Profile name</label>
+                <input
+                  className="w-full rounded-lg bg-black/40 border border-white/10 px-3 py-3 text-white text-sm"
+                  placeholder="e.g. Peter"
+                  value={profileName}
+                  onChange={(e) => setProfileName(e.target.value)}
+                />
+              </div>
+
+              <label className="flex items-center gap-2 text-sm text-gray-300">
+                <input
+                  type="checkbox"
+                  checked={kidMode}
+                  onChange={(e) => setKidMode(e.target.checked)}
+                  className="rounded"
+                />
+                Kids profile
+              </label>
+
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  onClick={() => setShowProfileModal(false)}
+                  className="px-4 py-2 rounded-lg border border-white/10 text-gray-300 hover:bg-white/5 text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={createProfile}
+                  disabled={profiles.length >= 4}
+                  className="px-4 py-2 rounded-lg bg-[#fd7e14] hover:bg-[#ff9f4d] text-black font-semibold disabled:opacity-60 text-sm"
+                >
+                  {profiles.length >= 4 ? "Profile limit reached" : "Add profile"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
