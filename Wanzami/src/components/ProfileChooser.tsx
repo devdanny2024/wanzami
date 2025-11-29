@@ -233,12 +233,12 @@ export function ProfileChooser({ onSelected, onLogout }: ProfileChooserProps) {
               </div>
 
               <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 justify-items-center">
                   {AVATAR_OPTIONS.map((src) => (
                     <button
                       key={src}
                       onClick={() => setSelectedAvatar(src)}
-                      className={`rounded-xl border h-24 overflow-hidden ${
+                      className={`rounded-xl border w-24 h-24 overflow-hidden ${
                         selectedAvatar === src
                           ? "border-[#fd7e14] bg-[#fd7e14]/10"
                           : "border-white/10 hover:border-white/30"
