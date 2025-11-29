@@ -52,7 +52,6 @@ export const listEpisodesForTitle = async (req: Request, res: Response) => {
       episodeNumber: e.episodeNumber,
       name: e.name,
       synopsis: e.synopsis,
-      durationSec: e.durationSec ?? null,
       createdAt: e.createdAt,
       updatedAt: e.updatedAt,
     })),
