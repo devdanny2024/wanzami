@@ -1,9 +1,10 @@
 -- CreateEnum
 CREATE TYPE "PaymentProvider" AS ENUM ('PAYSTACK', 'FLUTTERWAVE');
 
--- AlterTable
-ALTER TABLE "User" ADD COLUMN     "resetToken" TEXT,
-ADD COLUMN     "resetTokenExpires" TIMESTAMP(3);
+-- AlterTable (guarded to avoid errors if columns already exist)
+ALTER TABLE "User"
+ADD COLUMN IF NOT EXISTS "resetToken" TEXT,
+ADD COLUMN IF NOT EXISTS "resetTokenExpires" TIMESTAMP(3);
 
 -- CreateTable
 CREATE TABLE "Profile" (
