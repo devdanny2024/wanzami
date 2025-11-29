@@ -13,6 +13,7 @@ import { Plus, Edit, Trash2, Search } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { UploadDock, UploadTask } from "./UploadDock";
 import { initUpload, uploadMultipart } from "@/lib/uploadClient";
+import { toast } from "sonner";
 
 export type MovieTitle = {
   id: string;
@@ -338,6 +339,7 @@ function AddEditMovieForm({
       setError(null);
       if (!title.trim()) {
         setError("Title is required");
+        setSaving(false);
         return;
       }
       const payload: any = {
@@ -365,10 +367,12 @@ function AddEditMovieForm({
       // Require all key fields before save
       if (!payload.description || (!posterFile && !movie?.posterUrl) || (!thumbFile && !movie?.thumbnailUrl)) {
         setError("Title, description, poster, and thumbnail are required.");
+        setSaving(false);
         return;
       }
       if (!trailerFile && !trailerUrlText && !movie?.trailerUrl) {
         setError("Trailer file or URL is required.");
+        setSaving(false);
         return;
       }
 
@@ -391,9 +395,11 @@ function AddEditMovieForm({
       if (videoFile && newId) {
         onQueueUpload(newId, videoFile);
       }
+      toast.success(isEdit ? "Movie updated" : "Movie created");
       onSaved();
     } catch (err: any) {
       setError(err?.message || "Save failed");
+      toast.error(err?.message || "Save failed");
     } finally {
       setSaving(false);
     }
