@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import { config } from "./config.js";
 import authRoutes from "./routes/authRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
+import contentRoutes from "./routes/contentRoutes.js";
 
 const app = express();
 
@@ -18,6 +19,7 @@ app.use(cookieParser());
 
 app.use("/api", authRoutes);
 app.use("/api", uploadRoutes);
+app.use("/api", contentRoutes);
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 

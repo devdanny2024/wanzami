@@ -10,11 +10,30 @@ import { ImageWithFallback } from './figma/ImageWithFallback';
 import { UploadDock, UploadTask } from './UploadDock';
 import { initUpload, uploadMultipart } from '@/lib/uploadClient';
 
+type SeriesTitle = {
+  id: string;
+  name: string;
+  type: string;
+  thumbnailUrl?: string | null;
+  posterUrl?: string | null;
+  createdAt?: string;
+};
+
+type Episode = {
+  id: string;
+  titleId: string;
+  seasonNumber?: number;
+  episodeNumber?: number;
+  name?: string;
+  synopsis?: string | null;
+  createdAt?: string;
+};
+
 export function SeriesManagement() {
-  const [selectedSeries, setSelectedSeries] = useState<number | null>(null);
+  const [selectedSeries, setSelectedSeries] = useState<string | null>(null);
   const [isAddEpisodeOpen, setIsAddEpisodeOpen] = useState(false);
-  const [series, setSeries] = useState<any[]>([]);
-  const [episodes, setEpisodes] = useState<any[]>([]);
+  const [series, setSeries] = useState<SeriesTitle[]>([]);
+  const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [uploads, setUploads] = useState<(UploadTask & { file?: File; targetEpisodeId?: number })[]>([]);
   const [running, setRunning] = useState(false);
   const activeCount = useRef(0);
@@ -22,10 +41,35 @@ export function SeriesManagement() {
   const token = useMemo(() => (typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null), []);
 
   useEffect(() => {
-    // TODO: replace with real API calls for series/episodes
-    setSeries([]);
-    setEpisodes([]);
-  }, []);
+    const loadSeries = async () => {
+      const res = await fetch('/api/admin/titles', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const data = await res.json();
+      if (res.ok) {
+        const onlySeries = (data.titles ?? []).filter((t: any) => t.type === 'SERIES');
+        setSeries(onlySeries);
+      }
+    };
+    void loadSeries();
+  }, [token]);
+
+  useEffect(() => {
+    const loadEpisodes = async () => {
+      if (!selectedSeries) {
+        setEpisodes([]);
+        return;
+      }
+      const res = await fetch(`/api/admin/titles/${selectedSeries}/episodes`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setEpisodes(data.episodes ?? []);
+      }
+    };
+    void loadEpisodes();
+  }, [selectedSeries, token]);
 
   useEffect(() => {
     if (!running) return;
@@ -108,30 +152,27 @@ export function SeriesManagement() {
             <CardTitle className="text-white">All Series</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {series.map((series) => (
+            {series.map((item) => (
               <div
-                key={series.id}
+                key={item.id}
                 className={`p-4 rounded-lg border transition-all cursor-pointer ${
-                  selectedSeries === series.id
+                  selectedSeries === item.id
                     ? 'border-[#fd7e14] bg-[#fd7e14]/10'
                     : 'border-neutral-800 hover:border-neutral-700 bg-neutral-950'
                 }`}
-                onClick={() => setSelectedSeries(series.id)}
+                onClick={() => setSelectedSeries(item.id)}
               >
                 <div className="flex gap-4">
                   <ImageWithFallback
-                    src={series.thumbnail}
-                    alt={series.title}
+                    src={item.thumbnailUrl || item.posterUrl || ""}
+                    alt={item.name}
                     className="w-24 h-36 object-cover rounded-lg"
                   />
                   <div className="flex-1">
-                    <h3 className="text-white mb-2">{series.title}</h3>
+                    <h3 className="text-white mb-2">{item.name}</h3>
                     <div className="space-y-1 text-sm text-neutral-400">
-                      <p>{series.seasons} Season{series.seasons > 1 ? 's' : ''}</p>
-                      <p>{series.totalEpisodes} Episodes</p>
-                      <Badge className="bg-green-500/20 text-green-400 mt-2">
-                        {series.status}
-                      </Badge>
+                      <p>Type: {item.type}</p>
+                      <p>Created: {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '--'}</p>
                     </div>
                     <div className="flex gap-2 mt-4">
                       <Button size="sm" variant="ghost" className="text-[#fd7e14] hover:text-[#ff9940] hover:bg-[#fd7e14]/10">
@@ -145,6 +186,9 @@ export function SeriesManagement() {
                 </div>
               </div>
             ))}
+            {series.length === 0 && (
+              <div className="text-neutral-500 text-sm">No series yet.</div>
+            )}
           </CardContent>
         </Card>
 
@@ -154,7 +198,7 @@ export function SeriesManagement() {
             <div>
               <CardTitle className="text-white">Episodes</CardTitle>
               <p className="text-sm text-neutral-400 mt-1">
-                {selectedSeries ? series.find((s: any) => s.id === selectedSeries)?.title : 'Select a series'}
+                {selectedSeries ? series.find((s: any) => s.id === selectedSeries)?.name : 'Select a series'}
               </p>
             </div>
             {selectedSeries && (
@@ -178,14 +222,14 @@ export function SeriesManagement() {
             {selectedSeries ? (
               <div className="space-y-3">
                 {episodes
-                  .filter(ep => ep.seriesId === selectedSeries)
+                  .filter((ep) => ep.titleId === selectedSeries)
                   .map((episode) => (
                     <div key={episode.id} className="p-4 rounded-lg border border-neutral-800 bg-neutral-950 hover:border-neutral-700 transition-colors">
                       <div className="flex gap-4">
                         <div className="relative">
                           <ImageWithFallback
-                            src={episode.thumbnail}
-                            alt={episode.episodeName}
+                            src={""}
+                            alt={episode.name || "Episode"}
                             className="w-32 h-20 object-cover rounded-lg"
                           />
                           <PlayCircle className="absolute inset-0 m-auto w-8 h-8 text-white opacity-80" />
@@ -193,8 +237,10 @@ export function SeriesManagement() {
                         <div className="flex-1">
                           <div className="flex items-start justify-between">
                             <div>
-                              <h4 className="text-white">S{episode.season}E{episode.episodeNumber}: {episode.episodeName}</h4>
-                              <p className="text-sm text-neutral-400 mt-1">Duration: {episode.duration}</p>
+                              <h4 className="text-white">
+                                S{episode.seasonNumber ?? "-"}E{episode.episodeNumber ?? "-"}: {episode.name ?? "Untitled"}
+                              </h4>
+                              {episode.synopsis && <p className="text-sm text-neutral-400 mt-1">{episode.synopsis}</p>}
                             </div>
                             <div className="flex gap-2 items-center">
                               <Button size="sm" variant="ghost" className="text-[#fd7e14] hover:text-[#ff9940] hover:bg-[#fd7e14]/10">
@@ -209,16 +255,14 @@ export function SeriesManagement() {
                                   className="hidden"
                                   onChange={(e) => {
                                     const f = e.target.files?.[0];
-                                    if (f) startUploadForEpisode(episode.id, f);
+                                    if (f) startUploadForEpisode(Number(episode.id), f);
                                   }}
                                 />
                                 Upload video
                               </label>
                             </div>
                           </div>
-                          <Badge className="bg-green-500/20 text-green-400 mt-2">
-                            {episode.status}
-                          </Badge>
+                          <Badge className="bg-green-500/20 text-green-400 mt-2">Ready</Badge>
                         </div>
                       </div>
                     </div>

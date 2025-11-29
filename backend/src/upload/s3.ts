@@ -130,3 +130,20 @@ export const downloadToFile = async (key: string, destPath: string) => {
   await pipeline(res.Body as any, write);
   return destPath;
 };
+
+export const presignPutObject = async (key: string, contentType = "application/octet-stream", expiresIn = 900) => {
+  if (!config.s3.bucket) {
+    throw new Error("S3 bucket not configured");
+  }
+  const client = s3Client();
+  const url = await getSignedUrl(
+    client,
+    new PutObjectCommand({
+      Bucket: config.s3.bucket,
+      Key: key,
+      ContentType: contentType,
+    }),
+    { expiresIn }
+  );
+  return url;
+};
