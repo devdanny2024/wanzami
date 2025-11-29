@@ -130,12 +130,20 @@ export function Navbar({
                 <Search className="w-5 h-5 text-gray-400 group-hover:text-[#fd7e14] transition-colors" />
               </button>
 
-              {/* Settings */}
-              <a
-                href="/settings"
+              {/* Profile (unchanged behavior) */}
+              <button
+                onClick={() => onNavigate('dashboard')}
                 className="hidden md:flex w-10 h-10 items-center justify-center bg-gradient-to-br from-[#fd7e14] to-[#ff9f4d] hover:shadow-lg hover:shadow-[#fd7e14]/30 rounded-xl transition-all duration-300 group"
               >
                 <User className="w-5 h-5 text-white" />
+              </button>
+
+              {/* Settings link */}
+              <a
+                href="/settings"
+                className="hidden md:inline-flex items-center px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white text-sm font-semibold transition-all"
+              >
+                Settings
               </a>
 
               {/* Desktop Logout (icon) */}
@@ -230,6 +238,13 @@ export function Navbar({
                     Sign Out
                   </button>
                 )}
+                <a
+                  href="/settings"
+                  className="block w-full text-left px-4 py-3 rounded-xl text-gray-400 hover:bg-white/5 hover:text-white transition-all"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Settings
+                </a>
               </div>
             </div>
           </motion.div>
