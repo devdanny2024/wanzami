@@ -1,0 +1,1 @@
+If using local Redis on the VPS: install Redis (`sudo apt install redis-server`) and set `REDIS_URL=redis://localhost:6379`.

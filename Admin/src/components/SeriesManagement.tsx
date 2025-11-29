@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -7,52 +7,86 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from './ui/badge';
 import { Plus, Edit, Trash2, PlayCircle } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
-
-const mockSeries = [
-  {
-    id: 1,
-    title: 'Lagos Streets',
-    thumbnail: 'https://images.unsplash.com/photo-1559554609-1570ffa19002?w=400',
-    totalEpisodes: 12,
-    seasons: 2,
-    status: 'Published',
-  },
-  {
-    id: 2,
-    title: 'Village Chronicles',
-    thumbnail: 'https://images.unsplash.com/photo-1611517984810-0ef2ae54f9a3?w=400',
-    totalEpisodes: 8,
-    seasons: 1,
-    status: 'Published',
-  },
-];
-
-const mockEpisodes = [
-  {
-    id: 1,
-    seriesId: 1,
-    episodeName: 'The Beginning',
-    episodeNumber: 1,
-    season: 1,
-    duration: '45:30',
-    thumbnail: 'https://images.unsplash.com/photo-1628156987718-e90e05410931?w=400',
-    status: 'Published',
-  },
-  {
-    id: 2,
-    seriesId: 1,
-    episodeName: 'New Challenges',
-    episodeNumber: 2,
-    season: 1,
-    duration: '42:15',
-    thumbnail: 'https://images.unsplash.com/photo-1559554609-1570ffa19002?w=400',
-    status: 'Published',
-  },
-];
+import { UploadDock, UploadTask } from './UploadDock';
+import { initUpload, uploadMultipart } from '@/lib/uploadClient';
 
 export function SeriesManagement() {
   const [selectedSeries, setSelectedSeries] = useState<number | null>(null);
   const [isAddEpisodeOpen, setIsAddEpisodeOpen] = useState(false);
+  const [series, setSeries] = useState<any[]>([]);
+  const [episodes, setEpisodes] = useState<any[]>([]);
+  const [uploads, setUploads] = useState<(UploadTask & { file?: File; targetEpisodeId?: number })[]>([]);
+  const [running, setRunning] = useState(false);
+  const activeCount = useRef(0);
+  const MAX_CONCURRENCY = 3;
+  const token = useMemo(() => (typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null), []);
+
+  useEffect(() => {
+    // TODO: replace with real API calls for series/episodes
+    setSeries([]);
+    setEpisodes([]);
+  }, []);
+
+  useEffect(() => {
+    if (!running) return;
+    const next = uploads.find((t) => t.status === 'pending');
+    if (!next || activeCount.current >= MAX_CONCURRENCY) return;
+    activeCount.current += 1;
+    setUploads((prev) => prev.map((t) => (t.id === next.id ? { ...t, status: 'uploading' } : t)));
+    void handleUpload(next).finally(() => {
+      activeCount.current -= 1;
+      setTimeout(() => setRunning(true), 0);
+    });
+  }, [running, uploads]);
+
+  const handleUpload = async (task: UploadTask & { file?: File; targetEpisodeId?: number }) => {
+    try {
+      if (!task.file || !task.targetEpisodeId) throw new Error('Missing file or episode');
+      const startTime = performance.now();
+      const init = await initUpload(
+        {
+          kind: 'EPISODE',
+          episodeId: task.targetEpisodeId,
+          file: task.file,
+        },
+        token ?? undefined
+      );
+      await uploadMultipart(task.file, init, token, (p) => {
+        const elapsed = (performance.now() - startTime) / 1000;
+        const speed = elapsed > 0 ? (p.uploadedBytes * 8) / (elapsed * 1_000_000) : undefined;
+        setUploads((prev) =>
+          prev.map((t) =>
+            t.id === task.id
+              ? { ...t, progress: Math.round((p.uploadedBytes / p.totalBytes) * 100), speedMbps: speed }
+              : t
+          )
+        );
+      });
+      setUploads((prev) =>
+        prev.map((t) => (t.id === task.id ? { ...t, status: 'processing', progress: 100 } : t))
+      );
+    } catch (err: any) {
+      setUploads((prev) =>
+        prev.map((t) =>
+          t.id === task.id ? { ...t, status: 'failed', error: err?.message ?? 'Upload failed' } : t
+        )
+      );
+    }
+  };
+
+  const startUploadForEpisode = (episodeId: number, file: File) => {
+    const task: UploadTask & { file?: File; targetEpisodeId?: number } = {
+      id: `${Date.now()}-${file.name}-${Math.random().toString(36).slice(2)}`,
+      name: file.name,
+      size: file.size,
+      status: 'pending',
+      progress: 0,
+      file,
+      targetEpisodeId: episodeId,
+    };
+    setUploads((prev) => [...prev, task]);
+    setRunning(true);
+  };
 
   return (
     <div className="space-y-6">
@@ -74,7 +108,7 @@ export function SeriesManagement() {
             <CardTitle className="text-white">All Series</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {mockSeries.map((series) => (
+            {series.map((series) => (
               <div
                 key={series.id}
                 className={`p-4 rounded-lg border transition-all cursor-pointer ${
@@ -120,7 +154,7 @@ export function SeriesManagement() {
             <div>
               <CardTitle className="text-white">Episodes</CardTitle>
               <p className="text-sm text-neutral-400 mt-1">
-                {selectedSeries ? mockSeries.find(s => s.id === selectedSeries)?.title : 'Select a series'}
+                {selectedSeries ? series.find((s: any) => s.id === selectedSeries)?.title : 'Select a series'}
               </p>
             </div>
             {selectedSeries && (
@@ -143,7 +177,7 @@ export function SeriesManagement() {
           <CardContent>
             {selectedSeries ? (
               <div className="space-y-3">
-                {mockEpisodes
+                {episodes
                   .filter(ep => ep.seriesId === selectedSeries)
                   .map((episode) => (
                     <div key={episode.id} className="p-4 rounded-lg border border-neutral-800 bg-neutral-950 hover:border-neutral-700 transition-colors">
@@ -162,13 +196,24 @@ export function SeriesManagement() {
                               <h4 className="text-white">S{episode.season}E{episode.episodeNumber}: {episode.episodeName}</h4>
                               <p className="text-sm text-neutral-400 mt-1">Duration: {episode.duration}</p>
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 items-center">
                               <Button size="sm" variant="ghost" className="text-[#fd7e14] hover:text-[#ff9940] hover:bg-[#fd7e14]/10">
                                 <Edit className="w-4 h-4" />
                               </Button>
                               <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-300 hover:bg-red-500/10">
                                 <Trash2 className="w-4 h-4" />
                               </Button>
+                              <label className="text-xs text-[#fd7e14] hover:text-[#ff9940] cursor-pointer">
+                                <input
+                                  type="file"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const f = e.target.files?.[0];
+                                    if (f) startUploadForEpisode(episode.id, f);
+                                  }}
+                                />
+                                Upload video
+                              </label>
                             </div>
                           </div>
                           <Badge className="bg-green-500/20 text-green-400 mt-2">
@@ -187,6 +232,7 @@ export function SeriesManagement() {
           </CardContent>
         </Card>
       </div>
+      <UploadDock tasks={uploads} onRemove={(id) => setUploads((prev) => prev.filter((t) => t.id !== id))} />
     </div>
   );
 }
