@@ -279,7 +279,7 @@ export default function SettingsPage() {
                     className="border border-gray-800 rounded-lg p-4 bg-[#0f0f10] space-y-3"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-14 h-14 rounded-full overflow-hidden border border-white/10">
+                      <div className="w-12 h-12 md:w-14 md:h-14 rounded-full overflow-hidden border border-white/10">
                         {p.avatarUrl ? (
                           <img src={p.avatarUrl} alt={p.name} className="w-full h-full object-cover" />
                         ) : (
@@ -529,11 +529,11 @@ export default function SettingsPage() {
                 <button
                   key={src}
                   onClick={() => setSelectedAvatar(src)}
-                  className={`rounded-xl border ${
+                  className={`rounded-xl border h-24 overflow-hidden ${
                     selectedAvatar === src
                       ? "border-[#fd7e14] bg-[#fd7e14]/10"
                       : "border-white/10 hover:border-white/30"
-                  } overflow-hidden`}
+                  }`}
                 >
                   <img src={src} alt="Avatar option" className="w-full h-full object-cover" />
                 </button>

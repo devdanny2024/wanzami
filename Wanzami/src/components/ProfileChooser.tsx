@@ -158,15 +158,11 @@ export function ProfileChooser({ onSelected, onLogout }: ProfileChooserProps) {
               <button
                 key={p.id}
                 onClick={() => handleSelect(p)}
-                className="group relative border border-white/10 rounded-xl bg-white/5 hover:bg-white/10 transition overflow-hidden"
+                className="group relative border border-white/10 rounded-xl bg-white/5 hover:bg-white/10 transition overflow-hidden max-w-xs mx-auto"
               >
-                <div className="aspect-square bg-gradient-to-br from-[#fd7e14]/20 to-[#fd7e14]/5 flex items-center justify-center">
+                <div className="aspect-square max-h-40 bg-gradient-to-br from-[#fd7e14]/20 to-[#fd7e14]/5 flex items-center justify-center">
                   {p.avatarUrl ? (
-                    <img
-                      src={p.avatarUrl}
-                      alt={p.name}
-                      className="object-cover w-full h-full"
-                    />
+                    <img src={p.avatarUrl} alt={p.name} className="object-cover w-full h-full" />
                   ) : (
                     <span className="text-5xl text-white/80 font-semibold">
                       {p.name.slice(0, 1).toUpperCase()}
@@ -242,11 +238,11 @@ export function ProfileChooser({ onSelected, onLogout }: ProfileChooserProps) {
                     <button
                       key={src}
                       onClick={() => setSelectedAvatar(src)}
-                      className={`rounded-xl border ${
+                      className={`rounded-xl border h-24 overflow-hidden ${
                         selectedAvatar === src
                           ? "border-[#fd7e14] bg-[#fd7e14]/10"
                           : "border-white/10 hover:border-white/30"
-                      } overflow-hidden`}
+                      }`}
                     >
                       <img src={src} alt="Avatar option" className="w-full h-full object-cover" />
                     </button>
