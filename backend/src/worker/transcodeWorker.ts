@@ -10,7 +10,9 @@ import { mkdtemp, rm, stat } from "fs/promises";
 import path from "path";
 import os from "os";
 
-ffmpeg.setFfmpegPath(ffmpegStatic ?? undefined);
+if (ffmpegStatic) {
+  ffmpeg.setFfmpegPath(ffmpegStatic);
+}
 
 type TranscodeJob = {
   uploadJobId: bigint;
