@@ -19,10 +19,15 @@ const s3Client = () =>
     region: config.s3.region,
     endpoint: config.s3.endpoint,
     forcePathStyle: !!config.s3.endpoint,
-    credentials: {
-      accessKeyId: config.s3.accessKeyId ?? "",
-      secretAccessKey: config.s3.secretAccessKey ?? "",
-    },
+    // If keys are provided, use them; otherwise let the default provider (e.g., EC2 IAM role) supply creds
+    ...(config.s3.accessKeyId && config.s3.secretAccessKey
+      ? {
+          credentials: {
+            accessKeyId: config.s3.accessKeyId,
+            secretAccessKey: config.s3.secretAccessKey,
+          },
+        }
+      : {}),
   });
 
 export const createMultipartUpload = async (key: string, contentType = "application/octet-stream") => {
