@@ -64,7 +64,7 @@ const worker = new Worker<TranscodeJob>(
     try {
       await downloadToFile(data.key, srcPath);
       const probe = await new Promise<any>((resolve, reject) =>
-        ffmpeg.ffprobe(srcPath, (err, meta) => (err ? reject(err) : resolve(meta)))
+        ffmpeg.ffprobe(srcPath, (err: any, meta: any) => (err ? reject(err) : resolve(meta)))
       );
       const durationSec = Math.round(probe.format?.duration ?? 0);
 

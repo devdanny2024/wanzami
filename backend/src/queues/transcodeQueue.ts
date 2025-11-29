@@ -1,4 +1,4 @@
-import { Queue, QueueScheduler } from "bullmq";
+import { Queue } from "bullmq";
 import IORedis from "ioredis";
 import { config } from "../config.js";
 
@@ -13,6 +13,3 @@ export const transcodeQueue = new Queue("transcode", {
     removeOnFail: 5000,
   },
 });
-
-// Scheduler to handle stalled jobs
-new QueueScheduler("transcode", { connection });
