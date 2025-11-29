@@ -6,7 +6,13 @@ import { config } from "../config.js";
 
 const profileSchema = z.object({
   name: z.string().min(1).max(64),
-  avatarUrl: z.string().url().optional().or(z.literal("")),
+  // Allow hosted URLs or relative asset paths (e.g., /avatars/avatar1.svg)
+  avatarUrl: z
+    .string()
+    .min(1)
+    .max(512)
+    .optional()
+    .or(z.literal("")),
   kidMode: z.boolean().optional(),
   language: z.string().min(2).max(8).optional(),
   autoplay: z.boolean().optional(),
