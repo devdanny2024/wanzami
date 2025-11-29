@@ -77,6 +77,16 @@ export function ProfileChooser({ onSelected, onLogout }: ProfileChooserProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (showModal) {
+      const original = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = original;
+      };
+    }
+  }, [showModal]);
+
   const handleSelect = async (profile: Profile) => {
     const deviceId = localStorage.getItem("deviceId");
     if (!deviceId) {
@@ -204,7 +214,7 @@ export function ProfileChooser({ onSelected, onLogout }: ProfileChooserProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 px-4"
+            className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[9999] px-4"
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}

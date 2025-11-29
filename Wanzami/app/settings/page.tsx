@@ -143,6 +143,16 @@ export default function SettingsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (showProfileModal) {
+      const original = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = original;
+      };
+    }
+  }, [showProfileModal]);
+
   const createProfile = async () => {
     if (profiles.length >= 4) {
       toast.error("You can only have up to 4 profiles.");
@@ -498,8 +508,8 @@ export default function SettingsPage() {
         )}
       </div>
       {showProfileModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center px-4">
-          <div className="w-full max-w-lg bg-[#111]/90 border border-white/10 rounded-2xl p-6 text-white shadow-2xl">
+        <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center px-4">
+          <div className="w-full max-w-lg bg-[#111]/95 border border-white/10 rounded-2xl p-6 text-white shadow-2xl">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-xl font-semibold">Create profile</h3>
