@@ -144,6 +144,7 @@ export function MoviesManagement() {
                 setEditingMovie(null);
               }}
               movie={editingMovie ?? undefined}
+              onQueueUpload={(id, file) => startUploadForMovie(id, file)}
             />
           </DialogContent>
         </Dialog>
@@ -280,6 +281,7 @@ function AddEditMovieForm({
   onClose: () => void;
   onSaved: () => void;
   movie?: MovieTitle;
+  onQueueUpload: (id: number, file: File) => void;
 }) {
   const [title, setTitle] = useState(movie?.name ?? "");
   const [description, setDescription] = useState(movie?.description ?? "");
@@ -287,6 +289,7 @@ function AddEditMovieForm({
   const [thumbFile, setThumbFile] = useState<File | null>(null);
   const [trailerFile, setTrailerFile] = useState<File | null>(null);
   const [trailerUrlText, setTrailerUrlText] = useState(movie?.trailerUrl ?? "");
+  const [videoFile, setVideoFile] = useState<File | null>(null);
   const [ppvEnabled, setPpvEnabled] = useState(false);
   const [price, setPrice] = useState("");
   const [rentalPeriod, setRentalPeriod] = useState("");
@@ -382,6 +385,10 @@ function AddEditMovieForm({
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data?.message || "Failed to save movie");
+      }
+      const newId = Number(data?.title?.id ?? movie?.id);
+      if (videoFile && newId) {
+        onQueueUpload(newId, videoFile);
       }
       onSaved();
     } catch (err: any) {
@@ -506,10 +513,20 @@ function AddEditMovieForm({
       <TabsContent value="media" className="space-y-4 mt-4">
         <div>
           <Label className="text-neutral-300">Upload Video File</Label>
-          <div className="mt-1 border-2 border-dashed border-neutral-800 rounded-lg p-8 text-center bg-neutral-950">
-            <p className="text-neutral-400">Use the table “Upload video” action to queue movie video uploads.</p>
+          <label className="mt-1 block border-2 border-dashed border-neutral-800 rounded-lg p-8 text-center bg-neutral-950 cursor-pointer">
+            <p className="text-neutral-400">Drop video file here or click to browse</p>
             <p className="text-xs text-neutral-500 mt-1">MP4, MOV, AVI (Max 5GB)</p>
-          </div>
+            <input
+              type="file"
+              accept="video/*"
+              className="hidden"
+              onChange={(e) => setVideoFile(e.target.files?.[0] ?? null)}
+            />
+            {videoFile && <p className="text-xs text-[#fd7e14] mt-2">Selected: {videoFile.name}</p>}
+          </label>
+          <p className="text-xs text-neutral-500 mt-1">
+            Video uploads queue after you save. You can also use the table “Upload video” action per row.
+          </p>
         </div>
 
         <div>
