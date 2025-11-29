@@ -185,16 +185,16 @@ export const completeUpload = async (req: Request, res: Response) => {
 
   // Stub: mark asset versions as READY and point to the uploaded key for now.
   const assetData = {
-    titleId: job.titleId ?? undefined,
-    episodeId: job.episodeId ?? undefined,
+    titleId: job.titleId ?? null,
+    episodeId: job.episodeId ?? null,
   };
   await Promise.all(
     targetRenditions.map((r) =>
       prisma.assetVersion.upsert({
         where: {
           titleId_episodeId_rendition: {
-            titleId: job.titleId ?? undefined,
-            episodeId: job.episodeId ?? undefined,
+            titleId: job.titleId ?? null,
+            episodeId: job.episodeId ?? null,
             rendition: r,
           },
         },
