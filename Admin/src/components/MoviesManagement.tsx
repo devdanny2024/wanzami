@@ -276,6 +276,7 @@ function AddEditMovieForm({
   onClose,
   onSaved,
   movie,
+  onQueueUpload,
 }: {
   token?: string;
   onClose: () => void;
