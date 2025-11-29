@@ -509,7 +509,7 @@ export default function SettingsPage() {
       </div>
       {showProfileModal && (
         <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center px-4">
-          <div className="w-full max-w-lg bg-[#111]/95 border border-white/10 rounded-2xl p-6 text-white shadow-2xl">
+          <div className="w-full max-w-xl md:max-w-2xl bg-[#111]/95 border border-white/10 rounded-2xl p-6 text-white shadow-2xl max-h-[80vh] overflow-auto">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-xl font-semibold">Create profile</h3>
