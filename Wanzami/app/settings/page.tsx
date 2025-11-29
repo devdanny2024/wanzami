@@ -524,7 +524,7 @@ export default function SettingsPage() {
               </button>
             </div>
 
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-4 justify-items-center">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4 justify-items-center">
               {AVATAR_OPTIONS.map((src) => (
                 <button
                   key={src}
