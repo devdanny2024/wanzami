@@ -10,7 +10,6 @@ import {
   BarChart3, 
   Settings,
   ShieldQuestion,
-  CloudUpload,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -20,7 +19,6 @@ interface SidebarProps {
 
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'uploads', label: 'Uploads', icon: CloudUpload },
   { id: 'movies', label: 'Movies', icon: Film },
   { id: 'series', label: 'Series', icon: Tv },
   { id: 'ppv', label: 'PPV', icon: CreditCard },
