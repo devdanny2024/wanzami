@@ -13,6 +13,7 @@ import { Moderation } from './components/Moderation';
 import { Analytics } from './components/Analytics';
 import { Settings } from './components/Settings';
 import { TeamManagement } from './components/TeamManagement';
+import { UploadsManager } from './components/UploadsManager';
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -68,6 +69,8 @@ export default function App() {
         return <Dashboard />;
       case 'movies':
         return <MoviesManagement />;
+      case 'uploads':
+        return <UploadsManager />;
       case 'series':
         return <SeriesManagement />;
       case 'ppv':

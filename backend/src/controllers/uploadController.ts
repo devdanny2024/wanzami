@@ -9,7 +9,11 @@ import { UploadStatus, Rendition, TitleType, AssetStatus } from "@prisma/client"
 const initSchema = z.object({
   kind: z.enum(["MOVIE", "SERIES", "EPISODE"]),
   titleId: z.coerce.bigint().optional(),
+  titleName: z.string().optional(),
   episodeId: z.coerce.bigint().optional(),
+  episodeName: z.string().optional(),
+  seasonNumber: z.coerce.number().int().optional(),
+  episodeNumber: z.coerce.number().int().optional(),
   fileName: z.string().min(1),
   bytesTotal: z.coerce.bigint(),
   contentType: z.string().optional(),
@@ -50,12 +54,56 @@ export const initUpload = async (req: Request, res: Response) => {
       return res.status(500).json({ message: "S3 is not configured" });
     }
 
-    const { kind, titleId, episodeId, fileName, bytesTotal, contentType, renditions } = parsed.data;
-    if (kind === "EPISODE" && !episodeId) {
-      return res.status(400).json({ message: "episodeId required for EPISODE uploads" });
+    const {
+      kind,
+      titleId,
+      titleName,
+      episodeId,
+      episodeName,
+      seasonNumber,
+      episodeNumber,
+      fileName,
+      bytesTotal,
+      contentType,
+      renditions,
+    } = parsed.data;
+
+    let resolvedTitleId = titleId ?? null;
+    let resolvedEpisodeId = episodeId ?? null;
+
+    if (kind === "MOVIE" || kind === "SERIES") {
+      if (!resolvedTitleId) {
+        const createdTitle = await prisma.title.create({
+          data: {
+            type: kind === "MOVIE" ? TitleType.MOVIE : TitleType.SERIES,
+            name: titleName || fileName,
+          },
+        });
+        resolvedTitleId = createdTitle.id;
+      }
     }
-    if (kind !== "EPISODE" && !titleId) {
-      return res.status(400).json({ message: "titleId required for MOVIE/SERIES uploads" });
+
+    if (kind === "EPISODE") {
+      if (!resolvedTitleId && titleName) {
+        const createdSeries = await prisma.title.create({
+          data: { type: TitleType.SERIES, name: titleName },
+        });
+        resolvedTitleId = createdSeries.id;
+      }
+      if (!resolvedEpisodeId) {
+        if (!resolvedTitleId) {
+          return res.status(400).json({ message: "titleId or titleName required for EPISODE uploads" });
+        }
+        const createdEpisode = await prisma.episode.create({
+          data: {
+            titleId: resolvedTitleId,
+            seasonNumber: seasonNumber ?? 1,
+            episodeNumber: episodeNumber ?? 1,
+            name: episodeName || fileName,
+          },
+        });
+        resolvedEpisodeId = createdEpisode.id;
+      }
     }
 
     const key = `uploads/${Date.now()}-${crypto.randomUUID()}/${fileName}`;
@@ -68,8 +116,8 @@ export const initUpload = async (req: Request, res: Response) => {
         status: UploadStatus.UPLOADING,
         bytesUploaded: BigInt(0),
         bytesTotal,
-        titleId: kind === "EPISODE" ? null : titleId ?? null,
-        episodeId: kind === "EPISODE" ? episodeId ?? null : null,
+        titleId: kind === "EPISODE" ? null : resolvedTitleId,
+        episodeId: kind === "EPISODE" ? resolvedEpisodeId : null,
         payload: {
           key,
           uploadId,
