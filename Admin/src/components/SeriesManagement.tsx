@@ -9,6 +9,7 @@ import { Plus, Edit, Trash2, PlayCircle } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { UploadDock, UploadTask } from './UploadDock';
 import { initUpload, uploadMultipart } from '@/lib/uploadClient';
+import { AddEditSeriesForm } from './AddEditSeriesForm';
 
 type SeriesTitle = {
   id: string;
@@ -34,6 +35,8 @@ type Episode = {
 export function SeriesManagement() {
   const [selectedSeries, setSelectedSeries] = useState<string | null>(null);
   const [isAddEpisodeOpen, setIsAddEpisodeOpen] = useState(false);
+  const [editingSeries, setEditingSeries] = useState<SeriesTitle | null>(null);
+  const [editingEpisode, setEditingEpisode] = useState<Episode | null>(null);
   const [series, setSeries] = useState<SeriesTitle[]>([]);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [uploads, setUploads] = useState<(UploadTask & { file?: File; targetEpisodeId?: number })[]>([]);
@@ -42,17 +45,18 @@ export function SeriesManagement() {
   const MAX_CONCURRENCY = 3;
   const token = useMemo(() => (typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null), []);
 
+  const loadSeries = async () => {
+    const res = await fetch('/api/admin/titles', {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    const data = await res.json();
+    if (res.ok) {
+      const onlySeries = (data.titles ?? []).filter((t: any) => t.type === 'SERIES');
+      setSeries(onlySeries);
+    }
+  };
+
   useEffect(() => {
-    const loadSeries = async () => {
-      const res = await fetch('/api/admin/titles', {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      const data = await res.json();
-      if (res.ok) {
-        const onlySeries = (data.titles ?? []).filter((t: any) => t.type === 'SERIES');
-        setSeries(onlySeries);
-      }
-    };
     void loadSeries();
   }, [token]);
 
@@ -141,10 +145,44 @@ export function SeriesManagement() {
           <h1 className="text-3xl text-white">Series Management</h1>
           <p className="text-neutral-400 mt-1">Manage episodic content</p>
         </div>
-        <Button className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Series
-        </Button>
+        <Dialog open={!!editingSeries} onOpenChange={(open) => setEditingSeries(open ? editingSeries : null)}>
+          <DialogTrigger asChild>
+            <Button
+              className="bg-[#fd7e14] hover:bg-[#ff9940] text-white"
+              onClick={() =>
+                setEditingSeries({
+                  id: "",
+                  name: "",
+                  type: "SERIES",
+                  description: "",
+                  thumbnailUrl: "",
+                  posterUrl: "",
+                  archived: false,
+                  createdAt: "",
+                })
+              }
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Series
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="bg-neutral-900 border-neutral-800 text-white">
+            <DialogHeader>
+              <DialogTitle className="text-white">{editingSeries?.id ? "Edit Series" : "Add Series"}</DialogTitle>
+            </DialogHeader>
+            {editingSeries && (
+              <AddEditSeriesForm
+                token={token ?? undefined}
+                series={editingSeries}
+                onClose={() => setEditingSeries(null)}
+                onSaved={async () => {
+                  setEditingSeries(null);
+                  await loadSeries();
+                }}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -178,7 +216,7 @@ export function SeriesManagement() {
                     </div>
                     <div className="flex gap-2 mt-4">
                       <Button size="sm" variant="ghost" className="text-[#fd7e14] hover:text-[#ff9940] hover:bg-[#fd7e14]/10">
-                        <Edit className="w-4 h-4" />
+                        <Edit className="w-4 h-4" onClick={() => setEditingSeries(item)} />
                       </Button>
                       <Button
                         size="sm"
@@ -250,7 +288,7 @@ export function SeriesManagement() {
               </p>
             </div>
             {selectedSeries && (
-              <Dialog open={isAddEpisodeOpen} onOpenChange={setIsAddEpisodeOpen}>
+              <Dialog open={isAddEpisodeOpen} onOpenChange={(open) => { setIsAddEpisodeOpen(open); if (!open) setEditingEpisode(null); }}>
                 <DialogTrigger asChild>
                   <Button size="sm" className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
                     <Plus className="w-4 h-4 mr-2" />
@@ -259,9 +297,30 @@ export function SeriesManagement() {
                 </DialogTrigger>
                 <DialogContent className="bg-neutral-900 border-neutral-800 text-white">
                   <DialogHeader>
-                    <DialogTitle className="text-white">Add Episode</DialogTitle>
+                    <DialogTitle className="text-white">{editingEpisode ? "Edit Episode" : "Add Episode"}</DialogTitle>
                   </DialogHeader>
-                  <AddEpisodeForm onClose={() => setIsAddEpisodeOpen(false)} />
+                  <AddEpisodeForm
+                    token={token ?? undefined}
+                    titleId={selectedSeries}
+                    episode={editingEpisode ?? undefined}
+                    onClose={() => {
+                      setIsAddEpisodeOpen(false);
+                      setEditingEpisode(null);
+                    }}
+                    onSaved={async (ep) => {
+                      setIsAddEpisodeOpen(false);
+                      setEditingEpisode(null);
+                      setEpisodes((prev) => {
+                        const others = prev.filter((e) => e.id !== ep.id);
+                        return [ep, ...others];
+                      });
+                      const res = await fetch(`/api/admin/titles/${selectedSeries}/episodes`, {
+                        headers: token ? { Authorization: `Bearer ${token}` } : {},
+                      });
+                      const data = await res.json();
+                      if (res.ok) setEpisodes(data.episodes ?? []);
+                    }}
+                  />
                 </DialogContent>
               </Dialog>
             )}
@@ -291,9 +350,17 @@ export function SeriesManagement() {
                               {episode.synopsis && <p className="text-sm text-neutral-400 mt-1">{episode.synopsis}</p>}
                             </div>
                             <div className="flex gap-2 items-center">
-                              <Button size="sm" variant="ghost" className="text-[#fd7e14] hover:text-[#ff9940] hover:bg-[#fd7e14]/10">
-                                <Edit className="w-4 h-4" />
-                              </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-[#fd7e14] hover:text-[#ff9940] hover:bg-[#fd7e14]/10"
+                          onClick={() => {
+                            setEditingEpisode(episode);
+                            setIsAddEpisodeOpen(true);
+                          }}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
                               <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-300 hover:bg-red-500/10">
                                 <Trash2 className="w-4 h-4" />
                               </Button>
@@ -329,50 +396,140 @@ export function SeriesManagement() {
   );
 }
 
-function AddEpisodeForm({ onClose }: { onClose: () => void }) {
+function AddEpisodeForm({
+  token,
+  titleId,
+  episode,
+  onClose,
+  onSaved,
+}: {
+  token?: string;
+  titleId: string | null;
+  episode?: Episode;
+  onClose: () => void;
+  onSaved: (ep: Episode) => void;
+}) {
+  const [season, setSeason] = useState(episode?.seasonNumber ?? 1);
+  const [episodeNumber, setEpisodeNumber] = useState(episode?.episodeNumber ?? 1);
+  const [name, setName] = useState(episode?.name ?? "");
+  const [synopsis, setSynopsis] = useState(episode?.synopsis ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSeason(episode?.seasonNumber ?? 1);
+    setEpisodeNumber(episode?.episodeNumber ?? 1);
+    setName(episode?.name ?? "");
+    setSynopsis(episode?.synopsis ?? "");
+  }, [episode?.id]);
+
+  const handleSave = async () => {
+    if (!titleId) {
+      setError("Select a series first.");
+      return;
+    }
+    if (!name.trim() || !season || !episodeNumber) {
+      setError("Season, episode number, and name are required.");
+      return;
+    }
+    try {
+      setSaving(true);
+      setError(null);
+      if (episode?.id) {
+        const res = await fetch(`/api/admin/episodes/${episode.id}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            seasonNumber: season,
+            episodeNumber,
+            name: name.trim(),
+            synopsis,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.message || "Failed to update episode");
+        onSaved({ ...episode, ...data.episode });
+      } else {
+        const res = await fetch(`/api/admin/titles/${titleId}/episodes`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            seasonNumber: season,
+            episodeNumber,
+            name: name.trim(),
+            synopsis,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.message || "Failed to create episode");
+        onSaved(data.episode);
+      }
+    } catch (err: any) {
+      setError(err?.message || "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label className="text-neutral-300">Season</Label>
-          <Input type="number" className="mt-1 bg-neutral-950 border-neutral-800 text-white" placeholder="1" />
+          <Input
+            type="number"
+            value={season}
+            onChange={(e) => setSeason(Number(e.target.value))}
+            className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+            placeholder="1"
+          />
         </div>
         <div>
           <Label className="text-neutral-300">Episode Number</Label>
-          <Input type="number" className="mt-1 bg-neutral-950 border-neutral-800 text-white" placeholder="1" />
+          <Input
+            type="number"
+            value={episodeNumber}
+            onChange={(e) => setEpisodeNumber(Number(e.target.value))}
+            className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+            placeholder="1"
+          />
         </div>
       </div>
 
       <div>
         <Label className="text-neutral-300">Episode Name</Label>
-        <Input className="mt-1 bg-neutral-950 border-neutral-800 text-white" placeholder="Enter episode name" />
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+          placeholder="Enter episode name"
+        />
       </div>
 
       <div>
-        <Label className="text-neutral-300">Duration</Label>
-        <Input className="mt-1 bg-neutral-950 border-neutral-800 text-white" placeholder="45:30" />
+        <Label className="text-neutral-300">Synopsis</Label>
+        <Textarea
+          value={synopsis}
+          onChange={(e) => setSynopsis(e.target.value)}
+          className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+          placeholder="Short summary"
+        />
       </div>
 
-      <div>
-        <Label className="text-neutral-300">Upload Video</Label>
-        <div className="mt-1 border-2 border-dashed border-neutral-800 rounded-lg p-6 text-center bg-neutral-950">
-          <p className="text-neutral-400">Drop video file here or click to browse</p>
-        </div>
-      </div>
-
-      <div>
-        <Label className="text-neutral-300">Upload Thumbnail</Label>
-        <div className="mt-1 border-2 border-dashed border-neutral-800 rounded-lg p-6 text-center bg-neutral-950">
-          <p className="text-neutral-400">Drop thumbnail here or click to browse</p>
-        </div>
-      </div>
+      {error && <p className="text-red-400 text-sm">{error}</p>}
 
       <div className="flex justify-end gap-3 pt-4 border-t border-neutral-800">
         <Button variant="outline" onClick={onClose} className="border-neutral-700 text-neutral-300 hover:bg-neutral-800">
           Cancel
         </Button>
-        <Button onClick={onClose} className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
-          Save Episode
+        <Button disabled={saving} onClick={handleSave} className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
+          {saving ? "Saving..." : "Save Episode"}
         </Button>
       </div>
     </div>

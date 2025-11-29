@@ -14,7 +14,7 @@ import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { UploadDock, UploadTask } from "./UploadDock";
 import { initUpload, uploadMultipart } from "@/lib/uploadClient";
 
-type MovieTitle = {
+export type MovieTitle = {
   id: string;
   name: string;
   type: string;
@@ -358,6 +358,16 @@ function AddEditMovieForm({
         if (rentalPeriod) payload.rentalPeriod = rentalPeriod;
       }
 
+      // Require all key fields before save
+      if (!payload.description || (!posterFile && !movie?.posterUrl) || (!thumbFile && !movie?.thumbnailUrl)) {
+        setError("Title, description, poster, and thumbnail are required.");
+        return;
+      }
+      if (!trailerFile && !trailerUrlText && !movie?.trailerUrl) {
+        setError("Trailer file or URL is required.");
+        return;
+      }
+
       const isEdit = !!movie?.id;
       const endpoint = isEdit ? `/api/admin/titles/${movie.id}` : "/api/admin/titles";
       const method = isEdit ? "PATCH" : "POST";
@@ -497,7 +507,7 @@ function AddEditMovieForm({
         <div>
           <Label className="text-neutral-300">Upload Video File</Label>
           <div className="mt-1 border-2 border-dashed border-neutral-800 rounded-lg p-8 text-center bg-neutral-950">
-            <p className="text-neutral-400">Use the table Upload video action to queue video uploads.</p>
+            <p className="text-neutral-400">Use the table “Upload video” action to queue movie video uploads.</p>
             <p className="text-xs text-neutral-500 mt-1">MP4, MOV, AVI (Max 5GB)</p>
           </div>
         </div>

@@ -52,6 +52,7 @@ export const listEpisodesForTitle = async (req: Request, res: Response) => {
       episodeNumber: e.episodeNumber,
       name: e.name,
       synopsis: e.synopsis,
+      durationSec: e.durationSec ?? null,
       createdAt: e.createdAt,
       updatedAt: e.updatedAt,
     })),
@@ -106,6 +107,60 @@ export const updateTitle = async (req: Request, res: Response) => {
   if (archived !== undefined) data.archived = archived;
   const title = await prisma.title.update({ where: { id }, data });
   return res.json({ title: { id: title.id.toString(), name: title.name, type: title.type } });
+};
+
+export const createEpisode = async (req: Request, res: Response) => {
+  const titleId = req.params.id ? BigInt(req.params.id) : null;
+  if (!titleId) return res.status(400).json({ message: "Missing title id" });
+  const { seasonNumber, episodeNumber, name, synopsis } = req.body as {
+    seasonNumber?: number;
+    episodeNumber?: number;
+    name?: string;
+    synopsis?: string;
+  };
+  if (!seasonNumber || !episodeNumber || !name) {
+    return res.status(400).json({ message: "seasonNumber, episodeNumber, and name are required" });
+  }
+  const ep = await prisma.episode.create({
+    data: { titleId, seasonNumber, episodeNumber, name, synopsis },
+  });
+  return res.status(201).json({
+    episode: {
+      id: ep.id.toString(),
+      titleId: ep.titleId.toString(),
+      seasonNumber: ep.seasonNumber,
+      episodeNumber: ep.episodeNumber,
+      name: ep.name,
+      synopsis: ep.synopsis,
+    },
+  });
+};
+
+export const updateEpisode = async (req: Request, res: Response) => {
+  const episodeId = req.params.episodeId ? BigInt(req.params.episodeId) : null;
+  if (!episodeId) return res.status(400).json({ message: "Missing episode id" });
+  const { seasonNumber, episodeNumber, name, synopsis } = req.body as {
+    seasonNumber?: number;
+    episodeNumber?: number;
+    name?: string;
+    synopsis?: string;
+  };
+  const data: any = {};
+  if (seasonNumber !== undefined) data.seasonNumber = seasonNumber;
+  if (episodeNumber !== undefined) data.episodeNumber = episodeNumber;
+  if (name !== undefined) data.name = name;
+  if (synopsis !== undefined) data.synopsis = synopsis;
+  const ep = await prisma.episode.update({ where: { id: episodeId }, data });
+  return res.json({
+    episode: {
+      id: ep.id.toString(),
+      titleId: ep.titleId.toString(),
+      seasonNumber: ep.seasonNumber,
+      episodeNumber: ep.episodeNumber,
+      name: ep.name,
+      synopsis: ep.synopsis,
+    },
+  });
 };
 
 export const presignAsset = async (req: Request, res: Response) => {
