@@ -3,9 +3,14 @@ import {
   CreateMultipartUploadCommand,
   CompleteMultipartUploadCommand,
   AbortMultipartUploadCommand,
+  PutObjectCommand,
+  GetObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { config } from "../config.js";
+import { createWriteStream } from "fs";
+import { stat } from "fs/promises";
+import { pipeline } from "stream/promises";
 
 const PART_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -89,3 +94,39 @@ export const abortMultipartUpload = async (key: string, uploadId: string) => {
 };
 
 export const partSizeBytes = PART_SIZE;
+
+export const uploadFile = async (key: string, filePath: string, contentType = "video/mp4") => {
+  if (!config.s3.bucket) {
+    throw new Error("S3 bucket not configured");
+  }
+  const client = s3Client();
+  const body = await import("fs").then((m) => m.createReadStream(filePath));
+  const cmd = new PutObjectCommand({
+    Bucket: config.s3.bucket,
+    Key: key,
+    Body: body,
+    ContentType: contentType,
+  });
+  await client.send(cmd);
+  const size = (await stat(filePath)).size;
+  return { size };
+};
+
+export const downloadToFile = async (key: string, destPath: string) => {
+  if (!config.s3.bucket) {
+    throw new Error("S3 bucket not configured");
+  }
+  const client = s3Client();
+  const res = await client.send(
+    new GetObjectCommand({
+      Bucket: config.s3.bucket,
+      Key: key,
+    })
+  );
+  if (!res.Body) {
+    throw new Error("No body in S3 object");
+  }
+  const write = createWriteStream(destPath);
+  await pipeline(res.Body as any, write);
+  return destPath;
+};
