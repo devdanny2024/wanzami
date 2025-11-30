@@ -16,6 +16,22 @@ const resolveSrc = (src?: string) => {
   return `https://${DEFAULT_BUCKET}.s3.${DEFAULT_REGION}.amazonaws.com/${cleaned}`;
 };
 
+const extractS3Key = (src?: string) => {
+  if (!src) return null;
+  if (!/^https?:\/\//i.test(src)) return src.replace(/^\/+/, "");
+  try {
+    const url = new URL(src);
+    const hostParts = url.hostname.split(".");
+    // Handle <bucket>.s3.<region>.amazonaws.com/<key>
+    if (hostParts[1] === "s3") {
+      return url.pathname.replace(/^\/+/, "");
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
 export function ImageWithFallback(props: React.ImgHTMLAttributes<HTMLImageElement>) {
   const [didError, setDidError] = useState(false);
   const [signedSrc, setSignedSrc] = useState<string | undefined>(undefined);
@@ -27,7 +43,8 @@ export function ImageWithFallback(props: React.ImgHTMLAttributes<HTMLImageElemen
 
     const fetchSigned = async () => {
       if (!props.src) return;
-      if (/^https?:\/\//i.test(props.src)) {
+      const key = extractS3Key(props.src);
+      if (!key) {
         setSignedSrc(props.src);
         return;
       }
@@ -39,8 +56,12 @@ export function ImageWithFallback(props: React.ImgHTMLAttributes<HTMLImageElemen
             "Content-Type": "application/json",
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: JSON.stringify({ key: props.src }),
+          body: JSON.stringify({ key }),
         });
+        if (!res.ok) {
+          if (!cancelled) setSignedSrc(resolvedSrc);
+          return;
+        }
         const data = await res.json();
         if (!cancelled) setSignedSrc(data?.url ?? resolvedSrc);
       } catch (_err) {
