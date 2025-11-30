@@ -263,7 +263,10 @@ function AddEditMovieForm({
     }
     const putRes = await fetch(data.url, {
       method: "PUT",
-      headers: { "Content-Type": file.type || "application/octet-stream" },
+      headers: {
+        "Content-Type": file.type || "application/octet-stream",
+        "x-amz-acl": "public-read",
+      },
       body: file,
     });
     if (!putRes.ok) {
