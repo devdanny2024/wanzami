@@ -1,4 +1,4 @@
-const API_BASE = process.env.AUTH_SERVICE_URL ?? "http://localhost:4000/api";
+const API_BASE = process.env.AUTH_SERVICE_URL ?? "https://wanzami.duckdns.org/api";
 
 export type Title = {
   id: string;
