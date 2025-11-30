@@ -55,6 +55,24 @@ export default function App() {
     }
   }, []);
 
+  useEffect(() => {
+    // Restore auth state and selected profile from localStorage so a reload doesn't sign the user out.
+    const access = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+    const refresh = typeof window !== 'undefined' ? localStorage.getItem('refreshToken') : null;
+    if (access || refresh) {
+      setIsAuthenticated(true);
+      setShowRegistration(false);
+      setPendingVerification(null);
+
+      const profileId = localStorage.getItem('activeProfileId');
+      const profileName = localStorage.getItem('activeProfileName');
+      const profileAvatar = localStorage.getItem('activeProfileAvatar');
+      if (profileId && profileName) {
+        setActiveProfile({ id: profileId, name: profileName, avatarUrl: profileAvatar });
+      }
+    }
+  }, []);
+
   const handleRegistrationComplete = (data: { email: string; name: string }) => {
     setShowRegistration(false);
     setIsAuthenticated(false);
