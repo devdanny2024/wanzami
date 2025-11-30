@@ -44,7 +44,6 @@ export const createMultipartUpload = async (key: string, contentType = "applicat
     Bucket: config.s3.bucket,
     Key: key,
     ContentType: contentType,
-    ACL: "public-read",
   });
   const res = await client.send(cmd);
   return res.UploadId ?? "";
@@ -116,7 +115,6 @@ export const uploadFile = async (key: string, filePath: string, contentType = "v
     Key: key,
     Body: body,
     ContentType: contentType,
-    ACL: "public-read",
   });
   await client.send(cmd);
   const size = (await stat(filePath)).size;
@@ -153,7 +151,6 @@ export const presignPutObject = async (key: string, contentType = "application/o
       Bucket: config.s3.bucket,
       Key: key,
       ContentType: contentType,
-      ACL: "public-read",
     }),
     { expiresIn }
   );

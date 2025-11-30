@@ -32,7 +32,6 @@ export const createMultipartUpload = async (key, contentType = "application/octe
         Bucket: config.s3.bucket,
         Key: key,
         ContentType: contentType,
-        ACL: "public-read",
     });
     const res = await client.send(cmd);
     return res.UploadId ?? "";
@@ -91,7 +90,6 @@ export const uploadFile = async (key, filePath, contentType = "video/mp4") => {
         Key: key,
         Body: body,
         ContentType: contentType,
-        ACL: "public-read",
     });
     await client.send(cmd);
     const size = (await stat(filePath)).size;
@@ -122,7 +120,6 @@ export const presignPutObject = async (key, contentType = "application/octet-str
         Bucket: config.s3.bucket,
         Key: key,
         ContentType: contentType,
-        ACL: "public-read",
     }), { expiresIn });
     return url;
 };
