@@ -59,17 +59,20 @@ export const listEpisodesForTitle = async (req: Request, res: Response) => {
 };
 
 export const createTitle = async (req: Request, res: Response) => {
-  const { name, type, description, posterUrl, thumbnailUrl, trailerUrl } = req.body as {
+  const { name, type, description, posterUrl, thumbnailUrl, trailerUrl, releaseYear } = req.body as {
     name?: string;
     type?: "MOVIE" | "SERIES";
     description?: string;
     posterUrl?: string;
     thumbnailUrl?: string;
     trailerUrl?: string;
+    releaseYear?: number | string;
   };
   if (!name || !type) {
     return res.status(400).json({ message: "name and type are required" });
   }
+  const parsedReleaseDate =
+    releaseYear && !Number.isNaN(Number(releaseYear)) ? new Date(`${releaseYear}-01-01T00:00:00.000Z`) : undefined;
   const title = await prisma.title.create({
     data: {
       name,
@@ -78,6 +81,7 @@ export const createTitle = async (req: Request, res: Response) => {
       posterUrl,
       thumbnailUrl,
       trailerUrl,
+      releaseDate: parsedReleaseDate,
       archived: false,
     },
   });
@@ -89,13 +93,14 @@ export const createTitle = async (req: Request, res: Response) => {
 export const updateTitle = async (req: Request, res: Response) => {
   const id = req.params.id ? BigInt(req.params.id) : null;
   if (!id) return res.status(400).json({ message: "Missing title id" });
-  const { name, description, posterUrl, thumbnailUrl, trailerUrl, archived } = req.body as {
+  const { name, description, posterUrl, thumbnailUrl, trailerUrl, archived, releaseYear } = req.body as {
     name?: string;
     description?: string;
     posterUrl?: string;
     thumbnailUrl?: string;
     trailerUrl?: string;
     archived?: boolean;
+    releaseYear?: number | string;
   };
   const data: any = {};
   if (name !== undefined) data.name = name;
@@ -104,6 +109,9 @@ export const updateTitle = async (req: Request, res: Response) => {
   if (thumbnailUrl !== undefined) data.thumbnailUrl = thumbnailUrl;
   if (trailerUrl !== undefined) data.trailerUrl = trailerUrl;
   if (archived !== undefined) data.archived = archived;
+  if (releaseYear !== undefined && !Number.isNaN(Number(releaseYear))) {
+    data.releaseDate = new Date(`${releaseYear}-01-01T00:00:00.000Z`);
+  }
   const title = await prisma.title.update({ where: { id }, data });
   return res.json({ title: { id: title.id.toString(), name: title.name, type: title.type } });
 };

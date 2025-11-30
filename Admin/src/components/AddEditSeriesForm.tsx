@@ -19,13 +19,41 @@ export function AddEditSeriesForm({
 }) {
   const [title, setTitle] = useState(series.name ?? "");
   const [description, setDescription] = useState(series.description ?? "");
+  const [releaseYear, setReleaseYear] = useState("");
+  const [posterFile, setPosterFile] = useState<File | null>(null);
+  const [thumbFile, setThumbFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setTitle(series.name ?? "");
     setDescription(series.description ?? "");
+    setReleaseYear(series.releaseDate ? new Date(series.releaseDate).getFullYear().toString() : "");
   }, [series.id]);
+
+  const uploadAsset = async (file: File, kind: "poster" | "thumbnail") => {
+    const res = await fetch("/api/admin/assets/presign", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: token ? `Bearer ${token}` : "",
+      },
+      body: JSON.stringify({ contentType: file.type || "application/octet-stream", kind }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.url || !data.key) {
+      throw new Error(data?.message || "Failed to presign upload");
+    }
+    const putRes = await fetch(data.url, {
+      method: "PUT",
+      headers: { "Content-Type": file.type || "application/octet-stream" },
+      body: file,
+    });
+    if (!putRes.ok) {
+      throw new Error("Upload failed");
+    }
+    return data.key as string;
+  };
 
   const handleSave = async () => {
     if (!title.trim() || !description.trim()) {
@@ -38,17 +66,21 @@ export function AddEditSeriesForm({
       const isEdit = !!series.id;
       const endpoint = isEdit ? `/api/admin/titles/${series.id}` : "/api/admin/titles";
       const method = isEdit ? "PATCH" : "POST";
+      const payload: any = {
+        name: title.trim(),
+        description: description.trim(),
+        type: "SERIES",
+      };
+      if (releaseYear) payload.releaseYear = Number(releaseYear);
+      if (posterFile) payload.posterUrl = await uploadAsset(posterFile, "poster");
+      if (thumbFile) payload.thumbnailUrl = await uploadAsset(thumbFile, "thumbnail");
       const res = await fetch(endpoint, {
         method,
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({
-          name: title.trim(),
-          description: description.trim(),
-          type: "SERIES",
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.message || "Save failed");
@@ -78,6 +110,18 @@ export function AddEditSeriesForm({
             placeholder="Enter series title"
           />
         </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label className="text-neutral-300">Year started</Label>
+            <Input
+              type="number"
+              value={releaseYear}
+              onChange={(e) => setReleaseYear(e.target.value)}
+              className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+              placeholder="e.g. 2020"
+            />
+          </div>
+        </div>
         <div>
           <Label className="text-neutral-300">Description</Label>
           <Textarea
@@ -87,6 +131,38 @@ export function AddEditSeriesForm({
             rows={4}
             placeholder="Enter series description"
           />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label className="text-neutral-300">Poster</Label>
+            <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                id="series-poster-upload"
+                onChange={(e) => setPosterFile(e.target.files?.[0] ?? null)}
+              />
+              <label htmlFor="series-poster-upload" className="block text-neutral-400">
+                {posterFile ? `Selected: ${posterFile.name}` : "Drop or click to upload poster"}
+              </label>
+            </div>
+          </div>
+          <div>
+            <Label className="text-neutral-300">Thumbnail</Label>
+            <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                id="series-thumb-upload"
+                onChange={(e) => setThumbFile(e.target.files?.[0] ?? null)}
+              />
+              <label htmlFor="series-thumb-upload" className="block text-neutral-400">
+                {thumbFile ? `Selected: ${thumbFile.name}` : "Drop or click to upload thumbnail"}
+              </label>
+            </div>
+          </div>
         </div>
         {error && <p className="text-red-400 text-sm">{error}</p>}
         <div className="flex justify-end gap-3 border-t border-neutral-800 pt-4">

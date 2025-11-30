@@ -25,6 +25,7 @@ export type MovieTitle = {
   archived?: boolean;
   createdAt?: string;
   episodeCount?: number;
+  releaseDate?: string | null;
 };
 
 export function MoviesManagement() {

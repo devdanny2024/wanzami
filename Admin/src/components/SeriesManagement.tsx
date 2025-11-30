@@ -20,6 +20,7 @@ type SeriesTitle = {
   description?: string | null;
   archived?: boolean;
   createdAt?: string;
+  releaseDate?: string | null;
 };
 
 type Episode = {
@@ -158,6 +159,10 @@ export function SeriesManagement() {
                     <h3 className="text-white mb-2">{item.name}</h3>
                     <div className="space-y-1 text-sm text-neutral-400">
                       <p>Type: {item.type}</p>
+                      <p>
+                        Started:{" "}
+                        {item.releaseDate ? new Date(item.releaseDate).getFullYear() : "—"}
+                      </p>
                       <p>Created: {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '--'}</p>
                     </div>
                     <div className="flex gap-2 mt-4">
