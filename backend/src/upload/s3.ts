@@ -14,11 +14,14 @@ import { pipeline } from "stream/promises";
 
 const PART_SIZE = 10 * 1024 * 1024; // 10MB
 
+const endpoint = config.s3.endpoint && config.s3.endpoint.trim() !== "" ? config.s3.endpoint : undefined;
+const region = config.s3.region && config.s3.region.trim() !== "" ? config.s3.region : "eu-north-1";
+
 const s3Client = () =>
   new S3Client({
-    region: config.s3.region || "eu-north-1",
-    endpoint: config.s3.endpoint,
-    forcePathStyle: !!config.s3.endpoint,
+    region,
+    endpoint,
+    forcePathStyle: !!endpoint,
     // If keys are provided, use them; otherwise let the default provider (e.g., EC2 IAM role) supply creds
     ...(config.s3.accessKeyId && config.s3.secretAccessKey
       ? {
