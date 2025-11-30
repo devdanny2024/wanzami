@@ -54,6 +54,13 @@ export const initUpload = async (req: Request, res: Response) => {
       return res.status(500).json({ message: "S3 is not configured" });
     }
 
+    console.log("initUpload s3 config", {
+      region: config.s3.region,
+      bucket: config.s3.bucket,
+      endpoint: config.s3.endpoint,
+      awsRegion: process.env.AWS_REGION,
+    });
+
     const {
       kind,
       titleId,
