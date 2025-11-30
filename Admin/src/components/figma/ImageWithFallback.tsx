@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { authFetch } from "@/lib/authClient";
 
 const ERROR_IMG_SRC =
   "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODgiIGhlaWdodD0iODgiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgc3Ryb2tlPSIjMDAwIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBvcGFjaXR5PSIuMyIgZmlsbD0ibm9uZSIgc3Ryb2tlLXdpZHRoPSIzLjciPjxyZWN0IHg9IjE2IiB5PSIxNiIgd2lkdGg9IjU2IiBoZWlnaHQ9IjU2IiByeD0iNiIvPjxwYXRoIGQ9Im0xNiA1OCAxNi0xOCAzMiAzMiIvPjxjaXJjbGUgY3g9IjUzIiBjeT0iMzUiIHI9IjciLz48L3N2Zz4KCg==";
@@ -50,20 +51,18 @@ export function ImageWithFallback(props: React.ImgHTMLAttributes<HTMLImageElemen
       }
       try {
         const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-        const res = await fetch("/api/admin/assets/get-url", {
+        const res = await authFetch("/admin/assets/get-url", {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify({ key }),
         });
-        if (!res.ok) {
+        if (!res.ok || !res.data?.url) {
           if (!cancelled) setSignedSrc(resolvedSrc);
           return;
         }
-        const data = await res.json();
-        if (!cancelled) setSignedSrc(data?.url ?? resolvedSrc);
+        if (!cancelled) setSignedSrc(res.data.url ?? resolvedSrc);
       } catch (_err) {
         if (!cancelled) setSignedSrc(resolvedSrc);
       }
