@@ -36,6 +36,7 @@ const extractS3Key = (src?: string) => {
 export function ImageWithFallback(props: React.ImgHTMLAttributes<HTMLImageElement>) {
   const [didError, setDidError] = useState(false);
   const [signedSrc, setSignedSrc] = useState<string | undefined>(undefined);
+  const [retry, setRetry] = useState(0);
   const resolvedSrc = useMemo(() => resolveSrc(props.src?.toString()), [props.src]);
 
   useEffect(() => {
@@ -56,7 +57,7 @@ export function ImageWithFallback(props: React.ImgHTMLAttributes<HTMLImageElemen
           headers: {
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: JSON.stringify({ key }),
+          body: JSON.stringify({ key, expiresIn: 3600 }),
         });
         if (!res.ok || !res.data?.url) {
           if (!cancelled) setSignedSrc(resolvedSrc);
@@ -72,10 +73,14 @@ export function ImageWithFallback(props: React.ImgHTMLAttributes<HTMLImageElemen
     return () => {
       cancelled = true;
     };
-  }, [props.src, resolvedSrc]);
+  }, [props.src, resolvedSrc, retry]);
 
   const handleError = () => {
-    setDidError(true);
+    if (retry < 1) {
+      setRetry((r) => r + 1);
+    } else {
+      setDidError(true);
+    }
   };
 
   const { src: _ignored, alt, style, className, ...rest } = props;

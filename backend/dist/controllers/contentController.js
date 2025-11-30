@@ -169,12 +169,13 @@ export const presignAsset = async (req, res) => {
     }
 };
 export const presignAssetRead = async (req, res) => {
-    const { key } = req.body;
+    const { key, expiresIn } = req.body;
     if (!key) {
         return res.status(400).json({ message: "key is required" });
     }
+    const ttl = expiresIn && !Number.isNaN(Number(expiresIn)) ? Math.min(Number(expiresIn), 86400) : 3600;
     try {
-        const url = await presignGetObject(key, 900);
+        const url = await presignGetObject(key, ttl);
         return res.json({ url });
     }
     catch (err) {
