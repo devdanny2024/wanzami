@@ -45,20 +45,30 @@ const heroContent: HeroContent[] = [
 
 interface HeroProps {
   onPlayClick: (content: HeroContent) => void;
+  featured?: HeroContent[];
 }
 
-export function Hero({ onPlayClick }: HeroProps) {
+export function Hero({ onPlayClick, featured }: HeroProps) {
+  const slides = featured && featured.length > 0 ? featured : heroContent;
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % heroContent.length);
+      setCurrentIndex((prev) => (slides.length > 0 ? (prev + 1) % slides.length : 0));
     }, 6000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [slides.length]);
 
-  const current = heroContent[currentIndex];
+  useEffect(() => {
+    setCurrentIndex(0);
+  }, [slides.length]);
+
+  if (slides.length === 0) {
+    return null;
+  }
+
+  const current = slides[currentIndex % slides.length];
 
   return (
     <div className="relative h-[85vh] md:h-[95vh] w-full overflow-hidden">
@@ -154,7 +164,7 @@ export function Hero({ onPlayClick }: HeroProps) {
 
       {/* Carousel indicators */}
       <div className="absolute bottom-8 right-4 md:right-12 flex gap-2">
-        {heroContent.map((_, index) => (
+        {slides.map((_, index) => (
           <button
             key={index}
             onClick={() => setCurrentIndex(index)}

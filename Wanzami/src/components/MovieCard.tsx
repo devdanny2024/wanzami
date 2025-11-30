@@ -10,6 +10,11 @@ export interface MovieData {
   rating?: string;
   duration?: string;
   genre?: string;
+  description?: string | null;
+  year?: string | number;
+  trailerUrl?: string | null;
+  type?: string;
+  createdAt?: string;
 }
 
 interface MovieCardProps {

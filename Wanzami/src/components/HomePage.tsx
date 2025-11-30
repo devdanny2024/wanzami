@@ -6,6 +6,9 @@ import { PPVMovieData } from './PPVMovieCard';
 
 interface HomePageProps {
   onMovieClick: (movie: any) => void;
+  movies: MovieData[];
+  loading?: boolean;
+  error?: string | null;
 }
 
 // PPV Movies Data
@@ -244,10 +247,30 @@ const africanClassics: MovieData[] = [
   }
 ];
 
-export function HomePage({ onMovieClick }: HomePageProps) {
+export function HomePage({ onMovieClick, movies, loading, error }: HomePageProps) {
+  const sortedMovies = [...movies].sort((a, b) => {
+    const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return bDate - aDate;
+  });
+  const featured = sortedMovies.slice(0, 3).map((m, idx) => ({
+    id: typeof m.id === "number" ? m.id : idx,
+    title: m.title,
+    description: m.description || "Now streaming on Wanzami.",
+    image: m.image,
+    rating: m.rating || "PG",
+    year: m.year ? String(m.year) : "2024",
+    genre: m.genre || "Movie",
+  }));
+
+  const primaryRow = sortedMovies.slice(0, 10);
+  const secondaryRow = sortedMovies.slice(10, 20);
+  const tertiaryRow = sortedMovies.slice(20, 30);
+  const hasCatalog = movies.length > 0;
+
   return (
     <div className="min-h-screen bg-black">
-      <Hero onPlayClick={onMovieClick} />
+      <Hero onPlayClick={onMovieClick} featured={featured} />
       
       <div className="relative -mt-32 z-10 pb-12 md:pb-16">
         <PPVContentRow
@@ -256,29 +279,43 @@ export function HomePage({ onMovieClick }: HomePageProps) {
           onMovieClick={onMovieClick}
         />
         
-        <ContentRow
-          title="Top Naija Originals"
-          movies={topNaijaOriginals}
-          onMovieClick={onMovieClick}
-        />
-        
-        <ContentRow
-          title="Trending Now"
-          movies={trendingNow}
-          onMovieClick={onMovieClick}
-        />
-        
-        <ContentRow
-          title="New Releases"
-          movies={newReleases}
-          onMovieClick={onMovieClick}
-        />
-        
-        <ContentRow
-          title="African Classics"
-          movies={africanClassics}
-          onMovieClick={onMovieClick}
-        />
+        {loading ? (
+          <div className="text-gray-400 px-4 md:px-12 lg:px-16">Loading catalog…</div>
+        ) : error ? (
+          <div className="text-red-400 px-4 md:px-12 lg:px-16">Failed to load movies: {error}</div>
+        ) : hasCatalog ? (
+          <>
+            <ContentRow title="Latest on Wanzami" movies={primaryRow} onMovieClick={onMovieClick} />
+            <ContentRow title="Trending Now" movies={secondaryRow.length ? secondaryRow : primaryRow} onMovieClick={onMovieClick} />
+            <ContentRow title="More to Explore" movies={tertiaryRow.length ? tertiaryRow : primaryRow} onMovieClick={onMovieClick} />
+          </>
+        ) : (
+          <>
+            <ContentRow
+              title="Top Naija Originals"
+              movies={topNaijaOriginals}
+              onMovieClick={onMovieClick}
+            />
+            
+            <ContentRow
+              title="Trending Now"
+              movies={trendingNow}
+              onMovieClick={onMovieClick}
+            />
+            
+            <ContentRow
+              title="New Releases"
+              movies={newReleases}
+              onMovieClick={onMovieClick}
+            />
+            
+            <ContentRow
+              title="African Classics"
+              movies={africanClassics}
+              onMovieClick={onMovieClick}
+            />
+          </>
+        )}
       </div>
     </div>
   );

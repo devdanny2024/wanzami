@@ -16,6 +16,8 @@ import { BlogSearchPage } from './components/BlogSearchPage';
 import { PaymentPage } from './components/PaymentPage';
 import { DeviceProfilePrompt } from './components/DeviceProfilePrompt';
 import { ProfileChooser } from './components/ProfileChooser';
+import { fetchTitles } from './lib/contentClient';
+import { MovieData } from './components/MovieCard';
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -30,6 +32,9 @@ export default function App() {
   const [showRegistration, setShowRegistration] = useState(false);
   const [showDevicePrompt, setShowDevicePrompt] = useState(false);
   const [activeProfile, setActiveProfile] = useState<{ id: string; name: string; avatarUrl?: string | null } | null>(null);
+  const [catalogMovies, setCatalogMovies] = useState<MovieData[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
 
   const handleSplashComplete = () => {
     setShowSplash(false);
@@ -163,6 +168,49 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  useEffect(() => {
+    let isMounted = true;
+    const loadTitles = async () => {
+      try {
+        setCatalogLoading(true);
+        setCatalogError(null);
+        const titles = await fetchTitles();
+        if (!isMounted) return;
+        const mapped = titles
+          .filter((t) => t.type === "MOVIE" && !t.archived)
+          .map((title) => {
+            const numericId = Number(title.id);
+            const safeId = Number.isNaN(numericId) ? Date.now() : numericId;
+            const fallbackImage = "https://placehold.co/600x900/111111/FD7E14?text=Wanzami";
+            return {
+              id: safeId,
+              title: title.name,
+              image: title.thumbnailUrl || title.posterUrl || fallbackImage,
+              description: title.description ?? undefined,
+              trailerUrl: title.trailerUrl ?? undefined,
+              year: title.releaseYear ? String(title.releaseYear) : undefined,
+              genre: "Movie",
+              rating: "PG",
+              createdAt: title.createdAt,
+              type: title.type,
+            } as MovieData;
+          });
+        setCatalogMovies(mapped);
+      } catch (err: any) {
+        if (!isMounted) return;
+        setCatalogError(err?.message ?? "Failed to load catalog");
+      } finally {
+        if (isMounted) {
+          setCatalogLoading(false);
+        }
+      }
+    };
+    void loadTitles();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Show splash screen
   if (showSplash) {
     return <SplashScreen onStartRegistration={handleSplashComplete} onLogin={handleSplashLogin} />;
@@ -251,12 +299,22 @@ export default function App() {
         )
       ) : currentPage === 'home' ? (
         <div key="home">
-          <HomePage onMovieClick={handleMovieClick} />
+          <HomePage
+            onMovieClick={handleMovieClick}
+            movies={catalogMovies}
+            loading={catalogLoading}
+            error={catalogError}
+          />
           <Footer />
         </div>
       ) : currentPage === 'search' ? (
         <div key="search">
-          <SearchPage onMovieClick={handleMovieClick} />
+          <SearchPage
+            onMovieClick={handleMovieClick}
+            movies={catalogMovies}
+            loading={catalogLoading}
+            error={catalogError}
+          />
           <Footer />
         </div>
       ) : currentPage === 'dashboard' ? (

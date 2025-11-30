@@ -6,9 +6,12 @@ import { MovieData } from './MovieCard';
 
 interface SearchPageProps {
   onMovieClick: (movie: MovieData) => void;
+  movies: MovieData[];
+  loading?: boolean;
+  error?: string | null;
 }
 
-const allMovies: MovieData[] = [
+const fallbackMovies: MovieData[] = [
   {
     id: 1,
     title: "King of Boys",
@@ -67,10 +70,11 @@ const allMovies: MovieData[] = [
   }
 ];
 
-export function SearchPage({ onMovieClick }: SearchPageProps) {
+export function SearchPage({ onMovieClick, movies, loading, error }: SearchPageProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
 
+  const allMovies = movies.length ? movies : fallbackMovies;
   const filteredMovies = searchQuery
     ? allMovies.filter(
         (movie) =>
@@ -131,6 +135,13 @@ export function SearchPage({ onMovieClick }: SearchPageProps) {
         </motion.div>
 
         {/* Results */}
+        {loading && (
+          <div className="text-gray-400 text-center mb-8">Loading catalog…</div>
+        )}
+        {error && !loading && (
+          <div className="text-red-400 text-center mb-8">Failed to load movies: {error}</div>
+        )}
+
         <AnimatePresence mode="wait">
           {searchQuery ? (
             <motion.div

@@ -31,6 +31,88 @@ export const listTitles = async (_req: Request, res: Response) => {
   });
 };
 
+export const listPublicTitles = async (_req: Request, res: Response) => {
+  const titles = await prisma.title.findMany({
+    where: { archived: false },
+    orderBy: [
+      { releaseDate: "desc" },
+      { createdAt: "desc" },
+    ],
+    include: {
+      episodes: {
+        select: { id: true },
+      },
+    },
+  });
+
+  return res.json({
+    titles: titles.map((t) => ({
+      id: t.id.toString(),
+      name: t.name,
+      type: t.type,
+      description: t.description,
+      posterUrl: t.posterUrl,
+      thumbnailUrl: t.thumbnailUrl,
+      trailerUrl: t.trailerUrl,
+      archived: t.archived,
+      createdAt: t.createdAt,
+      updatedAt: t.updatedAt,
+      episodeCount: t.episodes.length,
+      releaseYear: t.releaseDate ? t.releaseDate.getUTCFullYear() : undefined,
+    })),
+  });
+};
+
+export const getTitleWithEpisodes = async (req: Request, res: Response) => {
+  const titleId = req.params.id ? BigInt(req.params.id) : null;
+  if (!titleId) {
+    return res.status(400).json({ message: "Missing title id" });
+  }
+
+  const title = await prisma.title.findFirst({
+    where: { id: titleId, archived: false },
+    include: {
+      episodes: {
+        orderBy: [
+          { seasonNumber: "asc" },
+          { episodeNumber: "asc" },
+        ],
+      },
+    },
+  });
+
+  if (!title) {
+    return res.status(404).json({ message: "Title not found" });
+  }
+
+  return res.json({
+    title: {
+      id: title.id.toString(),
+      name: title.name,
+      type: title.type,
+      description: title.description,
+      posterUrl: title.posterUrl,
+      thumbnailUrl: title.thumbnailUrl,
+      trailerUrl: title.trailerUrl,
+      archived: title.archived,
+      createdAt: title.createdAt,
+      updatedAt: title.updatedAt,
+      releaseYear: title.releaseDate ? title.releaseDate.getUTCFullYear() : undefined,
+      episodeCount: title.episodes.length,
+      episodes: title.episodes.map((e) => ({
+        id: e.id.toString(),
+        titleId: e.titleId.toString(),
+        seasonNumber: e.seasonNumber,
+        episodeNumber: e.episodeNumber,
+        name: e.name,
+        synopsis: e.synopsis,
+        createdAt: e.createdAt,
+        updatedAt: e.updatedAt,
+      })),
+    },
+  });
+};
+
 export const listEpisodesForTitle = async (req: Request, res: Response) => {
   const titleId = req.params.id ? BigInt(req.params.id) : null;
   if (!titleId) {
