@@ -16,7 +16,7 @@ const PART_SIZE = 10 * 1024 * 1024; // 10MB
 
 const s3Client = () =>
   new S3Client({
-    region: config.s3.region,
+    region: config.s3.region || "eu-north-1",
     endpoint: config.s3.endpoint,
     forcePathStyle: !!config.s3.endpoint,
     // If keys are provided, use them; otherwise let the default provider (e.g., EC2 IAM role) supply creds
