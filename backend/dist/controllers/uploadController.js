@@ -132,7 +132,14 @@ export const updateUploadProgress = async (req, res) => {
         where: { id: jobId },
         data: { bytesUploaded: parsed.data.bytesUploaded, status: UploadStatus.UPLOADING },
     });
-    return res.json({ job: { id: job.id.toString(), bytesUploaded: job.bytesUploaded, status: job.status } });
+    // Convert BigInt fields to numbers/strings to avoid JSON serialization errors
+    return res.json({
+        job: {
+            id: job.id.toString(),
+            bytesUploaded: Number(job.bytesUploaded),
+            status: job.status,
+        },
+    });
 };
 export const completeUpload = async (req, res) => {
     const jobId = req.params.id ? BigInt(req.params.id) : null;
