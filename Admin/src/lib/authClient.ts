@@ -1,7 +1,9 @@
 const AUTH_SERVICE_URL =
+  // Prefer server-side auth base first
+  process.env.AUTH_SERVICE_URL ??
+  // Fallbacks for browser-side config
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   process.env.NEXT_PUBLIC_AUTH_SERVICE_URL ??
-  process.env.AUTH_SERVICE_URL ??
   "http://localhost:4000/api";
 
 export async function authFetch(path: string, init?: RequestInit) {
