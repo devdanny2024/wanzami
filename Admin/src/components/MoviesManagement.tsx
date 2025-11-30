@@ -269,7 +269,7 @@ function AddEditMovieForm({
     if (!putRes.ok) {
       throw new Error("Upload failed");
     }
-    return data.key as string;
+    return (data.publicUrl as string) || (data.key as string);
   };
 
   const handleSave = async () => {

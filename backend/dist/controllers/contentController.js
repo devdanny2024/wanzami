@@ -1,6 +1,7 @@
 import { prisma } from "../prisma.js";
 import crypto from "crypto";
 import { presignPutObject } from "../upload/s3.js";
+import { config } from "../config.js";
 export const listTitles = async (_req, res) => {
     const titles = await prisma.title.findMany({
         orderBy: { createdAt: "desc" },
@@ -157,7 +158,10 @@ export const presignAsset = async (req, res) => {
             awsRegion: process.env.AWS_REGION,
         });
         const url = await presignPutObject(key, contentType ?? "application/octet-stream");
-        return res.json({ key, url });
+        const publicUrl = config.s3.bucket && config.s3.region
+            ? `https://${config.s3.bucket}.s3.${config.s3.region}.amazonaws.com/${key}`
+            : undefined;
+        return res.json({ key, url, publicUrl });
     }
     catch (err) {
         console.error("presignAsset error", err);

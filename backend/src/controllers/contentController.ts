@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { prisma } from "../prisma.js";
 import crypto from "crypto";
 import { presignPutObject } from "../upload/s3.js";
+import { config } from "../config.js";
 
 export const listTitles = async (_req: Request, res: Response) => {
   const titles = await prisma.title.findMany({
@@ -182,7 +183,11 @@ export const presignAsset = async (req: Request, res: Response) => {
       awsRegion: process.env.AWS_REGION,
     });
     const url = await presignPutObject(key, contentType ?? "application/octet-stream");
-    return res.json({ key, url });
+    const publicUrl =
+      config.s3.bucket && config.s3.region
+        ? `https://${config.s3.bucket}.s3.${config.s3.region}.amazonaws.com/${key}`
+        : undefined;
+    return res.json({ key, url, publicUrl });
   } catch (err: any) {
     console.error("presignAsset error", err);
     return res.status(500).json({ message: "Failed to presign asset upload", error: err?.message });
