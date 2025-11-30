@@ -5,6 +5,7 @@ import {
   AbortMultipartUploadCommand,
   PutObjectCommand,
   GetObjectCommand,
+  UploadPartCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { config } from "../config.js";
@@ -15,7 +16,7 @@ import { pipeline } from "stream/promises";
 const PART_SIZE = 10 * 1024 * 1024; // 10MB
 
 const endpoint = config.s3.endpoint && config.s3.endpoint.trim() !== "" ? config.s3.endpoint : undefined;
-const region = config.s3.region && config.s3.region.trim() !== "" ? config.s3.region : "eu-north-1";
+const region = (config.s3.region && config.s3.region.trim()) || (process.env.AWS_REGION && process.env.AWS_REGION.trim()) || "eu-north-1";
 
 const s3Client = () => {
   const base: any = {
@@ -57,13 +58,12 @@ export const presignPartUrls = async (key: string, uploadId: string, partCount: 
   for (let partNumber = 1; partNumber <= partCount; partNumber++) {
     const url = await getSignedUrl(
       client,
-      {
+      new UploadPartCommand({
         Bucket: config.s3.bucket,
         Key: key,
         UploadId: uploadId,
         PartNumber: partNumber,
-        // Dummy command; presigner infers PUT via UploadPartCommand shape, but to avoid extra import we rely on raw params
-      } as any,
+      }),
       { expiresIn: 3600 }
     );
     presigned.push({ partNumber, url });

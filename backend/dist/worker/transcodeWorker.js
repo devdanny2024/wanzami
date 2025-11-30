@@ -1,0 +1,103 @@
+import { Worker } from "bullmq";
+import IORedis from "ioredis";
+import ffmpeg from "fluent-ffmpeg";
+import ffmpegStatic from "ffmpeg-static";
+import { prisma } from "../prisma.js";
+import { config } from "../config.js";
+import { AssetStatus, UploadStatus } from "@prisma/client";
+import { downloadToFile, uploadFile } from "../upload/s3.js";
+import { mkdtemp, rm, stat } from "fs/promises";
+import path from "path";
+import os from "os";
+if (ffmpegStatic) {
+    ffmpeg.setFfmpegPath(ffmpegStatic);
+}
+const connection = new IORedis(config.redisUrl);
+const renditionToHeight = (r) => {
+    switch (r) {
+        case "R4K":
+            return 2160;
+        case "R2K":
+            return 1440;
+        case "R1080":
+            return 1080;
+        case "R720":
+            return 720;
+        case "R360":
+        default:
+            return 360;
+    }
+};
+async function transcodeToHeight(src, dest, height) {
+    return new Promise((resolve, reject) => {
+        ffmpeg(src)
+            .outputOptions([
+            "-c:v libx264",
+            `-vf scale=-2:${height}`,
+            "-preset veryfast",
+            "-c:a aac",
+            "-b:a 128k",
+        ])
+            .output(dest)
+            .on("end", () => resolve())
+            .on("error", (err) => reject(err))
+            .run();
+    });
+}
+const worker = new Worker("transcode", async (job) => {
+    const data = job.data;
+    const tmpDir = await mkdtemp(path.join(os.tmpdir(), "wanzami-"));
+    const srcPath = path.join(tmpDir, "source");
+    try {
+        await downloadToFile(data.key, srcPath);
+        const probe = await new Promise((resolve, reject) => ffmpeg.ffprobe(srcPath, (err, meta) => (err ? reject(err) : resolve(meta))));
+        const durationSec = Math.round(probe.format?.duration ?? 0);
+        for (const rendition of data.renditions) {
+            const outPath = path.join(tmpDir, `${rendition}.mp4`);
+            const height = renditionToHeight(rendition);
+            await transcodeToHeight(srcPath, outPath, height);
+            const s3Key = `vod/${data.uploadJobId}/${rendition}.mp4`;
+            const uploaded = await uploadFile(s3Key, outPath, "video/mp4");
+            const size = uploaded.size ?? (await stat(outPath)).size;
+            await prisma.assetVersion.updateMany({
+                where: {
+                    titleId: data.titleId,
+                    episodeId: data.episodeId,
+                    rendition,
+                },
+                data: {
+                    status: AssetStatus.READY,
+                    url: `s3://${config.s3.bucket ?? ""}/${s3Key}`,
+                    sizeBytes: BigInt(size),
+                    durationSec,
+                },
+            });
+        }
+        await prisma.uploadJob.update({
+            where: { id: data.uploadJobId },
+            data: { status: UploadStatus.COMPLETED },
+        });
+    }
+    catch (err) {
+        await prisma.uploadJob.update({
+            where: { id: data.uploadJobId },
+            data: { status: UploadStatus.FAILED, error: err?.message ?? "Transcode failed" },
+        });
+        throw err;
+    }
+    finally {
+        await rm(tmpDir, { recursive: true, force: true });
+    }
+}, { connection });
+worker.on("failed", async (job, err) => {
+    if (!job?.data)
+        return;
+    const data = job.data;
+    await prisma.uploadJob.update({
+        where: { id: data.uploadJobId },
+        data: { status: UploadStatus.FAILED, error: err?.message ?? "Transcode failed" },
+    });
+});
+worker.on("completed", () => {
+    // no-op
+});

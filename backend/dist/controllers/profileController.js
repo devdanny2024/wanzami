@@ -1,6 +1,15 @@
 import { z } from "zod";
 import { prisma } from "../prisma.js";
 import { config } from "../config.js";
+const AVATAR_CHOICES = [
+    "/avatars/avatar1.svg",
+    "/avatars/avatar2.svg",
+    "/avatars/avatar3.svg",
+    "/avatars/avatar4.svg",
+    "/avatars/avatar5.svg",
+    "/avatars/avatar6.svg",
+];
+const pickRandomAvatar = () => AVATAR_CHOICES[Math.floor(Math.random() * AVATAR_CHOICES.length)];
 const profileSchema = z.object({
     name: z.string().min(1).max(64),
     // Allow hosted URLs or relative asset paths (e.g., /avatars/avatar1.svg)
@@ -70,7 +79,7 @@ export const listProfiles = async (req, res) => {
     });
     if (!profiles.length) {
         const created = await prisma.profile.create({
-            data: { userId: req.user.userId, name: "Primary" },
+            data: { userId: req.user.userId, name: "Primary", avatarUrl: pickRandomAvatar() },
         });
         return res.json({
             profiles: [
@@ -86,8 +95,19 @@ export const listProfiles = async (req, res) => {
             ],
         });
     }
+    const hydrated = await Promise.all(profiles.map(async (p) => {
+        if (!p.avatarUrl) {
+            const avatar = pickRandomAvatar();
+            await prisma.profile.update({
+                where: { id: p.id },
+                data: { avatarUrl: avatar },
+            });
+            return { ...p, avatarUrl: avatar };
+        }
+        return p;
+    }));
     return res.json({
-        profiles: profiles.map((p) => ({
+        profiles: hydrated.map((p) => ({
             id: p.id.toString(),
             name: p.name,
             avatarUrl: p.avatarUrl,
@@ -116,7 +136,7 @@ export const createProfile = async (req, res) => {
         data: {
             userId: req.user.userId,
             name: parsed.data.name,
-            avatarUrl: parsed.data.avatarUrl || null,
+            avatarUrl: parsed.data.avatarUrl || pickRandomAvatar(),
             kidMode: parsed.data.kidMode ?? false,
             language: parsed.data.language ?? "en",
             autoplay: parsed.data.autoplay ?? true,
@@ -157,7 +177,9 @@ export const updateProfile = async (req, res) => {
         where: { id: profile.id },
         data: {
             name: parsed.data.name ?? profile.name,
-            avatarUrl: parsed.data.avatarUrl !== undefined ? parsed.data.avatarUrl || null : profile.avatarUrl,
+            avatarUrl: parsed.data.avatarUrl !== undefined
+                ? parsed.data.avatarUrl || pickRandomAvatar()
+                : profile.avatarUrl,
             kidMode: parsed.data.kidMode ?? profile.kidMode,
             language: parsed.data.language ?? profile.language,
             autoplay: parsed.data.autoplay ?? profile.autoplay,
