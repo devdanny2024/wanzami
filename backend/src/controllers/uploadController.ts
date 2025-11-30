@@ -143,6 +143,7 @@ export const initUpload = async (req: Request, res: Response) => {
       presignedParts: presigned,
     });
   } catch (err: any) {
+    console.error("initUpload error", err);
     return res.status(500).json({ message: "Failed to init upload", error: err?.message });
   }
 };
