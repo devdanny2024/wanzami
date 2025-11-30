@@ -13,11 +13,22 @@ import { Moderation } from './components/Moderation';
 import { Analytics } from './components/Analytics';
 import { Settings } from './components/Settings';
 import { TeamManagement } from './components/TeamManagement';
+import { UploadDock } from './components/UploadDock';
+import { UploadQueueProvider, useUploadQueue } from './context/UploadQueueProvider';
 
 export default function App() {
+  return (
+    <UploadQueueProvider>
+      <AppContent />
+    </UploadQueueProvider>
+  );
+}
+
+function AppContent() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const [currentPage, setCurrentPage] = useState('dashboard');
+  const { tasks, removeTask } = useUploadQueue();
 
   useEffect(() => {
     const verify = async () => {
@@ -100,6 +111,7 @@ export default function App() {
           {renderPage()}
         </main>
       </div>
+      <UploadDock tasks={tasks} onRemove={removeTask} />
     </div>
   );
 }

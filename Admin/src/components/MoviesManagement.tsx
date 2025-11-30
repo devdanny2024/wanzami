@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -11,8 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "./ui/badge";
 import { Plus, Edit, Trash2, Search } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
-import { UploadDock, UploadTask } from "./UploadDock";
-import { initUpload, uploadMultipart } from "@/lib/uploadClient";
+import { useUploadQueue } from "@/context/UploadQueueProvider";
 import { toast } from "sonner";
 
 export type MovieTitle = {
@@ -32,11 +31,8 @@ export function MoviesManagement() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingMovie, setEditingMovie] = useState<MovieTitle | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [uploads, setUploads] = useState<(UploadTask & { file?: File; targetId?: number })[]>([]);
   const [movies, setMovies] = useState<MovieTitle[]>([]);
-  const [running, setRunning] = useState(false);
-  const activeCount = useRef(0);
-  const MAX_CONCURRENCY = 3;
+  const { startUpload } = useUploadQueue();
 
   const token = useMemo(() => (typeof window !== "undefined" ? localStorage.getItem("accessToken") : null), []);
 
@@ -55,65 +51,8 @@ export function MoviesManagement() {
     }
   };
 
-  useEffect(() => {
-    if (!running) return;
-    const next = uploads.find((t) => t.status === "pending");
-    if (!next || activeCount.current >= MAX_CONCURRENCY) return;
-    activeCount.current += 1;
-    setUploads((prev) => prev.map((t) => (t.id === next.id ? { ...t, status: "uploading" } : t)));
-    void handleUpload(next).finally(() => {
-      activeCount.current -= 1;
-      setTimeout(() => setRunning(true), 0);
-    });
-  }, [running, uploads]);
-
-  const handleUpload = async (task: UploadTask & { file?: File; targetId?: number }) => {
-    try {
-      if (!task.file) throw new Error("Missing file");
-      const startTime = performance.now();
-      const init = await initUpload(
-        {
-          kind: "MOVIE",
-          titleId: task.targetId,
-          file: task.file,
-        },
-        token ?? undefined
-      );
-      await uploadMultipart(task.file, init, token, (p) => {
-        const elapsed = (performance.now() - startTime) / 1000;
-        const speed = elapsed > 0 ? (p.uploadedBytes * 8) / (elapsed * 1_000_000) : undefined;
-        setUploads((prev) =>
-          prev.map((t) =>
-            t.id === task.id
-              ? { ...t, progress: Math.round((p.uploadedBytes / p.totalBytes) * 100), speedMbps: speed }
-              : t
-          )
-        );
-      });
-      setUploads((prev) =>
-        prev.map((t) => (t.id === task.id ? { ...t, status: "processing", progress: 100 } : t))
-      );
-    } catch (err: any) {
-      setUploads((prev) =>
-        prev.map((t) =>
-          t.id === task.id ? { ...t, status: "failed", error: err?.message ?? "Upload failed" } : t
-        )
-      );
-    }
-  };
-
   const startUploadForMovie = (movieId: number, file: File) => {
-    const task: UploadTask & { file?: File; targetId?: number } = {
-      id: `${Date.now()}-${file.name}-${Math.random().toString(36).slice(2)}`,
-      name: file.name,
-      size: file.size,
-      status: "pending",
-      progress: 0,
-      file,
-      targetId: movieId,
-    };
-    setUploads((prev) => [...prev, task]);
-    setRunning(true);
+    startUpload("MOVIE", movieId, file);
   };
 
   const filteredMovies = movies.filter((m) => m.name?.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -267,7 +206,6 @@ export function MoviesManagement() {
           </div>
         </CardContent>
       </Card>
-      <UploadDock tasks={uploads} onRemove={(id) => setUploads((prev) => prev.filter((t) => t.id !== id))} />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -8,8 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from './ui/badge';
 import { Plus, Edit, Trash2, PlayCircle } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
-import { UploadDock, UploadTask } from './UploadDock';
-import { initUpload, uploadMultipart } from '@/lib/uploadClient';
+import { useUploadQueue } from '@/context/UploadQueueProvider';
 import { AddEditSeriesForm } from './AddEditSeriesForm';
 
 type SeriesTitle = {
@@ -40,11 +39,8 @@ export function SeriesManagement() {
   const [editingEpisode, setEditingEpisode] = useState<Episode | null>(null);
   const [series, setSeries] = useState<SeriesTitle[]>([]);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
-  const [uploads, setUploads] = useState<(UploadTask & { file?: File; targetEpisodeId?: number })[]>([]);
-  const [running, setRunning] = useState(false);
-  const activeCount = useRef(0);
-  const MAX_CONCURRENCY = 3;
   const token = useMemo(() => (typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null), []);
+  const { startUpload } = useUploadQueue();
 
   const loadSeries = async () => {
     const res = await fetch('/api/admin/titles', {
@@ -78,65 +74,8 @@ export function SeriesManagement() {
     void loadEpisodes();
   }, [selectedSeries, token]);
 
-  useEffect(() => {
-    if (!running) return;
-    const next = uploads.find((t) => t.status === 'pending');
-    if (!next || activeCount.current >= MAX_CONCURRENCY) return;
-    activeCount.current += 1;
-    setUploads((prev) => prev.map((t) => (t.id === next.id ? { ...t, status: 'uploading' } : t)));
-    void handleUpload(next).finally(() => {
-      activeCount.current -= 1;
-      setTimeout(() => setRunning(true), 0);
-    });
-  }, [running, uploads]);
-
-  const handleUpload = async (task: UploadTask & { file?: File; targetEpisodeId?: number }) => {
-    try {
-      if (!task.file || !task.targetEpisodeId) throw new Error('Missing file or episode');
-      const startTime = performance.now();
-      const init = await initUpload(
-        {
-          kind: 'EPISODE',
-          episodeId: task.targetEpisodeId,
-          file: task.file,
-        },
-        token ?? undefined
-      );
-      await uploadMultipart(task.file, init, token, (p) => {
-        const elapsed = (performance.now() - startTime) / 1000;
-        const speed = elapsed > 0 ? (p.uploadedBytes * 8) / (elapsed * 1_000_000) : undefined;
-        setUploads((prev) =>
-          prev.map((t) =>
-            t.id === task.id
-              ? { ...t, progress: Math.round((p.uploadedBytes / p.totalBytes) * 100), speedMbps: speed }
-              : t
-          )
-        );
-      });
-      setUploads((prev) =>
-        prev.map((t) => (t.id === task.id ? { ...t, status: 'processing', progress: 100 } : t))
-      );
-    } catch (err: any) {
-      setUploads((prev) =>
-        prev.map((t) =>
-          t.id === task.id ? { ...t, status: 'failed', error: err?.message ?? 'Upload failed' } : t
-        )
-      );
-    }
-  };
-
   const startUploadForEpisode = (episodeId: number, file: File) => {
-    const task: UploadTask & { file?: File; targetEpisodeId?: number } = {
-      id: `${Date.now()}-${file.name}-${Math.random().toString(36).slice(2)}`,
-      name: file.name,
-      size: file.size,
-      status: 'pending',
-      progress: 0,
-      file,
-      targetEpisodeId: episodeId,
-    };
-    setUploads((prev) => [...prev, task]);
-    setRunning(true);
+    startUpload("EPISODE", episodeId, file);
   };
 
   return (
@@ -392,7 +331,6 @@ export function SeriesManagement() {
           </CardContent>
         </Card>
       </div>
-      <UploadDock tasks={uploads} onRemove={(id) => setUploads((prev) => prev.filter((t) => t.id !== id))} />
     </div>
   );
 }

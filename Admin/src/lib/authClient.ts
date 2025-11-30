@@ -1,5 +1,8 @@
 const AUTH_SERVICE_URL =
-  process.env.AUTH_SERVICE_URL ?? "http://localhost:4000/api";
+  process.env.NEXT_PUBLIC_API_BASE_URL ??
+  process.env.NEXT_PUBLIC_AUTH_SERVICE_URL ??
+  process.env.AUTH_SERVICE_URL ??
+  "http://localhost:4000/api";
 
 export async function authFetch(path: string, init?: RequestInit) {
   const res = await fetch(`${AUTH_SERVICE_URL}${path}`, {
