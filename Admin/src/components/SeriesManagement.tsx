@@ -85,7 +85,7 @@ export function SeriesManagement() {
           <h1 className="text-3xl text-white">Series Management</h1>
           <p className="text-neutral-400 mt-1">Manage episodic content</p>
         </div>
-        <Dialog open={!!editingSeries} onOpenChange={(open) => setEditingSeries(open ? editingSeries : null)}>
+        <Dialog open={!!editingSeries} onOpenChange={(open) => !open && setEditingSeries(null)}>
           <DialogTrigger asChild>
             <Button
               className="bg-[#fd7e14] hover:bg-[#ff9940] text-white"
