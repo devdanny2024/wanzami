@@ -17,21 +17,22 @@ const PART_SIZE = 10 * 1024 * 1024; // 10MB
 const endpoint = config.s3.endpoint && config.s3.endpoint.trim() !== "" ? config.s3.endpoint : undefined;
 const region = config.s3.region && config.s3.region.trim() !== "" ? config.s3.region : "eu-north-1";
 
-const s3Client = () =>
-  new S3Client({
+const s3Client = () => {
+  const base: any = {
     region,
-    endpoint,
     forcePathStyle: !!endpoint,
-    // If keys are provided, use them; otherwise let the default provider (e.g., EC2 IAM role) supply creds
-    ...(config.s3.accessKeyId && config.s3.secretAccessKey
-      ? {
-          credentials: {
-            accessKeyId: config.s3.accessKeyId,
-            secretAccessKey: config.s3.secretAccessKey,
-          },
-        }
-      : {}),
-  });
+  };
+  if (endpoint) {
+    base.endpoint = endpoint;
+  }
+  if (config.s3.accessKeyId && config.s3.secretAccessKey) {
+    base.credentials = {
+      accessKeyId: config.s3.accessKeyId,
+      secretAccessKey: config.s3.secretAccessKey,
+    };
+  }
+  return new S3Client(base);
+};
 
 export const createMultipartUpload = async (key: string, contentType = "application/octet-stream") => {
   if (!config.s3.bucket) {
