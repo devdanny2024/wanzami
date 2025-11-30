@@ -17,6 +17,27 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
   const [running, setRunning] = useState(false);
   const activeCount = useRef(0);
   const MAX_CONCURRENCY = 3;
+  const STORAGE_KEY = "wanzami-upload-queue";
+
+  // Restore queue (without file blobs) so the dock stays visible across navigation/reloads.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    try {
+      const saved = JSON.parse(raw) as Omit<QueueTask, "file">[];
+      setTasks(saved.map((t) => ({ ...t, file: undefined })));
+    } catch (err) {
+      console.error("Failed to restore upload queue", err);
+    }
+  }, []);
+
+  // Persist queue state minus file blobs.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const serializable = tasks.map(({ file: _file, ...rest }) => rest);
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable));
+  }, [tasks]);
 
   useEffect(() => {
     if (!running) return;
@@ -57,6 +78,10 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
       });
       setTasks((prev) =>
         prev.map((t) => (t.id === task.id ? { ...t, status: "processing", progress: 100 } : t))
+      );
+      // We don't yet poll transcoding state; mark as completed so the dock doesn't stick on "uploading".
+      setTasks((prev) =>
+        prev.map((t) => (t.id === task.id ? { ...t, status: "completed", speedMbps: undefined } : t))
       );
     } catch (err: any) {
       setTasks((prev) =>
