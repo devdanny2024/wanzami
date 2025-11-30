@@ -43,6 +43,10 @@ export function SeriesManagement() {
   const token = useMemo(() => (typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null), []);
   const { startUpload } = useUploadQueue();
 
+  const startUploadForSeries = (seriesId: number, file: File) => {
+    startUpload("SERIES", seriesId, file);
+  };
+
   const loadSeries = async () => {
     const res = await fetch('/api/admin/titles', {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -126,6 +130,7 @@ export function SeriesManagement() {
                   setEditingSeries(null);
                   await loadSeries();
                 }}
+                onQueueUpload={(id, file) => startUploadForSeries(id, file)}
               />
             )}
           </DialogContent>

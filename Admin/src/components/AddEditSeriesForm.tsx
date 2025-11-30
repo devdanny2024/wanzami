@@ -11,17 +11,20 @@ export function AddEditSeriesForm({
   series,
   onClose,
   onSaved,
+  onQueueUpload,
 }: {
   token?: string;
   series: MovieTitle;
   onClose: () => void;
   onSaved: () => void;
+  onQueueUpload: (id: number, file: File) => void;
 }) {
   const [title, setTitle] = useState(series.name ?? "");
   const [description, setDescription] = useState(series.description ?? "");
   const [releaseYear, setReleaseYear] = useState("");
   const [posterFile, setPosterFile] = useState<File | null>(null);
   const [thumbFile, setThumbFile] = useState<File | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -84,6 +87,10 @@ export function AddEditSeriesForm({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.message || "Save failed");
+      const newId = Number(data?.title?.id ?? series.id);
+      if (videoFile && newId) {
+        onQueueUpload(newId, videoFile);
+      }
       onSaved();
     } catch (err: any) {
       setError(err?.message || "Save failed");
@@ -162,6 +169,21 @@ export function AddEditSeriesForm({
                 {thumbFile ? `Selected: ${thumbFile.name}` : "Drop or click to upload thumbnail"}
               </label>
             </div>
+          </div>
+        </div>
+        <div>
+          <Label className="text-neutral-300">Series video (optional)</Label>
+          <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
+            <input
+              type="file"
+              accept="video/*"
+              className="hidden"
+              id="series-video-upload"
+              onChange={(e) => setVideoFile(e.target.files?.[0] ?? null)}
+            />
+            <label htmlFor="series-video-upload" className="block text-neutral-400">
+              {videoFile ? `Selected: ${videoFile.name}` : "Drop or click to upload series video"}
+            </label>
           </div>
         </div>
         {error && <p className="text-red-400 text-sm">{error}</p>}
