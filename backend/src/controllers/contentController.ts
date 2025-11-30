@@ -167,9 +167,16 @@ export const presignAsset = async (req: Request, res: Response) => {
   const keyPrefix = kind ?? "asset";
   const key = `${keyPrefix}/${Date.now()}-${crypto.randomUUID()}`;
   try {
+    console.log("presignAsset config", {
+      region: process.env.S3_REGION,
+      bucket: process.env.S3_BUCKET,
+      endpoint: process.env.S3_ENDPOINT,
+      awsRegion: process.env.AWS_REGION,
+    });
     const url = await presignPutObject(key, contentType ?? "application/octet-stream");
     return res.json({ key, url });
   } catch (err: any) {
+    console.error("presignAsset error", err);
     return res.status(500).json({ message: "Failed to presign asset upload", error: err?.message });
   }
 };
