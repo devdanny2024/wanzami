@@ -6,6 +6,7 @@ import {
   createTitle,
   updateTitle,
   presignAsset,
+  presignAssetRead,
   deleteTitle,
   createEpisode,
   updateEpisode,
@@ -21,5 +22,6 @@ router.delete("/admin/titles/:id", requireAuth, requireAdmin, deleteTitle);
 router.post("/admin/titles/:id/episodes", requireAuth, requireAdmin, createEpisode);
 router.patch("/admin/episodes/:episodeId", requireAuth, requireAdmin, updateEpisode);
 router.post("/admin/assets/presign", requireAuth, requireAdmin, presignAsset);
+router.post("/admin/assets/get-url", requireAuth, requireAdmin, presignAssetRead);
 
 export default router;

@@ -123,3 +123,14 @@ export const presignPutObject = async (key, contentType = "application/octet-str
     }), { expiresIn });
     return url;
 };
+export const presignGetObject = async (key, expiresIn = 900) => {
+    if (!config.s3.bucket) {
+        throw new Error("S3 bucket not configured");
+    }
+    const client = s3Client();
+    const url = await getSignedUrl(client, new GetObjectCommand({
+        Bucket: config.s3.bucket,
+        Key: key,
+    }), { expiresIn });
+    return url;
+};

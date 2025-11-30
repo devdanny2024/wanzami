@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { prisma } from "../prisma.js";
 import crypto from "crypto";
-import { presignPutObject } from "../upload/s3.js";
+import { presignPutObject, presignGetObject } from "../upload/s3.js";
 import { config } from "../config.js";
 
 export const listTitles = async (_req: Request, res: Response) => {
@@ -191,6 +191,20 @@ export const presignAsset = async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error("presignAsset error", err);
     return res.status(500).json({ message: "Failed to presign asset upload", error: err?.message });
+  }
+};
+
+export const presignAssetRead = async (req: Request, res: Response) => {
+  const { key } = req.body as { key?: string };
+  if (!key) {
+    return res.status(400).json({ message: "key is required" });
+  }
+  try {
+    const url = await presignGetObject(key, 900);
+    return res.json({ url });
+  } catch (err: any) {
+    console.error("presignAssetRead error", err);
+    return res.status(500).json({ message: "Failed to presign asset read", error: err?.message });
   }
 };
 
