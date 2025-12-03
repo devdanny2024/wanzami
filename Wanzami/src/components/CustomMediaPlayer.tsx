@@ -211,11 +211,25 @@ export function CustomMediaPlayer({
         poster={poster ?? undefined}
         controls={false}
         playsInline
-        onClick={togglePlay}
+        onClick={() => {
+          togglePlay();
+          setShowControls(true);
+        }}
         onDoubleClick={toggleFullscreen}
         src={currentSrc.src}
         autoPlay
       />
+
+      {/* Center play/pause overlay for visibility */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <button
+          aria-label={playing ? "Pause" : "Play"}
+          className="pointer-events-auto w-16 h-16 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white hover:bg-white/30 transition"
+          onClick={togglePlay}
+        >
+          {playing ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8" />}
+        </button>
+      </div>
 
       {buffering && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
