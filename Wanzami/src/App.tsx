@@ -550,7 +550,7 @@ export default function App() {
               deviceId,
               metadata,
             };
-            void postEvents([payload]);
+            void postEvents([payload], accessToken);
           }}
           onClose={() => setPlayerMovie(null)}
         />
