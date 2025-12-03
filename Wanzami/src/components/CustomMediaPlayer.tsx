@@ -129,8 +129,11 @@ export function CustomMediaPlayer({
       }
     };
     window.addEventListener("keydown", onKey);
+    // lock scroll beneath the overlay
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     return () => window.removeEventListener("keydown", onKey);
-  });
+  }, []);
 
   const togglePlay = () => {
     const video = videoRef.current;
@@ -202,12 +205,13 @@ export function CustomMediaPlayer({
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 z-[9999] bg-black flex items-center justify-center"
+      className="fixed inset-0 bg-black/90 flex items-center justify-center"
+      style={{ zIndex: 99999 }}
       onMouseMove={() => setShowControls(true)}
     >
       <video
         ref={videoRef}
-        className="w-full h-full object-contain bg-black"
+        className="w-full h-full max-h-screen object-contain bg-black"
         poster={poster ?? undefined}
         controls={false}
         playsInline
