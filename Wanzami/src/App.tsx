@@ -537,13 +537,18 @@ export default function App() {
             },
           ]}
           onEvent={(eventType, metadata) => {
-            const allowed = ["PLAY_START", "PLAY_END", "SCRUB", "IMPRESSION"];
-            if (!allowed.includes(eventType)) return;
+            const allowed: Array<"PLAY_START" | "PLAY_END" | "SCRUB" | "IMPRESSION"> = [
+              "PLAY_START",
+              "PLAY_END",
+              "SCRUB",
+              "IMPRESSION",
+            ];
+            if (!allowed.includes(eventType as any)) return;
             const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
             if (!accessToken) return;
             const deviceId = typeof window !== 'undefined' ? localStorage.getItem('deviceId') ?? undefined : undefined;
             const payload = {
-              eventType,
+              eventType: eventType as (typeof allowed)[number],
               profileId: activeProfileId,
               titleId: playerMovie.backendId ?? playerMovie.id?.toString?.(),
               occurredAt: new Date().toISOString(),
