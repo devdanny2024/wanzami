@@ -25,6 +25,7 @@ import {
   fetchForYou,
 } from './lib/contentClient';
 import { MovieData } from './components/MovieCard';
+import { CustomMediaPlayer } from './components/CustomMediaPlayer';
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -49,6 +50,7 @@ export default function App() {
   const [forYouItems, setForYouItems] = useState<any[]>([]);
   const [recsLoading, setRecsLoading] = useState(false);
   const [recsError, setRecsError] = useState<string | null>(null);
+  const [playerMovie, setPlayerMovie] = useState<any | null>(null);
 
   const handleSplashComplete = () => {
     setShowSplash(false);
@@ -176,8 +178,8 @@ export default function App() {
   };
 
   const handlePlayClick = (movie: any) => {
+    setPlayerMovie(movie);
     void sendEvent("PLAY_START", movie);
-    alert(`Playing: ${movie.title}`);
   };
 
   const handleRentMovie = (movie: any) => {
@@ -371,6 +373,7 @@ export default function App() {
 
   // Check if selected movie is a PPV movie
   const isPPVMovie = selectedMovie && selectedMovie.price !== undefined;
+  const activeProfileId = activeProfile?.id;
 
   return (
     <div className="min-h-screen bg-black">
@@ -517,6 +520,41 @@ export default function App() {
           <Footer />
         </div>
       ) : null}
+
+      {playerMovie && (
+        <CustomMediaPlayer
+          title={playerMovie.title}
+          poster={playerMovie.image ?? playerMovie.thumbnailUrl ?? playerMovie.posterUrl}
+          titleId={playerMovie.backendId ?? playerMovie.id?.toString?.()}
+          profileId={activeProfileId}
+          sources={[
+            {
+              src:
+                playerMovie.trailerUrl ||
+                "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+              label: playerMovie.trailerUrl ? "Default" : "Demo",
+              type: "video/mp4",
+            },
+          ]}
+          onEvent={(eventType, metadata) => {
+            const allowed = ["PLAY_START", "PLAY_END", "SCRUB", "IMPRESSION"];
+            if (!allowed.includes(eventType)) return;
+            const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+            if (!accessToken) return;
+            const deviceId = typeof window !== 'undefined' ? localStorage.getItem('deviceId') ?? undefined : undefined;
+            const payload = {
+              eventType,
+              profileId: activeProfileId,
+              titleId: playerMovie.backendId ?? playerMovie.id?.toString?.(),
+              occurredAt: new Date().toISOString(),
+              deviceId,
+              metadata,
+            };
+            void postEvents([payload]);
+          }}
+          onClose={() => setPlayerMovie(null)}
+        />
+      )}
     </div>
   );
 }
