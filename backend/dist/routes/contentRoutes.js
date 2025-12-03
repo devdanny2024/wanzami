@@ -1,7 +1,11 @@
 import { Router } from "express";
 import { requireAdmin, requireAuth } from "../middleware/auth.js";
-import { listTitles, listEpisodesForTitle, createTitle, updateTitle, presignAsset, presignAssetRead, deleteTitle, createEpisode, updateEpisode, } from "../controllers/contentController.js";
+import { listTitles, listEpisodesForTitle, listPublicTitles, getTitleWithEpisodes, createTitle, updateTitle, presignAsset, presignAssetRead, deleteTitle, createEpisode, updateEpisode, } from "../controllers/contentController.js";
 const router = Router();
+// Public catalog
+router.get("/titles", listPublicTitles);
+router.get("/titles/:id", getTitleWithEpisodes);
+router.get("/titles/:id/episodes", listEpisodesForTitle);
 router.get("/admin/titles", requireAuth, requireAdmin, listTitles);
 router.get("/admin/titles/:id/episodes", requireAuth, requireAdmin, listEpisodesForTitle);
 router.post("/admin/titles", requireAuth, requireAdmin, createTitle);

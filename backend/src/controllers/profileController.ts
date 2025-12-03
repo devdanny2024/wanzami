@@ -2,6 +2,8 @@ import { Response } from "express";
 import { z } from "zod";
 import { prisma } from "../prisma.js";
 import { AuthenticatedRequest } from "../middleware/auth.js";
+import { resolveCountry } from "../utils/country.js";
+import { auditLog } from "../utils/audit.js";
 import { config } from "../config.js";
 
 const AVATAR_CHOICES = [
@@ -28,6 +30,8 @@ const profileSchema = z.object({
   kidMode: z.boolean().optional(),
   language: z.string().min(2).max(8).optional(),
   autoplay: z.boolean().optional(),
+  country: z.string().min(2).max(32).optional(),
+  birthYear: z.number().int().min(1900).max(new Date().getFullYear()).optional(),
   preferences: z.record(z.any()).optional(),
 });
 
@@ -92,7 +96,12 @@ export const listProfiles = async (req: AuthenticatedRequest, res: Response) => 
   });
   if (!profiles.length) {
     const created = await prisma.profile.create({
-      data: { userId: req.user.userId, name: "Primary", avatarUrl: pickRandomAvatar() },
+      data: {
+        userId: req.user.userId,
+        name: "Primary",
+        avatarUrl: pickRandomAvatar(),
+        country: resolveCountry(req),
+      },
     });
     return res.json({
       profiles: [
@@ -102,6 +111,7 @@ export const listProfiles = async (req: AuthenticatedRequest, res: Response) => 
           avatarUrl: created.avatarUrl,
           kidMode: created.kidMode,
           language: created.language,
+          country: created.country,
           autoplay: created.autoplay,
           preferences: created.preferences,
         },
@@ -130,6 +140,8 @@ export const listProfiles = async (req: AuthenticatedRequest, res: Response) => 
       avatarUrl: p.avatarUrl,
       kidMode: p.kidMode,
       language: p.language,
+      country: p.country,
+      birthYear: p.birthYear,
       autoplay: p.autoplay,
       preferences: p.preferences,
     })),
@@ -160,6 +172,8 @@ export const createProfile = async (req: AuthenticatedRequest, res: Response) =>
       kidMode: parsed.data.kidMode ?? false,
       language: parsed.data.language ?? "en",
       autoplay: parsed.data.autoplay ?? true,
+      country: parsed.data.country ? parsed.data.country.toUpperCase() : resolveCountry(req),
+      birthYear: parsed.data.birthYear,
       preferences:
         parsed.data.preferences !== undefined ? parsed.data.preferences : undefined,
     },
@@ -172,6 +186,8 @@ export const createProfile = async (req: AuthenticatedRequest, res: Response) =>
       avatarUrl: profile.avatarUrl,
       kidMode: profile.kidMode,
       language: profile.language,
+      country: profile.country,
+      birthYear: profile.birthYear,
       autoplay: profile.autoplay,
       preferences: profile.preferences,
     },
@@ -209,11 +225,24 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response) =>
       kidMode: parsed.data.kidMode ?? profile.kidMode,
       language: parsed.data.language ?? profile.language,
       autoplay: parsed.data.autoplay ?? profile.autoplay,
+      country:
+        parsed.data.country !== undefined
+          ? parsed.data.country.toUpperCase()
+          : profile.country,
+      birthYear:
+        parsed.data.birthYear !== undefined
+          ? parsed.data.birthYear
+          : profile.birthYear,
       preferences:
         parsed.data.preferences !== undefined
           ? parsed.data.preferences
           : profile.preferences ?? undefined,
     },
+  });
+  void auditLog({
+    action: "PROFILE_UPDATE",
+    resource: updated.id.toString(),
+    detail: { fields: Object.keys(parsed.data) },
   });
 
   return res.json({
@@ -223,6 +252,8 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response) =>
       avatarUrl: updated.avatarUrl,
       kidMode: updated.kidMode,
       language: updated.language,
+      country: updated.country,
+      birthYear: updated.birthYear,
       autoplay: updated.autoplay,
       preferences: updated.preferences,
     },
@@ -288,6 +319,8 @@ export const listDevicesWithProfiles = async (
             name: d.deviceProfile.profile.name,
             avatarUrl: d.deviceProfile.profile.avatarUrl,
             kidMode: d.deviceProfile.profile.kidMode,
+            country: d.deviceProfile.profile.country,
+            birthYear: d.deviceProfile.profile.birthYear,
           }
         : null,
     })),
@@ -339,6 +372,8 @@ export const setDeviceProfile = async (req: AuthenticatedRequest, res: Response)
         name: deviceProfile.profile.name,
         avatarUrl: deviceProfile.profile.avatarUrl,
         kidMode: deviceProfile.profile.kidMode,
+        country: deviceProfile.profile.country,
+        birthYear: deviceProfile.profile.birthYear,
       },
     },
   });

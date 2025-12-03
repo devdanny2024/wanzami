@@ -5,6 +5,7 @@ import { ImageWithFallback } from './figma/ImageWithFallback';
 
 export interface MovieData {
   id: number;
+  backendId?: string;
   title: string;
   image: string;
   rating?: string;

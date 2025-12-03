@@ -16,7 +16,14 @@ import { BlogSearchPage } from './components/BlogSearchPage';
 import { PaymentPage } from './components/PaymentPage';
 import { DeviceProfilePrompt } from './components/DeviceProfilePrompt';
 import { ProfileChooser } from './components/ProfileChooser';
-import { fetchTitles } from './lib/contentClient';
+import {
+  fetchTitles,
+  postEvents,
+  fetchPopularity,
+  fetchContinueWatching,
+  fetchBecauseYouWatched,
+  fetchForYou,
+} from './lib/contentClient';
 import { MovieData } from './components/MovieCard';
 
 export default function App() {
@@ -35,6 +42,13 @@ export default function App() {
   const [catalogMovies, setCatalogMovies] = useState<MovieData[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [top10, setTop10] = useState<MovieData[]>([]);
+  const [trending, setTrending] = useState<MovieData[]>([]);
+  const [continueWatchingItems, setContinueWatchingItems] = useState<any[]>([]);
+  const [becauseYouWatchedItems, setBecauseYouWatchedItems] = useState<any[]>([]);
+  const [forYouItems, setForYouItems] = useState<any[]>([]);
+  const [recsLoading, setRecsLoading] = useState(false);
+  const [recsError, setRecsError] = useState<string | null>(null);
 
   const handleSplashComplete = () => {
     setShowSplash(false);
@@ -126,8 +140,34 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const sendEvent = async (eventType: "IMPRESSION" | "PLAY_START", movie?: MovieData) => {
+    try {
+      const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+      if (!accessToken) return;
+      const profileId = activeProfile?.id;
+      const deviceId = typeof window !== 'undefined' ? localStorage.getItem('deviceId') ?? undefined : undefined;
+      const titleId = movie?.backendId ?? (movie?.id ? String(movie.id) : undefined);
+      if (!titleId) return;
+      await postEvents(
+        [
+          {
+            eventType,
+            profileId,
+            titleId,
+            occurredAt: new Date().toISOString(),
+            deviceId,
+          },
+        ],
+        accessToken
+      );
+    } catch {
+      // best effort
+    }
+  };
+
   const handleMovieClick = (movie: any) => {
     setSelectedMovie(movie);
+    void sendEvent("IMPRESSION", movie);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -136,31 +176,24 @@ export default function App() {
   };
 
   const handlePlayClick = (movie: any) => {
-    // In a real app, this would navigate to a video player
+    void sendEvent("PLAY_START", movie);
     alert(`Playing: ${movie.title}`);
   };
 
   const handleRentMovie = (movie: any) => {
-    // Simulate rental
     setPurchasedMovies([...purchasedMovies, movie.id]);
     const currencySymbol = movie.currency === 'NGN' ? '₦' : movie.currency === 'USDC' ? 'USDC ' : '$';
     alert(`Successfully rented "${movie.title}" for ${currencySymbol}${movie.price.toLocaleString()}. You have 48 hours to watch!`);
   };
 
   const handleBuyMovie = (movie: any) => {
-    // Simulate purchase
     setOwnedMovies([...ownedMovies, movie.id]);
     const currencySymbol = movie.currency === 'NGN' ? '₦' : movie.currency === 'USDC' ? 'USDC ' : '$';
     alert(`Successfully purchased "${movie.title}" for ${currencySymbol}${movie.buyPrice.toLocaleString()}. You own this movie forever!`);
   };
 
-  const isPurchased = (movieId: number) => {
-    return purchasedMovies.includes(movieId);
-  };
-
-  const isOwned = (movieId: number) => {
-    return ownedMovies.includes(movieId);
-  };
+  const isPurchased = (movieId: number) => purchasedMovies.includes(movieId);
+  const isOwned = (movieId: number) => ownedMovies.includes(movieId);
 
   const handleBlogPostClick = (post: BlogPost) => {
     setSelectedBlogPost(post);
@@ -196,19 +229,22 @@ export default function App() {
         if (!isMounted) return;
         const mapped = titles
           .filter((t) => t.type === "MOVIE" && !t.archived)
-          .map((title) => {
+          .map((title, idx) => {
             const numericId = Number(title.id);
-            const safeId = Number.isNaN(numericId) ? Date.now() : numericId;
+            const safeId = Number.isNaN(numericId) ? Date.now() + idx : numericId;
             const fallbackImage = "https://placehold.co/600x900/111111/FD7E14?text=Wanzami";
+            const primaryGenre = title.genres?.[0];
+            const displayRating = title.maturityRating ?? "PG";
             return {
               id: safeId,
+              backendId: title.id,
               title: title.name,
               image: title.thumbnailUrl || title.posterUrl || fallbackImage,
               description: title.description ?? undefined,
               trailerUrl: title.trailerUrl ?? undefined,
               year: title.releaseYear ? String(title.releaseYear) : undefined,
-              genre: "Movie",
-              rating: "PG",
+              genre: primaryGenre ?? "Movie",
+              rating: displayRating,
               createdAt: title.createdAt,
               type: title.type,
             } as MovieData;
@@ -228,6 +264,66 @@ export default function App() {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadRecs = async () => {
+      const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+      const profileId = activeProfile?.id;
+      if (!accessToken) return;
+      try {
+        setRecsLoading(true);
+        setRecsError(null);
+
+        const cw = await fetchContinueWatching(accessToken, profileId);
+        if (isMounted) setContinueWatchingItems(cw.items ?? []);
+
+        const byw = await fetchBecauseYouWatched(accessToken, profileId);
+        if (isMounted) setBecauseYouWatchedItems(byw.items ?? []);
+
+        const [top10Res, trendingRes, forYouRes] = await Promise.all([
+          fetchPopularity({ type: "MOVIE", window: "DAILY" }),
+          fetchPopularity({ type: "MOVIE", window: "TRENDING" }),
+          fetchForYou(accessToken, profileId),
+        ]);
+
+        const mapItems = (ids: { titleId: string }[]) => {
+          const mapped: MovieData[] = [];
+          ids.forEach((item, idx) => {
+            const match = catalogMovies.find((m) => m.backendId === item.titleId);
+            if (match) {
+              mapped.push(match);
+            } else {
+              mapped.push({
+                id: Number(item.titleId) || Date.now() + idx,
+                backendId: item.titleId,
+                title: `Title ${item.titleId}`,
+                image: "https://placehold.co/600x900/111111/FD7E14?text=Wanzami",
+              } as MovieData);
+            }
+          });
+          return mapped;
+        };
+
+        if (isMounted) {
+          setTop10(mapItems(top10Res.items ?? []));
+          setTrending(mapItems(trendingRes.items ?? []));
+          setForYouItems(forYouRes.items ?? []);
+        }
+      } catch (err: any) {
+        if (isMounted) setRecsError(err?.message ?? "Failed to load recommendations");
+      } finally {
+        if (isMounted) setRecsLoading(false);
+      }
+    };
+
+    if (activeProfile) {
+      void loadRecs();
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [activeProfile, catalogMovies]);
 
   // Show splash screen
   if (showSplash) {
@@ -322,6 +418,12 @@ export default function App() {
             movies={catalogMovies}
             loading={catalogLoading}
             error={catalogError}
+            top10={top10}
+            trending={trending}
+            continueWatching={continueWatchingItems}
+            becauseYouWatched={becauseYouWatchedItems}
+            recsLoading={recsLoading}
+            recsError={recsError}
           />
           <Footer />
         </div>

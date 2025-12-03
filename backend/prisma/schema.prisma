@@ -38,6 +38,7 @@ model User {
   profiles Profile[]
   billing  BillingAccount?
   deviceProfiles DeviceProfile[]
+  auditLogs AdminAuditLog[]
 }
 
 model Session {
@@ -50,6 +51,8 @@ model Session {
   ipAddress    String?
   createdAt    DateTime @default(now())
   expiresAt    DateTime
+
+  engagementEvents EngagementEvent[]
 
   @@index([userId, deviceId])
 }
@@ -89,11 +92,16 @@ model Profile {
   kidMode    Boolean  @default(false)
   language   String   @default("en")
   autoplay   Boolean  @default(true)
+  country    String   @default("UNKNOWN")
+  birthYear  Int?
   preferences Json?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   devices DeviceProfile[]
+  engagementEvents EngagementEvent[]
+  preferenceSnapshot ProfilePreferenceSnapshot?
+  recentViews ProfileRecentViews?
 
   @@index([userId])
 }
@@ -130,6 +138,11 @@ enum UploadStatus {
   COMPLETED
   FAILED
   CANCELED
+}
+
+enum PopularityWindow {
+  DAILY
+  TRENDING
 }
 
 model BillingAccount {
@@ -169,6 +182,14 @@ model Title {
   type        TitleType
   name        String
   description String?
+  genres      String[]  @default([])
+  cast        String[]  @default([])
+  crew        String[]  @default([])
+  language    String?   @default("en")
+  maturityRating String?
+  runtimeMinutes Int?
+  countryAvailability String[] @default([])
+  isOriginal  Boolean   @default(false)
   releaseDate DateTime?
   posterUrl   String?
   thumbnailUrl String?
@@ -180,6 +201,10 @@ model Title {
   episodes       Episode[]
   assetVersions  AssetVersion[]
   uploadJobs     UploadJob[]
+  engagementEvents EngagementEvent[]
+  titleEmbedding   TitleEmbedding?
+  similarAsSource  TitleSimilarity[] @relation("SourceTitle")
+  similarAsTarget  TitleSimilarity[] @relation("TargetTitle")
 }
 
 model Episode {
@@ -190,11 +215,13 @@ model Episode {
   episodeNumber Int
   name          String
   synopsis      String?
+  runtimeMinutes Int?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   assetVersions AssetVersion[]
   uploadJobs    UploadJob[]
+  engagementEvents EngagementEvent[]
 
   @@index([titleId, seasonNumber, episodeNumber])
 }
@@ -232,4 +259,105 @@ model UploadJob {
   updatedAt     DateTime     @updatedAt
 
   @@index([titleId, episodeId, status])
+}
+
+model AdminAuditLog {
+  id        BigInt   @id @default(autoincrement())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId    BigInt?
+  action    String
+  resource  String
+  detail    Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+enum EventType {
+  PLAY_START
+  PLAY_END
+  SCRUB
+  SKIP
+  SEARCH
+  ADD_TO_LIST
+  THUMBS_UP
+  THUMBS_DOWN
+  IMPRESSION
+}
+
+model EngagementEvent {
+  id         BigInt    @id @default(autoincrement())
+  profile    Profile?  @relation(fields: [profileId], references: [id], onDelete: SetNull)
+  profileId  BigInt?
+  title      Title?    @relation(fields: [titleId], references: [id], onDelete: SetNull)
+  titleId    BigInt?
+  episode    Episode?  @relation(fields: [episodeId], references: [id], onDelete: SetNull)
+  episodeId  BigInt?
+  session    Session?  @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  sessionId  BigInt?
+  eventType  EventType
+  occurredAt DateTime  @default(now())
+  country    String?
+  deviceId   String?
+  metadata   Json?
+  createdAt  DateTime  @default(now())
+
+  @@index([profileId, occurredAt])
+  @@index([titleId, occurredAt])
+  @@index([eventType, occurredAt])
+}
+
+model PopularitySnapshot {
+  id         BigInt           @id @default(autoincrement())
+  country    String           @default("unknown")
+  type       TitleType
+  window     PopularityWindow
+  computedAt DateTime         @default(now())
+  items      Json
+
+  @@unique([country, type, window])
+  @@index([type, window])
+}
+
+model ProfilePreferenceSnapshot {
+  id         BigInt   @id @default(autoincrement())
+  profile    Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profileId  BigInt   @unique
+  genres     String[] @default([])
+  computedAt DateTime @default(now())
+}
+
+model ProfileRecentViews {
+  id         BigInt   @id @default(autoincrement())
+  profile    Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profileId  BigInt   @unique
+  titleIds   BigInt[] @default([])
+  updatedAt  DateTime @updatedAt
+  computedAt DateTime @default(now())
+}
+
+model TitleEmbedding {
+  id        BigInt   @id @default(autoincrement())
+  title     Title    @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  titleId   BigInt   @unique
+  model     String
+  embedding Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([model])
+}
+
+model TitleSimilarity {
+  id            BigInt   @id @default(autoincrement())
+  sourceTitle   Title    @relation("SourceTitle", fields: [sourceTitleId], references: [id], onDelete: Cascade)
+  sourceTitleId BigInt
+  targetTitle   Title    @relation("TargetTitle", fields: [targetTitleId], references: [id], onDelete: Cascade)
+  targetTitleId BigInt
+  score         Float
+  rationale     String   @default("co_watch")
+  createdAt     DateTime @default(now())
+
+  @@unique([sourceTitleId, targetTitleId])
+  @@index([sourceTitleId, score])
 }

@@ -9,6 +9,12 @@ interface HomePageProps {
   movies: MovieData[];
   loading?: boolean;
   error?: string | null;
+  top10?: MovieData[];
+  trending?: MovieData[];
+  continueWatching?: any[];
+  becauseYouWatched?: any[];
+  recsLoading?: boolean;
+  recsError?: string | null;
 }
 
 // PPV Movies Data
@@ -247,7 +253,18 @@ const africanClassics: MovieData[] = [
   }
 ];
 
-export function HomePage({ onMovieClick, movies, loading, error }: HomePageProps) {
+export function HomePage({
+  onMovieClick,
+  movies,
+  loading,
+  error,
+  top10 = [],
+  trending = [],
+  continueWatching = [],
+  becauseYouWatched = [],
+  recsLoading,
+  recsError,
+}: HomePageProps) {
   const sortedMovies = [...movies].sort((a, b) => {
     const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
     const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
@@ -285,8 +302,19 @@ export function HomePage({ onMovieClick, movies, loading, error }: HomePageProps
           <div className="text-red-400 px-4 md:px-12 lg:px-16">Failed to load movies: {error}</div>
         ) : hasCatalog ? (
           <>
+            {continueWatching.length > 0 && (
+              <ContentRow title="Continue Watching" movies={continueWatching as any} onMovieClick={onMovieClick} />
+            )}
+            {becauseYouWatched.length > 0 && (
+              <ContentRow title="Because You Watched" movies={becauseYouWatched as any} onMovieClick={onMovieClick} />
+            )}
+            {top10.length > 0 && (
+              <ContentRow title="Top 10 in Your Country" movies={top10} onMovieClick={onMovieClick} />
+            )}
+            {trending.length > 0 && (
+              <ContentRow title="Trending Now" movies={trending} onMovieClick={onMovieClick} />
+            )}
             <ContentRow title="Latest on Wanzami" movies={primaryRow} onMovieClick={onMovieClick} />
-            <ContentRow title="Trending Now" movies={secondaryRow.length ? secondaryRow : primaryRow} onMovieClick={onMovieClick} />
             <ContentRow title="More to Explore" movies={tertiaryRow.length ? tertiaryRow : primaryRow} onMovieClick={onMovieClick} />
           </>
         ) : (
@@ -317,6 +345,12 @@ export function HomePage({ onMovieClick, movies, loading, error }: HomePageProps
           </>
         )}
       </div>
+      {recsLoading && (
+        <div className="text-gray-400 px-4 md:px-12 lg:px-16 mt-4">Loading personalized rows…</div>
+      )}
+      {recsError && (
+        <div className="text-red-400 px-4 md:px-12 lg:px-16 mt-4">Personalized rows unavailable: {recsError}</div>
+      )}
     </div>
   );
 }

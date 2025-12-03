@@ -14,6 +14,7 @@ import { hashPassword, comparePassword } from "../utils/password.js";
 import { durationToMs } from "../utils/time.js";
 import { AuthenticatedRequest } from "../middleware/auth.js";
 import { sendEmail } from "../utils/mailer.js";
+import { resolveCountry } from "../utils/country.js";
 import { verifyEmailTemplate } from "../templates/verifyEmailTemplate.js";
 import { isPasswordStrong } from "../utils/passwordStrength.js";
 
@@ -22,6 +23,8 @@ const registerSchema = z.object({
   password: z.string().min(8),
   name: z.string().min(2),
   deviceId: z.string().optional(),
+  preferredGenres: z.array(z.string()).optional(),
+  birthYear: z.number().int().min(1900).max(new Date().getFullYear()).optional(),
 });
 
 const loginSchema = z.object({
@@ -107,6 +110,8 @@ const formatProfile = (p: any) => ({
   avatarUrl: p.avatarUrl,
   kidMode: p.kidMode,
   language: p.language,
+  country: p.country,
+  birthYear: p.birthYear,
   autoplay: p.autoplay,
   preferences: p.preferences,
 });
@@ -204,7 +209,7 @@ export const signup = async (req: Request, res: Response) => {
     return res.status(400).json({ errors: parsed.error.flatten() });
   }
 
-  const { email, password, name } = parsed.data;
+  const { email, password, name, preferredGenres, birthYear } = parsed.data;
   const emailLower = email.toLowerCase();
   const existing = await prisma.user.findUnique({ where: { email: emailLower } });
   if (existing) {
@@ -236,7 +241,13 @@ export const signup = async (req: Request, res: Response) => {
   });
 
   await prisma.profile.create({
-    data: { userId: user.id, name },
+    data: {
+      userId: user.id,
+      name,
+      preferences: preferredGenres?.length ? { preferredGenres } : undefined,
+      country: resolveCountry(req),
+      birthYear,
+    },
   });
 
   return res.status(201).json({

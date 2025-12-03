@@ -26,3 +26,10 @@ Thumbs.db
 
 # Prisma
 prisma/generated/
+
+# Tasks artifacts
+Tasks and Documents/
+
+# Local UI change log folder
+UI Changes & Additions/
+Tasks and Documents/
