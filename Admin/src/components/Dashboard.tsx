@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Users, Eye, CreditCard, DollarSign, Film, FileText } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { TelemetryPanel } from './TelemetryPanel';
 
 const stats = [
   { title: 'Total Users', value: '24,583', icon: Users, change: '+12.5%' },
@@ -115,6 +116,9 @@ export function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Telemetry */}
+      <TelemetryPanel />
 
       {/* Content Engagement */}
       <Card className="bg-neutral-900 border-neutral-800">

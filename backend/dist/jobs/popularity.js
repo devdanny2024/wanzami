@@ -18,10 +18,21 @@ async function computeWindow(windowLabel, hours, type) {
             occurredAt: { gte: since },
             eventType: { in: EVENT_TYPES },
             titleId: { not: null },
-            title: { type },
+            title: { type, archived: false },
         },
         _count: { _all: true },
     });
+    // Fetch title availability once to enforce country correctness
+    const uniqueTitleIds = Array.from(new Set(rows.map((r) => r.titleId).filter(Boolean)));
+    const titles = await prisma.title.findMany({
+        where: { id: { in: uniqueTitleIds } },
+        select: { id: true, countryAvailability: true, archived: true },
+    });
+    const titleMap = new Map();
+    titles.forEach((t) => titleMap.set(t.id.toString(), {
+        countryAvailability: t.countryAvailability ?? [],
+        archived: t.archived,
+    }));
     const byCountry = new Map();
     for (const row of rows) {
         const country = row.country ?? "UNKNOWN";
@@ -35,7 +46,15 @@ async function computeWindow(windowLabel, hours, type) {
         byCountry.set(country, list);
     }
     for (const [country, list] of byCountry.entries()) {
-        const top10 = list.sort((a, b) => b.count - a.count).slice(0, 10);
+        // Respect country availability; default allow if availability is empty
+        const filtered = list.filter((entry) => {
+            const t = titleMap.get(entry.titleId);
+            if (!t || t.archived)
+                return false;
+            const availability = t.countryAvailability ?? [];
+            return availability.length === 0 || availability.includes(country);
+        });
+        const top10 = filtered.sort((a, b) => b.count - a.count).slice(0, 10);
         await prisma.popularitySnapshot.upsert({
             where: {
                 country_type_window: {
@@ -55,5 +74,6 @@ async function computeWindow(windowLabel, hours, type) {
                 items: top10,
             },
         });
+        console.log(`[popularity] ${windowLabel} ${type} ${country}: ${top10.length}/10 after availability filter (input ${list.length})`);
     }
 }

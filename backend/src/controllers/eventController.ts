@@ -115,3 +115,59 @@ export const ingestEvents = async (req: AuthenticatedRequest, res: Response) => 
   await prisma.engagementEvent.createMany({ data: rows });
   return res.status(201).json({ count: rows.length });
 };
+
+export const adminEventsSummary = async (req: AuthenticatedRequest, res: Response) => {
+  const hours = Number(req.query.hours ?? "24");
+  const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+
+  const countsRaw = await prisma.engagementEvent.groupBy({
+    by: ["eventType"],
+    where: { occurredAt: { gte: since } },
+    _count: { _all: true },
+  });
+
+  const counts = countsRaw.map((c) => ({
+    eventType: c.eventType,
+    count: typeof c._count === "object" && c._count ? (c._count as any)._all ?? 0 : 0,
+  }));
+
+  const recent = await prisma.engagementEvent.findMany({
+    where: { occurredAt: { gte: since } },
+    orderBy: { occurredAt: "desc" },
+    take: 50,
+    include: {
+      title: { select: { name: true } },
+      profile: { select: { name: true } },
+    },
+  });
+
+  const recentMapped = recent.map((e) => {
+    const metadata = typeof e.metadata === "object" && e.metadata !== null ? (e.metadata as any) : {};
+    const completion =
+      typeof metadata.completionPercent === "number"
+        ? metadata.completionPercent
+        : typeof metadata.completion === "number"
+          ? metadata.completion
+          : undefined;
+
+    return {
+      id: e.id.toString(),
+      eventType: e.eventType,
+      occurredAt: e.occurredAt,
+      profileId: e.profileId ? e.profileId.toString() : null,
+      profileName: e.profile?.name ?? null,
+      titleId: e.titleId ? e.titleId.toString() : null,
+      titleName: e.title?.name ?? null,
+      country: e.country ?? null,
+      completionPercent: completion,
+      deviceId: e.deviceId ?? null,
+      metadata,
+    };
+  });
+
+  return res.json({
+    since: since.toISOString(),
+    counts,
+    recent: recentMapped,
+  });
+};
