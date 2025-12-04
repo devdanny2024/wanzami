@@ -229,7 +229,8 @@ export default function App() {
       try {
         setCatalogLoading(true);
         setCatalogError(null);
-        const titles = await fetchTitles();
+        const storedCountry = typeof window !== "undefined" ? localStorage.getItem("countryCode") : null;
+        const titles = await fetchTitles(storedCountry ?? "NG");
         if (!isMounted) return;
         const mapped = titles
           .filter((t) => !t.archived)

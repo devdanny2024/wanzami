@@ -32,8 +32,9 @@ async function handleJsonResponse(res: Response) {
   return data as any;
 }
 
-export async function fetchTitles(): Promise<Title[]> {
-  const res = await fetch(`${API_BASE}/titles`, {
+export async function fetchTitles(country?: string): Promise<Title[]> {
+  const query = country ? `?country=${encodeURIComponent(country)}` : "";
+  const res = await fetch(`${API_BASE}/titles${query}`, {
     cache: "no-store",
   });
   const data = await handleJsonResponse(res);
