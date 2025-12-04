@@ -210,6 +210,12 @@ export default function App() {
     void sendEvent("PLAY_START", movie);
   };
 
+  const handleResumeClick = (movie: any) => {
+    // For continue watching: jump straight into player
+    setPlayerMovie(movie);
+    void sendEvent("PLAY_START", movie);
+  };
+
   const handleRentMovie = (movie: any) => {
     setPurchasedMovies([...purchasedMovies, movie.id]);
     const currencySymbol = movie.currency === 'NGN' ? '₦' : movie.currency === 'USDC' ? 'USDC ' : '$';
@@ -538,6 +544,7 @@ export default function App() {
         <div key="home">
           <HomePage
             onMovieClick={handleMovieClick}
+            onContinueClick={handleResumeClick}
             movies={catalogMovies}
             loading={catalogLoading}
             error={catalogError}

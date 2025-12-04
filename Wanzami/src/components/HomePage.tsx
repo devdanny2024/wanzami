@@ -4,6 +4,7 @@ import { MovieData } from './MovieCard';
 
 interface HomePageProps {
   onMovieClick: (movie: any) => void;
+  onContinueClick?: (movie: any) => void;
   movies: MovieData[];
   loading?: boolean;
   error?: string | null;
@@ -189,6 +190,7 @@ const africanClassics: MovieData[] = [
 
 export function HomePage({
   onMovieClick,
+  onContinueClick,
   movies,
   loading,
   error,
@@ -241,7 +243,11 @@ export function HomePage({
         ) : hasCatalog ? (
           <>
             {continueWatching.length > 0 && (
-              <ContentRow title="Continue Watching" movies={continueWatching as any} onMovieClick={onMovieClick} />
+              <ContentRow
+                title="Continue Watching"
+                movies={continueWatching as any}
+                onMovieClick={onContinueClick ?? onMovieClick}
+              />
             )}
             {becauseYouWatched.length > 0 && (
               <ContentRow title="Because You Watched" movies={becauseYouWatched as any} onMovieClick={onMovieClick} />
