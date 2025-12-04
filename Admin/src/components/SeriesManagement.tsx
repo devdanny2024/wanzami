@@ -232,7 +232,9 @@ export function SeriesManagement() {
         <Card className="bg-neutral-900 border-neutral-800">
           <CardHeader>
             <CardTitle className="text-white">All Series</CardTitle>
-            <p className="text-neutral-500 text-sm">Select a series to manage episodes. Use bulk add to paste multiple episodes.</p>
+          <p className="text-neutral-500 text-sm">
+            Select a series to manage episodes. Use bulk add to paste multiple episodes. All media uploads go to the upload queue dock.
+          </p>
           </CardHeader>
           <CardContent className="space-y-4">
             {series.map((item) => (
