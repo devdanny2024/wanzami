@@ -26,6 +26,7 @@ import {
 } from './lib/contentClient';
 import { MovieData } from './components/MovieCard';
 import { CustomMediaPlayer } from './components/CustomMediaPlayer';
+import { TopLoader } from './components/TopLoader';
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -51,6 +52,7 @@ export default function App() {
   const [recsLoading, setRecsLoading] = useState(false);
   const [recsError, setRecsError] = useState<string | null>(null);
   const [playerMovie, setPlayerMovie] = useState<any | null>(null);
+  const globalLoading = catalogLoading || recsLoading;
 
   const handleSplashComplete = () => {
     setShowSplash(false);
@@ -377,6 +379,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-black">
+      <TopLoader active={globalLoading} />
       {showDevicePrompt && (
         <DeviceProfilePrompt
           onClose={() => setShowDevicePrompt(false)}
