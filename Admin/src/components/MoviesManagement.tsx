@@ -26,6 +26,12 @@ export type MovieTitle = {
   createdAt?: string;
   episodeCount?: number;
   releaseDate?: string | null;
+  language?: string | null;
+  runtimeMinutes?: number | null;
+  maturityRating?: string | null;
+  countryAvailability?: string[];
+  isOriginal?: boolean;
+  genres?: string[];
 };
 
 export function MoviesManagement() {
@@ -226,6 +232,13 @@ function AddEditMovieForm({
 }) {
   const [title, setTitle] = useState(movie?.name ?? "");
   const [description, setDescription] = useState(movie?.description ?? "");
+  const [genres, setGenres] = useState<string[]>([]);
+  const [language, setLanguage] = useState(movie?.language ?? "en");
+  const [runtimeMinutes, setRuntimeMinutes] = useState<string>(movie?.runtimeMinutes ? String(movie.runtimeMinutes) : "");
+  const [maturityRating, setMaturityRating] = useState<string>(movie?.maturityRating ?? "");
+  const [releaseDate, setReleaseDate] = useState<string>(movie?.releaseDate?.slice(0, 10) ?? "");
+  const [countryAvailability, setCountryAvailability] = useState<string>("");
+  const [isOriginal, setIsOriginal] = useState<boolean>(!!movie?.isOriginal);
   const [posterFile, setPosterFile] = useState<File | null>(null);
   const [thumbFile, setThumbFile] = useState<File | null>(null);
   const [trailerFile, setTrailerFile] = useState<File | null>(null);
@@ -246,6 +259,13 @@ function AddEditMovieForm({
     setTitle(movie?.name ?? "");
     setDescription(movie?.description ?? "");
     setTrailerUrlText(movie?.trailerUrl ?? "");
+    setLanguage((movie as any)?.language ?? "en");
+    setRuntimeMinutes((movie as any)?.runtimeMinutes ? String((movie as any).runtimeMinutes) : "");
+    setMaturityRating((movie as any)?.maturityRating ?? "");
+    setReleaseDate((movie as any)?.releaseDate?.slice(0, 10) ?? "");
+    setCountryAvailability(((movie as any)?.countryAvailability ?? []).join(","));
+    setIsOriginal(!!(movie as any)?.isOriginal);
+    setGenres(((movie as any)?.genres ?? []) as string[]);
   }, [movie?.id]);
 
   const uploadAsset = async (file: File, kind: "poster" | "thumbnail" | "trailer") => {
@@ -287,6 +307,18 @@ function AddEditMovieForm({
         name: title.trim(),
         type: "MOVIE",
         description,
+        language,
+        runtimeMinutes: runtimeMinutes ? Number(runtimeMinutes) : undefined,
+        maturityRating: maturityRating || undefined,
+        releaseDate: releaseDate ? new Date(releaseDate).toISOString() : undefined,
+        countryAvailability: countryAvailability
+          ? countryAvailability
+              .split(",")
+              .map((c) => c.trim().toUpperCase())
+              .filter(Boolean)
+          : [],
+        isOriginal,
+        genres,
       };
 
       if (posterFile) payload.posterUrl = await uploadAsset(posterFile, "poster");
@@ -306,8 +338,43 @@ function AddEditMovieForm({
       }
 
       // Require all key fields before save
-      if (!payload.description || (!posterFile && !movie?.posterUrl) || (!thumbFile && !movie?.thumbnailUrl)) {
-        setError("Title, description, poster, and thumbnail are required.");
+      if (!payload.description) {
+        setError("Description is required.");
+        setSaving(false);
+        return;
+      }
+      if (!payload.genres || payload.genres.length === 0) {
+        setError("At least one genre is required.");
+        setSaving(false);
+        return;
+      }
+      if (!payload.maturityRating) {
+        setError("Maturity rating is required.");
+        setSaving(false);
+        return;
+      }
+      if (!payload.runtimeMinutes) {
+        setError("Runtime (minutes) is required.");
+        setSaving(false);
+        return;
+      }
+      if (!payload.countryAvailability || payload.countryAvailability.length === 0) {
+        setError("At least one country code is required.");
+        setSaving(false);
+        return;
+      }
+      if (!payload.releaseDate) {
+        setError("Release date is required.");
+        setSaving(false);
+        return;
+      }
+      if (!posterFile && !movie?.posterUrl) {
+        setError("Poster is required.");
+        setSaving(false);
+        return;
+      }
+      if (!thumbFile && !movie?.thumbnailUrl) {
+        setError("Thumbnail is required.");
         setSaving(false);
         return;
       }
@@ -388,18 +455,12 @@ function AddEditMovieForm({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label className="text-neutral-300">Genre</Label>
-            <Select>
-              <SelectTrigger className="mt-1 bg-neutral-950 border-neutral-800 text-white">
-                <SelectValue placeholder="Select genre" />
-              </SelectTrigger>
-              <SelectContent className="bg-neutral-900 border-neutral-800">
-                <SelectItem value="action">Action</SelectItem>
-                <SelectItem value="drama">Drama</SelectItem>
-                <SelectItem value="comedy">Comedy</SelectItem>
-                <SelectItem value="romance">Romance</SelectItem>
-                <SelectItem value="thriller">Thriller</SelectItem>
-              </SelectContent>
-            </Select>
+            <Input
+              value={genres.join(",")}
+              onChange={(e) => setGenres(e.target.value.split(",").map((g) => g.trim()).filter(Boolean))}
+              className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+              placeholder="Action, Drama, Comedy"
+            />
           </div>
 
           <div>
