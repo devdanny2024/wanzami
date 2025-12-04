@@ -459,30 +459,80 @@ function AddEditMovieForm({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label className="text-neutral-300">Genre</Label>
-            <Input
-              value={genres.join(",")}
-              onChange={(e) => setGenres(e.target.value.split(",").map((g) => g.trim()).filter(Boolean))}
-              className="mt-1 bg-neutral-950 border-neutral-800 text-white"
-              placeholder="Action, Drama, Comedy"
-            />
+        <div className="pt-2">
+          <h3 className="text-white font-semibold mb-2">Metadata</h3>
+          <div className="grid grid-cols-2 gap-4 mb-3">
+            <div>
+              <Label className="text-neutral-300">Genres (comma separated)</Label>
+              <Input
+                value={genres.join(",")}
+                onChange={(e) => setGenres(e.target.value.split(",").map((g) => g.trim()).filter(Boolean))}
+                className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+                placeholder="Action, Drama, Comedy"
+              />
+            </div>
+            <div>
+              <Label className="text-neutral-300">Language</Label>
+              <Input
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+                placeholder="en"
+              />
+            </div>
           </div>
 
-          <div>
-            <Label className="text-neutral-300">Release Year</Label>
-            <Input
-              type="number"
-              className="mt-1 bg-neutral-950 border-neutral-800 text-white"
-              placeholder="2024"
-            />
+          <div className="grid grid-cols-2 gap-4 mb-3">
+            <div>
+              <Label className="text-neutral-300">Runtime (minutes)</Label>
+              <Input
+                type="number"
+                value={runtimeMinutes}
+                onChange={(e) => setRuntimeMinutes(e.target.value)}
+                className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+                placeholder="120"
+              />
+            </div>
+            <div>
+              <Label className="text-neutral-300">Maturity Rating</Label>
+              <Input
+                value={maturityRating}
+                onChange={(e) => setMaturityRating(e.target.value.toUpperCase())}
+                className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+                placeholder="PG, PG-13, R"
+              />
+            </div>
           </div>
-        </div>
 
-        <div>
-          <Label className="text-neutral-300">Cast List (comma separated)</Label>
-          <Input className="mt-1 bg-neutral-950 border-neutral-800 text-white" placeholder="Actor 1, Actor 2, Actor 3" />
+          <div className="grid grid-cols-2 gap-4 mb-3">
+            <div>
+              <Label className="text-neutral-300">Release Date</Label>
+              <Input
+                type="date"
+                value={releaseDate}
+                onChange={(e) => setReleaseDate(e.target.value)}
+                className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+              />
+            </div>
+            <div>
+              <Label className="text-neutral-300">Country Availability (comma separated)</Label>
+              <Input
+                value={countryAvailability}
+                onChange={(e) => setCountryAvailability(e.target.value)}
+                className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+                placeholder="NG, US, UK"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={isOriginal}
+              onCheckedChange={setIsOriginal}
+              className="data-[state=checked]:bg-[#fd7e14]"
+            />
+            <Label className="text-neutral-300">Wanzami Original</Label>
+          </div>
         </div>
 
         <div className="border-t border-neutral-800 pt-4 mt-4">
