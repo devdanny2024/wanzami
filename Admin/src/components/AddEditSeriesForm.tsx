@@ -22,6 +22,13 @@ export function AddEditSeriesForm({
   const [title, setTitle] = useState(series.name ?? "");
   const [description, setDescription] = useState(series.description ?? "");
   const [releaseYear, setReleaseYear] = useState("");
+  const [genres, setGenres] = useState<string[]>(series.genres ?? []);
+  const [language, setLanguage] = useState(series.language ?? "en");
+  const [maturityRating, setMaturityRating] = useState<string>(series.maturityRating ?? "");
+  const [countryAvailability, setCountryAvailability] = useState<string>(
+    (series.countryAvailability ?? []).join(",")
+  );
+  const [isOriginal, setIsOriginal] = useState<boolean>(!!series.isOriginal);
   const [posterFile, setPosterFile] = useState<File | null>(null);
   const [thumbFile, setThumbFile] = useState<File | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
@@ -32,6 +39,11 @@ export function AddEditSeriesForm({
     setTitle(series.name ?? "");
     setDescription(series.description ?? "");
     setReleaseYear(series.releaseDate ? new Date(series.releaseDate).getFullYear().toString() : "");
+    setGenres(series.genres ?? []);
+    setLanguage(series.language ?? "en");
+    setMaturityRating(series.maturityRating ?? "");
+    setCountryAvailability((series.countryAvailability ?? []).join(","));
+    setIsOriginal(!!series.isOriginal);
   }, [series.id]);
 
   const uploadAsset = async (file: File, kind: "poster" | "thumbnail") => {
@@ -65,6 +77,24 @@ export function AddEditSeriesForm({
       setError("Title and description are required.");
       return;
     }
+    if (!genres.length) {
+      setError("At least one genre is required.");
+      return;
+    }
+    if (!maturityRating) {
+      setError("Maturity rating is required.");
+      return;
+    }
+    const countryCodes = countryAvailability
+      ? countryAvailability
+          .split(",")
+          .map((c) => c.trim().toUpperCase())
+          .filter(Boolean)
+      : [];
+    if (!countryCodes.length) {
+      setError("At least one country code is required.");
+      return;
+    }
     try {
       setSaving(true);
       setError(null);
@@ -75,6 +105,11 @@ export function AddEditSeriesForm({
         name: title.trim(),
         description: description.trim(),
         type: "SERIES",
+        genres,
+        language,
+        maturityRating,
+        countryAvailability: countryCodes,
+        isOriginal,
       };
       if (releaseYear) payload.releaseYear = Number(releaseYear);
       if (posterFile) payload.posterUrl = await uploadAsset(posterFile, "poster");
@@ -139,6 +174,55 @@ export function AddEditSeriesForm({
             className="mt-1 bg-neutral-950 border-neutral-800 text-white"
             rows={4}
             placeholder="Enter series description"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label className="text-neutral-300">Genres</Label>
+            <Input
+              value={genres.join(",")}
+              onChange={(e) => setGenres(e.target.value.split(",").map((g) => g.trim()).filter(Boolean))}
+              className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+              placeholder="Drama, Thriller"
+            />
+          </div>
+          <div>
+            <Label className="text-neutral-300">Language</Label>
+            <Input
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+              placeholder="en"
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label className="text-neutral-300">Maturity Rating</Label>
+            <Input
+              value={maturityRating}
+              onChange={(e) => setMaturityRating(e.target.value.toUpperCase())}
+              className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+              placeholder="PG, PG-13, R"
+            />
+          </div>
+          <div>
+            <Label className="text-neutral-300">Country Availability (comma separated)</Label>
+            <Input
+              value={countryAvailability}
+              onChange={(e) => setCountryAvailability(e.target.value)}
+              className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+              placeholder="NG, US, UK"
+            />
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Label className="text-neutral-300">Wanzami Original</Label>
+          <input
+            type="checkbox"
+            checked={isOriginal}
+            onChange={(e) => setIsOriginal(e.target.checked)}
+            className="h-4 w-4"
           />
         </div>
         <div className="grid grid-cols-2 gap-4">
