@@ -100,7 +100,7 @@ const computeRefreshExpiry = () => {
 };
 
 const farFutureDate = () =>
-  new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000);
+  new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 1 year for "remember me"
 
 const isIndefinite = (d: Date) => d.getFullYear() > 2099;
 
