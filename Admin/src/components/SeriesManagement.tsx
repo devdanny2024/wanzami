@@ -44,6 +44,7 @@ export function SeriesManagement() {
   const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [bulkText, setBulkText] = useState("");
   const [bulkSaving, setBulkSaving] = useState(false);
+  const [bulkVideos, setBulkVideos] = useState<FileList | null>(null);
   const token = useMemo(() => (typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null), []);
   const { startUpload } = useUploadQueue();
 
@@ -125,12 +126,14 @@ export function SeriesManagement() {
     if (!lines.length) return;
     setBulkSaving(true);
     try {
+      const records: Array<{ seasonNumber: number; episodeNumber: number; name: string; synopsis: string }> = [];
       for (const line of lines) {
         const parts = line.split(",").map((p) => p.trim());
         const seasonNumber = Number(parts[0] || 1);
         const episodeNumber = Number(parts[1] || 1);
         const name = parts[2] || `Episode ${episodeNumber}`;
         const synopsis = parts.slice(3).join(",") || "";
+        records.push({ seasonNumber, episodeNumber, name, synopsis });
         await fetch(`/api/admin/titles/${selectedSeries}/episodes`, {
           method: "POST",
           headers: {
@@ -146,7 +149,25 @@ export function SeriesManagement() {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const data = await res.json();
-      if (res.ok) setEpisodes(data.episodes ?? []);
+      if (res.ok) {
+        setEpisodes(data.episodes ?? []);
+        // If videos were provided, map them by order to the records (season/episode)
+        if (bulkVideos && bulkVideos.length) {
+          const list = Array.from(bulkVideos);
+          for (let i = 0; i < Math.min(list.length, records.length); i++) {
+            const rec = records[i];
+            const file = list[i];
+            const ep = (data.episodes ?? []).find(
+              (e: any) =>
+                e.seasonNumber === rec.seasonNumber &&
+                e.episodeNumber === rec.episodeNumber,
+            );
+            if (ep?.id) {
+              startUploadForEpisode(Number(ep.id), file);
+            }
+          }
+        }
+      }
     } finally {
       setBulkSaving(false);
     }
@@ -363,24 +384,35 @@ export function SeriesManagement() {
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="bg-neutral-900 border-neutral-800 text-white max-w-xl">
-                      <DialogHeader>
-                        <DialogTitle className="text-white">Bulk Add Episodes</DialogTitle>
-                      </DialogHeader>
-                      <p className="text-sm text-neutral-400 mb-2">
-                        One per line: season, episode, title, synopsis. Example: <code>1,1,Pilot,The journey begins</code>
-                      </p>
-                      <Textarea
-                        rows={6}
-                        value={bulkText}
-                        onChange={(e) => setBulkText(e.target.value)}
-                        className="bg-neutral-950 border-neutral-800 text-white"
-                        placeholder="1,1,Pilot,The journey begins&#10;1,2,Second,Next steps"
+                    <DialogHeader>
+                      <DialogTitle className="text-white">Bulk Add Episodes</DialogTitle>
+                    </DialogHeader>
+                    <p className="text-sm text-neutral-400 mb-2">
+                      One per line: season, episode, title, synopsis. Example: <code>1,1,Pilot,The journey begins</code>
+                    </p>
+                    <Textarea
+                      rows={6}
+                      value={bulkText}
+                      onChange={(e) => setBulkText(e.target.value)}
+                      className="bg-neutral-950 border-neutral-800 text-white"
+                      placeholder="1,1,Pilot,The journey begins&#10;1,2,Second,Next steps"
+                    />
+                    <div className="mt-3">
+                      <Label className="text-neutral-300">Optional: Upload video files (ordered to match lines above)</Label>
+                      <input
+                        type="file"
+                        accept="video/*"
+                        multiple
+                        onChange={(e) => setBulkVideos(e.target.files)}
+                        className="mt-2 text-sm text-neutral-200"
                       />
-                      <div className="flex justify-end gap-2 mt-3">
-                        <Button variant="outline" onClick={() => setIsBulkOpen(false)} className="border-neutral-700 text-neutral-300">
-                          Cancel
-                        </Button>
-                        <Button onClick={handleBulkCreate} disabled={bulkSaving} className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
+                      <p className="text-xs text-neutral-500 mt-1">Files will be matched in order to the episodes you paste.</p>
+                    </div>
+                    <div className="flex justify-end gap-2 mt-3">
+                      <Button variant="outline" onClick={() => setIsBulkOpen(false)} className="border-neutral-700 text-neutral-300">
+                        Cancel
+                      </Button>
+                      <Button onClick={handleBulkCreate} disabled={bulkSaving} className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
                           {bulkSaving ? "Saving..." : "Add Episodes"}
                         </Button>
                       </div>
