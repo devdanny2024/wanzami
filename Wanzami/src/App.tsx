@@ -33,7 +33,12 @@ export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pendingVerification, setPendingVerification] = useState<{ email: string; name: string } | null>(null);
-  const [currentPage, setCurrentPage] = useState('home');
+  const [currentPage, setCurrentPage] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("currentPage") ?? "home";
+    }
+    return "home";
+  });
   const [selectedMovie, setSelectedMovie] = useState<any>(null);
   const [purchasedMovies, setPurchasedMovies] = useState<number[]>([]);
   const [ownedMovies, setOwnedMovies] = useState<number[]>([]);
@@ -124,11 +129,11 @@ export default function App() {
     setPendingVerification(null);
   };
 
-  const handleLogout = () => {
+  const handleLogout = (options?: { showLogin?: boolean }) => {
     setIsAuthenticated(false);
     setCurrentPage('home');
     setSelectedMovie(null);
-    setShowRegistration(true);
+    setShowRegistration(options?.showLogin ? false : true);
     setPendingVerification(null);
     setShowDevicePrompt(false);
     setActiveProfile(null);
@@ -136,12 +141,17 @@ export default function App() {
       localStorage.removeItem('activeProfileId');
       localStorage.removeItem('activeProfileName');
       localStorage.removeItem('activeProfileAvatar');
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
     }
   };
 
   const handleNavigate = (page: string) => {
     setCurrentPage(page);
     setSelectedMovie(null);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem("currentPage", page);
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -227,6 +237,12 @@ export default function App() {
     setCurrentPage('blogsearch');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("currentPage", currentPage);
+    }
+  }, [currentPage]);
 
   const handleBackToBlog = () => {
     setCurrentPage('blog');
@@ -328,7 +344,11 @@ export default function App() {
           setForYouItems(forYouRes.items ?? []);
         }
       } catch (err: any) {
-        if (isMounted) setRecsError(err?.message ?? "Failed to load recommendations");
+        const message = err?.message ?? "Failed to load recommendations";
+        if (message.toLowerCase().includes("invalid") || message.toLowerCase().includes("expired")) {
+          handleLogout({ showLogin: true });
+        }
+        if (isMounted) setRecsError(message);
       } finally {
         if (isMounted) setRecsLoading(false);
       }
