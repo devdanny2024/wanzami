@@ -55,6 +55,7 @@ export default function App() {
   const [continueWatchingItems, setContinueWatchingItems] = useState<any[]>([]);
   const [becauseYouWatchedItems, setBecauseYouWatchedItems] = useState<any[]>([]);
   const [forYouItems, setForYouItems] = useState<any[]>([]);
+  const [serverContinueWatching, setServerContinueWatching] = useState<any[]>([]);
   const [recsLoading, setRecsLoading] = useState(false);
   const [recsError, setRecsError] = useState<string | null>(null);
   const [playerMovie, setPlayerMovie] = useState<any | null>(null);
@@ -200,6 +201,10 @@ export default function App() {
 
   const handleCloseMovie = () => {
     setSelectedMovie(null);
+    if (activeProfile) {
+      const merged = combineContinueWatching(serverContinueWatching, activeProfile.id);
+      setContinueWatchingItems(merged);
+    }
   };
 
   const handlePlayClick = (movie: any) => {
@@ -237,6 +242,60 @@ export default function App() {
   const handleBlogSearchClick = () => {
     setCurrentPage('blogsearch');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const readLocalResume = (profileId?: string | null) => {
+    if (typeof window === "undefined") return [];
+    const keyPrefix = `progress:${profileId ?? "anon"}:`;
+    const items: Array<{ titleId: string; completionPercent: number; updatedAt: number }> = [];
+    Object.keys(localStorage).forEach((key) => {
+      if (!key.startsWith(keyPrefix)) return;
+      const titleId = key.slice(keyPrefix.length);
+      const raw = localStorage.getItem(key);
+      if (!raw) return;
+      try {
+        const parsed = JSON.parse(raw) as { time?: number; duration?: number; updatedAt?: number };
+        const completion = parsed.duration ? Math.min(1, Math.max(0, (parsed.time ?? 0) / parsed.duration)) : 0;
+        if (!Number.isFinite(completion) || completion <= 0) return;
+        items.push({
+          titleId,
+          completionPercent: completion,
+          updatedAt: parsed.updatedAt ?? Date.now(),
+        });
+      } catch {
+        // ignore malformed
+      }
+    });
+    return items.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  };
+
+  const combineContinueWatching = (serverItems: any[], profileId?: string | null) => {
+    const local = readLocalResume(profileId);
+    const mergedMap = new Map<string, any>();
+    serverItems.forEach((item) => {
+      if (!item?.id) return;
+      mergedMap.set(String(item.id), { ...item });
+    });
+    local.forEach((loc) => {
+      const existing = mergedMap.get(loc.titleId);
+      if (existing) {
+        const current = existing.completionPercent ?? 0;
+        if (loc.completionPercent > current) {
+          mergedMap.set(loc.titleId, { ...existing, completionPercent: loc.completionPercent });
+        }
+      } else {
+        const fallback = catalogMovies.find((m) => m.backendId === loc.titleId);
+        mergedMap.set(loc.titleId, {
+          id: loc.titleId,
+          name: fallback?.title ?? `Title ${loc.titleId}`,
+          type: fallback?.type ?? "MOVIE",
+          posterUrl: fallback?.posterUrl ?? fallback?.image,
+          thumbnailUrl: fallback?.thumbnailUrl ?? fallback?.image,
+          completionPercent: loc.completionPercent,
+        });
+      }
+    });
+    return Array.from(mergedMap.values());
   };
 
   useEffect(() => {
@@ -310,7 +369,10 @@ export default function App() {
         setRecsError(null);
 
         const cw = await fetchContinueWatching(accessToken, profileId);
-        if (isMounted) setContinueWatchingItems(cw.items ?? []);
+        if (isMounted) {
+          setServerContinueWatching(cw.items ?? []);
+          setContinueWatchingItems(combineContinueWatching(cw.items ?? [], profileId));
+        }
 
         const byw = await fetchBecauseYouWatched(accessToken, profileId);
         if (isMounted) setBecauseYouWatchedItems(byw.items ?? []);
