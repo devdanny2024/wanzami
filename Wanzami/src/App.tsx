@@ -293,7 +293,24 @@ export default function App() {
         });
       }
     });
-    return Array.from(mergedMap.values());
+    return Array.from(mergedMap.values()).map((item, idx) => {
+      const match = catalogMovies.find((m) => m.backendId === item.id || String(m.id) === String(item.id));
+      const fallbackId = Number(item.id);
+      const numericId = Number.isNaN(fallbackId) ? Date.now() + idx : fallbackId;
+      return {
+        id: match?.id ?? numericId,
+        backendId: match?.backendId ?? String(item.id),
+        title: match?.title ?? item.name ?? `Title ${item.id}`,
+        image:
+          match?.image ??
+          item.thumbnailUrl ??
+          item.posterUrl ??
+          "https://placehold.co/600x900/111111/FD7E14?text=Wanzami",
+        rating: match?.rating,
+        type: match?.type ?? item.type,
+        completionPercent: item.completionPercent,
+      } as MovieData;
+    });
   };
 
   useEffect(() => {
