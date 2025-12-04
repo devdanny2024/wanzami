@@ -16,6 +16,9 @@ export interface MovieData {
   trailerUrl?: string | null;
   type?: string;
   createdAt?: string;
+  posterUrl?: string;
+  thumbnailUrl?: string;
+  completionPercent?: number;
 }
 
 interface MovieCardProps {
@@ -100,6 +103,16 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
             animate={{ opacity: 1 }}
             className="absolute inset-0 rounded-xl border-2 border-[#fd7e14] pointer-events-none"
           />
+        )}
+
+        {/* Progress bar for continue watching */}
+        {typeof movie.completionPercent === 'number' && movie.completionPercent > 0 && (
+          <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-white/20">
+            <div
+              className="h-full bg-[#fd7e14]"
+              style={{ width: `${Math.min(100, Math.max(0, movie.completionPercent * 100))}%` }}
+            />
+          </div>
         )}
       </div>
 
