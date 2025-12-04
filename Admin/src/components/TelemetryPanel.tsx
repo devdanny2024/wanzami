@@ -1,28 +1,15 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
-import { Badge } from "./ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { RefreshCw } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 type EventCount = { eventType: string; count: number };
-type RecentEvent = {
-  id: string;
-  eventType: string;
-  occurredAt: string;
-  profileId: string | null;
-  profileName: string | null;
-  titleId: string | null;
-  titleName: string | null;
-  country: string | null;
-  completionPercent?: number;
-  deviceId: string | null;
-};
 
 export function TelemetryPanel() {
   const [hours, setHours] = useState(24);
   const [counts, setCounts] = useState<EventCount[]>([]);
-  const [recent, setRecent] = useState<RecentEvent[]>([]);
+  const [prevCounts, setPrevCounts] = useState<EventCount[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,16 +22,32 @@ export function TelemetryPanel() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/admin/events/summary?hours=${hours}`, {
-        headers: { ...authHeaders() },
-        cache: "no-store",
-      });
-      if (!res.ok) {
-        throw new Error(`Failed to load events (${res.status})`);
-      }
-      const data = await res.json();
-      setCounts(Array.isArray(data.counts) ? data.counts : []);
-      setRecent(Array.isArray(data.recent) ? data.recent : []);
+      const [currentRes, prevRes] = await Promise.all([
+        fetch(`/api/admin/events/summary?hours=${hours}`, {
+          headers: { ...authHeaders() },
+          cache: "no-store",
+        }),
+        fetch(`/api/admin/events/summary?hours=${hours * 2}`, {
+          headers: { ...authHeaders() },
+          cache: "no-store",
+        }),
+      ]);
+      if (!currentRes.ok) throw new Error(`Failed to load events (${currentRes.status})`);
+      if (!prevRes.ok) throw new Error(`Failed to load prev events (${prevRes.status})`);
+      const currentData = await currentRes.json();
+      const prevData = await prevRes.json();
+      const currCounts = Array.isArray(currentData.counts) ? currentData.counts : [];
+      const prevWindowCounts = Array.isArray(prevData.counts) ? prevData.counts : [];
+      // Previous period = counts in first half of 48h window (prev 24h)
+      const prevMap = new Map<string, number>();
+      prevWindowCounts.forEach((c: any) => prevMap.set(c.eventType, c.count));
+      // Subtract current from 48h to approximate prior 24h window
+      const prevPeriod = currCounts.map((c) => ({
+        eventType: c.eventType,
+        count: Math.max(0, (prevMap.get(c.eventType) ?? 0) - c.count),
+      }));
+      setCounts(currCounts);
+      setPrevCounts(prevPeriod);
     } catch (err: any) {
       setError(err?.message ?? "Failed to load events");
     } finally {
@@ -83,56 +86,42 @@ export function TelemetryPanel() {
       </CardHeader>
       <CardContent className="space-y-4">
         {error && <div className="text-red-400 text-sm">Error: {error}</div>}
-        <div className="flex flex-wrap gap-2">
-          {counts.map((c) => (
-            <Badge key={c.eventType} variant="secondary" className="bg-neutral-800 text-white">
-              {c.eventType}: {c.count}
-            </Badge>
-          ))}
-          {!counts.length && !loading && <span className="text-neutral-500 text-sm">No events in window.</span>}
-        </div>
-        <div className="overflow-auto rounded border border-neutral-800">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-neutral-400">Time</TableHead>
-                <TableHead className="text-neutral-400">Type</TableHead>
-                <TableHead className="text-neutral-400">Profile</TableHead>
-                <TableHead className="text-neutral-400">Title</TableHead>
-                <TableHead className="text-neutral-400">Country</TableHead>
-                <TableHead className="text-neutral-400">Completion</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {recent.map((e) => (
-                <TableRow key={e.id}>
-                  <TableCell className="text-white text-sm">
-                    {new Date(e.occurredAt).toLocaleString()}
-                  </TableCell>
-                  <TableCell className="text-white text-sm">{e.eventType}</TableCell>
-                  <TableCell className="text-neutral-300 text-sm">
-                    {e.profileName ?? e.profileId ?? "-"}
-                  </TableCell>
-                  <TableCell className="text-neutral-300 text-sm">
-                    {e.titleName ?? e.titleId ?? "-"}
-                  </TableCell>
-                  <TableCell className="text-neutral-300 text-sm">{e.country ?? "-"}</TableCell>
-                  <TableCell className="text-neutral-300 text-sm">
-                    {e.completionPercent !== undefined ? `${Math.round(e.completionPercent * 100)}%` : "-"}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {!recent.length && !loading && (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center text-neutral-500 text-sm">
-                    No recent events
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+        <div className="w-full h-80">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={mergeCounts(counts, prevCounts)}
+              margin={{ top: 8, right: 16, left: 0, bottom: 8 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#404040" />
+              <XAxis dataKey="eventType" stroke="#a3a3a3" />
+              <YAxis stroke="#a3a3a3" allowDecimals={false} />
+              <Tooltip
+                contentStyle={{ backgroundColor: "#171717", border: "1px solid #404040", borderRadius: 8 }}
+                labelStyle={{ color: "#a3a3a3" }}
+              />
+              <Legend />
+              <Bar dataKey="current" fill="#fd7e14" radius={[4, 4, 0, 0]} name={`Last ${hours}h`} />
+              <Bar dataKey="previous" fill="#6b7280" radius={[4, 4, 0, 0]} name={`Prev ${hours}h`} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </CardContent>
     </Card>
   );
+}
+
+function mergeCounts(current: EventCount[], previous: EventCount[]) {
+  const map = new Map<string, { eventType: string; current: number; previous: number }>();
+  current.forEach((c) => {
+    map.set(c.eventType, { eventType: c.eventType, current: c.count, previous: 0 });
+  });
+  previous.forEach((p) => {
+    const existing = map.get(p.eventType);
+    if (existing) {
+      existing.previous = p.count;
+    } else {
+      map.set(p.eventType, { eventType: p.eventType, current: 0, previous: p.count });
+    }
+  });
+  return Array.from(map.values());
 }
