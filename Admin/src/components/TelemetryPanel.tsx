@@ -38,13 +38,12 @@ export function TelemetryPanel() {
       const prevData = await prevRes.json();
       const currCounts = Array.isArray(currentData.counts) ? currentData.counts : [];
       const prevWindowCounts = Array.isArray(prevData.counts) ? prevData.counts : [];
-      // Previous period = counts in first half of 48h window (prev 24h)
-      const prevMap = new Map<string, number>();
-      prevWindowCounts.forEach((c: any) => prevMap.set(c.eventType, c.count));
-      // Subtract current from 48h to approximate prior 24h window
-      const prevPeriod = currCounts.map((c) => ({
+      // Previous period = 48h window minus current 24h, per event type
+      const currMap = new Map<string, number>();
+      currCounts.forEach((c: any) => currMap.set(c.eventType, c.count));
+      const prevPeriod = prevWindowCounts.map((c: any) => ({
         eventType: c.eventType,
-        count: Math.max(0, (prevMap.get(c.eventType) ?? 0) - c.count),
+        count: Math.max(0, (c.count ?? 0) - (currMap.get(c.eventType) ?? 0)),
       }));
       setCounts(currCounts);
       setPrevCounts(prevPeriod);
@@ -86,25 +85,29 @@ export function TelemetryPanel() {
       </CardHeader>
       <CardContent className="space-y-4">
         {error && <div className="text-red-400 text-sm">Error: {error}</div>}
-        <div className="w-full h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={mergeCounts(counts, prevCounts)}
-              margin={{ top: 8, right: 16, left: 0, bottom: 8 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#404040" />
-              <XAxis dataKey="eventType" stroke="#a3a3a3" />
-              <YAxis stroke="#a3a3a3" allowDecimals={false} />
-              <Tooltip
-                contentStyle={{ backgroundColor: "#171717", border: "1px solid #404040", borderRadius: 8 }}
-                labelStyle={{ color: "#a3a3a3" }}
-              />
-              <Legend />
-              <Bar dataKey="current" fill="#fd7e14" radius={[4, 4, 0, 0]} name={`Last ${hours}h`} />
-              <Bar dataKey="previous" fill="#6b7280" radius={[4, 4, 0, 0]} name={`Prev ${hours}h`} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        {mergeCounts(counts, prevCounts).length === 0 && !loading ? (
+          <div className="text-neutral-500 text-sm">No events in the selected window.</div>
+        ) : (
+          <div className="w-full h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={mergeCounts(counts, prevCounts)}
+                margin={{ top: 8, right: 16, left: 0, bottom: 8 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#404040" />
+                <XAxis dataKey="eventType" stroke="#a3a3a3" />
+                <YAxis stroke="#a3a3a3" allowDecimals={false} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: "#171717", border: "1px solid #404040", borderRadius: 8 }}
+                  labelStyle={{ color: "#a3a3a3" }}
+                />
+                <Legend />
+                <Bar dataKey="current" fill="#fd7e14" radius={[4, 4, 0, 0]} name={`Last ${hours}h`} />
+                <Bar dataKey="previous" fill="#6b7280" radius={[4, 4, 0, 0]} name={`Prev ${hours}h`} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
