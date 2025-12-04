@@ -84,6 +84,7 @@ export default function App() {
     const access = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
     const refresh = typeof window !== 'undefined' ? localStorage.getItem('refreshToken') : null;
     if (access || refresh) {
+      setShowSplash(false);
       setIsAuthenticated(true);
       setShowRegistration(false);
       setPendingVerification(null);

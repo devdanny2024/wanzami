@@ -164,6 +164,7 @@ export function CustomMediaPlayer({
       } else if (e.key.toLowerCase() === "m") {
         toggleMute();
       } else if (e.key === "Escape") {
+        reportProgress();
         onClose();
       }
     };
@@ -236,6 +237,26 @@ export function CustomMediaPlayer({
     // Telemetry omitted to align with allowed event types
   };
 
+  const reportProgress = (force?: boolean) => {
+    const video = videoRef.current;
+    if (!video || !durGreaterThanZero(video)) return;
+    const completion = video.duration ? video.currentTime / video.duration : 0;
+    fireEvent("PLAY_END", { completionPercent: completion });
+    if (resumeKey) {
+      if (completion >= 0.97) {
+        localStorage.removeItem(resumeKey);
+      } else {
+        maybePersistProgress(resumeKey, video.currentTime, video.duration, lastSavedRef, { force: Boolean(force) });
+      }
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      reportProgress(true);
+    };
+  }, [resumeKey]);
+
   const bufferedPct = useMemo(() => {
     if (!duration || !buffered) return 0;
     return Math.min(100, (buffered / duration) * 100);
@@ -302,7 +323,10 @@ export function CustomMediaPlayer({
               <button
                 aria-label="Close player"
                 className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20"
-                onClick={onClose}
+                onClick={() => {
+                  reportProgress(true);
+                  onClose();
+                }}
               >
                 <X className="w-5 h-5" />
               </button>
@@ -422,11 +446,12 @@ function maybePersistProgress(
   key: string,
   time: number,
   duration: number,
-  lastSavedRef: MutableRefObject<number>
+  lastSavedRef: MutableRefObject<number>,
+  options?: { force?: boolean }
 ) {
   if (typeof window === "undefined") return;
   const now = Date.now();
-  if (now - lastSavedRef.current < 1000) return;
+  if (!options?.force && now - lastSavedRef.current < 1000) return;
   const completion = duration ? time / duration : 0;
   lastSavedRef.current = now;
   if (!duration || time < 5 || completion >= 0.97) {
