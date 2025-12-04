@@ -232,7 +232,7 @@ export default function App() {
         const titles = await fetchTitles();
         if (!isMounted) return;
         const mapped = titles
-          .filter((t) => t.type === "MOVIE" && !t.archived)
+          .filter((t) => !t.archived)
           .map((title, idx) => {
             const numericId = Number(title.id);
             const safeId = Number.isNaN(numericId) ? Date.now() + idx : numericId;
@@ -247,7 +247,7 @@ export default function App() {
               description: title.description ?? undefined,
               trailerUrl: title.trailerUrl ?? undefined,
               year: title.releaseYear ? String(title.releaseYear) : undefined,
-              genre: primaryGenre ?? "Movie",
+              genre: primaryGenre ?? (title.type === "SERIES" ? "Series" : "Movie"),
               rating: displayRating,
               createdAt: title.createdAt,
               type: title.type,
