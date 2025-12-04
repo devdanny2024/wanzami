@@ -13,6 +13,7 @@ const app = express();
 
 const allowedOrigins = [
   "https://wanzami.vercel.app",
+  "https://wanzami-admin.vercel.app",
   "https://wanzami.duckdns.org",
   "http://localhost:3000",
 ];
