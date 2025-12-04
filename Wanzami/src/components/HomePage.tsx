@@ -1,8 +1,6 @@
 import { Hero } from './Hero';
 import { ContentRow } from './ContentRow';
-import { PPVContentRow } from './PPVContentRow';
 import { MovieData } from './MovieCard';
-import { PPVMovieData } from './PPVMovieCard';
 
 interface HomePageProps {
   onMovieClick: (movie: any) => void;
@@ -16,70 +14,6 @@ interface HomePageProps {
   recsLoading?: boolean;
   recsError?: string | null;
 }
-
-// PPV Movies Data
-const ppvPremieres: PPVMovieData[] = [
-  {
-    id: 101,
-    title: "The Governor",
-    image: "https://images.unsplash.com/photo-1713845784782-51b36d805391?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwd29tYW4lMjBwb3J0cmFpdCUyMGNpbmVtYXRpY3xlbnwxfHx8fDE3NjM3OTI2NjJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    price: 3500,
-    buyPrice: 8500,
-    currency: "NGN",
-    rating: "18+",
-    duration: "2h 30m",
-    genre: "Political Thriller",
-    isPremiere: true
-  },
-  {
-    id: 102,
-    title: "Blood Sisters: The Movie",
-    image: "https://images.unsplash.com/photo-1618051438543-9f85cab01c60?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxuaWdlcmlhbiUyMG1hbiUyMHBvcnRyYWl0fGVufDF8fHx8MTc2Mzc5MjY2NHww&ixlib=rb-4.1.0&q=80&w=1080",
-    price: 2500,
-    buyPrice: 6000,
-    currency: "NGN",
-    rating: "16+",
-    duration: "2h 15m",
-    genre: "Drama",
-    isPremiere: true
-  },
-  {
-    id: 103,
-    title: "Anikulapo: Rise of the Spectre",
-    image: "https://images.unsplash.com/photo-1657356217561-6ed26b47e116?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwY3VsdHVyZSUyMHRyYWRpdGlvbmFsfGVufDF8fHx8MTc2Mzc5MjY2M3ww&ixlib=rb-4.1.0&q=80&w=1080",
-    price: 3000,
-    buyPrice: 7500,
-    currency: "NGN",
-    rating: "16+",
-    duration: "2h 45m",
-    genre: "Fantasy",
-    isPremiere: true
-  },
-  {
-    id: 104,
-    title: "Lagos Vice",
-    image: "https://images.unsplash.com/photo-1677435013662-ef31e32ff9f8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsYWdvcyUyMGNpdHklMjBuaWdodHxlbnwxfHx8fDE3NjM3OTI2NjJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    price: 2800,
-    buyPrice: 7000,
-    currency: "NGN",
-    rating: "18+",
-    duration: "2h 20m",
-    genre: "Action",
-    isPremiere: true
-  },
-  {
-    id: 105,
-    title: "Omo Ghetto: The Saga Continues",
-    image: "https://images.unsplash.com/photo-1577897113176-6888367369bf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwZmFtaWx5JTIwaGFwcHl8ZW58MXx8fHwxNzYzNzkyNjYzfDA&ixlib=rb-4.1.0&q=80&w=1080",
-    price: 2000,
-    buyPrice: 5000,
-    currency: "NGN",
-    rating: "13+",
-    duration: "2h 00m",
-    genre: "Comedy",
-    isPremiere: false
-  }
-];
 
 const topNaijaOriginals: MovieData[] = [
   {
@@ -280,22 +214,26 @@ export function HomePage({
     genre: m.genre || "Movie",
   }));
 
-  const primaryRow = sortedMovies.slice(0, 10);
-  const secondaryRow = sortedMovies.slice(10, 20);
-  const tertiaryRow = sortedMovies.slice(20, 30);
+  const moviesOnly = sortedMovies.filter((m) => m.type === "MOVIE");
+  const seriesOnly = sortedMovies.filter((m) => m.type === "SERIES");
+
+  const moviesPrimary = moviesOnly.slice(0, 10);
+  const moviesSecondary = moviesOnly.slice(10, 20);
+  const seriesPrimary = seriesOnly.slice(0, 10);
+  const seriesSecondary = seriesOnly.slice(10, 20);
+
+  const top10Movies = (top10 ?? []).filter((t) => t.type === "MOVIE");
+  const top10Series = (top10 ?? []).filter((t) => t.type === "SERIES");
+
+  const trendingMovies = (trending ?? []).filter((t) => t.type === "MOVIE");
+  const trendingSeries = (trending ?? []).filter((t) => t.type === "SERIES");
+
   const hasCatalog = movies.length > 0;
 
   return (
     <div className="min-h-screen bg-black">
       <Hero onPlayClick={onMovieClick} featured={featured} />
-      
       <div className="relative -mt-32 z-10 pb-12 md:pb-16">
-        <PPVContentRow
-          title="PPV Premieres"
-          movies={ppvPremieres}
-          onMovieClick={onMovieClick}
-        />
-        
         {loading ? (
           <div className="text-gray-400 px-4 md:px-12 lg:px-16">Loading catalog…</div>
         ) : error ? (
@@ -308,14 +246,37 @@ export function HomePage({
             {becauseYouWatched.length > 0 && (
               <ContentRow title="Because You Watched" movies={becauseYouWatched as any} onMovieClick={onMovieClick} />
             )}
-            {top10.length > 0 && (
-              <ContentRow title="Top 10 in Your Country" movies={top10} onMovieClick={onMovieClick} />
+            <div className="px-4 md:px-12 lg:px-16 mt-6">
+              <h2 className="text-white text-2xl mb-3">Movies</h2>
+            </div>
+            {top10Movies.length > 0 && (
+              <ContentRow title="Top 10 Movies" movies={top10Movies} onMovieClick={onMovieClick} />
             )}
-            {trending.length > 0 && (
-              <ContentRow title="Trending Now" movies={trending} onMovieClick={onMovieClick} />
+            {trendingMovies.length > 0 && (
+              <ContentRow title="Trending Movies" movies={trendingMovies} onMovieClick={onMovieClick} />
             )}
-            <ContentRow title="Latest on Wanzami" movies={primaryRow} onMovieClick={onMovieClick} />
-            <ContentRow title="More to Explore" movies={tertiaryRow.length ? tertiaryRow : primaryRow} onMovieClick={onMovieClick} />
+            {moviesPrimary.length > 0 && (
+              <ContentRow title="Latest Movies" movies={moviesPrimary} onMovieClick={onMovieClick} />
+            )}
+            {moviesSecondary.length > 0 && (
+              <ContentRow title="More Movies" movies={moviesSecondary} onMovieClick={onMovieClick} />
+            )}
+
+            <div className="px-4 md:px-12 lg:px-16 mt-6">
+              <h2 className="text-white text-2xl mb-3">Series</h2>
+            </div>
+            {top10Series.length > 0 && (
+              <ContentRow title="Top 10 Series" movies={top10Series} onMovieClick={onMovieClick} />
+            )}
+            {trendingSeries.length > 0 && (
+              <ContentRow title="Trending Series" movies={trendingSeries} onMovieClick={onMovieClick} />
+            )}
+            {seriesPrimary.length > 0 && (
+              <ContentRow title="Latest Series" movies={seriesPrimary} onMovieClick={onMovieClick} />
+            )}
+            {seriesSecondary.length > 0 && (
+              <ContentRow title="More Series" movies={seriesSecondary} onMovieClick={onMovieClick} />
+            )}
           </>
         ) : (
           <>
