@@ -23,6 +23,7 @@ import {
   fetchContinueWatching,
   fetchBecauseYouWatched,
   fetchForYou,
+  fetchTitleWithEpisodes,
 } from './lib/contentClient';
 import { MovieData } from './components/MovieCard';
 import { CustomMediaPlayer } from './components/CustomMediaPlayer';
@@ -169,9 +170,20 @@ export default function App() {
     }
   };
 
-  const handleMovieClick = (movie: any) => {
-    setSelectedMovie(movie);
-    void sendEvent("IMPRESSION", movie);
+  const handleMovieClick = async (movie: any) => {
+    let enriched = movie;
+    if (movie?.type === "SERIES" && !movie.episodes) {
+      try {
+        const detail = await fetchTitleWithEpisodes(movie.backendId ?? movie.id);
+        if (detail?.episodes) {
+          enriched = { ...movie, episodes: detail.episodes };
+        }
+      } catch {
+        // best effort; ignore failures
+      }
+    }
+    setSelectedMovie(enriched);
+    void sendEvent("IMPRESSION", enriched);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

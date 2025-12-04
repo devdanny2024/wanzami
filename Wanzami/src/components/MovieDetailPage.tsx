@@ -54,15 +54,10 @@ const relatedMovies: MovieData[] = [
   }
 ];
 
-const episodes = [
-  { id: 1, title: "New Beginnings", duration: "48m", description: "The journey starts with unexpected challenges and new alliances." },
-  { id: 2, title: "Rising Tensions", duration: "52m", description: "Conflicts emerge as power dynamics shift in the city." },
-  { id: 3, title: "Crossroads", duration: "50m", description: "Critical decisions must be made that will change everything." },
-  { id: 4, title: "Breaking Point", duration: "55m", description: "The pressure reaches its peak as loyalties are tested." },
-  { id: 5, title: "Redemption", duration: "58m", description: "Final confrontations lead to unexpected revelations." }
-];
-
 export function MovieDetailPage({ movie, onClose, onPlayClick }: MovieDetailPageProps) {
+  const isSeries = movie?.type === "SERIES";
+  const seriesEpisodes = Array.isArray(movie?.episodes) ? movie.episodes : [];
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -171,35 +166,41 @@ export function MovieDetailPage({ movie, onClose, onPlayClick }: MovieDetailPage
       {/* Details section */}
       <div className="px-4 md:px-12 lg:px-16 py-8 md:py-12">
         <div className="max-w-7xl mx-auto">
-          {/* Episodes section */}
-          <div className="mb-12">
-            <h2 className="text-white mb-6 text-xl md:text-2xl">Episodes</h2>
-            <div className="space-y-3">
-              {episodes.map((episode) => (
-                <motion.div
-                  key={episode.id}
-                  className="bg-gray-900/50 hover:bg-gray-900/80 rounded-xl p-4 md:p-6 border border-gray-800 hover:border-[#fd7e14]/30 transition-all cursor-pointer group"
-                  whileHover={{ scale: 1.01 }}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="text-3xl text-gray-700 group-hover:text-[#fd7e14] transition-colors">
-                      {episode.id}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-white">{episode.title}</h3>
-                        <span className="text-gray-400 text-sm">{episode.duration}</span>
+          {/* Episodes section (only for series) */}
+          {isSeries && seriesEpisodes.length > 0 && (
+            <div className="mb-12">
+              <h2 className="text-white mb-6 text-xl md:text-2xl">Episodes</h2>
+              <div className="space-y-3">
+                {seriesEpisodes.map((episode: any, idx: number) => (
+                  <motion.div
+                    key={episode.id ?? idx}
+                    className="bg-gray-900/50 hover:bg-gray-900/80 rounded-xl p-4 md:p-6 border border-gray-800 hover:border-[#fd7e14]/30 transition-all cursor-pointer group"
+                    whileHover={{ scale: 1.01 }}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="text-3xl text-gray-700 group-hover:text-[#fd7e14] transition-colors">
+                        {episode.episodeNumber ?? idx + 1}
                       </div>
-                      <p className="text-gray-400 text-sm">{episode.description}</p>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="text-white">{episode.name ?? episode.title ?? `Episode ${idx + 1}`}</h3>
+                          <span className="text-gray-400 text-sm">
+                            {episode.runtimeMinutes ? `${episode.runtimeMinutes}m` : episode.duration || ""}
+                          </span>
+                        </div>
+                        <p className="text-gray-400 text-sm">
+                          {episode.synopsis ?? episode.description ?? "Episode details coming soon."}
+                        </p>
+                      </div>
+                      <button className="w-10 h-10 rounded-full bg-white/10 hover:bg-[#fd7e14] flex items-center justify-center text-white transition-colors opacity-0 group-hover:opacity-100">
+                        <Play className="w-5 h-5 fill-current" />
+                      </button>
                     </div>
-                    <button className="w-10 h-10 rounded-full bg-white/10 hover:bg-[#fd7e14] flex items-center justify-center text-white transition-colors opacity-0 group-hover:opacity-100">
-                      <Play className="w-5 h-5 fill-current" />
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* More Like This */}
           <div>
