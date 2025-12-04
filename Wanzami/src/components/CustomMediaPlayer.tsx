@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { X, Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader2, Captions, HelpCircle, RefreshCw } from "lucide-react";
 
 type MediaSource = {
@@ -47,6 +47,13 @@ export function CustomMediaPlayer({
   });
   const [helpOpen, setHelpOpen] = useState(false);
   const [lastTap, setLastTap] = useState<{ time: number; side: "left" | "right" } | null>(null);
+  const lastSavedRef = useRef<number>(0);
+  const resumeKey =
+    typeof window !== "undefined"
+      ? `progress:${profileId ?? "anon"}:${titleId ?? title}`
+      : null;
+  const [resumeTime, setResumeTime] = useState<number | null>(null);
+  const [resumeDuration, setResumeDuration] = useState<number | null>(null);
 
   const percentage = useMemo(() => (duration ? (currentTime / duration) * 100 : 0), [currentTime, duration]);
 
@@ -59,13 +66,42 @@ export function CustomMediaPlayer({
   };
 
   useEffect(() => {
+    if (resumeKey && typeof window !== "undefined") {
+      const saved = localStorage.getItem(resumeKey);
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved) as { time?: number; duration?: number };
+          if (Number.isFinite(parsed.time) && (parsed.time ?? 0) > 5) {
+            setResumeTime(parsed.time ?? null);
+            setResumeDuration(parsed.duration ?? null);
+          }
+        } catch {
+          // ignore bad state
+        }
+      }
+    }
+  }, [resumeKey]);
+
+  useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
     const onLoaded = () => {
-      setDuration(video.duration || 0);
+      const dur = video.duration || 0;
+      setDuration(dur);
+      if (resumeTime && dur > 0) {
+        const clamped = Math.min(resumeTime, dur - 1);
+        video.currentTime = clamped;
+        setCurrentTime(clamped);
+      }
     };
-    const onTime = () => setCurrentTime(video.currentTime);
+    const onTime = () => {
+      const t = video.currentTime;
+      setCurrentTime(t);
+      if (resumeKey && durGreaterThanZero(video)) {
+        maybePersistProgress(resumeKey, t, video.duration, lastSavedRef);
+      }
+    };
     const onProgress = () => {
       if (video.buffered.length) {
         const end = video.buffered.end(video.buffered.length - 1);
@@ -83,6 +119,9 @@ export function CustomMediaPlayer({
     const onEnded = () => {
       setPlaying(false);
       fireEvent("PLAY_END", { completionPercent: 1 });
+      if (resumeKey) {
+        localStorage.removeItem(resumeKey);
+      }
     };
 
     video.addEventListener("loadedmetadata", onLoaded);
@@ -372,6 +411,34 @@ export function CustomMediaPlayer({
         </div>
       )}
     </div>
+  );
+}
+
+function durGreaterThanZero(video: HTMLVideoElement) {
+  return Number.isFinite(video.duration) && video.duration > 0;
+}
+
+function maybePersistProgress(
+  key: string,
+  time: number,
+  duration: number,
+  lastSavedRef: MutableRefObject<number>
+) {
+  if (typeof window === "undefined") return;
+  const now = Date.now();
+  if (now - lastSavedRef.current < 1000) return;
+  const completion = duration ? time / duration : 0;
+  lastSavedRef.current = now;
+  if (!duration || time < 5 || completion >= 0.97) {
+    localStorage.removeItem(key);
+    return;
+  }
+  localStorage.setItem(
+    key,
+    JSON.stringify({
+      time,
+      duration,
+    })
   );
 }
 
