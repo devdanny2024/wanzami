@@ -6,7 +6,7 @@ import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Badge } from './ui/badge';
-import { Plus, Edit, Trash2, PlayCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, PlayCircle, GripVertical, Upload } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { useUploadQueue } from '@/context/UploadQueueProvider';
 import { AddEditSeriesForm } from './AddEditSeriesForm';
@@ -40,6 +40,10 @@ export function SeriesManagement() {
   const [editingEpisode, setEditingEpisode] = useState<Episode | null>(null);
   const [series, setSeries] = useState<SeriesTitle[]>([]);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [isBulkOpen, setIsBulkOpen] = useState(false);
+  const [bulkText, setBulkText] = useState("");
+  const [bulkSaving, setBulkSaving] = useState(false);
   const token = useMemo(() => (typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null), []);
   const { startUpload } = useUploadQueue();
 
@@ -81,6 +85,71 @@ export function SeriesManagement() {
 
   const startUploadForEpisode = (episodeId: number, file: File) => {
     startUpload("EPISODE", episodeId, file);
+  };
+
+  const persistEpisodeOrder = async (ordered: Episode[]) => {
+    for (let i = 0; i < ordered.length; i++) {
+      const ep = ordered[i];
+      await fetch(`/api/admin/episodes/${ep.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ episodeNumber: i + 1 }),
+      });
+    }
+  };
+
+  const handleDragStart = (idx: number) => setDragIndex(idx);
+  const handleDrop = async (idx: number) => {
+    if (dragIndex === null || dragIndex === idx) return;
+    setDragIndex(null);
+    const filtered = episodes.filter((ep) => ep.titleId === selectedSeries);
+    const reordered = [...filtered];
+    const [moved] = reordered.splice(dragIndex, 1);
+    reordered.splice(idx, 0, moved);
+    // Merge back into episodes array
+    const others = episodes.filter((ep) => ep.titleId !== selectedSeries);
+    const newOrdered = reordered.map((ep, i) => ({ ...ep, episodeNumber: i + 1 }));
+    setEpisodes([...others, ...newOrdered]);
+    await persistEpisodeOrder(newOrdered);
+  };
+
+  const handleBulkCreate = async () => {
+    if (!selectedSeries) return;
+    const lines = bulkText
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+    if (!lines.length) return;
+    setBulkSaving(true);
+    try {
+      for (const line of lines) {
+        const parts = line.split(",").map((p) => p.trim());
+        const seasonNumber = Number(parts[0] || 1);
+        const episodeNumber = Number(parts[1] || 1);
+        const name = parts[2] || `Episode ${episodeNumber}`;
+        const synopsis = parts.slice(3).join(",") || "";
+        await fetch(`/api/admin/titles/${selectedSeries}/episodes`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ seasonNumber, episodeNumber, name, synopsis }),
+        });
+      }
+      setBulkText("");
+      setIsBulkOpen(false);
+      const res = await fetch(`/api/admin/titles/${selectedSeries}/episodes`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const data = await res.json();
+      if (res.ok) setEpisodes(data.episodes ?? []);
+    } finally {
+      setBulkSaving(false);
+    }
   };
 
   return (
@@ -142,6 +211,7 @@ export function SeriesManagement() {
         <Card className="bg-neutral-900 border-neutral-800">
           <CardHeader>
             <CardTitle className="text-white">All Series</CardTitle>
+            <p className="text-neutral-500 text-sm">Select a series to manage episodes. Use bulk add to paste multiple episodes.</p>
           </CardHeader>
           <CardContent className="space-y-4">
             {series.map((item) => (
@@ -284,11 +354,57 @@ export function SeriesManagement() {
           <CardContent>
             {selectedSeries ? (
               <div className="space-y-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Dialog open={isBulkOpen} onOpenChange={setIsBulkOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
+                        <Upload className="w-4 h-4 mr-2" />
+                        Bulk Add Episodes
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="bg-neutral-900 border-neutral-800 text-white max-w-xl">
+                      <DialogHeader>
+                        <DialogTitle className="text-white">Bulk Add Episodes</DialogTitle>
+                      </DialogHeader>
+                      <p className="text-sm text-neutral-400 mb-2">
+                        One per line: season, episode, title, synopsis. Example: <code>1,1,Pilot,The journey begins</code>
+                      </p>
+                      <Textarea
+                        rows={6}
+                        value={bulkText}
+                        onChange={(e) => setBulkText(e.target.value)}
+                        className="bg-neutral-950 border-neutral-800 text-white"
+                        placeholder="1,1,Pilot,The journey begins&#10;1,2,Second,Next steps"
+                      />
+                      <div className="flex justify-end gap-2 mt-3">
+                        <Button variant="outline" onClick={() => setIsBulkOpen(false)} className="border-neutral-700 text-neutral-300">
+                          Cancel
+                        </Button>
+                        <Button onClick={handleBulkCreate} disabled={bulkSaving} className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
+                          {bulkSaving ? "Saving..." : "Add Episodes"}
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  <p className="text-xs text-neutral-500">Drag episodes to reorder; numbers update automatically.</p>
+                </div>
+
                 {episodes
                   .filter((ep) => ep.titleId === selectedSeries)
-                  .map((episode) => (
-                    <div key={episode.id} className="p-4 rounded-lg border border-neutral-800 bg-neutral-950 hover:border-neutral-700 transition-colors">
+                  .sort((a, b) => (a.episodeNumber ?? 0) - (b.episodeNumber ?? 0))
+                  .map((episode, idx) => (
+                    <div
+                      key={episode.id}
+                      className="p-4 rounded-lg border border-neutral-800 bg-neutral-950 hover:border-neutral-700 transition-colors"
+                      draggable
+                      onDragStart={() => handleDragStart(idx)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => handleDrop(idx)}
+                    >
                       <div className="flex gap-4">
+                        <div className="flex items-center">
+                          <GripVertical className="w-5 h-5 text-neutral-500 cursor-move" />
+                        </div>
                         <div className="relative">
                           <ImageWithFallback
                             src={""}
