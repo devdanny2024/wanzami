@@ -246,6 +246,7 @@ function AddEditMovieForm({
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [ppvEnabled, setPpvEnabled] = useState(false);
   const [price, setPrice] = useState("");
+  const [buyPrice, setBuyPrice] = useState("");
   const [rentalPeriod, setRentalPeriod] = useState("");
   const [metaTitle, setMetaTitle] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
@@ -334,7 +335,13 @@ function AddEditMovieForm({
       if (ppvEnabled) {
         payload.ppvEnabled = true;
         if (price) payload.price = Number(price);
+        if (buyPrice) payload.buyPrice = Number(buyPrice);
         if (rentalPeriod) payload.rentalPeriod = rentalPeriod;
+      } else {
+        payload.ppvEnabled = false;
+        payload.price = undefined;
+        payload.buyPrice = undefined;
+        payload.rentalPeriod = undefined;
       }
 
       // Require all key fields before save
@@ -490,7 +497,7 @@ function AddEditMovieForm({
             <>
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <Label className="text-neutral-300">Price (NGN)</Label>
+                  <Label className="text-neutral-300">Rent Price (NGN)</Label>
                   <Input
                     type="number"
                     value={price}
@@ -501,7 +508,7 @@ function AddEditMovieForm({
                 </div>
 
                 <div>
-                  <Label className="text-neutral-300">Rental Period</Label>
+                  <Label className="text-neutral-300">Rent Duration</Label>
                   <Select value={rentalPeriod} onValueChange={setRentalPeriod}>
                     <SelectTrigger className="mt-1 bg-neutral-950 border-neutral-800 text-white">
                       <SelectValue placeholder="Select period" />
@@ -514,6 +521,24 @@ function AddEditMovieForm({
                   </Select>
                 </div>
               </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-2">
+                <div>
+                  <Label className="text-neutral-300">Buy Price (NGN)</Label>
+                  <Input
+                    type="number"
+                    value={buyPrice}
+                    onChange={(e) => setBuyPrice(e.target.value)}
+                    className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+                    placeholder="3000"
+                  />
+                  <p className="text-xs text-neutral-500 mt-1">Buy unlocks indefinitely (no duration).</p>
+                </div>
+              </div>
+
+              <p className="text-xs text-neutral-500">
+                Rent includes a duration (countdown to be implemented later). Buy has no expiry.
+              </p>
             </>
           )}
         </div>
