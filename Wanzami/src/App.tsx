@@ -201,10 +201,8 @@ export default function App() {
 
   const handleCloseMovie = () => {
     setSelectedMovie(null);
-    if (activeProfile) {
-      const merged = combineContinueWatching(serverContinueWatching, activeProfile.id);
-      setContinueWatchingItems(merged);
-    }
+    const merged = combineContinueWatching(serverContinueWatching, activeProfile?.id);
+    setContinueWatchingItems(merged);
   };
 
   const handlePlayClick = (movie: any) => {
@@ -424,6 +422,12 @@ export default function App() {
       isMounted = false;
     };
   }, [activeProfile, catalogMovies]);
+
+  // Keep continue watching in sync with local resume data even if we didn't fetch recs
+  useEffect(() => {
+    const merged = combineContinueWatching(serverContinueWatching, activeProfile?.id);
+    setContinueWatchingItems(merged);
+  }, [serverContinueWatching, catalogMovies, activeProfile]);
 
   // Show splash screen
   if (showSplash) {

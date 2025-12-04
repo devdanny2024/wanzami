@@ -463,6 +463,7 @@ function maybePersistProgress(
     JSON.stringify({
       time,
       duration,
+      updatedAt: now,
     })
   );
 }
