@@ -9,9 +9,21 @@ import eventRoutes from "./routes/eventRoutes.js";
 import popularityRoutes from "./routes/popularityRoutes.js";
 import recommendationRoutes from "./routes/recommendationRoutes.js";
 const app = express();
+const allowedOrigins = [
+    "https://wanzami.vercel.app",
+    "https://wanzami-admin.vercel.app",
+    "https://wanzami.duckdns.org",
+    "http://localhost:3000",
+];
 app.use(cors({
-    origin: "*",
-    credentials: true,
+    origin: (origin, callback) => {
+        if (!origin)
+            return callback(null, true);
+        if (allowedOrigins.includes(origin))
+            return callback(null, true);
+        return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: false,
 }));
 app.use(express.json());
 app.use(cookieParser());
