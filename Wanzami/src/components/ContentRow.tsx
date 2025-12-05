@@ -15,10 +15,11 @@ export function ContentRow({ title, movies, onMovieClick, maxVisible }: ContentR
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(true);
-  const [cardWidth, setCardWidth] = useState(220);
-
   const ITEMS_PER_VIEW = 6;
-  const GAP_PX = 16; // matches gap-4 at desktop
+  const GAP_PX = 16; // matches md:gap-4
+  const MIN_CARD_PX = 200;
+  const MAX_CARD_PX = 260;
+  const autoColumn = `minmax(${MIN_CARD_PX}px, min(${MAX_CARD_PX}px, calc((100% - ${(ITEMS_PER_VIEW - 1) * GAP_PX}px) / ${ITEMS_PER_VIEW})))`;
 
   const handleScroll = (direction: 'left' | 'right') => {
     const container = scrollContainerRef.current;
@@ -46,24 +47,13 @@ export function ContentRow({ title, movies, onMovieClick, maxVisible }: ContentR
     );
   };
 
-  // Recalculate card width so exactly 6 items fit per viewport (desktop), with sensible min/max clamps.
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
-
-    const recalc = () => {
-      const available = container.clientWidth - GAP_PX * (ITEMS_PER_VIEW - 1);
-      const target = available / ITEMS_PER_VIEW;
-      const clamped = Math.max(180, Math.min(240, target));
-      setCardWidth(clamped);
-      setShowLeftArrow(container.scrollLeft > 0);
-      setShowRightArrow(container.scrollLeft < container.scrollWidth - container.clientWidth - 10);
-    };
-
-    recalc();
-    window.addEventListener('resize', recalc);
-    return () => window.removeEventListener('resize', recalc);
-  }, [displayMovies.length]);
+    const canScroll = container.scrollWidth > container.clientWidth + 2;
+    setShowLeftArrow(false);
+    setShowRightArrow(canScroll);
+  }, [displayMovies.length, autoColumn]);
 
   return (
     <div className="group/row relative mb-8 md:mb-12">
@@ -89,18 +79,11 @@ export function ContentRow({ title, movies, onMovieClick, maxVisible }: ContentR
         <div
           ref={scrollContainerRef}
           onScroll={checkScroll}
-          className="flex gap-2 md:gap-4 overflow-x-auto scrollbar-hide px-4 md:px-12 lg:px-16 scroll-smooth"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          className="grid grid-flow-col auto-rows-[1fr] gap-2 md:gap-4 overflow-x-auto scrollbar-hide px-4 md:px-12 lg:px-16 scroll-smooth"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', gridAutoColumns: autoColumn, maxWidth: '100%' }}
         >
           {displayMovies.map((movie) => (
-            <div
-              key={movie.id}
-              className="flex-none"
-              style={{
-                width: `${cardWidth}px`,
-                minWidth: `${cardWidth}px`,
-              }}
-            >
+            <div key={movie.id} className="w-full h-full">
               <MovieCard movie={movie} onClick={onMovieClick} />
             </div>
           ))}
