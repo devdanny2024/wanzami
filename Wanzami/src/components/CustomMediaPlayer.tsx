@@ -172,7 +172,10 @@ export function CustomMediaPlayer({
     // lock scroll beneath the overlay
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = originalOverflow;
+    };
   }, []);
 
   const togglePlay = () => {
