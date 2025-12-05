@@ -47,6 +47,9 @@ export function TelemetryPanel() {
       }));
       setCounts(currCounts);
       setPrevCounts(prevPeriod);
+      // Quick telemetry log for debugging
+      console.info("Telemetry current window", currCounts);
+      console.info("Telemetry previous window", prevPeriod);
     } catch (err: any) {
       setError(err?.message ?? "Failed to load events");
     } finally {
@@ -88,25 +91,37 @@ export function TelemetryPanel() {
         {mergeCounts(counts, prevCounts).length === 0 && !loading ? (
           <div className="text-neutral-500 text-sm">No events in the selected window.</div>
         ) : (
-          <div className="w-full h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={mergeCounts(counts, prevCounts)}
-                margin={{ top: 8, right: 16, left: 0, bottom: 8 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#404040" />
-                <XAxis dataKey="eventType" stroke="#a3a3a3" />
-                <YAxis stroke="#a3a3a3" allowDecimals={false} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: "#171717", border: "1px solid #404040", borderRadius: 8 }}
-                  labelStyle={{ color: "#a3a3a3" }}
-                />
-                <Legend />
-                <Bar dataKey="current" fill="#fd7e14" radius={[4, 4, 0, 0]} name={`Last ${hours}h`} />
-                <Bar dataKey="previous" fill="#6b7280" radius={[4, 4, 0, 0]} name={`Prev ${hours}h`} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <>
+            <div className="w-full h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={mergeCounts(counts, prevCounts)}
+                  margin={{ top: 8, right: 16, left: 0, bottom: 8 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#404040" />
+                  <XAxis dataKey="eventType" stroke="#a3a3a3" />
+                  <YAxis stroke="#a3a3a3" allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: "#171717", border: "1px solid #404040", borderRadius: 8 }}
+                    labelStyle={{ color: "#a3a3a3" }}
+                  />
+                  <Legend />
+                  <Bar dataKey="current" fill="#fd7e14" radius={[4, 4, 0, 0]} name={`Last ${hours}h`} />
+                  <Bar dataKey="previous" fill="#6b7280" radius={[4, 4, 0, 0]} name={`Prev ${hours}h`} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="text-neutral-300 text-sm space-y-1">
+              <div className="font-semibold text-white">Debug snapshot</div>
+              {mergeCounts(counts, prevCounts).map((row) => (
+                <div key={row.eventType} className="flex items-center gap-3">
+                  <span className="w-28 text-neutral-400">{row.eventType}</span>
+                  <span className="text-white">{row.current}</span>
+                  <span className="text-neutral-500 text-xs">(prev {row.previous})</span>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </CardContent>
     </Card>
