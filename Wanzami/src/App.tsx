@@ -278,7 +278,7 @@ export default function App() {
     const mergedMap = new Map<string, any>();
     serverItems.forEach((item) => {
       if (!item?.id) return;
-      mergedMap.set(String(item.id), { ...item });
+      mergedMap.set(String(item.id), { ...item, updatedAt: item.updatedAt ?? Date.now() });
     });
     local.forEach((loc) => {
       const existing = mergedMap.get(loc.titleId);
@@ -296,10 +296,15 @@ export default function App() {
           posterUrl: fallback?.posterUrl ?? fallback?.image,
           thumbnailUrl: fallback?.thumbnailUrl ?? fallback?.image,
           completionPercent: loc.completionPercent,
+          updatedAt: loc.updatedAt ?? Date.now(),
         });
       }
     });
-    return Array.from(mergedMap.values()).map((item, idx) => {
+    const mergedList = Array.from(mergedMap.values())
+      .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
+      .slice(0, 10);
+
+    return mergedList.map((item, idx) => {
       const match = catalogMovies.find((m) => m.backendId === item.id || String(m.id) === String(item.id));
       const fallbackId = Number(item.id);
       const numericId = Number.isNaN(fallbackId) ? Date.now() + idx : fallbackId;
@@ -315,6 +320,7 @@ export default function App() {
         rating: match?.rating,
         type: match?.type ?? item.type,
         completionPercent: item.completionPercent,
+        updatedAt: item.updatedAt,
       } as MovieData;
     });
   };
