@@ -96,6 +96,33 @@ const buildTitle = (type: TitleType, idx: number) => {
   };
 };
 
+const buildEpisodes = (titleId: bigint) => {
+  const seasons = 1 + Math.floor(Math.random() * 3); // 1-3 seasons
+  const episodes: Array<{
+    titleId: bigint;
+    seasonNumber: number;
+    episodeNumber: number;
+    name: string;
+    synopsis: string;
+    runtimeMinutes: number;
+  }> = [];
+  for (let s = 1; s <= seasons; s++) {
+    const epCount = 4 + Math.floor(Math.random() * 5); // 4-8 eps per season
+    for (let e = 1; e <= epCount; e++) {
+      const epName = `Season ${s} Episode ${e}`;
+      episodes.push({
+        titleId,
+        seasonNumber: s,
+        episodeNumber: e,
+        name: epName,
+        synopsis: "Generated episode for seeded series; characters push forward under new pressures.",
+        runtimeMinutes: 25 + Math.floor(Math.random() * 15),
+      });
+    }
+  }
+  return episodes;
+};
+
 async function main() {
   console.log("Clearing existing titles and related data…");
   await prisma.engagementEvent.deleteMany({});
@@ -113,7 +140,11 @@ async function main() {
   const titles = [...movies, ...series];
 
   for (const t of titles) {
-    await prisma.title.create({ data: t });
+    const created = await prisma.title.create({ data: t });
+    if (t.type === "SERIES") {
+      const episodes = buildEpisodes(created.id);
+      await prisma.episode.createMany({ data: episodes });
+    }
   }
 
   console.log("Done seeding 40 titles.");
