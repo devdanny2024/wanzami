@@ -59,6 +59,7 @@ export default function App() {
   const [recsLoading, setRecsLoading] = useState(false);
   const [recsError, setRecsError] = useState<string | null>(null);
   const [playerMovie, setPlayerMovie] = useState<any | null>(null);
+  const [authChecking, setAuthChecking] = useState(true);
   const globalLoading = catalogLoading || recsLoading;
 
   const handleSplashComplete = () => {
@@ -97,6 +98,7 @@ export default function App() {
         setActiveProfile({ id: profileId, name: profileName, avatarUrl: profileAvatar });
       }
     }
+    setAuthChecking(false);
   }, []);
 
   const handleRegistrationComplete = (data: { email: string; name: string }) => {
@@ -308,15 +310,17 @@ export default function App() {
       const match = catalogMovies.find((m) => m.backendId === item.id || String(m.id) === String(item.id));
       const fallbackId = Number(item.id);
       const numericId = Number.isNaN(fallbackId) ? Date.now() + idx : fallbackId;
+      const resolvedTitle = match?.title ?? item.titleName ?? item.name ?? `Title ${item.id}`;
+      const resolvedImage =
+        match?.image ??
+        item.thumbnailUrl ??
+        item.posterUrl ??
+        "https://placehold.co/600x900/111111/FD7E14?text=Wanzami";
       return {
         id: match?.id ?? numericId,
         backendId: match?.backendId ?? String(item.id),
-        title: match?.title ?? item.name ?? `Title ${item.id}`,
-        image:
-          match?.image ??
-          item.thumbnailUrl ??
-          item.posterUrl ??
-          "https://placehold.co/600x900/111111/FD7E14?text=Wanzami",
+        title: resolvedTitle,
+        image: resolvedImage,
         rating: match?.rating,
         type: match?.type ?? item.type,
         completionPercent: item.completionPercent,
@@ -458,9 +462,16 @@ export default function App() {
     setContinueWatchingItems(merged);
   }, [serverContinueWatching, catalogMovies, activeProfile]);
 
+  const blockingLoader = (
+    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center">
+      <TopLoader active />
+      <p className="mt-4 text-sm text-gray-300">Loading...</p>
+    </div>
+  );
+
   // Show splash screen
-  if (showSplash) {
-    return <SplashScreen onStartRegistration={handleSplashComplete} onLogin={handleSplashLogin} />;
+  if (showSplash || authChecking) {
+    return blockingLoader;
   }
 
   // Show registration page if not authenticated
@@ -494,12 +505,17 @@ export default function App() {
         </div>
       );
     }
-    return <AuthPage onAuth={handleAuth} onShowSignup={handleShowSignup} />;
+    return blockingLoader;
   }
 
   // Force profile selection before entering the app
   if (isAuthenticated && !activeProfile) {
-    return <ProfileChooser onSelected={(p) => setActiveProfile(p)} onLogout={handleLogout} />;
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <TopLoader active />
+        <ProfileChooser onSelected={(p) => setActiveProfile(p)} onLogout={handleLogout} />
+      </div>
+    );
   }
 
   // Check if selected movie is a PPV movie
