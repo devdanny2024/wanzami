@@ -60,6 +60,7 @@ export default function App() {
   const [recsError, setRecsError] = useState<string | null>(null);
   const [playerMovie, setPlayerMovie] = useState<any | null>(null);
   const [authChecking, setAuthChecking] = useState(true);
+  const [initialOverlay, setInitialOverlay] = useState(true);
   const globalLoading = catalogLoading || recsLoading;
 
   const handleSplashComplete = () => {
@@ -343,6 +344,12 @@ export default function App() {
   };
 
   useEffect(() => {
+    if (!authChecking && !catalogLoading && !recsLoading) {
+      setInitialOverlay(false);
+    }
+  }, [authChecking, catalogLoading, recsLoading]);
+
+  useEffect(() => {
     let isMounted = true;
     const loadTitles = async () => {
       try {
@@ -462,16 +469,14 @@ export default function App() {
     setContinueWatchingItems(merged);
   }, [serverContinueWatching, catalogMovies, activeProfile]);
 
-  const blockingLoader = (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center">
-      <TopLoader active />
-      <p className="mt-4 text-sm text-gray-300">Loading...</p>
-    </div>
-  );
-
   // Show splash screen
   if (showSplash || authChecking) {
-    return blockingLoader;
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center">
+        <TopLoader active />
+        <p className="mt-4 text-sm text-gray-300">Loading...</p>
+      </div>
+    );
   }
 
   // Show registration page if not authenticated
@@ -505,7 +510,7 @@ export default function App() {
         </div>
       );
     }
-    return blockingLoader;
+    return <AuthPage onAuth={handleAuth} onShowSignup={handleShowSignup} />;
   }
 
   // Force profile selection before entering the app
@@ -522,9 +527,21 @@ export default function App() {
   const isPPVMovie = selectedMovie && selectedMovie.price !== undefined;
   const activeProfileId = activeProfile?.id;
 
+  const showOverlay =
+    authChecking ||
+    catalogLoading ||
+    (isAuthenticated && activeProfile && recsLoading) ||
+    initialOverlay;
+
   return (
     <div className="min-h-screen bg-black">
       <TopLoader active={globalLoading} />
+      {showOverlay && (
+        <div className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center">
+          <TopLoader active />
+          <p className="mt-3 text-sm text-gray-300">Loading...</p>
+        </div>
+      )}
       {showDevicePrompt && (
         <DeviceProfilePrompt
           onClose={() => setShowDevicePrompt(false)}
