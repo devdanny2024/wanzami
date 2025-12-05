@@ -61,6 +61,7 @@ export default function App() {
   const [playerMovie, setPlayerMovie] = useState<any | null>(null);
   const [authChecking, setAuthChecking] = useState(true);
   const [initialOverlay, setInitialOverlay] = useState(true);
+  const [profileChooserLoading, setProfileChooserLoading] = useState(false);
   const globalLoading = catalogLoading || recsLoading;
 
   const handleSplashComplete = () => {
@@ -344,10 +345,14 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (!authChecking && !catalogLoading && !recsLoading) {
+    const ready =
+      !authChecking &&
+      !catalogLoading &&
+      (!isAuthenticated || (activeProfile ? !recsLoading : true));
+    if (ready) {
       setInitialOverlay(false);
     }
-  }, [authChecking, catalogLoading, recsLoading]);
+  }, [authChecking, catalogLoading, recsLoading, isAuthenticated, activeProfile]);
 
   useEffect(() => {
     let isMounted = true;
@@ -513,8 +518,24 @@ export default function App() {
     return <AuthPage onAuth={handleAuth} onShowSignup={handleShowSignup} />;
   }
 
+  useEffect(() => {
+    if (isAuthenticated && !activeProfile) {
+      setProfileChooserLoading(true);
+      const t = setTimeout(() => setProfileChooserLoading(false), 500);
+      return () => clearTimeout(t);
+    }
+  }, [isAuthenticated, activeProfile]);
+
   // Force profile selection before entering the app
   if (isAuthenticated && !activeProfile) {
+    if (profileChooserLoading) {
+      return (
+        <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center">
+          <TopLoader active />
+          <p className="mt-3 text-sm text-gray-300">Loading profiles...</p>
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
         <TopLoader active />
@@ -531,6 +552,7 @@ export default function App() {
     authChecking ||
     catalogLoading ||
     (isAuthenticated && activeProfile && recsLoading) ||
+    profileChooserLoading ||
     initialOverlay;
 
   return (
