@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { MovieCard, MovieData } from './MovieCard';
 import { motion } from 'motion/react';
@@ -12,9 +12,12 @@ interface ContentRowProps {
 
 export function ContentRow({ title, movies, onMovieClick, maxVisible }: ContentRowProps) {
   const displayMovies = maxVisible ? movies.slice(0, maxVisible) : movies;
+  // Triple the list so we can loop seamlessly when the user keeps scrolling horizontally.
+  const loopedMovies = displayMovies.length ? [...displayMovies, ...displayMovies, ...displayMovies] : [];
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(true);
+  const initializedRef = useRef(false);
 
   const handleScroll = (direction: 'left' | 'right') => {
     const container = scrollContainerRef.current;
@@ -36,11 +39,36 @@ export function ContentRow({ title, movies, onMovieClick, maxVisible }: ContentR
     const container = scrollContainerRef.current;
     if (!container) return;
 
-    setShowLeftArrow(container.scrollLeft > 0);
-    setShowRightArrow(
-      container.scrollLeft < container.scrollWidth - container.clientWidth - 10
-    );
+    // Because we loop the list, both arrows stay available as long as we have content.
+    const hasContent = loopedMovies.length > 0;
+    setShowLeftArrow(hasContent);
+    setShowRightArrow(hasContent);
+
+    // When we approach either edge of the tripled list, jump back to the middle chunk to simulate infinite scrolling.
+    if (!hasContent) return;
+    const chunkWidth = container.scrollWidth / 3; // each chunk is one full copy of the data
+    if (chunkWidth === 0) return;
+
+    if (container.scrollLeft <= chunkWidth * 0.1) {
+      container.scrollLeft += chunkWidth;
+    } else if (container.scrollLeft >= chunkWidth * 1.9) {
+      container.scrollLeft -= chunkWidth;
+    }
   };
+
+  // On first render (and whenever data changes), start at the middle chunk so users can scroll both ways immediately.
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || initializedRef.current || !loopedMovies.length) return;
+
+    const chunkWidth = container.scrollWidth / 3;
+    if (chunkWidth > 0) {
+      container.scrollLeft = chunkWidth;
+      setShowLeftArrow(true);
+      setShowRightArrow(true);
+      initializedRef.current = true;
+    }
+  }, [loopedMovies.length]);
 
   return (
     <div className="group/row relative mb-8 md:mb-12">
@@ -69,10 +97,10 @@ export function ContentRow({ title, movies, onMovieClick, maxVisible }: ContentR
           className="flex gap-2 md:gap-4 overflow-x-auto scrollbar-hide px-4 md:px-12 lg:px-16 scroll-smooth"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
-          {displayMovies.map((movie) => (
+          {loopedMovies.map((movie, index) => (
             <div
-              key={movie.id}
-              className="w-[200px] sm:w-[220px] md:w-[240px] lg:w-[260px] min-w-[200px]"
+              key={`${movie.id}-${index}`}
+              className="flex-none w-[220px] sm:w-[220px] md:w-[240px] lg:w-[240px] min-w-[220px]"
             >
               <MovieCard movie={movie} onClick={onMovieClick} />
             </div>
