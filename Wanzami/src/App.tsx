@@ -355,6 +355,18 @@ export default function App() {
   }, [authChecking, catalogLoading, recsLoading, isAuthenticated, activeProfile]);
 
   useEffect(() => {
+    if (isAuthenticated && !activeProfile) {
+      setProfileChooserLoading(true);
+      const t = setTimeout(() => setProfileChooserLoading(false), 500);
+      return () => clearTimeout(t);
+    }
+    // If profile becomes available, ensure the loader is cleared.
+    if (activeProfile) {
+      setProfileChooserLoading(false);
+    }
+  }, [isAuthenticated, activeProfile]);
+
+  useEffect(() => {
     let isMounted = true;
     const loadTitles = async () => {
       try {
@@ -517,14 +529,6 @@ export default function App() {
     }
     return <AuthPage onAuth={handleAuth} onShowSignup={handleShowSignup} />;
   }
-
-  useEffect(() => {
-    if (isAuthenticated && !activeProfile) {
-      setProfileChooserLoading(true);
-      const t = setTimeout(() => setProfileChooserLoading(false), 500);
-      return () => clearTimeout(t);
-    }
-  }, [isAuthenticated, activeProfile]);
 
   // Force profile selection before entering the app
   if (isAuthenticated && !activeProfile) {
