@@ -7,9 +7,11 @@ interface ContentRowProps {
   title: string;
   movies: MovieData[];
   onMovieClick: (movie: MovieData) => void;
+  maxVisible?: number;
 }
 
-export function ContentRow({ title, movies, onMovieClick }: ContentRowProps) {
+export function ContentRow({ title, movies, onMovieClick, maxVisible }: ContentRowProps) {
+  const displayMovies = maxVisible ? movies.slice(0, maxVisible) : movies;
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(true);
@@ -67,8 +69,8 @@ export function ContentRow({ title, movies, onMovieClick }: ContentRowProps) {
           className="flex gap-2 md:gap-4 overflow-x-auto scrollbar-hide px-4 md:px-12 lg:px-16 scroll-smooth"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
-          {movies.map((movie) => (
-            <div key={movie.id} className="w-[280px] md:w-[320px] lg:w-[380px]">
+          {displayMovies.map((movie) => (
+            <div key={movie.id} className="w-[240px] sm:w-[260px] md:w-[280px] lg:w-[320px] min-w-[240px]">
               <MovieCard movie={movie} onClick={onMovieClick} />
             </div>
           ))}

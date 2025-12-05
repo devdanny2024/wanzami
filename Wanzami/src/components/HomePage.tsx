@@ -247,6 +247,7 @@ export function HomePage({
                 title="Continue Watching"
                 movies={continueWatching as any}
                 onMovieClick={onContinueClick ?? onMovieClick}
+                maxVisible={5}
               />
             )}
             {becauseYouWatched.length > 0 && (
