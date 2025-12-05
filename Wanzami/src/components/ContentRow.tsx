@@ -70,7 +70,10 @@ export function ContentRow({ title, movies, onMovieClick, maxVisible }: ContentR
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {displayMovies.map((movie) => (
-            <div key={movie.id} className="w-[240px] sm:w-[260px] md:w-[280px] lg:w-[320px] min-w-[240px]">
+            <div
+              key={movie.id}
+              className="w-[200px] sm:w-[220px] md:w-[240px] lg:w-[260px] min-w-[200px]"
+            >
               <MovieCard movie={movie} onClick={onMovieClick} />
             </div>
           ))}
