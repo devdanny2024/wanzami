@@ -12,12 +12,13 @@ interface ContentRowProps {
 
 export function ContentRow({ title, movies, onMovieClick, maxVisible }: ContentRowProps) {
   const displayMovies = maxVisible ? movies.slice(0, maxVisible) : movies;
-  // Triple the list so we can loop seamlessly when the user keeps scrolling horizontally.
-  const loopedMovies = displayMovies.length ? [...displayMovies, ...displayMovies, ...displayMovies] : [];
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(true);
-  const initializedRef = useRef(false);
+  const [cardWidth, setCardWidth] = useState(220);
+
+  const ITEMS_PER_VIEW = 6;
+  const GAP_PX = 16; // matches gap-4 at desktop
 
   const handleScroll = (direction: 'left' | 'right') => {
     const container = scrollContainerRef.current;
@@ -39,36 +40,30 @@ export function ContentRow({ title, movies, onMovieClick, maxVisible }: ContentR
     const container = scrollContainerRef.current;
     if (!container) return;
 
-    // Because we loop the list, both arrows stay available as long as we have content.
-    const hasContent = loopedMovies.length > 0;
-    setShowLeftArrow(hasContent);
-    setShowRightArrow(hasContent);
-
-    // When we approach either edge of the tripled list, jump back to the middle chunk to simulate infinite scrolling.
-    if (!hasContent) return;
-    const chunkWidth = container.scrollWidth / 3; // each chunk is one full copy of the data
-    if (chunkWidth === 0) return;
-
-    if (container.scrollLeft <= chunkWidth * 0.1) {
-      container.scrollLeft += chunkWidth;
-    } else if (container.scrollLeft >= chunkWidth * 1.9) {
-      container.scrollLeft -= chunkWidth;
-    }
+    setShowLeftArrow(container.scrollLeft > 0);
+    setShowRightArrow(
+      container.scrollLeft < container.scrollWidth - container.clientWidth - 10
+    );
   };
 
-  // On first render (and whenever data changes), start at the middle chunk so users can scroll both ways immediately.
+  // Recalculate card width so exactly 6 items fit per viewport (desktop), with sensible min/max clamps.
   useEffect(() => {
     const container = scrollContainerRef.current;
-    if (!container || initializedRef.current || !loopedMovies.length) return;
+    if (!container) return;
 
-    const chunkWidth = container.scrollWidth / 3;
-    if (chunkWidth > 0) {
-      container.scrollLeft = chunkWidth;
-      setShowLeftArrow(true);
-      setShowRightArrow(true);
-      initializedRef.current = true;
-    }
-  }, [loopedMovies.length]);
+    const recalc = () => {
+      const available = container.clientWidth - GAP_PX * (ITEMS_PER_VIEW - 1);
+      const target = available / ITEMS_PER_VIEW;
+      const clamped = Math.max(180, Math.min(240, target));
+      setCardWidth(clamped);
+      setShowLeftArrow(container.scrollLeft > 0);
+      setShowRightArrow(container.scrollLeft < container.scrollWidth - container.clientWidth - 10);
+    };
+
+    recalc();
+    window.addEventListener('resize', recalc);
+    return () => window.removeEventListener('resize', recalc);
+  }, [displayMovies.length]);
 
   return (
     <div className="group/row relative mb-8 md:mb-12">
@@ -97,10 +92,14 @@ export function ContentRow({ title, movies, onMovieClick, maxVisible }: ContentR
           className="flex gap-2 md:gap-4 overflow-x-auto scrollbar-hide px-4 md:px-12 lg:px-16 scroll-smooth"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
-          {loopedMovies.map((movie, index) => (
+          {displayMovies.map((movie) => (
             <div
-              key={`${movie.id}-${index}`}
-              className="flex-none w-[220px] sm:w-[220px] md:w-[240px] lg:w-[240px] min-w-[220px]"
+              key={movie.id}
+              className="flex-none"
+              style={{
+                width: `${cardWidth}px`,
+                minWidth: `${cardWidth}px`,
+              }}
             >
               <MovieCard movie={movie} onClick={onMovieClick} />
             </div>
