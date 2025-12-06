@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Check, Film, Heart, Zap, Globe, Sparkles, ArrowRight } from 'lucide-react';
+import { Check, Heart, Zap, Globe, Sparkles, ArrowRight } from 'lucide-react';
+import Image from 'next/image';
+import wanzamiLogo from '../assets/logo.png';
 import { toast } from 'sonner';
 import { Loader } from './ui/loader';
 
@@ -152,9 +154,14 @@ export function RegistrationFlow({ onAuth, onBack, onLogin }: RegistrationFlowPr
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ delay: 0.2, type: 'spring' }}
-                    className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-[#fd7e14] to-[#ff9f4d] rounded-2xl mb-6 shadow-2xl shadow-[#fd7e14]/20"
+                    className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-[#fd7e14] to-[#ff9f4d] rounded-2xl mb-6 shadow-2xl shadow-[#fd7e14]/20 overflow-hidden"
                   >
-                    <Film className="w-10 h-10 text-white" />
+                    <Image
+                      src={wanzamiLogo}
+                      alt="Wanzami"
+                      className="w-16 h-16 object-contain drop-shadow"
+                      priority
+                    />
                   </motion.div>
                   <h1 className="text-white text-4xl md:text-5xl mb-4 tracking-tight">
                     Welcome to Wanzami
