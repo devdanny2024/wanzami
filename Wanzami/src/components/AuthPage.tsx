@@ -20,6 +20,7 @@ export function AuthPage({ onAuth, onShowSignup }: AuthPageProps) {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,6 +52,28 @@ export function AuthPage({ onAuth, onShowSignup }: AuthPageProps) {
       toast.error('Unable to login. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogle = async () => {
+    setError('');
+    setGoogleLoading(true);
+    try {
+      const redirectUri = `${window.location.origin}/oauth/google/callback`;
+      const res = await fetch(`/api/auth/google/url?redirectUri=${encodeURIComponent(redirectUri)}`);
+      const data = await res.json();
+      if (!res.ok || !data?.url) {
+        const msg = data?.message ?? 'Google sign-in unavailable right now.';
+        setError(msg);
+        toast.error(msg);
+        setGoogleLoading(false);
+        return;
+      }
+      window.location.href = data.url as string;
+    } catch (err) {
+      setError('Unable to start Google sign-in. Please try again.');
+      toast.error('Unable to start Google sign-in. Please try again.');
+      setGoogleLoading(false);
     }
   };
 
@@ -94,6 +117,30 @@ export function AuthPage({ onAuth, onShowSignup }: AuthPageProps) {
         transition={{ delay: 0.3 }}
         className="bg-gray-900/50 backdrop-blur-xl rounded-2xl p-6 md:p-8 border border-gray-800"
         >
+          <div className="flex flex-col gap-3 mb-6">
+            <button
+              type="button"
+              onClick={handleGoogle}
+              disabled={googleLoading}
+              className="w-full bg-white text-gray-900 hover:bg-gray-100 border border-gray-200 py-3 rounded-xl transition-colors flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              <span className="w-5 h-5" aria-hidden>
+                <svg viewBox="0 0 48 48" className="w-5 h-5">
+                  <path fill="#EA4335" d="M24 9.5c3.44 0 5.8 1.49 7.13 2.74l5.2-5.08C32.9 3.6 28.86 2 24 2 14.84 2 7.17 7.8 4.3 15.3l6.8 5.28C12.66 14.6 17.77 9.5 24 9.5z"/>
+                  <path fill="#4285F4" d="M46.5 24.5c0-1.59-.14-3.17-.42-4.7H24v9.02h12.7c-.55 3-2.22 5.54-4.73 7.24l7.38 5.72C43.85 37.73 46.5 31.6 46.5 24.5z"/>
+                  <path fill="#FBBC05" d="M11.1 28.42c-.52-1.53-.82-3.16-.82-4.92s.3-3.4.82-4.92l-6.8-5.28C2.83 15.36 2 19.09 2 23.5s.83 8.14 2.3 10.2l6.8-5.28z"/>
+                  <path fill="#34A853" d="M24 46c5.4 0 9.93-1.78 13.24-4.85l-7.38-5.72c-2.05 1.38-4.68 2.2-7.86 2.2-6.23 0-11.34-5.1-12.9-11.78l-6.8 5.28C7.17 40.2 14.84 46 24 46z"/>
+                </svg>
+              </span>
+              <span>{googleLoading ? 'Connecting...' : 'Continue with Google'}</span>
+            </button>
+            <div className="flex items-center gap-3 text-gray-500 text-sm">
+              <span className="flex-1 h-px bg-gray-800" />
+              <span>or</span>
+              <span className="flex-1 h-px bg-gray-800" />
+            </div>
+          </div>
+
           <div className="mb-6">
             <h2 className="text-white text-2xl font-semibold">Login</h2>
             <p className="text-gray-400 text-sm mt-1">
