@@ -72,11 +72,12 @@ export function MovieDetailPage({ movie, onClose, onPlayClick }: MovieDetailPage
   }, [seriesEpisodes]);
 
   useEffect(() => {
-    if (seasons.length && selectedSeason === null) {
-      setSelectedSeason(seasons[0]);
+    const firstSeason = seasons.length ? Number(seasons[0]) : null;
+    if (firstSeason !== null && selectedSeason === null) {
+      setSelectedSeason(firstSeason);
     }
-    if (seasons.length && selectedSeason && !seasons.includes(selectedSeason)) {
-      setSelectedSeason(seasons[0]);
+    if (firstSeason !== null && selectedSeason !== null && !seasons.includes(selectedSeason)) {
+      setSelectedSeason(firstSeason);
     }
   }, [seasons, selectedSeason]);
 
