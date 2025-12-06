@@ -12,15 +12,35 @@ export function SplashScreen({ onStartRegistration, onLogin }: SplashScreenProps
   const [showButtons, setShowButtons] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioStartedRef = useRef(false);
 
-  const tryPlay = (el: HTMLMediaElement | null) => {
+  const tryPlayMedia = (el: HTMLMediaElement | null, onSuccess?: () => void) => {
     if (!el) return;
-    el.play().catch(() => {
-      const handler = () => {
-        el.play().catch(() => {});
-        window.removeEventListener('pointerdown', handler);
-      };
-      window.addEventListener('pointerdown', handler, { once: true });
+    el.play()
+      .then(() => {
+        onSuccess?.();
+      })
+      .catch(() => {
+        const handler = () => {
+          el.play().then(() => {
+            onSuccess?.();
+          }).catch(() => {});
+          window.removeEventListener('pointerdown', handler);
+        };
+        window.addEventListener('pointerdown', handler, { once: true });
+      });
+  };
+
+  const ensureAudio = () => {
+    if (audioStartedRef.current) return;
+    if (!audioRef.current) {
+      const audio = new Audio('/wanzami-surround.wav');
+      audio.loop = false;
+      audio.volume = 0.7;
+      audioRef.current = audio;
+    }
+    tryPlayMedia(audioRef.current, () => {
+      audioStartedRef.current = true;
     });
   };
 
@@ -33,13 +53,8 @@ export function SplashScreen({ onStartRegistration, onLogin }: SplashScreenProps
 
   useEffect(() => {
     const vid = videoRef.current;
-    tryPlay(vid);
-    const aud = audioRef.current;
-    if (aud) {
-      aud.loop = true;
-      aud.volume = 0.7;
-      tryPlay(aud);
-    }
+    tryPlayMedia(vid);
+    ensureAudio();
   }, []);
 
   return (
@@ -110,7 +125,7 @@ export function SplashScreen({ onStartRegistration, onLogin }: SplashScreenProps
             {/* Signup (primary, orange) */}
             <motion.button
               onClick={onStartRegistration}
-              onMouseDown={tryPlayAudio}
+              onMouseDown={ensureAudio}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="flex-1 px-8 py-4 bg-[#fd7e14] text-white rounded-2xl shadow-lg shadow-[#fd7e14]/30 hover:bg-[#e86f0f] transition-all duration-300"
@@ -121,7 +136,7 @@ export function SplashScreen({ onStartRegistration, onLogin }: SplashScreenProps
             {/* Login (secondary, white) */}
             <motion.button
               onClick={onLogin}
-              onMouseDown={tryPlayAudio}
+              onMouseDown={ensureAudio}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="flex-1 px-8 py-4 bg-white text-[#0b0b0c] font-semibold rounded-2xl border border-white/70 hover:bg-gray-100 transition-all duration-300"
