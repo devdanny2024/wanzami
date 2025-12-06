@@ -567,21 +567,27 @@ export default function App() {
   // Show splash screen
   if (showSplash || authChecking) {
     return (
-      <SplashScreen
-        onStartRegistration={handleSplashComplete}
-        onLogin={handleSplashLogin}
-      />
+      <>
+        <SplashScreen
+          onStartRegistration={handleSplashComplete}
+          onLogin={handleSplashLogin}
+        />
+        <CookieBanner />
+      </>
     );
   }
 
   // Show registration page if not authenticated
   if (!isAuthenticated && showRegistration) {
     return (
-      <RegistrationFlow
-        onAuth={handleRegistrationComplete}
-        onBack={handleRegistrationBack}
-        onLogin={handleShowLoginFromRegistration}
-      />
+      <>
+        <RegistrationFlow
+          onAuth={handleRegistrationComplete}
+          onBack={handleRegistrationBack}
+          onLogin={handleShowLoginFromRegistration}
+        />
+        <CookieBanner />
+      </>
     );
   }
 
@@ -589,23 +595,31 @@ export default function App() {
   if (!isAuthenticated) {
     if (pendingVerification) {
       return (
-        <div className="min-h-screen bg-black text-white flex items-center justify-center px-6 py-20">
-          <div className="max-w-lg w-full bg-white/5 border border-white/10 rounded-2xl p-8">
-            <h1 className="text-2xl font-semibold mb-4">Verify your email</h1>
-            <p className="text-gray-300 mb-6">
-              We sent a verification link to <span className="text-[#fd7e14]">{pendingVerification.email}</span>. Please verify to continue.
-            </p>
-            <a
-              href="/login"
-              className="inline-flex items-center justify-center px-6 py-3 bg-[#fd7e14] text-white rounded-xl font-semibold hover:bg-[#e86f0f] transition-colors"
-            >
-              Go to Login
-            </a>
+        <>
+          <div className="min-h-screen bg-black text-white flex items-center justify-center px-6 py-20">
+            <div className="max-w-lg w-full bg-white/5 border border-white/10 rounded-2xl p-8">
+              <h1 className="text-2xl font-semibold mb-4">Verify your email</h1>
+              <p className="text-gray-300 mb-6">
+                We sent a verification link to <span className="text-[#fd7e14]">{pendingVerification.email}</span>. Please verify to continue.
+              </p>
+              <a
+                href="/login"
+                className="inline-flex items-center justify-center px-6 py-3 bg-[#fd7e14] text-white rounded-xl font-semibold hover:bg-[#e86f0f] transition-colors"
+              >
+                Go to Login
+              </a>
+            </div>
           </div>
-        </div>
+          <CookieBanner />
+        </>
       );
     }
-    return <AuthPage onAuth={handleAuth} onShowSignup={handleShowSignup} />;
+    return (
+      <>
+        <AuthPage onAuth={handleAuth} onShowSignup={handleShowSignup} />
+        <CookieBanner />
+      </>
+    );
   }
 
   // Force profile selection before entering the app
@@ -827,4 +841,56 @@ export default function App() {
                 className="p-2 text-neutral-300 hover:text-white"
                 onClick={() => {
                   setCookieChoice("rejected");
-                  lo
+                  localStorage.setItem("cookieConsent", "rejected");
+                }}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {playerMovie && (
+        <CustomMediaPlayer
+          title={playerMovie.title}
+          poster={playerMovie.image ?? playerMovie.thumbnailUrl ?? playerMovie.posterUrl}
+          titleId={playerMovie.backendId ?? playerMovie.id?.toString?.()}
+          startTimeSeconds={playerMovie.startTimeSeconds}
+          profileId={activeProfileId}
+          sources={[
+            {
+              src:
+                playerMovie.trailerUrl ||
+                "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+              label: playerMovie.trailerUrl ? "Default" : "Demo",
+              type: "video/mp4",
+            },
+          ]}
+          onEvent={(eventType, metadata) => {
+            const allowed: Array<"PLAY_START" | "PLAY_END" | "SCRUB" | "IMPRESSION"> = [
+              "PLAY_START",
+              "PLAY_END",
+              "SCRUB",
+              "IMPRESSION",
+            ];
+            if (!allowed.includes(eventType as any)) return;
+            const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+            if (!accessToken) return;
+            const deviceId = typeof window !== 'undefined' ? localStorage.getItem('deviceId') ?? undefined : undefined;
+            const payload = {
+              eventType: eventType as (typeof allowed)[number],
+              profileId: activeProfileId,
+              titleId: playerMovie.backendId ?? playerMovie.id?.toString?.(),
+              occurredAt: new Date().toISOString(),
+              deviceId,
+              metadata,
+            };
+            void postEvents([payload], accessToken);
+          }}
+          onClose={() => setPlayerMovie(null)}
+        />
+      )}
+    </div>
+  );
+}
