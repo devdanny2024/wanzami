@@ -99,6 +99,11 @@ export default function App() {
       if (profileId && profileName) {
         setActiveProfile({ id: profileId, name: profileName, avatarUrl: profileAvatar });
       }
+    } else {
+      // No tokens: exit splash and show auth
+      setShowSplash(false);
+      setShowRegistration(true);
+      setPendingVerification(null);
     }
     setAuthChecking(false);
   }, []);
