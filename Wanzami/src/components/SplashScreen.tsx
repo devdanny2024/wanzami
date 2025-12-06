@@ -10,17 +10,14 @@ interface SplashScreenProps {
 
 export function SplashScreen({ onStartRegistration, onLogin }: SplashScreenProps) {
   const [showButtons, setShowButtons] = useState(false);
-  const audioPlayedRef = useRef(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const tryPlayAudio = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.play().catch(() => {
-      // retry on first user interaction
+  const tryPlay = (el: HTMLMediaElement | null) => {
+    if (!el) return;
+    el.play().catch(() => {
       const handler = () => {
-        audio.play().catch(() => {});
+        el.play().catch(() => {});
         window.removeEventListener('pointerdown', handler);
       };
       window.addEventListener('pointerdown', handler, { once: true });
@@ -35,29 +32,14 @@ export function SplashScreen({ onStartRegistration, onLogin }: SplashScreenProps
   }, []);
 
   useEffect(() => {
-    if (audioPlayedRef.current) return;
-    audioPlayedRef.current = true;
-    const audio = new Audio('/wanzami-surround.wav');
-    audio.loop = true;
-    audio.volume = 0.6;
-    audioRef.current = audio;
-    tryPlayAudio();
-  }, []);
-
-  useEffect(() => {
     const vid = videoRef.current;
-    if (!vid) return;
-    const playVideo = () => {
-      vid.play().catch(() => {
-        // retry on user interaction if autoplay blocked
-        const handler = () => {
-          vid.play().catch(() => {});
-          window.removeEventListener('pointerdown', handler);
-        };
-        window.addEventListener('pointerdown', handler, { once: true });
-      });
-    };
-    playVideo();
+    tryPlay(vid);
+    const aud = audioRef.current;
+    if (aud) {
+      aud.loop = true;
+      aud.volume = 0.7;
+      tryPlay(aud);
+    }
   }, []);
 
   return (
