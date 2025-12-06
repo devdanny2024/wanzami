@@ -2,6 +2,8 @@ import { motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import wanzamiLogo from '../assets/logo.png';
+import backTrailer from '../assets/backtrailer.mp4';
+import welcomeAudio from '../assets/Wanzami Surround.wav';
 
 interface SplashScreenProps {
   onStartRegistration: () => void;
@@ -22,7 +24,7 @@ export function SplashScreen({ onStartRegistration, onLogin }: SplashScreenProps
   useEffect(() => {
     if (audioPlayedRef.current) return;
     audioPlayedRef.current = true;
-    const audio = new Audio('/Wanzami%20Surround.wav');
+    const audio = new Audio(welcomeAudio as string);
     audio.play().catch(() => {
       // Autoplay might be blocked; ignore silently
     });
@@ -30,6 +32,16 @@ export function SplashScreen({ onStartRegistration, onLogin }: SplashScreenProps
 
   return (
     <div className="fixed inset-0 z-50 bg-[#0b0b0c] overflow-hidden">
+      {/* Background video */}
+      <video
+        className="absolute inset-0 w-full h-full object-cover opacity-40"
+        autoPlay
+        muted
+        loop
+        playsInline
+        src={backTrailer as string}
+      />
+
       {/* Film grain texture overlay */}
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIj48ZmlsdGVyIGlkPSJhIj48ZmVUdXJidWxlbmNlIGJhc2VGcmVxdWVuY3k9Ii43NSIgc3RpdGNoVGlsZXM9InN0aXRjaCIgdHlwZT0iZnJhY3RhbE5vaXNlIi8+PGZlQ29sb3JNYXRyaXggdHlwZT0ic2F0dXJhdGUiIHZhbHVlcz0iMCIvPjwvZmlsdGVyPjxwYXRoIGQ9Ik0wIDBoMzAwdjMwMEgweiIgZmlsdGVyPSJ1cmwoI2EpIiBvcGFjaXR5PSIuMDUiLz48L3N2Zz4=')]" />
       
@@ -96,7 +108,7 @@ export function SplashScreen({ onStartRegistration, onLogin }: SplashScreenProps
               onClick={onLogin}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="flex-1 px-8 py-4 bg-white text-[#fff] rounded-2xl border border-white/70 hover:bg-gray-100 transition-all duration-300"
+              className="flex-1 px-8 py-4 bg-white text-[#0b0b0c] font-semibold rounded-2xl border border-white/70 hover:bg-gray-100 transition-all duration-300"
             >
               <span className="tracking-wide">Login</span>
             </motion.button>
