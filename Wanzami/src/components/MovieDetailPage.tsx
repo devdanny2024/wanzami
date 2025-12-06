@@ -210,18 +210,18 @@ export function MovieDetailPage({ movie, onClose, onPlayClick }: MovieDetailPage
             <div className="mb-12 space-y-4">
               <div className="flex items-center gap-4">
                 <h2 className="text-white text-xl md:text-2xl">Episodes</h2>
-                {seasons.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-400">Season</span>
-                    <select
-                      className="bg-gray-900 border border-gray-700 text-white text-sm rounded-md px-3 py-2"
-                      value={selectedSeason ?? seasons[0]}
-                      onChange={(e) => setSelectedSeason(Number(e.target.value))}
-                    >
-                      {seasons.map((s) => (
-                        <option key={s} value={s}>
-                          Season {s}
-                        </option>
+                    {seasons.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-400">Season</span>
+                        <select
+                          className="bg-gray-900 border border-gray-700 text-white text-sm rounded-md px-3 py-2"
+                          value={String(selectedSeason ?? seasons[0] ?? '')}
+                          onChange={(e) => setSelectedSeason(Number(e.target.value))}
+                        >
+                          {seasons.map((s) => (
+                            <option key={s} value={s}>
+                              Season {s}
+                            </option>
                       ))}
                     </select>
                   </div>
