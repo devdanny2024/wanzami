@@ -123,12 +123,16 @@ export function Navbar({
               )}
 
               {/* Search */}
-              <button
-                onClick={() => onNavigate('search')}
-                className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#fd7e14]/50 rounded-xl transition-all duration-300 group"
-              >
-                <Search className="w-5 h-5 text-gray-400 group-hover:text-[#fd7e14] transition-colors" />
-              </button>
+              <div className="relative">
+                <button
+                  onClick={() => onNavigate('search')}
+                  className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#fd7e14]/50 rounded-xl transition-all duration-300 group"
+                >
+                  <Search className="w-5 h-5 text-gray-400 group-hover:text-[#fd7e14] transition-colors" />
+                </button>
+                {/* slight offset down */}
+                <div className="absolute left-1/2 -translate-x-1/2 mt-3 h-1" />
+              </div>
 
               {/* Profile (unchanged behavior) */}
               <button
@@ -150,10 +154,10 @@ export function Navbar({
               {isAuthenticated && onLogout && (
                 <button
                   onClick={onLogout}
-                  className="hidden md:flex w-10 h-10 items-center justify-center bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all"
+                  className="hidden md:flex w-10 h-10 items-center justify-center bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all group"
                   aria-label="Logout"
                 >
-                  <Power className="w-5 h-5 text-white" />
+                  <Power className="w-5 h-5 text-white group-hover:text-[#fd7e14] transition-colors" />
                 </button>
               )}
 
