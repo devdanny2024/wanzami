@@ -81,49 +81,22 @@ export function SplashScreen({ onStartRegistration, onLogin }: SplashScreenProps
             transition={{ duration: 0.6 }}
             className="flex flex-col sm:flex-row gap-4 w-full max-w-md"
           >
-            {/* Primary Button */}
+            {/* Signup (primary, orange) */}
             <motion.button
               onClick={onStartRegistration}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="group relative flex-1 px-8 py-4 bg-[#fd7e14] text-white rounded-2xl overflow-hidden transition-all duration-300"
+              className="flex-1 px-8 py-4 bg-[#fd7e14] text-white rounded-2xl shadow-lg shadow-[#fd7e14]/30 hover:bg-[#e86f0f] transition-all duration-300"
             >
-              {/* Animated glow border */}
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-[#fd7e14] to-[#ff9f4d] opacity-0 group-hover:opacity-100 blur-xl transition-opacity duration-300" />
-              
-              {/* Pulse animation */}
-              <motion.div
-                animate={{
-                  scale: [1, 1.05, 1],
-                  opacity: [0.5, 0.8, 0.5]
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: "easeInOut"
-                }}
-                className="absolute inset-0 rounded-2xl border-2 border-[#fd7e14]/50"
-              />
-              
-              <span className="relative z-10 tracking-wide">Start Exploring</span>
+              <span className="tracking-wide">Sign Up</span>
             </motion.button>
 
-            {/* Secondary Button */}
-            <motion.button
-              onClick={onStartRegistration}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="flex-1 px-8 py-4 bg-white/5 backdrop-blur-md text-white rounded-2xl border border-white/20 hover:border-white/40 hover:bg-white/10 transition-all duration-300"
-            >
-              <span className="tracking-wide">Browse Library</span>
-            </motion.button>
-
-            {/* Login */}
+            {/* Login (secondary, white) */}
             <motion.button
               onClick={onLogin}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="flex-1 px-8 py-4 bg-white/5 backdrop-blur-md text-white rounded-2xl border border-white/20 hover:border-white/40 hover:bg-white/10 transition-all duration-300"
+              className="flex-1 px-8 py-4 bg-white text-[#0b0b0c] rounded-2xl border border-white/70 hover:bg-gray-100 transition-all duration-300"
             >
               <span className="tracking-wide">Login</span>
             </motion.button>
