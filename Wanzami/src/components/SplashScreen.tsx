@@ -2,8 +2,6 @@ import { motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import wanzamiLogo from '../assets/logo.png';
-import backTrailer from '../assets/backtrailer.mp4';
-import welcomeAudio from '../assets/Wanzami Surround.wav';
 
 interface SplashScreenProps {
   onStartRegistration: () => void;
@@ -24,7 +22,7 @@ export function SplashScreen({ onStartRegistration, onLogin }: SplashScreenProps
   useEffect(() => {
     if (audioPlayedRef.current) return;
     audioPlayedRef.current = true;
-    const audio = new Audio(welcomeAudio as string);
+    const audio = new Audio('/wanzami-surround.wav');
     audio.play().catch(() => {
       // Autoplay might be blocked; ignore silently
     });
@@ -39,7 +37,7 @@ export function SplashScreen({ onStartRegistration, onLogin }: SplashScreenProps
         muted
         loop
         playsInline
-        src={backTrailer as string}
+        src="/backtrailer.mp4"
       />
 
       {/* Film grain texture overlay */}
