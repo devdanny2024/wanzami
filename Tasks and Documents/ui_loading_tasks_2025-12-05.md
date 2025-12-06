@@ -20,3 +20,8 @@ We need to put Skip Into and set intro skip in the admin and also Click next epi
 Continue watching is showing the progress marker but when you click movie to continue it starts from the begging instead of the marker
 
 Search UI is not correct. Move the Search bar down. 
+
+On Hover of the <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-power w-5 h-5 text-white"><path d="M12 2v10"></path><path d="M18.4 6.6a9 9 0 1 1-12.77.04"></path></svg> For sign out can we make the color Wanzami Orange when you Hover
+
+
+Which do we Prefer for Sign out Sign out Button or The off button

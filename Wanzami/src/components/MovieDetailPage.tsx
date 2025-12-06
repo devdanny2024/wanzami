@@ -60,14 +60,12 @@ export function MovieDetailPage({ movie, onClose, onPlayClick }: MovieDetailPage
   const seriesEpisodes = Array.isArray(movie?.episodes) ? movie.episodes : [];
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
 
-  const seasons = useMemo(() => {
-    const distinct = Array.from(
-      new Set(
-        seriesEpisodes.map((ep: any) =>
-          Number(ep?.seasonNumber ?? 1)
-        )
+  const seasons = useMemo<number[]>(() => {
+    const distinct: number[] = Array.from<number>(
+      new Set<number>(
+        seriesEpisodes.map((ep: any) => Number(ep?.seasonNumber ?? 1))
       )
-    ).sort((a, b) => Number(a) - Number(b));
+    ).sort((a, b) => a - b);
     return distinct;
   }, [seriesEpisodes]);
 
