@@ -218,11 +218,13 @@ export function MovieDetailPage({ movie, onClose, onPlayClick }: MovieDetailPage
                           value={String(selectedSeason ?? seasons[0] ?? '')}
                           onChange={(e) => setSelectedSeason(Number(e.target.value))}
                         >
-                          {seasons.map((s) => (
-                            <option key={s} value={s}>
-                              Season {s}
-                            </option>
-                      ))}
+                      {seasons.map((s) => {
+                        const val = Number(s);
+                        return (
+                        <option key={String(val)} value={String(val)}>
+                          Season {s}
+                        </option>
+                      )})}
                     </select>
                   </div>
                 )}
