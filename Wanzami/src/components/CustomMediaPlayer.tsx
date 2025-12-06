@@ -16,6 +16,7 @@ type CustomMediaPlayerProps = {
   profileId?: string;
   onEvent?: (eventType: string, metadata?: Record<string, any>) => void;
   gestureSeekSeconds?: number;
+  startTimeSeconds?: number;
 };
 
 const TIPS_STORAGE_KEY = "wanzami_player_tips_seen";
@@ -29,6 +30,7 @@ export function CustomMediaPlayer({
   profileId,
   onEvent,
   gestureSeekSeconds = 10,
+  startTimeSeconds,
 }: CustomMediaPlayerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -80,7 +82,10 @@ export function CustomMediaPlayer({
         }
       }
     }
-  }, [resumeKey]);
+    if (Number.isFinite(startTimeSeconds) && (startTimeSeconds ?? 0) > 0) {
+      setResumeTime(startTimeSeconds ?? null);
+    }
+  }, [resumeKey, startTimeSeconds]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -89,8 +94,9 @@ export function CustomMediaPlayer({
     const onLoaded = () => {
       const dur = video.duration || 0;
       setDuration(dur);
-      if (resumeTime && dur > 0) {
-        const clamped = Math.min(resumeTime, dur - 1);
+      const desired = resumeTime ?? (Number.isFinite(startTimeSeconds) ? startTimeSeconds : null);
+      if (desired && dur > 0) {
+        const clamped = Math.min(desired, dur - 1);
         video.currentTime = clamped;
         setCurrentTime(clamped);
       }

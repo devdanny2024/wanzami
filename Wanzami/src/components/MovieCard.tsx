@@ -19,6 +19,7 @@ export interface MovieData {
   posterUrl?: string;
   thumbnailUrl?: string;
   completionPercent?: number;
+  runtimeMinutes?: number | null;
 }
 
 interface MovieCardProps {

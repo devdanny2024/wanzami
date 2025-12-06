@@ -260,7 +260,7 @@ export default function App() {
   const readLocalResume = (profileId?: string | null) => {
     if (typeof window === "undefined") return [];
     const keyPrefix = `progress:${profileId ?? "anon"}:`;
-    const items: Array<{ titleId: string; completionPercent: number; updatedAt: number }> = [];
+    const items: Array<{ titleId: string; completionPercent: number; updatedAt: number; time?: number; duration?: number }> = [];
     Object.keys(localStorage).forEach((key) => {
       if (!key.startsWith(keyPrefix)) return;
       const titleId = key.slice(keyPrefix.length);
@@ -274,6 +274,8 @@ export default function App() {
           titleId,
           completionPercent: completion,
           updatedAt: parsed.updatedAt ?? Date.now(),
+          time: parsed.time,
+          duration: parsed.duration,
         });
       } catch {
         // ignore malformed
@@ -287,14 +289,16 @@ export default function App() {
     const mergedMap = new Map<string, any>();
     serverItems.forEach((item) => {
       if (!item?.id) return;
-      mergedMap.set(String(item.id), { ...item, updatedAt: item.updatedAt ?? Date.now() });
+      const startTimeSeconds =
+        item.positionSeconds ?? item.progressSeconds ?? item.currentTime ?? item.resumeTime ?? null;
+      mergedMap.set(String(item.id), { ...item, updatedAt: item.updatedAt ?? Date.now(), startTimeSeconds });
     });
     local.forEach((loc) => {
       const existing = mergedMap.get(loc.titleId);
       if (existing) {
         const current = existing.completionPercent ?? 0;
         if (loc.completionPercent > current) {
-          mergedMap.set(loc.titleId, { ...existing, completionPercent: loc.completionPercent });
+          mergedMap.set(loc.titleId, { ...existing, completionPercent: loc.completionPercent, startTimeSeconds: loc.time ?? existing.startTimeSeconds });
         }
       } else {
         const fallback = catalogMovies.find((m) => m.backendId === loc.titleId);
@@ -306,6 +310,7 @@ export default function App() {
           thumbnailUrl: fallback?.thumbnailUrl ?? fallback?.image,
           completionPercent: loc.completionPercent,
           updatedAt: loc.updatedAt ?? Date.now(),
+          startTimeSeconds: loc.time,
         });
       }
     });
@@ -323,6 +328,10 @@ export default function App() {
         item.thumbnailUrl ??
         item.posterUrl ??
         "https://placehold.co/600x900/111111/FD7E14?text=Wanzami";
+      const durationSeconds = (match?.runtimeMinutes ?? item.runtimeMinutes ?? 0) * 60;
+      const computedStart =
+        item.startTimeSeconds ??
+        (item.completionPercent && durationSeconds ? Math.max(5, Math.min(durationSeconds - 1, item.completionPercent * durationSeconds)) : undefined);
       return {
         id: match?.id ?? numericId,
         backendId: match?.backendId ?? String(item.id),
@@ -332,6 +341,7 @@ export default function App() {
         type: match?.type ?? item.type,
         completionPercent: item.completionPercent,
         updatedAt: item.updatedAt,
+        startTimeSeconds: computedStart,
       } as MovieData;
     });
   };
@@ -724,6 +734,7 @@ export default function App() {
           title={playerMovie.title}
           poster={playerMovie.image ?? playerMovie.thumbnailUrl ?? playerMovie.posterUrl}
           titleId={playerMovie.backendId ?? playerMovie.id?.toString?.()}
+          startTimeSeconds={playerMovie.startTimeSeconds}
           profileId={activeProfileId}
           sources={[
             {
