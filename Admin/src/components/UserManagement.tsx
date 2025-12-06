@@ -5,7 +5,7 @@ import { Input } from './ui/input';
 import { Badge } from './ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Search, Eye } from 'lucide-react';
+import { Search, Eye, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 type UserRow = {
@@ -26,6 +26,7 @@ export function UserManagement() {
   const [selectedUser, setSelectedUser] = useState<UserRow | null>(null);
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'Active' | 'Inactive' | 'Unverified'>('all');
 
@@ -53,6 +54,29 @@ export function UserManagement() {
     };
     load();
   }, []);
+
+  const handleDelete = async (user: UserRow) => {
+    if (!window.confirm(`Delete user ${user.email}? This cannot be undone.`)) return;
+    setDeletingId(user.id);
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}`, {
+        method: 'DELETE',
+        headers: { ...authHeaders() },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data?.message ?? 'Failed to delete user');
+        return;
+      }
+      setUsers((prev) => prev.filter((u) => u.id !== user.id));
+      setSelectedUser(null);
+      toast.success('User deleted');
+    } catch (err) {
+      toast.error('Failed to delete user');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase();
@@ -168,7 +192,13 @@ export function UserManagement() {
                           <DialogHeader>
                             <DialogTitle className="text-white">User Profile</DialogTitle>
                           </DialogHeader>
-                          {selectedUser && <UserProfileModal user={selectedUser} />}
+                          {selectedUser && (
+                            <UserProfileModal
+                              user={selectedUser}
+                              onDelete={handleDelete}
+                              deletingId={deletingId}
+                            />
+                          )}
                         </DialogContent>
                       </Dialog>
                     </td>
@@ -197,7 +227,15 @@ export function UserManagement() {
   );
 }
 
-function UserProfileModal({ user }: { user: UserRow }) {
+function UserProfileModal({
+  user,
+  onDelete,
+  deletingId,
+}: {
+  user: UserRow;
+  onDelete: (u: UserRow) => void;
+  deletingId: string | null;
+}) {
   return (
     <div className="space-y-6">
       {/* User Info */}
@@ -244,6 +282,18 @@ function UserProfileModal({ user }: { user: UserRow }) {
             <p className="text-white mt-1">{user.status ?? 'Active'}</p>
           </CardContent>
         </Card>
+      </div>
+
+      <div className="flex justify-end">
+        <Button
+          variant="destructive"
+          onClick={() => onDelete(user)}
+          disabled={deletingId === user.id}
+          className="flex items-center gap-2 bg-red-600 hover:bg-red-700"
+        >
+          <Trash2 className="w-4 h-4" />
+          {deletingId === user.id ? 'Deleting...' : 'Delete User'}
+        </Button>
       </div>
     </div>
   );
