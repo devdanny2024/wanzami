@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Check, Heart, Zap, Globe, Sparkles, ArrowRight } from 'lucide-react';
+import { Check, Heart, Zap, Globe, Sparkles, ArrowRight, Film } from 'lucide-react';
 import Image from 'next/image';
 import wanzamiLogo from '../assets/logo.png';
 import { toast } from 'sonner';
