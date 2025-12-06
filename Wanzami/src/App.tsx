@@ -100,9 +100,9 @@ export default function App() {
         setActiveProfile({ id: profileId, name: profileName, avatarUrl: profileAvatar });
       }
     } else {
-      // No tokens: exit splash and show auth
-      setShowSplash(false);
-      setShowRegistration(true);
+      // No tokens: keep splash, show registration when CTA clicked
+      setShowSplash(true);
+      setShowRegistration(false);
       setPendingVerification(null);
     }
     setAuthChecking(false);
@@ -495,10 +495,10 @@ export default function App() {
   // Show splash screen
   if (showSplash || authChecking) {
     return (
-      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center">
-        <TopLoader active />
-        <p className="mt-4 text-sm text-gray-300">Loading...</p>
-      </div>
+      <SplashScreen
+        onStartRegistration={handleSplashComplete}
+        onLogin={handleSplashLogin}
+      />
     );
   }
 
