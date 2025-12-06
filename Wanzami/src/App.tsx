@@ -345,14 +345,18 @@ export default function App() {
   };
 
   useEffect(() => {
-    const ready =
-      !authChecking &&
-      !catalogLoading &&
-      (!isAuthenticated || (activeProfile ? !recsLoading : true));
+    const catalogSettled = !catalogLoading && (catalogMovies.length > 0 || !!catalogError);
+    const recsSettled =
+      !isAuthenticated ||
+      !activeProfile ||
+      (!recsLoading);
+    const ready = !authChecking && catalogSettled && recsSettled;
+
     if (ready) {
-      setInitialOverlay(false);
+      const t = setTimeout(() => setInitialOverlay(false), 200);
+      return () => clearTimeout(t);
     }
-  }, [authChecking, catalogLoading, recsLoading, isAuthenticated, activeProfile]);
+  }, [authChecking, catalogLoading, catalogMovies.length, catalogError, recsLoading, isAuthenticated, activeProfile]);
 
   useEffect(() => {
     if (isAuthenticated && !activeProfile) {
