@@ -106,12 +106,12 @@ export function SeriesManagement() {
   const handleDrop = async (idx: number) => {
     if (dragIndex === null || dragIndex === idx) return;
     setDragIndex(null);
-    const filtered = episodes.filter((ep) => ep.titleId === selectedSeries);
+    const filtered = episodes.filter((ep) => String(ep.titleId) === String(selectedSeries));
     const reordered = [...filtered];
     const [moved] = reordered.splice(dragIndex, 1);
     reordered.splice(idx, 0, moved);
     // Merge back into episodes array
-    const others = episodes.filter((ep) => ep.titleId !== selectedSeries);
+    const others = episodes.filter((ep) => String(ep.titleId) !== String(selectedSeries));
     const newOrdered = reordered.map((ep, i) => ({ ...ep, episodeNumber: i + 1 }));
     setEpisodes([...others, ...newOrdered]);
     await persistEpisodeOrder(newOrdered);
@@ -424,7 +424,7 @@ export function SeriesManagement() {
                 </div>
 
                 {episodes
-                  .filter((ep) => ep.titleId === selectedSeries)
+                  .filter((ep) => String(ep.titleId) === String(selectedSeries))
                   .sort((a, b) => (a.episodeNumber ?? 0) - (b.episodeNumber ?? 0))
                   .map((episode, idx) => (
                     <div
