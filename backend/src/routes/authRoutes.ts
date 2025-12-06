@@ -6,6 +6,8 @@ import {
   me,
   refresh,
   signup,
+  googleAuthUrl,
+  googleAuthCallback,
   verifyEmail,
   resendVerification,
   updateDeviceLabel,
@@ -50,6 +52,8 @@ router.post("/auth/device-label", requireAuth, updateDeviceLabel);
 router.post("/auth/forgot-password", forgotPassword);
 router.post("/auth/reset-password", resetPassword);
 router.get("/auth/me", requireAuth, me);
+router.get("/auth/google/url", googleAuthUrl);
+router.post("/auth/google/callback", googleAuthCallback);
 
 // Admin auth (same service but locked down)
 router.post("/admin/login", adminLogin);

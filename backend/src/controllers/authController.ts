@@ -17,6 +17,10 @@ import { sendEmail } from "../utils/mailer.js";
 import { resolveCountry } from "../utils/country.js";
 import { verifyEmailTemplate } from "../templates/verifyEmailTemplate.js";
 import { isPasswordStrong } from "../utils/passwordStrength.js";
+import {
+  googleAuthUrl as googleAuthUrlService,
+  googleAuthCallback as googleAuthCallbackService,
+} from "../services/googleAuth.js";
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -261,6 +265,30 @@ export const signup = async (req: Request, res: Response) => {
     profiles: await getProfilesForUser(user.id),
     message: "Account created. Check your email to verify your account.",
   });
+};
+
+// Google OAuth: return auth URL
+export const googleAuthUrl = async (req: Request, res: Response) => {
+  const redirectUri = (req.query.redirectUri as string) || process.env.GOOGLE_REDIRECT_URI;
+  try {
+    const url = await googleAuthUrlService(redirectUri);
+    return res.json({ url });
+  } catch (err: any) {
+    return res.status(500).json({ message: err?.message ?? "Failed to build Google URL" });
+  }
+};
+
+// Google OAuth: handle callback, issue app tokens
+export const googleAuthCallback = async (req: Request, res: Response) => {
+  const { code, state, redirectUri } = req.body as { code?: string; state?: string; redirectUri?: string };
+  if (!code) return res.status(400).json({ message: "Missing code" });
+  try {
+    const issued = await googleAuthCallbackService({ code, state, redirectUri });
+    return res.json(issued);
+  } catch (err: any) {
+    const msg = err?.message ?? "Google auth failed";
+    return res.status(400).json({ message: msg });
+  }
 };
 
 export const login = async (req: Request, res: Response) => {
