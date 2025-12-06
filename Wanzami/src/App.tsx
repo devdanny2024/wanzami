@@ -66,6 +66,52 @@ export default function App() {
   const [cookieChoice, setCookieChoice] = useState<"accepted" | "rejected" | null>(null);
   const globalLoading = catalogLoading || recsLoading;
 
+  const CookieBanner = () =>
+    !cookieChoice ? (
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[9998] w-[95%] max-w-3xl">
+        <div className="bg-neutral-900/95 border border-neutral-700 rounded-xl shadow-lg px-4 py-3 md:px-6 md:py-4 text-white">
+          <div className="flex items-start gap-3">
+            <div className="flex-1 space-y-2">
+              <div className="font-semibold text-sm md:text-base">Cookies & Preferences</div>
+              <p className="text-xs md:text-sm text-neutral-300">
+                We use cookies to improve your experience. Accept to allow all, or reject to opt out of non-essential cookies.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  className="px-4 py-2 bg-[#fd7e14] hover:bg-[#e86f0f] text-white text-sm rounded-lg"
+                  onClick={() => {
+                    setCookieChoice("accepted");
+                    localStorage.setItem("cookieConsent", "accepted");
+                  }}
+                >
+                  Accept
+                </button>
+                <button
+                  className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm rounded-lg"
+                  onClick={() => {
+                    setCookieChoice("rejected");
+                    localStorage.setItem("cookieConsent", "rejected");
+                  }}
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+            <button
+              aria-label="Close cookie banner"
+              className="p-2 text-neutral-300 hover:text-white"
+              onClick={() => {
+                setCookieChoice("rejected");
+                localStorage.setItem("cookieConsent", "rejected");
+              }}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    ) : null;
+
   const handleSplashComplete = () => {
     setShowSplash(false);
     setShowRegistration(true); // Show registration after splash
@@ -328,7 +374,15 @@ export default function App() {
       const match = catalogMovies.find((m) => m.backendId === item.id || String(m.id) === String(item.id));
       const fallbackId = Number(item.id);
       const numericId = Number.isNaN(fallbackId) ? Date.now() + idx : fallbackId;
-      const resolvedTitle = match?.title ?? item.titleName ?? item.name ?? `Title ${item.id}`;
+      const seasonLabel =
+        item.seasonNumber || item.episodeNumber
+          ? `S${item.seasonNumber ?? "?"}E${item.episodeNumber ?? "?"}`
+          : undefined;
+      const resolvedBaseTitle = match?.title ?? item.titleName ?? item.name ?? `Title ${item.id}`;
+      const resolvedTitle =
+        item.type === "SERIES" && seasonLabel
+          ? `${resolvedBaseTitle} • ${seasonLabel}${item.episodeName ? `: ${item.episodeName}` : ""}`
+          : resolvedBaseTitle;
       const resolvedImage =
         match?.image ??
         item.thumbnailUrl ??
@@ -348,6 +402,8 @@ export default function App() {
         completionPercent: item.completionPercent,
         updatedAt: item.updatedAt,
         startTimeSeconds: computedStart,
+        currentEpisodeId: item.episodeId,
+        currentEpisodeLabel: seasonLabel,
       } as MovieData;
     });
   };
@@ -771,56 +827,4 @@ export default function App() {
                 className="p-2 text-neutral-300 hover:text-white"
                 onClick={() => {
                   setCookieChoice("rejected");
-                  localStorage.setItem("cookieConsent", "rejected");
-                }}
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {playerMovie && (
-        <CustomMediaPlayer
-          title={playerMovie.title}
-          poster={playerMovie.image ?? playerMovie.thumbnailUrl ?? playerMovie.posterUrl}
-          titleId={playerMovie.backendId ?? playerMovie.id?.toString?.()}
-          startTimeSeconds={playerMovie.startTimeSeconds}
-          profileId={activeProfileId}
-          sources={[
-            {
-              src:
-                playerMovie.trailerUrl ||
-                "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-              label: playerMovie.trailerUrl ? "Default" : "Demo",
-              type: "video/mp4",
-            },
-          ]}
-          onEvent={(eventType, metadata) => {
-            const allowed: Array<"PLAY_START" | "PLAY_END" | "SCRUB" | "IMPRESSION"> = [
-              "PLAY_START",
-              "PLAY_END",
-              "SCRUB",
-              "IMPRESSION",
-            ];
-            if (!allowed.includes(eventType as any)) return;
-            const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-            if (!accessToken) return;
-            const deviceId = typeof window !== 'undefined' ? localStorage.getItem('deviceId') ?? undefined : undefined;
-            const payload = {
-              eventType: eventType as (typeof allowed)[number],
-              profileId: activeProfileId,
-              titleId: playerMovie.backendId ?? playerMovie.id?.toString?.(),
-              occurredAt: new Date().toISOString(),
-              deviceId,
-              metadata,
-            };
-            void postEvents([payload], accessToken);
-          }}
-          onClose={() => setPlayerMovie(null)}
-        />
-      )}
-    </div>
-  );
-}
+                  lo

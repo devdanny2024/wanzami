@@ -29,24 +29,3 @@ On Hover of the <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" v
 
 
 Which do we Prefer for Sign out Sign out Button or The off button
-
-
-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxOCIsImVtYWlsIjoiZGV2ZGFubnkyMDI0QGdtYWlsLmNvbSIsInJvbGUiOiJVU0VSIiwicGVybWlzc2lvbnMiOlsiZGFzaGJvYXJkOnZpZXciXSwiZGV2aWNlSWQiOiJmYWM2OWJlZS03N2MxLTRjYzItOTc1My00OTFlN2U5ZjkxODkiLCJpYXQiOjE3NjQ5OTE5ODgsImV4cCI6MTc2NDk5Mjg4OH0.Hr2B4Xb-YV2DJQkwvZAXK68sBQqOEQwr1VKt7Wn3JMc
-
-
-node - <<'NODE'
-const nodemailer = require('nodemailer');
-const t = nodemailer.createTransport({
-  host: 'smtp.zoho.com',
-  port: 465,
-  secure: true,
-  auth: { user: 'mail@wanzami.tv', pass: 'bcg6USzAVEq2' },
-});
-t.sendMail({
-  from: 'Wanzami <mail@wanzami.tv>',
-  to: 'devdanny2024@gmail.com',
-  subject: 'Test welcome',
-  html: '<p>Hello from Wanzami SMTP test.</p>'
-}).then(info => { console.log('sent', info.messageId); process.exit(0); })
-  .catch(err => { console.error(err); process.exit(1); });
-NODE

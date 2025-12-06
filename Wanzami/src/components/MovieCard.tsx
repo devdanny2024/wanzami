@@ -20,6 +20,8 @@ export interface MovieData {
   thumbnailUrl?: string;
   completionPercent?: number;
   runtimeMinutes?: number | null;
+  currentEpisodeId?: string;
+  currentEpisodeLabel?: string;
 }
 
 interface MovieCardProps {
