@@ -1,4 +1,5 @@
 import { Play, Plus, Share2, ThumbsUp, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { MovieData } from './MovieCard';
@@ -57,6 +58,35 @@ const relatedMovies: MovieData[] = [
 export function MovieDetailPage({ movie, onClose, onPlayClick }: MovieDetailPageProps) {
   const isSeries = movie?.type === "SERIES";
   const seriesEpisodes = Array.isArray(movie?.episodes) ? movie.episodes : [];
+  const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
+
+  const seasons = useMemo(() => {
+    const distinct = Array.from(
+      new Set(seriesEpisodes.map((ep: any) => ep.seasonNumber ?? 1))
+    ).sort((a, b) => a - b);
+    return distinct;
+  }, [seriesEpisodes]);
+
+  useEffect(() => {
+    if (seasons.length && selectedSeason === null) {
+      setSelectedSeason(seasons[0]);
+    }
+    if (seasons.length && selectedSeason && !seasons.includes(selectedSeason)) {
+      setSelectedSeason(seasons[0]);
+    }
+  }, [seasons, selectedSeason]);
+
+  const visibleEpisodes = useMemo(() => {
+    if (!isSeries) return [];
+    if (selectedSeason === null && seasons.length) {
+      return seriesEpisodes
+        .filter((ep: any) => (seasons[0] ? ep.seasonNumber === seasons[0] : true))
+        .sort((a: any, b: any) => (a.episodeNumber ?? 0) - (b.episodeNumber ?? 0));
+    }
+    return seriesEpisodes
+      .filter((ep: any) => (selectedSeason ? ep.seasonNumber === selectedSeason : true))
+      .sort((a: any, b: any) => (a.episodeNumber ?? 0) - (b.episodeNumber ?? 0));
+  }, [isSeries, seriesEpisodes, selectedSeason, seasons]);
 
   return (
     <motion.div
@@ -168,33 +198,70 @@ export function MovieDetailPage({ movie, onClose, onPlayClick }: MovieDetailPage
         <div className="max-w-7xl mx-auto">
           {/* Episodes section (only for series) */}
           {isSeries && seriesEpisodes.length > 0 && (
-            <div className="mb-12">
-              <h2 className="text-white mb-6 text-xl md:text-2xl">Episodes</h2>
+            <div className="mb-12 space-y-4">
+              <div className="flex items-center gap-4">
+                <h2 className="text-white text-xl md:text-2xl">Episodes</h2>
+                {seasons.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-400">Season</span>
+                    <select
+                      className="bg-gray-900 border border-gray-700 text-white text-sm rounded-md px-3 py-2"
+                      value={selectedSeason ?? seasons[0]}
+                      onChange={(e) => setSelectedSeason(Number(e.target.value))}
+                    >
+                      {seasons.map((s) => (
+                        <option key={s} value={s}>
+                          Season {s}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
               <div className="space-y-3">
-                {seriesEpisodes.map((episode: any, idx: number) => (
+                {visibleEpisodes.map((episode: any, idx: number) => (
                   <motion.div
                     key={episode.id ?? idx}
-                    className="bg-gray-900/50 hover:bg-gray-900/80 rounded-xl p-4 md:p-6 border border-gray-800 hover:border-[#fd7e14]/30 transition-all cursor-pointer group"
-                    whileHover={{ scale: 1.01 }}
+                    className="group rounded-xl border border-gray-800 bg-gray-900/50 hover:border-[#fd7e14]/40 transition-all overflow-hidden"
+                    whileHover={{ scale: 1.005 }}
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="text-3xl text-gray-700 group-hover:text-[#fd7e14] transition-colors">
-                        {episode.episodeNumber ?? idx + 1}
+                    <div className="flex flex-col md:flex-row gap-4 md:gap-6 p-4 md:p-5">
+                      <div className="relative w-full md:w-48 h-28 md:h-32 overflow-hidden rounded-lg">
+                        <ImageWithFallback
+                          src={episode.thumbnailUrl || episode.posterUrl || movie.image}
+                          alt={episode.name || episode.title || "Episode"}
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                        <button
+                          onClick={() => onPlayClick({ ...movie, currentEpisode: episode })}
+                          className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <div className="w-12 h-12 rounded-full bg-[#fd7e14] shadow-lg shadow-[#fd7e14]/40 flex items-center justify-center">
+                            <Play className="w-6 h-6 fill-current text-white" />
+                          </div>
+                        </button>
                       </div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="text-white">{episode.name ?? episode.title ?? `Episode ${idx + 1}`}</h3>
-                          <span className="text-gray-400 text-sm">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="space-y-1">
+                            <div className="text-sm uppercase tracking-wide text-gray-400">
+                              S{episode.seasonNumber ?? selectedSeason ?? "-"} · E{episode.episodeNumber ?? idx + 1}
+                            </div>
+                            <h3 className="text-white text-lg font-semibold leading-tight">
+                              {episode.name ?? episode.title ?? `Episode ${idx + 1}`}
+                            </h3>
+                          </div>
+                          <div className="text-sm text-gray-400 whitespace-nowrap">
                             {episode.runtimeMinutes ? `${episode.runtimeMinutes}m` : episode.duration || ""}
-                          </span>
+                          </div>
                         </div>
-                        <p className="text-gray-400 text-sm">
-                          {episode.synopsis ?? episode.description ?? "Episode details coming soon."}
-                        </p>
+                        <div className="max-h-0 group-hover:max-h-40 transition-[max-height] duration-300 overflow-hidden">
+                          <p className="text-gray-300 text-sm mt-2 leading-relaxed">
+                            {episode.synopsis ?? episode.description ?? "Episode details coming soon."}
+                          </p>
+                        </div>
                       </div>
-                      <button className="w-10 h-10 rounded-full bg-white/10 hover:bg-[#fd7e14] flex items-center justify-center text-white transition-colors opacity-0 group-hover:opacity-100">
-                        <Play className="w-5 h-5 fill-current" />
-                      </button>
                     </div>
                   </motion.div>
                 ))}

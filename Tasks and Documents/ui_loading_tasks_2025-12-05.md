@@ -7,3 +7,14 @@
 
 ## Email
 - [ ] Add admin capability to edit welcome email template and select featured movies shown in the email (logged 2025-12-06)
+
+
+Wanzami Sound is still not playing on first Load of the page, Only when you go to Sign up(It plays) When you go back (It plays) 
+
+The Welcome mails are not landing after sign up
+
+Loader is also still not showing, Please Loader UI is very important for when Pages are still loading assets and components
+
+We need to put Skip Into and set intro skip in the admin and also Click next episode at the end also be able to put when the each episode ends if they want to skip cast to the next episode.
+
+Continue watching is showing the progress marker but when you click movie to continue it starts from the begging instead of the marker
