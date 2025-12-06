@@ -205,13 +205,13 @@ export function MovieDetailPage({ movie, onClose, onPlayClick }: MovieDetailPage
         <div className="max-w-7xl mx-auto">
           {/* Episodes section (only for series) */}
           {isSeries && seriesEpisodes.length > 0 && (
-            <div className="mb-12 space-y-4">
-              <div className="flex items-center gap-4">
+            <div className="mb-12 space-y-4 max-w-5xl">
+              <div className="flex items-center gap-4 px-1">
                 <h2 className="text-white text-xl md:text-2xl">Episodes</h2>
-                    {seasons.length > 0 && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-400">Season</span>
-                        <select
+                {seasons.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-400">Season</span>
+                    <select
                           className="bg-gray-900 border border-gray-700 text-white text-sm rounded-md px-3 py-2"
                           value={String(selectedSeason ?? seasons[0] ?? '')}
                           onChange={(e) => setSelectedSeason(Number(e.target.value))}
@@ -231,11 +231,11 @@ export function MovieDetailPage({ movie, onClose, onPlayClick }: MovieDetailPage
                 {visibleEpisodes.map((episode: any, idx: number) => (
                   <motion.div
                     key={episode.id ?? idx}
-                    className="group rounded-xl border border-gray-800 bg-gray-900/50 hover:border-[#fd7e14]/40 transition-all overflow-hidden"
+                    className="group rounded-xl border border-gray-800 bg-gray-900/70 hover:border-[#fd7e14]/60 transition-all overflow-hidden"
                     whileHover={{ scale: 1.005 }}
                   >
-                    <div className="flex flex-col md:flex-row gap-4 md:gap-6 p-4 md:p-5">
-                      <div className="relative w-full md:w-48 h-28 md:h-32 overflow-hidden rounded-lg">
+                    <div className="flex gap-3 p-4 md:p-5 max-w-5xl mx-auto items-start">
+                      <div className="relative w-20 h-20 md:w-24 md:h-24 overflow-hidden rounded-md shrink-0">
                         <ImageWithFallback
                           src={episode.thumbnailUrl || episode.posterUrl || movie.image}
                           alt={episode.name || episode.title || "Episode"}
@@ -252,23 +252,31 @@ export function MovieDetailPage({ movie, onClose, onPlayClick }: MovieDetailPage
                         </button>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="space-y-1">
-                            <div className="text-sm uppercase tracking-wide text-gray-400">
-                              S{episode.seasonNumber ?? selectedSeason ?? "-"} · E{episode.episodeNumber ?? idx + 1}
-                            </div>
-                            <h3 className="text-white text-lg font-semibold leading-tight">
-                              {episode.name ?? episode.title ?? `Episode ${idx + 1}`}
-                            </h3>
-                          </div>
-                          <div className="text-sm text-gray-400 whitespace-nowrap">
+                        <div className="flex items-center justify-between gap-4">
+                          <h3 className="text-white text-base md:text-lg font-semibold leading-tight">
+                            Episode {episode.episodeNumber ?? idx + 1}
+                          </h3>
+                          <div className="text-xs md:text-sm text-gray-400 whitespace-nowrap">
                             {episode.runtimeMinutes ? `${episode.runtimeMinutes}m` : episode.duration || ""}
                           </div>
                         </div>
                         <div className="max-h-0 group-hover:max-h-40 transition-[max-height] duration-300 overflow-hidden">
-                          <p className="text-gray-300 text-sm mt-2 leading-relaxed">
+                          <p className="text-gray-300 text-sm mt-3 leading-relaxed">
                             {episode.synopsis ?? episode.description ?? "Episode details coming soon."}
                           </p>
+                          <div className="flex flex-wrap items-center gap-3 text-xs md:text-sm text-gray-400 mt-3">
+                            <span className="px-2 py-1 rounded-md bg-white/5 border border-white/10">
+                              Season {episode.seasonNumber ?? selectedSeason ?? "-"}
+                            </span>
+                            <span className="px-2 py-1 rounded-md bg-white/5 border border-white/10">
+                              Maturity: {movie.maturityRating ?? "N/A"}
+                            </span>
+                            {episode.runtimeMinutes && (
+                              <span className="px-2 py-1 rounded-md bg-white/5 border border-white/10">
+                                {episode.runtimeMinutes} min
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
