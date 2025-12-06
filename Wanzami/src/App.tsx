@@ -63,7 +63,12 @@ export default function App() {
   const [authChecking, setAuthChecking] = useState(true);
   const [initialOverlay, setInitialOverlay] = useState(true);
   const [profileChooserLoading, setProfileChooserLoading] = useState(false);
-  const [cookieChoice, setCookieChoice] = useState<"accepted" | "rejected" | null>(null);
+  const [cookieChoice, setCookieChoice] = useState<"accepted" | "rejected" | null>(() => {
+    if (typeof window === "undefined") return null;
+    const stored = localStorage.getItem("cookieConsent");
+    if (stored === "accepted" || stored === "rejected") return stored as any;
+    return null;
+  });
   const globalLoading = catalogLoading || recsLoading;
 
   const CookieBanner = () =>
@@ -129,9 +134,11 @@ export default function App() {
       setShowRegistration(true);
       setPendingVerification(null);
     }
-    const storedConsent = localStorage.getItem("cookieConsent");
+    const storedConsent = typeof window !== "undefined" ? localStorage.getItem("cookieConsent") : null;
     if (storedConsent === "accepted" || storedConsent === "rejected") {
       setCookieChoice(storedConsent as any);
+    } else {
+      setCookieChoice(null);
     }
   }, []);
 
