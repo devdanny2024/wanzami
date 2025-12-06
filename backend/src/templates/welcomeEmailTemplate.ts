@@ -12,7 +12,7 @@ export const welcomeEmailTemplate = (params: { name: string }) => `
         <table width="520" cellspacing="0" cellpadding="0" style="background:#111;border:1px solid #222;border-radius:12px;padding:32px;">
           <tr>
             <td align="center" style="padding-bottom:20px;">
-              <img src="https://assets.wanzami.com/logo.png" alt="Wanzami" width="120" style="display:block;" />
+              <img src="https://wanzami-bucket.s3.eu-north-1.amazonaws.com/wanzami_assets/wanzami_logo.png" alt="Wanzami" width="120" style="display:block;" />
             </td>
           </tr>
           <tr>
