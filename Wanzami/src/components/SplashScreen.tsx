@@ -11,6 +11,7 @@ interface SplashScreenProps {
 export function SplashScreen({ onStartRegistration, onLogin }: SplashScreenProps) {
   const [showButtons, setShowButtons] = useState(false);
   const audioPlayedRef = useRef(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -23,20 +24,48 @@ export function SplashScreen({ onStartRegistration, onLogin }: SplashScreenProps
     if (audioPlayedRef.current) return;
     audioPlayedRef.current = true;
     const audio = new Audio('/wanzami-surround.wav');
-    audio.play().catch(() => {
-      // Autoplay might be blocked; ignore silently
-    });
+    const tryPlay = () => {
+      audio.play().catch(() => {
+        // Autoplay might be blocked; retry on first user interaction
+        const handler = () => {
+          audio.play().catch(() => {
+            // best effort
+          });
+          window.removeEventListener('pointerdown', handler);
+        };
+        window.addEventListener('pointerdown', handler, { once: true });
+      });
+    };
+    tryPlay();
+  }, []);
+
+  useEffect(() => {
+    const vid = videoRef.current;
+    if (!vid) return;
+    const playVideo = () => {
+      vid.play().catch(() => {
+        // retry on user interaction if autoplay blocked
+        const handler = () => {
+          vid.play().catch(() => {});
+          window.removeEventListener('pointerdown', handler);
+        };
+        window.addEventListener('pointerdown', handler, { once: true });
+      });
+    };
+    playVideo();
   }, []);
 
   return (
     <div className="fixed inset-0 z-50 bg-[#0b0b0c] overflow-hidden">
       {/* Background video */}
       <video
+        ref={videoRef}
         className="absolute inset-0 w-full h-full object-cover opacity-40"
         autoPlay
         muted
         loop
         playsInline
+        preload="auto"
         src="/backtrailer.mp4"
       />
 
