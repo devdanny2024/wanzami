@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { TopLoader } from "@/components/TopLoader";
 
 type Status = "pending" | "success" | "error";
 
-export default function GoogleCallbackPage() {
+function CallbackContent() {
   const search = useSearchParams();
   const router = useRouter();
   const code = search.get("code");
@@ -71,5 +71,22 @@ export default function GoogleCallbackPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export const dynamic = "force-dynamic";
+
+export default function GoogleCallbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center px-6">
+          <TopLoader active />
+          <p className="mt-3 text-sm text-gray-300">Preparing Google sign-in...</p>
+        </div>
+      }
+    >
+      <CallbackContent />
+    </Suspense>
   );
 }
