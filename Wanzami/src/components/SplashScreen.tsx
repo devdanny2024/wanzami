@@ -57,6 +57,21 @@ export function SplashScreen({ onStartRegistration, onLogin }: SplashScreenProps
     ensureAudio();
   }, []);
 
+  useEffect(() => {
+    const kickAudio = () => ensureAudio();
+    window.addEventListener('pointerdown', kickAudio, { once: true });
+    window.addEventListener('keydown', kickAudio, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', kickAudio);
+      window.removeEventListener('keydown', kickAudio);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+      audioStartedRef.current = false;
+    };
+  }, []);
+
   return (
     <div className="fixed inset-0 z-50 bg-[#0b0b0c] overflow-hidden">
       {/* Background video */}
