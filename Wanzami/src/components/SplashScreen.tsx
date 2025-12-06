@@ -96,7 +96,7 @@ export function SplashScreen({ onStartRegistration, onLogin }: SplashScreenProps
               onClick={onLogin}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="flex-1 px-8 py-4 bg-white text-[#0b0b0c] rounded-2xl border border-white/70 hover:bg-gray-100 transition-all duration-300"
+              className="flex-1 px-8 py-4 bg-white text-[#fff] rounded-2xl border border-white/70 hover:bg-gray-100 transition-all duration-300"
             >
               <span className="tracking-wide">Login</span>
             </motion.button>
