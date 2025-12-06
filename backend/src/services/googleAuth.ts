@@ -6,6 +6,8 @@ import { ROLE_PERMISSIONS } from "../auth/permissions.js";
 import { signAccessToken, signRefreshToken } from "../auth/jwt.js";
 import { durationToMs } from "../utils/time.js";
 import { hashPassword } from "../utils/password.js";
+import { sendEmail } from "../utils/mailer.js";
+import { welcomeEmailTemplate } from "../templates/welcomeEmailTemplate.js";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
@@ -138,6 +140,7 @@ export const googleAuthCallback = async (input: GoogleCallbackInput) => {
 
   const emailLower = profile.email.toLowerCase();
   let user = await prisma.user.findUnique({ where: { email: emailLower } });
+  let isNew = false;
 
   if (!user) {
     const randomPassword = crypto.randomBytes(16).toString("hex");
@@ -152,6 +155,7 @@ export const googleAuthCallback = async (input: GoogleCallbackInput) => {
       },
     });
     await ensureProfileExists(user.id, profile.name || "Primary");
+    isNew = true;
   } else if (!user.emailVerified) {
     await prisma.user.update({
       where: { id: user.id },
@@ -185,6 +189,18 @@ export const googleAuthCallback = async (input: GoogleCallbackInput) => {
       expiresAt: computeRefreshExpiry(),
     },
   });
+
+  if (isNew) {
+    try {
+      await sendEmail({
+        to: emailLower,
+        subject: "Welcome to Wanzami",
+        html: welcomeEmailTemplate({ name: user.name }),
+      });
+    } catch (err) {
+      console.error("Failed to send welcome email (Google)", err);
+    }
+  }
 
   return { accessToken, refreshToken, deviceId };
 };

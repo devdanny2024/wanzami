@@ -21,6 +21,7 @@ import {
   googleAuthUrl as googleAuthUrlService,
   googleAuthCallback as googleAuthCallbackService,
 } from "../services/googleAuth.js";
+import { welcomeEmailTemplate } from "../templates/welcomeEmailTemplate.js";
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -253,6 +254,18 @@ export const signup = async (req: Request, res: Response) => {
       birthYear,
     },
   });
+
+  // Welcome email
+  try {
+    await sendEmail({
+      to: emailLower,
+      subject: "Welcome to Wanzami",
+      html: welcomeEmailTemplate({ name }),
+    });
+  } catch (err) {
+    console.error("Failed to send welcome email", err);
+    // non-blocking
+  }
 
   return res.status(201).json({
     user: {
