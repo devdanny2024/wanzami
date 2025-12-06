@@ -9,7 +9,7 @@
 - [ ] Add admin capability to edit welcome email template and select featured movies shown in the email (logged 2025-12-06)
 
 
-Wanzami Sound is still not playing on first Load of the page, Only when you go to Sign up(It plays) When you go back (It plays) 
+Wanzami Sound is still not playing on first Load of the page, Only when you go to Sign up(It plays) When you go back (It plays). Only on the Splash screen should wanzami play. 
 
 The Welcome mails are not landing after sign up
 

@@ -62,8 +62,12 @@ export function MovieDetailPage({ movie, onClose, onPlayClick }: MovieDetailPage
 
   const seasons = useMemo(() => {
     const distinct = Array.from(
-      new Set(seriesEpisodes.map((ep: any) => ep.seasonNumber ?? 1))
-    ).sort((a, b) => a - b);
+      new Set(
+        seriesEpisodes.map((ep: any) =>
+          Number(ep?.seasonNumber ?? 1)
+        )
+      )
+    ).sort((a, b) => Number(a) - Number(b));
     return distinct;
   }, [seriesEpisodes]);
 
@@ -78,14 +82,18 @@ export function MovieDetailPage({ movie, onClose, onPlayClick }: MovieDetailPage
 
   const visibleEpisodes = useMemo(() => {
     if (!isSeries) return [];
-    if (selectedSeason === null && seasons.length) {
-      return seriesEpisodes
-        .filter((ep: any) => (seasons[0] ? ep.seasonNumber === seasons[0] : true))
-        .sort((a: any, b: any) => (a.episodeNumber ?? 0) - (b.episodeNumber ?? 0));
-    }
     return seriesEpisodes
-      .filter((ep: any) => (selectedSeason ? ep.seasonNumber === selectedSeason : true))
-      .sort((a: any, b: any) => (a.episodeNumber ?? 0) - (b.episodeNumber ?? 0));
+      .filter((ep: any) => {
+        const seasonVal = Number(ep?.seasonNumber ?? 1);
+        if (selectedSeason === null && seasons.length) {
+          return seasonVal === Number(seasons[0]);
+        }
+        return selectedSeason === null ? true : seasonVal === selectedSeason;
+      })
+      .sort(
+        (a: any, b: any) =>
+          Number(a?.episodeNumber ?? 0) - Number(b?.episodeNumber ?? 0)
+      );
   }, [isSeries, seriesEpisodes, selectedSeason, seasons]);
 
   return (
