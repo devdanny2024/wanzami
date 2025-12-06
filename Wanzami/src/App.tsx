@@ -28,6 +28,7 @@ import {
 import { MovieData } from './components/MovieCard';
 import { CustomMediaPlayer } from './components/CustomMediaPlayer';
 import { TopLoader } from './components/TopLoader';
+import { X } from 'lucide-react';
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -62,6 +63,7 @@ export default function App() {
   const [authChecking, setAuthChecking] = useState(true);
   const [initialOverlay, setInitialOverlay] = useState(true);
   const [profileChooserLoading, setProfileChooserLoading] = useState(false);
+  const [cookieChoice, setCookieChoice] = useState<"accepted" | "rejected" | null>(null);
   const globalLoading = catalogLoading || recsLoading;
 
   const handleSplashComplete = () => {
@@ -80,6 +82,10 @@ export default function App() {
       setShowSplash(false);
       setShowRegistration(true);
       setPendingVerification(null);
+    }
+    const storedConsent = localStorage.getItem("cookieConsent");
+    if (storedConsent === "accepted" || storedConsent === "rejected") {
+      setCookieChoice(storedConsent as any);
     }
   }, []);
 
@@ -728,6 +734,52 @@ export default function App() {
           <Footer />
         </div>
       ) : null}
+
+      {/* Cookie consent */}
+      {!cookieChoice && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[9998] w-[95%] max-w-3xl">
+          <div className="bg-neutral-900/95 border border-neutral-700 rounded-xl shadow-lg px-4 py-3 md:px-6 md:py-4 text-white">
+            <div className="flex items-start gap-3">
+              <div className="flex-1 space-y-2">
+                <div className="font-semibold text-sm md:text-base">Cookies & Preferences</div>
+                <p className="text-xs md:text-sm text-neutral-300">
+                  We use cookies to improve your experience. Accept to allow all, or reject to opt out of non-essential cookies.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    className="px-4 py-2 bg-[#fd7e14] hover:bg-[#e86f0f] text-white text-sm rounded-lg"
+                    onClick={() => {
+                      setCookieChoice("accepted");
+                      localStorage.setItem("cookieConsent", "accepted");
+                    }}
+                  >
+                    Accept
+                  </button>
+                  <button
+                    className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm rounded-lg"
+                    onClick={() => {
+                      setCookieChoice("rejected");
+                      localStorage.setItem("cookieConsent", "rejected");
+                    }}
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
+              <button
+                aria-label="Close cookie banner"
+                className="p-2 text-neutral-300 hover:text-white"
+                onClick={() => {
+                  setCookieChoice("rejected");
+                  localStorage.setItem("cookieConsent", "rejected");
+                }}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {playerMovie && (
         <CustomMediaPlayer

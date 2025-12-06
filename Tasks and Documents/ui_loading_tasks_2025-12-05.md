@@ -21,6 +21,7 @@ Continue watching is showing the progress marker but when you click movie to con
 
 Search UI is not correct. Move the Search bar down. 
 
+Continue watching for series has to pick the episode the person stopped at and also get the point they stopped. That is what will show in the Continue watching row
 
 Add Cookies Policy accept and reject to the page.
 
