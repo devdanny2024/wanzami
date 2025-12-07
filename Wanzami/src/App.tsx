@@ -70,7 +70,13 @@ export default function App() {
     if (stored === "accepted" || stored === "rejected") return stored as any;
     return null;
   });
-  const globalLoading = catalogLoading || recsLoading || authChecking || !pageAssetsLoaded;
+  const globalLoading =
+    catalogLoading ||
+    recsLoading ||
+    authChecking ||
+    profileChooserLoading ||
+    initialOverlay ||
+    !pageAssetsLoaded;
   const fetchWithTimeout = async (input: RequestInfo | URL, init?: RequestInit, timeoutMs = 8000) => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -127,6 +133,21 @@ export default function App() {
         </div>
       </div>
     ) : null;
+
+  const showOverlay =
+    authChecking ||
+    catalogLoading ||
+    (isAuthenticated && activeProfile && recsLoading) ||
+    profileChooserLoading ||
+    initialOverlay ||
+    !pageAssetsLoaded;
+
+  const LoaderOverlay = showOverlay ? (
+    <div className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center">
+      <TopLoader active />
+      <p className="mt-3 text-sm text-gray-300">Loading...</p>
+    </div>
+  ) : null;
 
   const handleSplashComplete = () => {
     setShowSplash(false);
@@ -577,7 +598,8 @@ export default function App() {
         setCatalogMovies(mapped);
       } catch (err: any) {
         if (!isMounted) return;
-        setCatalogError(err?.message ?? "Failed to load catalog");
+        const friendly = err?.name === "AbortError" ? "Catalog load timed out" : err?.message ?? "Failed to load catalog";
+        setCatalogError(friendly);
       } finally {
         if (isMounted) {
           setCatalogLoading(false);
@@ -639,7 +661,7 @@ export default function App() {
           setForYouItems(forYouRes.items ?? []);
         }
       } catch (err: any) {
-        const message = err?.message ?? "Failed to load recommendations";
+        const message = err?.name === "AbortError" ? "Recommendations timed out" : err?.message ?? "Failed to load recommendations";
         if (message.toLowerCase().includes("invalid") || message.toLowerCase().includes("expired")) {
           handleLogout({ showLogin: true });
         }
@@ -679,6 +701,7 @@ export default function App() {
       <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center">
         <TopLoader active />
         <p className="mt-3 text-sm text-gray-300">Checking your session...</p>
+        {LoaderOverlay}
       </div>
     );
   }
@@ -690,6 +713,7 @@ export default function App() {
           onStartRegistration={handleSplashComplete}
           onLogin={handleSplashLogin}
         />
+        {LoaderOverlay}
         <CookieBanner />
       </>
     );
@@ -704,6 +728,7 @@ export default function App() {
           onBack={handleRegistrationBack}
           onLogin={handleShowLoginFromRegistration}
         />
+        {LoaderOverlay}
         <CookieBanner />
       </>
     );
@@ -735,6 +760,7 @@ export default function App() {
     return (
       <>
         <AuthPage onAuth={handleAuth} onShowSignup={handleShowSignup} />
+        {LoaderOverlay}
         <CookieBanner />
       </>
     );
@@ -762,22 +788,10 @@ export default function App() {
   const isPPVMovie = selectedMovie && selectedMovie.price !== undefined;
   const activeProfileId = activeProfile?.id;
 
-  const showOverlay =
-    authChecking ||
-    catalogLoading ||
-    (isAuthenticated && activeProfile && recsLoading) ||
-    profileChooserLoading ||
-    initialOverlay;
-
   return (
     <div className="min-h-screen bg-black">
       <TopLoader active={globalLoading} />
-      {showOverlay && (
-        <div className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center">
-          <TopLoader active />
-          <p className="mt-3 text-sm text-gray-300">Loading...</p>
-        </div>
-      )}
+      {LoaderOverlay}
       {showDevicePrompt && (
         <DeviceProfilePrompt
           onClose={() => setShowDevicePrompt(false)}

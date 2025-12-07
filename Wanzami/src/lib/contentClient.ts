@@ -23,6 +23,8 @@ export type Title = {
   updatedAt?: string;
 };
 
+const DEFAULT_TIMEOUT = 8000;
+
 async function handleJsonResponse(res: Response) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -32,9 +34,20 @@ async function handleJsonResponse(res: Response) {
   return data as any;
 }
 
+async function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit, timeoutMs = DEFAULT_TIMEOUT) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(input, { ...init, signal: controller.signal });
+    return res;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function fetchTitles(country?: string): Promise<Title[]> {
   const query = country ? `?country=${encodeURIComponent(country)}` : "";
-  const res = await fetch(`${API_BASE}/titles${query}`, {
+  const res = await fetchWithTimeout(`${API_BASE}/titles${query}`, {
     cache: "no-store",
   });
   const data = await handleJsonResponse(res);
@@ -42,7 +55,7 @@ export async function fetchTitles(country?: string): Promise<Title[]> {
 }
 
 export async function fetchTitleWithEpisodes(id: string) {
-  const res = await fetch(`${API_BASE}/titles/${id}`, {
+  const res = await fetchWithTimeout(`${API_BASE}/titles/${id}`, {
     cache: "no-store",
   });
   const data = await handleJsonResponse(res);
@@ -67,7 +80,7 @@ export async function fetchPopularity(params: {
   if (params.country) query.set("country", params.country);
   if (params.type) query.set("type", params.type);
   if (params.window) query.set("window", params.window);
-  const res = await fetch(`${API_BASE}/popularity?${query.toString()}`, {
+  const res = await fetchWithTimeout(`${API_BASE}/popularity?${query.toString()}`, {
     cache: "no-store",
   });
   const data = await handleJsonResponse(res);
@@ -83,7 +96,7 @@ export async function fetchPopularity(params: {
 export async function fetchContinueWatching(accessToken: string, profileId?: string) {
   const query = new URLSearchParams();
   if (profileId) query.set("profileId", profileId);
-  const res = await fetch(`${API_BASE}/recs/continue-watching?${query.toString()}`, {
+  const res = await fetchWithTimeout(`${API_BASE}/recs/continue-watching?${query.toString()}`, {
     cache: "no-store",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -96,7 +109,7 @@ export async function fetchContinueWatching(accessToken: string, profileId?: str
 export async function fetchBecauseYouWatched(accessToken: string, profileId?: string) {
   const query = new URLSearchParams();
   if (profileId) query.set("profileId", profileId);
-  const res = await fetch(`${API_BASE}/recs/because-you-watched?${query.toString()}`, {
+  const res = await fetchWithTimeout(`${API_BASE}/recs/because-you-watched?${query.toString()}`, {
     cache: "no-store",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -109,7 +122,7 @@ export async function fetchBecauseYouWatched(accessToken: string, profileId?: st
 export async function fetchForYou(accessToken: string, profileId?: string) {
   const query = new URLSearchParams();
   if (profileId) query.set("profileId", profileId);
-  const res = await fetch(`${API_BASE}/recs/for-you?${query.toString()}`, {
+  const res = await fetchWithTimeout(`${API_BASE}/recs/for-you?${query.toString()}`, {
     cache: "no-store",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -142,7 +155,7 @@ export type EngagementEventInput = {
 
 export async function postEvents(events: EngagementEventInput[], accessToken: string) {
   if (!events.length) return;
-  const res = await fetch(`${API_BASE}/events`, {
+  const res = await fetchWithTimeout(`${API_BASE}/events`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
