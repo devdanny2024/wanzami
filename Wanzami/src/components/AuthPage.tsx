@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import { Logo } from './Logo';
 import { Loader } from './ui/loader';
+import { TopLoader } from './TopLoader';
 
 interface AuthPageProps {
   onAuth: () => void;
@@ -79,6 +80,7 @@ export function AuthPage({ onAuth, onShowSignup }: AuthPageProps) {
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center px-4 py-12">
+      <TopLoader active={loading || googleLoading} />
       {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#fd7e14]/10 rounded-full blur-3xl" />

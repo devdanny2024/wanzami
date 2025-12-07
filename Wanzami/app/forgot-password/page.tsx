@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from "react";
+import { TopLoader } from "@/components/TopLoader";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -23,6 +24,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center px-4">
+      <TopLoader active={loading} />
       <div className="w-full max-w-md bg-white/5 border border-white/10 rounded-2xl p-8">
         <h1 className="text-2xl font-semibold mb-3">Forgot Password</h1>
         <p className="text-gray-400 mb-6">Enter your email to receive a reset link.</p>

@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { TopLoader } from "@/components/TopLoader";
 
 function VerifyEmailContent() {
   const search = useSearchParams();
@@ -57,6 +58,7 @@ function VerifyEmailContent() {
 
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center px-6">
+      <TopLoader active={status === "pending" || resendLoading} />
       <div className="max-w-md w-full bg-white/5 border border-white/10 rounded-2xl p-8 text-center">
         <h1 className="text-2xl font-semibold mb-4">Email Verification</h1>
         <p className="text-gray-300 mb-6">{message}</p>

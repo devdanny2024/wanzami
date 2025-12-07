@@ -2,6 +2,7 @@
 
 import { Suspense, useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { TopLoader } from "@/components/TopLoader";
 
 const isStrong = (pwd: string) =>
   pwd.length >= 8 &&
@@ -48,6 +49,7 @@ function ResetPasswordForm() {
 
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center px-4">
+      <TopLoader active={loading} />
       <div className="w-full max-w-md bg-white/5 border border-white/10 rounded-2xl p-8">
         <h1 className="text-2xl font-semibold mb-3">Reset Password</h1>
         <p className="text-gray-400 mb-6">Enter a new password for {email}.</p>

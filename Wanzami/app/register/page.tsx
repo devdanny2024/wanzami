@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useState } from "react";
+import { TopLoader } from "@/components/TopLoader";
 
 const GENRES = [
   "Action",
@@ -25,35 +26,44 @@ export default function RegisterPage() {
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
     setSuccess("");
-    const res = await fetch("/api/auth/signup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email,
-        password,
-        name,
-        preferredGenres: selectedGenres,
-        birthYear: birthYear ? Number(birthYear) : undefined,
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setError(data.message ?? "Registration failed");
-      return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          password,
+          name,
+          preferredGenres: selectedGenres,
+          birthYear: birthYear ? Number(birthYear) : undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.message ?? "Registration failed");
+        return;
+      }
+      localStorage.setItem("accessToken", data.accessToken);
+      localStorage.setItem("refreshToken", data.refreshToken);
+      localStorage.setItem("deviceId", data.deviceId);
+      setSuccess("Account created. You are logged in.");
+    } catch (err) {
+      setError("Unable to register right now. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    localStorage.setItem("accessToken", data.accessToken);
-    localStorage.setItem("refreshToken", data.refreshToken);
-    localStorage.setItem("deviceId", data.deviceId);
-    setSuccess("Account created. You are logged in.");
   };
 
   return (
     <div style={{ maxWidth: 420, margin: "80px auto", padding: 24 }}>
+      <TopLoader active={loading} />
       <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 16 }}>
         Create your Wanzami account
       </h1>
@@ -130,6 +140,7 @@ export default function RegisterPage() {
         </div>
         <button
           type="submit"
+          disabled={loading}
           style={{
             padding: "12px 16px",
             borderRadius: 8,
@@ -137,9 +148,11 @@ export default function RegisterPage() {
             background: "#111",
             color: "white",
             fontWeight: 600,
+            opacity: loading ? 0.7 : 1,
+            cursor: loading ? "not-allowed" : "pointer",
           }}
         >
-          Register
+          {loading ? "Creating account..." : "Register"}
         </button>
       </form>
       {error && <p style={{ color: "red", marginTop: 12 }}>{error}</p>}
