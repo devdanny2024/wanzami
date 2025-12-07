@@ -71,6 +71,16 @@ export default function App() {
     return null;
   });
   const globalLoading = catalogLoading || recsLoading || authChecking || !pageAssetsLoaded;
+  const fetchWithTimeout = async (input: RequestInfo | URL, init?: RequestInit, timeoutMs = 8000) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(input, { ...init, signal: controller.signal });
+      return res;
+    } finally {
+      clearTimeout(timer);
+    }
+  };
 
   const CookieBanner = () =>
     !cookieChoice ? (
@@ -163,7 +173,7 @@ export default function App() {
     };
 
     const validateToken = async (token: string) => {
-      const res = await fetch("/api/auth/me", {
+      const res = await fetchWithTimeout("/api/auth/me", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json().catch(() => ({}));
@@ -205,7 +215,7 @@ export default function App() {
           if (!refresh) {
             throw new Error("Session expired");
           }
-          const refreshRes = await fetch("/api/auth/refresh", {
+          const refreshRes = await fetchWithTimeout("/api/auth/refresh", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ refreshToken: refresh }),
