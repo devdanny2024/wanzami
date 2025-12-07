@@ -61,6 +61,7 @@ export default function App() {
   const [recsError, setRecsError] = useState<string | null>(null);
   const [playerMovie, setPlayerMovie] = useState<any | null>(null);
   const [authChecking, setAuthChecking] = useState(true);
+  const [pageAssetsLoaded, setPageAssetsLoaded] = useState(false);
   const [initialOverlay, setInitialOverlay] = useState(true);
   const [profileChooserLoading, setProfileChooserLoading] = useState(false);
   const [cookieChoice, setCookieChoice] = useState<"accepted" | "rejected" | null>(() => {
@@ -69,7 +70,7 @@ export default function App() {
     if (stored === "accepted" || stored === "rejected") return stored as any;
     return null;
   });
-  const globalLoading = catalogLoading || recsLoading;
+  const globalLoading = catalogLoading || recsLoading || authChecking || !pageAssetsLoaded;
 
   const CookieBanner = () =>
     !cookieChoice ? (
@@ -143,28 +144,109 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    // Restore auth state and selected profile from localStorage so a reload doesn't sign the user out.
-    const access = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
-    const refresh = typeof window !== 'undefined' ? localStorage.getItem('refreshToken') : null;
-    if (access || refresh) {
+    let cancelled = false;
+
+    const clearLocalSession = () => {
+      setIsAuthenticated(false);
+      setShowRegistration(false);
+      setPendingVerification(null);
+      setShowDevicePrompt(false);
+      setActiveProfile(null);
       setShowSplash(false);
-      setIsAuthenticated(true);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('activeProfileId');
+        localStorage.removeItem('activeProfileName');
+        localStorage.removeItem('activeProfileAvatar');
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+      }
+    };
+
+    const validateToken = async (token: string) => {
+      const res = await fetch("/api/auth/me", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const message = (data as any)?.message ?? "Unauthorized";
+        throw new Error(message);
+      }
+      return token;
+    };
+
+    const restoreSession = async () => {
+      const access = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+      const refresh = typeof window !== 'undefined' ? localStorage.getItem('refreshToken') : null;
+
+      if (!access && !refresh) {
+        if (!cancelled) {
+          setShowSplash(true);
+          setShowRegistration(false);
+          setPendingVerification(null);
+          setAuthChecking(false);
+        }
+        return;
+      }
+
+      setShowSplash(false);
       setShowRegistration(false);
       setPendingVerification(null);
 
-      const profileId = localStorage.getItem('activeProfileId');
-      const profileName = localStorage.getItem('activeProfileName');
-      const profileAvatar = localStorage.getItem('activeProfileAvatar');
-      if (profileId && profileName) {
-        setActiveProfile({ id: profileId, name: profileName, avatarUrl: profileAvatar });
+      try {
+        let nextAccess = access;
+
+        if (!nextAccess) {
+          throw new Error("Missing access token");
+        }
+
+        try {
+          await validateToken(nextAccess);
+        } catch {
+          if (!refresh) {
+            throw new Error("Session expired");
+          }
+          const refreshRes = await fetch("/api/auth/refresh", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refreshToken: refresh }),
+          });
+          const refreshData = await refreshRes.json().catch(() => ({}));
+          if (!refreshRes.ok || !refreshData?.accessToken) {
+            const message = refreshData?.message ?? "Session expired";
+            throw new Error(message);
+          }
+          nextAccess = refreshData.accessToken as string;
+          localStorage.setItem("accessToken", refreshData.accessToken as string);
+          if (refreshData.refreshToken) {
+            localStorage.setItem("refreshToken", refreshData.refreshToken as string);
+          }
+          await validateToken(nextAccess);
+        }
+
+        if (cancelled) return;
+
+        setIsAuthenticated(true);
+        setPendingVerification(null);
+        setShowRegistration(false);
+
+        const profileId = localStorage.getItem('activeProfileId');
+        const profileName = localStorage.getItem('activeProfileName');
+        const profileAvatar = localStorage.getItem('activeProfileAvatar');
+        if (profileId && profileName) {
+          setActiveProfile({ id: profileId, name: profileName, avatarUrl: profileAvatar });
+        }
+      } catch {
+        if (cancelled) return;
+        clearLocalSession();
+      } finally {
+        if (!cancelled) setAuthChecking(false);
       }
-    } else {
-      // No tokens: keep splash, show registration when CTA clicked
-      setShowSplash(true);
-      setShowRegistration(false);
-      setPendingVerification(null);
-    }
-    setAuthChecking(false);
+    };
+
+    void restoreSession();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleRegistrationComplete = (data: { email: string; name: string }) => {
@@ -431,13 +513,13 @@ export default function App() {
   useEffect(() => {
     const catalogSettled = !catalogLoading || !!catalogError;
     const recsSettled = !isAuthenticated || !activeProfile || !recsLoading;
-    const ready = !authChecking && catalogSettled && recsSettled;
+    const ready = !authChecking && catalogSettled && recsSettled && pageAssetsLoaded;
 
     if (ready) {
       const t = setTimeout(() => setInitialOverlay(false), 200);
       return () => clearTimeout(t);
     }
-  }, [authChecking, catalogLoading, catalogError, recsLoading, isAuthenticated, activeProfile]);
+  }, [authChecking, catalogLoading, catalogError, recsLoading, isAuthenticated, activeProfile, pageAssetsLoaded]);
 
   useEffect(() => {
     if (isAuthenticated && !activeProfile) {
@@ -571,8 +653,27 @@ export default function App() {
     setContinueWatchingItems(merged);
   }, [serverContinueWatching, catalogMovies, activeProfile]);
 
+  useEffect(() => {
+    const markAssetsLoaded = () => setPageAssetsLoaded(true);
+    if (document.readyState === "complete") {
+      setPageAssetsLoaded(true);
+      return undefined;
+    }
+    window.addEventListener("load", markAssetsLoaded);
+    return () => window.removeEventListener("load", markAssetsLoaded);
+  }, []);
+
   // Show splash screen
-  if (showSplash || authChecking) {
+  if (authChecking) {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center">
+        <TopLoader active />
+        <p className="mt-3 text-sm text-gray-300">Checking your session...</p>
+      </div>
+    );
+  }
+
+  if (showSplash) {
     return (
       <>
         <SplashScreen
