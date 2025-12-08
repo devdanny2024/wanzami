@@ -82,7 +82,6 @@ export default function App() {
     recsLoading ||
     authChecking ||
     profileChooserLoading ||
-    initialOverlay ||
     !pageAssetsLoaded ||
     uiTransitionLoading ||
     bootLoader;
@@ -156,68 +155,6 @@ export default function App() {
       </button>
     ) : null;
 
-  const showOverlay =
-    !showSplash &&
-    !showRegistration &&
-    !pendingVerification &&
-    (authChecking ||
-      catalogLoading ||
-      (isAuthenticated && activeProfile && recsLoading) ||
-      profileChooserLoading ||
-      !pageAssetsLoaded);
-
-  const overlayText = catalogError
-    ? `Catalog error: ${catalogError}`
-    : recsError
-      ? `Recommendations error: ${recsError}`
-      : authChecking
-        ? "Checking your session..."
-        : catalogLoading
-          ? "Loading catalog..."
-          : recsLoading
-          ? "Loading recommendations..."
-          : profileChooserLoading
-            ? "Loading profiles..."
-            : !pageAssetsLoaded
-              ? "Preparing page..."
-              : "Loading...";
-
-  const overlayDebug = {
-    authChecking,
-    catalogLoading,
-    recsLoading,
-    profileChooserLoading,
-    initialOverlay,
-    pageAssetsLoaded,
-    uiTransitionLoading,
-    bootLoader,
-    catalogError,
-    recsError,
-  };
-
-  useEffect(() => {
-    if (showOverlay) {
-      // Surface loader state to devtools for easier copying when the overlay auto-hides
-      // eslint-disable-next-line no-console
-      console.info("[LoaderOverlay]", overlayDebug);
-    }
-  }, [showOverlay, authChecking, catalogLoading, recsLoading, profileChooserLoading, initialOverlay, pageAssetsLoaded, uiTransitionLoading, catalogError, recsError]);
-
-  const LoaderOverlay = showOverlay ? (
-    <div className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center">
-      <TopLoader active />
-      <p className="mt-3 text-sm text-gray-300 text-center px-6 max-w-xl">{overlayText}</p>
-      <div className="mt-4 text-[11px] text-gray-500 bg-white/5 border border-white/10 rounded-lg px-3 py-2 max-w-lg w-full">
-        {Object.entries(overlayDebug).map(([k, v]) => (
-          <div key={k} className="flex justify-between gap-2">
-            <span>{k}</span>
-            <span className="font-mono break-all text-right">{String(v)}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  ) : null;
-
   const startUiTransition = (duration = 600) => {
     setUiTransitionLoading(true);
     setTimeout(() => setUiTransitionLoading(false), duration);
@@ -250,12 +187,6 @@ export default function App() {
       setCookieChoice(null);
       setShowCookieBanner(true);
     }
-  }, []);
-
-  useEffect(() => {
-    // Absolute safety valve so the overlay cannot stay forever even if a request never resolves
-    const t = setTimeout(() => setInitialOverlay(false), 12000);
-    return () => clearTimeout(t);
   }, []);
 
   useEffect(() => {
@@ -802,7 +733,6 @@ export default function App() {
       <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center">
         <TopLoader active />
         <p className="mt-3 text-sm text-gray-300">Checking your session...</p>
-        {LoaderOverlay}
       </div>
     );
   }
@@ -814,7 +744,6 @@ export default function App() {
           onStartRegistration={handleSplashComplete}
           onLogin={handleSplashLogin}
         />
-        {LoaderOverlay}
         <CookieBanner />
         {CookieManagerButton}
       </>
@@ -830,7 +759,6 @@ export default function App() {
           onBack={handleRegistrationBack}
           onLogin={handleShowLoginFromRegistration}
         />
-        {LoaderOverlay}
         <CookieBanner />
         {CookieManagerButton}
       </>
@@ -863,7 +791,6 @@ export default function App() {
     return (
       <>
         <AuthPage onAuth={handleAuth} onShowSignup={handleShowSignup} />
-        {LoaderOverlay}
         <CookieBanner />
         {CookieManagerButton}
       </>
@@ -895,7 +822,6 @@ export default function App() {
   return (
     <div className="min-h-screen bg-black">
       <TopLoader active={globalLoading} />
-      {LoaderOverlay}
       {showDevicePrompt && (
         <DeviceProfilePrompt
           onClose={() => setShowDevicePrompt(false)}
