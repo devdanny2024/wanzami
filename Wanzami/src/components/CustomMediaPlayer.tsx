@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   Check,
@@ -67,7 +67,12 @@ export function CustomMediaPlayer({
         (s.src.toLowerCase().includes("1080") ? "1080p" : s.src.toLowerCase().includes("720") ? "720p" : idx === 0 ? "HD" : `Source ${idx + 1}`),
     }));
   }, [sources]);
-  const [currentSrc, setCurrentSrc] = useState<MediaSource>(normalizedSources[0] ?? sources[0]);
+  const preferredSource = useMemo(() => {
+    if (!normalizedSources.length) return undefined;
+    const hd1080 = normalizedSources.find((s) => (s.label ?? "").toLowerCase().includes("1080"));
+    return hd1080 ?? normalizedSources[0];
+  }, [normalizedSources]);
+  const [currentSrc, setCurrentSrc] = useState<MediaSource | undefined>(preferredSource ?? normalizedSources[0] ?? sources[0]);
 
   const normalizedEpisodes = useMemo(() => {
     return (episodes ?? []).slice().sort((a, b) => {
@@ -108,10 +113,12 @@ export function CustomMediaPlayer({
   }, [currentSrc?.src]);
 
   useEffect(() => {
-    if (!currentSrc && normalizedSources.length) {
-      setCurrentSrc(normalizedSources[0]);
+    if (!normalizedSources.length) return;
+    const inList = currentSrc ? normalizedSources.some((s) => s.src === currentSrc.src) : false;
+    if (!inList) {
+      setCurrentSrc(preferredSource ?? normalizedSources[0]);
     }
-  }, [normalizedSources, currentSrc]);
+  }, [normalizedSources, currentSrc, preferredSource]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -164,6 +171,46 @@ export function CustomMediaPlayer({
   useEffect(() => {
     setShowControls(true);
   }, [isPlaying]);
+
+  const handleClose = useCallback(() => {
+    const exitFullscreenAndPip = async () => {
+      try {
+        if (document.pictureInPictureElement) {
+          await document.exitPictureInPicture();
+        }
+      } catch {
+        // ignore
+      }
+      try {
+        if (document.fullscreenElement) {
+          await document.exitFullscreen();
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    const video = videoRef.current;
+    if (video) {
+      video.pause();
+    }
+    setShowEpisodePanel(false);
+    setShowQualityMenu(false);
+    void exitFullscreenAndPip();
+    onEvent?.("PLAY_END");
+    onClose();
+  }, [onClose, onEvent]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" || e.key === "Backspace" || e.key === "BrowserBack") {
+        e.preventDefault();
+        handleClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleClose]);
 
   const togglePlay = () => {
     const video = videoRef.current;
@@ -287,6 +334,30 @@ export function CustomMediaPlayer({
     ? normalizedEpisodes.findIndex((e) => e.id === currentEpisode.id) < normalizedEpisodes.length - 1
     : false;
 
+  const renderQualityMenu = (placementClass: string) => {
+    if (!showQualityMenu) return null;
+    return (
+      <div className={`absolute ${placementClass} bg-black/95 border border-white/10 rounded-lg shadow-lg min-w-[160px] z-30`}>
+        <div className="px-3 py-2 border-b border-white/10">
+          <p className="text-white text-sm">Quality</p>
+        </div>
+        {normalizedSources.map((s) => (
+          <button
+            key={s.src}
+            className="w-full px-3 py-2 text-left text-white text-sm hover:bg-white/10 flex items-center justify-between"
+            onClick={() => {
+              handleQualityChange(s);
+              setShowQualityMenu(false);
+            }}
+          >
+            <span>{s.label ?? "HD"}</span>
+            {currentSrc?.src === s.src ? <Check className="w-4 h-4" /> : null}
+          </button>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div
       ref={containerRef}
@@ -306,9 +377,7 @@ export function CustomMediaPlayer({
       <div className={`absolute top-0 left-0 right-0 p-4 md:p-6 flex items-start justify-between transition-all duration-300 ${showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-6"}`}>
         <div className="flex items-center gap-3">
           <button
-            onClick={() => {
-              onClose();
-            }}
+            onClick={handleClose}
             className="p-2 rounded-full bg-white/15 text-white hover:bg-white/25"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -443,23 +512,7 @@ export function CustomMediaPlayer({
                   <button onClick={() => setShowQualityMenu((v) => !v)} className="text-white hover:scale-110 transition-transform">
                     <Settings className="w-6 h-6" />
                   </button>
-                  {showQualityMenu && (
-                    <div className="absolute bottom-full right-0 mb-2 bg-black/90 border border-white/10 rounded-lg shadow-lg min-w-[140px] z-10">
-                      {normalizedSources.map((s) => (
-                        <button
-                          key={s.src}
-                          className="w-full px-3 py-2 text-left text-white text-sm hover:bg-white/10 flex items-center justify-between"
-                          onClick={() => {
-                            handleQualityChange(s);
-                            setShowQualityMenu(false);
-                          }}
-                        >
-                          <span>{s.label ?? "HD"}</span>
-                          {currentSrc?.src === s.src ? <Check className="w-4 h-4" /> : null}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  {renderQualityMenu("bottom-full right-0 mb-2")}
                 </div>
               )}
               <button onClick={toggleFullscreen} className="text-white hover:scale-110 transition-transform">
@@ -495,23 +548,7 @@ export function CustomMediaPlayer({
               <Settings className="w-4 h-4" />
               <span>{currentSrc?.label ?? "HD"}</span>
             </button>
-            {showQualityMenu && (
-              <div className="absolute bottom-full right-0 mb-2 bg-black/90 border border-white/10 rounded-lg shadow-lg min-w-[140px] z-30">
-                {normalizedSources.map((s) => (
-                  <button
-                    key={s.src}
-                    className="w-full px-3 py-2 text-left text-white text-sm hover:bg-white/10 flex items-center justify-between"
-                    onClick={() => {
-                      handleQualityChange(s);
-                      setShowQualityMenu(false);
-                    }}
-                  >
-                    <span>{s.label ?? "HD"}</span>
-                    {currentSrc?.src === s.src ? <Check className="w-4 h-4" /> : null}
-                  </button>
-                ))}
-              </div>
-            )}
+            {renderQualityMenu("bottom-full right-0 mb-2")}
           </div>
         )}
       </div>
