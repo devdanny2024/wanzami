@@ -1,24 +1,34 @@
-import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  X,
-  Play,
-  Pause,
-  Volume2,
-  VolumeX,
+  ArrowLeft,
+  Check,
+  List,
   Maximize,
   Minimize,
-  Loader2,
-  Captions,
-  HelpCircle,
-  RefreshCw,
+  Pause,
   PictureInPicture,
-  Shield,
+  Play,
+  SkipBack,
+  SkipForward,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 
 type MediaSource = {
   src: string;
   label?: string;
   type?: string;
+};
+
+type Episode = {
+  id: string;
+  name: string;
+  seasonNumber?: number;
+  episodeNumber?: number;
+  synopsis?: string | null;
+  runtimeMinutes?: number | null;
+  thumbnailUrl?: string | null;
+  streamUrl?: string | null;
 };
 
 type CustomMediaPlayerProps = {
@@ -28,35 +38,20 @@ type CustomMediaPlayerProps = {
   onClose: () => void;
   titleId?: string;
   profileId?: string;
-  episodes?: Array<{
-    id: string;
-    name: string;
-    seasonNumber?: number;
-    episodeNumber?: number;
-    synopsis?: string | null;
-    runtimeMinutes?: number | null;
-    thumbnailUrl?: string | null;
-    streamUrl?: string | null;
-  }>;
+  episodes?: Episode[];
   currentEpisodeId?: string;
   onEvent?: (eventType: string, metadata?: Record<string, any>) => void;
-  gestureSeekSeconds?: number;
   startTimeSeconds?: number;
 };
-
-const TIPS_STORAGE_KEY = "wanzami_player_tips_seen";
 
 export function CustomMediaPlayer({
   title,
   poster,
   sources,
   onClose,
-  titleId,
-  profileId,
   episodes = [],
   currentEpisodeId,
   onEvent,
-  gestureSeekSeconds = 10,
   startTimeSeconds,
 }: CustomMediaPlayerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -71,59 +66,45 @@ export function CustomMediaPlayer({
     }));
   }, [sources]);
   const [currentSrc, setCurrentSrc] = useState<MediaSource>(normalizedSources[0] ?? sources[0]);
-  const normalizedEpisodes = useMemo(
-    () =>
-      (episodes ?? []).slice().sort((a, b) => {
-        const sa = a.seasonNumber ?? 0;
-        const sb = b.seasonNumber ?? 0;
-        if (sa !== sb) return sa - sb;
-        return (a.episodeNumber ?? 0) - (b.episodeNumber ?? 0);
-      }),
-    [episodes]
-  );
-  const [currentEpisode, setCurrentEpisode] = useState(() => {
+
+  const normalizedEpisodes = useMemo(() => {
+    return (episodes ?? []).slice().sort((a, b) => {
+      const sa = a.seasonNumber ?? 0;
+      const sb = b.seasonNumber ?? 0;
+      if (sa !== sb) return sa - sb;
+      return (a.episodeNumber ?? 0) - (b.episodeNumber ?? 0);
+    });
+  }, [episodes]);
+
+  const [currentEpisode, setCurrentEpisode] = useState<Episode | null>(() => {
     if (!normalizedEpisodes.length) return null;
     if (currentEpisodeId) {
       return normalizedEpisodes.find((e) => e.id === currentEpisodeId) ?? normalizedEpisodes[0];
     }
     return normalizedEpisodes[0];
   });
-  const [playing, setPlaying] = useState(false);
-  const [muted, setMuted] = useState(false);
-  const [volume, setVolume] = useState(0.8);
-  const [duration, setDuration] = useState(0);
+
+  const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [buffered, setBuffered] = useState(0);
-  const [buffering, setBuffering] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(0.9);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
-  const [isPaused, setIsPaused] = useState(true);
-  const [showTips, setShowTips] = useState(() => {
-    if (typeof window === "undefined") return true;
-    return localStorage.getItem(TIPS_STORAGE_KEY) !== "1";
-  });
-  const [helpOpen, setHelpOpen] = useState(false);
-  const [lastTap, setLastTap] = useState<{ time: number; side: "left" | "right" } | null>(null);
-  const lastSavedRef = useRef<number>(0);
-  const resumeKey =
-    typeof window !== "undefined"
-      ? `progress:${profileId ?? "anon"}:${titleId ?? title}${currentEpisode ? `:ep-${currentEpisode.id}` : ""}`
-      : null;
-  const [resumeTime, setResumeTime] = useState<number | null>(null);
-  const [resumeDuration, setResumeDuration] = useState<number | null>(null);
-  const [blockScreen, setBlockScreen] = useState(false);
-  const [pipAvailable, setPipAvailable] = useState(false);
-  const [screenshotShield, setScreenshotShield] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
+  const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [showEpisodePanel, setShowEpisodePanel] = useState(false);
+  const [pipAvailable, setPipAvailable] = useState(false);
 
-  const percentage = useMemo(() => (duration ? (currentTime / duration) * 100 : 0), [currentTime, duration]);
-
-  const fireEvent = (eventType: string, metadata?: Record<string, any>) => {
-    onEvent?.(eventType, {
-      ...metadata,
-      titleId,
-      profileId,
-    });
-  };
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !currentSrc?.src) return;
+    video.src = currentSrc.src;
+    video.load();
+    if (isPlaying) {
+      void video.play().catch(() => undefined);
+    }
+  }, [currentSrc?.src]);
 
   useEffect(() => {
     if (!currentSrc && normalizedSources.length) {
@@ -132,187 +113,105 @@ export function CustomMediaPlayer({
   }, [normalizedSources, currentSrc]);
 
   useEffect(() => {
-    if (resumeKey && typeof window !== "undefined") {
-      const saved = localStorage.getItem(resumeKey);
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved) as { time?: number; duration?: number };
-          if (Number.isFinite(parsed.time) && (parsed.time ?? 0) > 5) {
-            setResumeTime(parsed.time ?? null);
-            setResumeDuration(parsed.duration ?? null);
-          }
-        } catch {
-          // ignore bad state
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handleTimeUpdate = () => {
+      setCurrentTime(video.currentTime);
+    };
+    const handleLoadedMetadata = () => {
+      setDuration(video.duration);
+      if (startTimeSeconds && video.duration > startTimeSeconds) {
+        video.currentTime = startTimeSeconds;
+      }
+    };
+    const handleEnded = () => {
+      setIsPlaying(false);
+      // auto-next episode
+      if (currentEpisode && normalizedEpisodes.length) {
+        const idx = normalizedEpisodes.findIndex((e) => e.id === currentEpisode.id);
+        if (idx >= 0 && idx < normalizedEpisodes.length - 1) {
+          const next = normalizedEpisodes[idx + 1];
+          const stream = next.streamUrl || currentSrc.src;
+          switchEpisode(next, stream);
+          return;
         }
       }
-    }
-    if (Number.isFinite(startTimeSeconds) && (startTimeSeconds ?? 0) > 0) {
-      setResumeTime(startTimeSeconds ?? null);
-    }
-  }, [resumeKey, startTimeSeconds]);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const onLoaded = () => {
-      const dur = video.duration || 0;
-      setDuration(dur);
-      const desired = resumeTime ?? (Number.isFinite(startTimeSeconds) ? startTimeSeconds : null);
-      if (desired && dur > 0) {
-        const clamped = Math.min(desired, dur - 1);
-        video.currentTime = clamped;
-        setCurrentTime(clamped);
-      }
-    };
-    const onTime = () => {
-      const t = video.currentTime;
-      setCurrentTime(t);
-      if (resumeKey && durGreaterThanZero(video)) {
-        maybePersistProgress(resumeKey, t, video.duration, lastSavedRef);
-      }
-    };
-    const onProgress = () => {
-      if (video.buffered.length) {
-        const end = video.buffered.end(video.buffered.length - 1);
-        setBuffered(end);
-      }
-    };
-    const onWaiting = () => {
-      setBuffering(true);
-    };
-    const onPlaying = () => {
-      setBuffering(false);
-      setPlaying(true);
-      setIsPaused(false);
-    };
-    const onPause = () => {
-      setPlaying(false);
-      setIsPaused(true);
-    };
-    const onEnded = () => {
-      setPlaying(false);
-      fireEvent("PLAY_END", { completionPercent: 1 });
-      if (resumeKey) {
-        localStorage.removeItem(resumeKey);
-      }
+      onEvent?.("PLAY_END");
     };
 
-    video.addEventListener("loadedmetadata", onLoaded);
-    video.addEventListener("timeupdate", onTime);
-    video.addEventListener("progress", onProgress);
-    video.addEventListener("waiting", onWaiting);
-    video.addEventListener("playing", onPlaying);
-    video.addEventListener("pause", onPause);
-    video.addEventListener("ended", onEnded);
+    video.addEventListener("timeupdate", handleTimeUpdate);
+    video.addEventListener("loadedmetadata", handleLoadedMetadata);
+    video.addEventListener("ended", handleEnded);
 
     return () => {
-      video.removeEventListener("loadedmetadata", onLoaded);
-      video.removeEventListener("timeupdate", onTime);
-      video.removeEventListener("progress", onProgress);
-      video.removeEventListener("waiting", onWaiting);
-      video.removeEventListener("playing", onPlaying);
-      video.removeEventListener("pause", onPause);
-      video.removeEventListener("ended", onEnded);
+      video.removeEventListener("timeupdate", handleTimeUpdate);
+      video.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      video.removeEventListener("ended", handleEnded);
     };
-  }, [titleId, profileId]);
+  }, [currentEpisode, normalizedEpisodes, currentSrc?.src, startTimeSeconds, onEvent]);
 
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    video.muted = muted;
-    video.volume = volume;
-  }, [muted, volume]);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === " ") {
-        e.preventDefault();
-        togglePlay();
-      } else if (e.key === "ArrowRight") {
-        seekBy(5);
-      } else if (e.key === "ArrowLeft") {
-        seekBy(-5);
-      } else if (e.key.toLowerCase() === "f") {
-        toggleFullscreen();
-      } else if (e.key.toLowerCase() === "m") {
-        toggleMute();
-      } else if (e.key === "Escape") {
-        reportProgress();
-        onClose();
-      }
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
     };
-    window.addEventListener("keydown", onKey);
-    // lock scroll beneath the overlay
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    const handleVisibility = () => {
-      if (document.visibilityState === "hidden") {
-        setBlockScreen(true);
-      } else {
-        setTimeout(() => setBlockScreen(false), 300);
-      }
-    };
-    const handleFocus = () => {
-      setTimeout(() => setBlockScreen(false), 200);
-    };
-    const handleScreenshotKey = (e: KeyboardEvent) => {
-      if (e.key === "PrintScreen") {
-        setScreenshotShield(true);
-        setTimeout(() => setScreenshotShield(false), 1500);
-      }
-    };
-    window.addEventListener("visibilitychange", handleVisibility);
-    window.addEventListener("blur", handleVisibility);
-    window.addEventListener("focus", handleFocus);
-    window.addEventListener("keydown", handleScreenshotKey);
-
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = originalOverflow;
-      window.removeEventListener("visibilitychange", handleVisibility);
-      window.removeEventListener("blur", handleVisibility);
-      window.removeEventListener("focus", handleFocus);
-      window.removeEventListener("keydown", handleScreenshotKey);
-    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    setPipAvailable(Boolean((document as any).pictureInPictureEnabled));
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
+
+  useEffect(() => {
+    let timeout: NodeJS.Timeout;
+    if (isPlaying && !isHovering) {
+      timeout = setTimeout(() => setShowControls(false), 2500);
+    } else {
+      setShowControls(true);
+    }
+    return () => clearTimeout(timeout);
+  }, [isPlaying, isHovering]);
 
   const togglePlay = () => {
     const video = videoRef.current;
     if (!video) return;
-    if (video.paused) {
-      void video.play();
-      fireEvent("PLAY_START");
-      setIsPaused(false);
-    } else {
+    if (isPlaying) {
       video.pause();
-      setIsPaused(true);
+      setIsPlaying(false);
+    } else {
+      void video.play().catch(() => undefined);
+      setIsPlaying(true);
+      onEvent?.("PLAY_START");
     }
   };
 
-  const toggleMute = () => {
-    setMuted((m) => !m);
-  };
-
-  const seekTo = (time: number) => {
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const time = parseFloat(e.target.value);
     const video = videoRef.current;
     if (!video) return;
-    const clamped = Math.max(0, Math.min(time, duration || video.duration || 0));
-    video.currentTime = clamped;
-    setCurrentTime(clamped);
-    fireEvent("SCRUB", { position: clamped / (duration || 1) });
+    video.currentTime = time;
+    setCurrentTime(time);
   };
 
-  const seekBy = (delta: number) => {
-    seekTo(currentTime + delta);
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVolume = parseFloat(e.target.value);
+    const video = videoRef.current;
+    if (!video) return;
+    video.volume = newVolume;
+    setVolume(newVolume);
+    setIsMuted(newVolume === 0);
   };
 
-  const toggleFullscreen = async () => {
+  const toggleMute = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = !isMuted;
+    setIsMuted(!isMuted);
+  };
+
+  const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
-      await containerRef.current?.requestFullscreen().catch(() => undefined);
+      containerRef.current?.requestFullscreen().catch(() => undefined);
     } else {
-      await document.exitFullscreen().catch(() => undefined);
+      document.exitFullscreen().catch(() => undefined);
     }
   };
 
@@ -326,230 +225,373 @@ export function CustomMediaPlayer({
         await video.requestPictureInPicture();
       }
     } catch {
-      // ignore pip errors
+      // ignore
     }
   };
 
-  const handleTap = (side: "left" | "right") => {
-    const now = Date.now();
-    if (lastTap && now - lastTap.time < 400 && lastTap.side === side) {
-    seekBy(side === "left" ? -gestureSeekSeconds : gestureSeekSeconds);
-    setLastTap(null);
-  } else {
-    setLastTap({ time: now, side });
-  }
-  };
-
-  const dismissTips = () => {
-    setShowTips(false);
-    if (typeof window !== "undefined") {
-      localStorage.setItem(TIPS_STORAGE_KEY, "1");
-    }
-  };
-
-  const handleSourceChange = (src: MediaSource, nextEpisode?: typeof currentEpisode) => {
-    setCurrentSrc(src);
-    setBuffered(0);
-    setCurrentTime(0);
-    setDuration(0);
-    setPlaying(false);
-    setIsPaused(true);
-    if (nextEpisode) setCurrentEpisode(nextEpisode);
-    // Telemetry omitted to align with allowed event types
+  const handleQualityChange = (source: MediaSource) => {
     const video = videoRef.current;
-    if (video) {
-      video.pause();
-      video.src = src.src;
-      video.load();
-      void video.play().catch(() => undefined);
-    }
-  };
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !currentSrc?.src) return;
-    video.src = currentSrc.src;
-    video.load();
-    void video.play().catch(() => undefined);
-    setIsPaused(false);
-    setPlaying(true);
-  }, [currentSrc?.src]);
-
-  const reportProgress = (force?: boolean) => {
-    const video = videoRef.current;
-    if (!video || !durGreaterThanZero(video)) return;
-    const completion = video.duration ? video.currentTime / video.duration : 0;
-    fireEvent("PLAY_END", { completionPercent: completion });
-    if (resumeKey) {
-      if (completion >= 0.97) {
-        localStorage.removeItem(resumeKey);
-      } else {
-        maybePersistProgress(resumeKey, video.currentTime, video.duration, lastSavedRef, { force: Boolean(force) });
+    const time = video?.currentTime ?? 0;
+    const wasPlaying = isPlaying;
+    setCurrentSrc(source);
+    setShowQualityMenu(false);
+    setTimeout(() => {
+      if (videoRef.current) {
+        videoRef.current.currentTime = time;
+        if (wasPlaying) {
+          void videoRef.current.play().catch(() => undefined);
+        }
       }
+    }, 50);
+  };
+
+  const switchEpisode = (ep: Episode, srcOverride?: string) => {
+    const source = srcOverride ? { src: srcOverride, label: currentSrc?.label ?? "HD" } : currentSrc;
+    setCurrentEpisode(ep);
+    if (source) handleQualityChange(source);
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
     }
   };
 
-  useEffect(() => {
-    return () => {
-      reportProgress(true);
-    };
-  }, [resumeKey]);
+  const handlePrev = () => {
+    if (!currentEpisode) return;
+    const idx = normalizedEpisodes.findIndex((e) => e.id === currentEpisode.id);
+    if (idx > 0) {
+      const prev = normalizedEpisodes[idx - 1];
+      const stream = prev.streamUrl || currentSrc?.src;
+      if (stream) switchEpisode(prev, stream);
+    }
+  };
 
-  useEffect(() => {
-    setPipAvailable(Boolean((document as any).pictureInPictureEnabled));
-  }, []);
+  const handleNext = () => {
+    if (!currentEpisode) return;
+    const idx = normalizedEpisodes.findIndex((e) => e.id === currentEpisode.id);
+    if (idx >= 0 && idx < normalizedEpisodes.length - 1) {
+      const next = normalizedEpisodes[idx + 1];
+      const stream = next.streamUrl || currentSrc?.src;
+      if (stream) switchEpisode(next, stream);
+    }
+  };
 
-  const bufferedPct = useMemo(() => {
-    if (!duration || !buffered) return 0;
-    return Math.min(100, (buffered / duration) * 100);
-  }, [buffered, duration]);
+  const formatTime = (time: number) => {
+    if (!Number.isFinite(time)) return "0:00";
+    const hours = Math.floor(time / 3600);
+    const minutes = Math.floor((time % 3600) / 60);
+    const seconds = Math.floor(time % 60)
+      .toString()
+      .padStart(2, "0");
+    if (hours > 0) return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds}`;
+    return `${minutes}:${seconds}`;
+  };
+
+  const hasPrev = currentEpisode
+    ? normalizedEpisodes.findIndex((e) => e.id === currentEpisode.id) > 0
+    : false;
+  const hasNext = currentEpisode
+    ? normalizedEpisodes.findIndex((e) => e.id === currentEpisode.id) < normalizedEpisodes.length - 1
+    : false;
 
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 bg-black/90 flex items-center justify-center"
+      className="fixed inset-0 bg-black flex items-center justify-center"
       style={{ zIndex: 99999 }}
-      onMouseMove={() => setShowControls(true)}
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
+      onMouseMove={() => setIsHovering(true)}
     >
-      <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-        {normalizedSources.length > 0 && (
-          <>
-            {normalizedSources.length > 1 ? (
-              <select
-                aria-label="Quality"
-                className="bg-white/15 text-white rounded px-2 py-1 text-xs border border-white/25 shadow"
-                value={currentSrc?.src}
-                onChange={(e) => {
-                  const next = normalizedSources.find((s) => s.src === e.target.value);
-                  if (next) handleSourceChange(next, currentEpisode ?? undefined);
-                }}
-              >
-                {normalizedSources.map((s) => (
-                  <option key={s.src} value={s.src} className="bg-neutral-900 text-white">
-                    {s.label ?? "HD"}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <div className="px-3 py-1 rounded-full bg-white/15 text-white text-xs border border-white/25 shadow">
-                {currentSrc?.label ?? "HD"}
-              </div>
-            )}
-          </>
-        )}
-        {normalizedEpisodes.length > 0 && (
-          <button
-            className="px-3 py-1 rounded-full bg-white/15 text-white text-xs border border-white/25 shadow hover:bg-white/25"
-            onClick={() => setShowEpisodePanel(true)}
-          >
-            Episodes
-          </button>
-        )}
-      </div>
       <video
         ref={videoRef}
-        className={`w-full h-full max-h-screen object-contain bg-black transition duration-200 ${isPaused ? "blur-sm brightness-75" : ""}`}
+        src={currentSrc?.src}
         poster={poster ?? undefined}
-        controls={false}
-        playsInline
-        onClick={() => {
-          togglePlay();
-          setShowControls(true);
-        }}
-        onDoubleClick={toggleFullscreen}
-        src={currentSrc.src}
-        autoPlay
+        className="w-full h-full object-contain bg-black"
+        onClick={togglePlay}
       />
 
-      {/* Center play/pause overlay for visibility */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        {!playing && !buffering && (
-          <div className="pointer-events-auto flex flex-col items-center gap-3">
-            <button
-              aria-label={playing ? "Pause" : "Play"}
-              className="w-20 h-20 rounded-full bg-black/60 border border-white/30 backdrop-blur flex items-center justify-center text-white hover:bg-white/20 transition"
-              onClick={togglePlay}
-            >
-              {playing ? <Pause className="w-9 h-9" /> : <Play className="w-9 h-9" />}
-            </button>
-            <span className="text-sm text-white/80">Tap to play</span>
+      {/* Top bar */}
+      <div className={`absolute top-0 left-0 right-0 p-4 md:p-6 flex items-start justify-between transition-all duration-300 ${showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-6"}`}>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => {
+              onClose();
+            }}
+            className="p-2 rounded-full bg-white/15 text-white hover:bg-white/25"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div className="text-white">
+            <div className="font-semibold text-lg">{title}</div>
+            {currentEpisode ? (
+              <div className="text-sm text-white/70">
+                S{currentEpisode.seasonNumber ?? "?"}E{currentEpisode.episodeNumber ?? "?"} · {currentEpisode.name}
+              </div>
+            ) : null}
           </div>
-        )}
+        </div>
+        <div className="flex items-center gap-2 relative">
+          {normalizedEpisodes.length > 0 && (
+            <button
+              className="px-3 py-2 rounded-full bg-white/15 text-white text-xs border border-white/25 shadow hover:bg-white/25"
+              onClick={() => setShowEpisodePanel(true)}
+            >
+              <List className="w-4 h-4" />
+            </button>
+          )}
+          {normalizedSources.length > 0 && (
+            <div className="relative">
+              <button
+                className="px-3 py-2 rounded-full bg-white/15 text-white text-xs border border-white/25 shadow hover:bg-white/25"
+                onClick={() => setShowQualityMenu((v) => !v)}
+              >
+                {currentSrc?.label ?? "HD"}
+              </button>
+              {showQualityMenu && (
+                <div className="absolute right-0 mt-2 bg-black/90 border border-white/10 rounded-lg shadow-lg min-w-[140px] z-10">
+                  {normalizedSources.map((s) => (
+                    <button
+                      key={s.src}
+                      className="w-full px-3 py-2 text-left text-white text-sm hover:bg-white/10 flex items-center justify-between"
+                      onClick={() => {
+                        handleQualityChange(s);
+                        setShowQualityMenu(false);
+                      }}
+                    >
+                      <span>{s.label ?? "HD"}</span>
+                      {currentSrc?.src === s.src ? <Check className="w-4 h-4" /> : null}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
-      {buffering && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="bg-black/60 rounded-full p-4">
-            <Loader2 className="w-8 h-8 text-white animate-spin" />
-          </div>
+      {/* Center overlay */}
+      {!isPlaying && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <button
+            onClick={togglePlay}
+            className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center hover:bg-white/30 transition-all hover:scale-110"
+          >
+            <Play className="w-10 h-10 text-white ml-1" fill="white" />
+          </button>
         </div>
       )}
 
-      {blockScreen && (
-        <div className="absolute inset-0 bg-black/95 text-white flex flex-col items-center justify-center z-[1]">
-          <Shield className="w-10 h-10 mb-3 text-[#fd7e14]" />
-          <p className="text-sm text-center px-6">Screen capture blocked. Focus the player to resume.</p>
-        </div>
-      )}
-
-      {screenshotShield && (
-        <div className="absolute inset-0 bg-black/90 backdrop-blur z-[2] flex items-center justify-center text-white text-sm">
-          <div className="flex flex-col items-center gap-2">
-            <Shield className="w-8 h-8 text-[#fd7e14]" />
-            <span>Capture blocked</span>
-          </div>
-        </div>
-      )}
-
-      {showEpisodePanel && normalizedEpisodes.length > 0 && (
-        <div className="fixed inset-0 z-[100000] flex">
-          <div
-            className="absolute inset-0 bg-black/60"
-            onClick={() => setShowEpisodePanel(false)}
+      {/* Bottom controls */}
+      <div className={`absolute bottom-0 left-0 right-0 p-4 md:p-6 transition-all duration-300 ${showControls ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+        <div className="mb-3 md:mb-4">
+          <input
+            type="range"
+            min={0}
+            max={duration || 0}
+            value={currentTime}
+            onChange={handleSeek}
+            className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+            style={{
+              background: `linear-gradient(to right, #fd7e14 0%, #fd7e14 ${(currentTime / (duration || 1)) * 100}%, #4a5568 ${(currentTime / (duration || 1)) * 100}%, #4a5568 100%)`,
+            }}
           />
-          <div className="relative ml-auto h-full w-full max-w-md bg-neutral-950/95 border-l border-white/10 overflow-y-auto">
-            <div className="flex items-center justify-between p-4 border-b border-white/10 text-white">
-              <div>
-                <div className="font-semibold">Episodes</div>
-                <div className="text-xs text-white/60">{normalizedEpisodes.length} total</div>
-              </div>
+        </div>
+
+        <div className="hidden md:flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button onClick={togglePlay} className="text-white hover:scale-110 transition-transform">
+              {isPlaying ? <Pause className="w-8 h-8" fill="white" /> : <Play className="w-8 h-8" fill="white" />}
+            </button>
+            <button
+              onClick={handlePrev}
+              disabled={!hasPrev}
+              className={`text-white hover:scale-110 transition-transform ${!hasPrev ? "opacity-40 cursor-not-allowed" : ""}`}
+            >
+              <SkipBack className="w-7 h-7" fill="white" />
+            </button>
+            <button
+              onClick={handleNext}
+              disabled={!hasNext}
+              className={`text-white hover:scale-110 transition-transform ${!hasNext ? "opacity-40 cursor-not-allowed" : ""}`}
+            >
+              <SkipForward className="w-7 h-7" fill="white" />
+            </button>
+            <div className="flex items-center gap-2 group/volume">
+              <button onClick={toggleMute} className="text-white hover:scale-110 transition-transform">
+                {isMuted || volume === 0 ? <VolumeX className="w-7 h-7" /> : <Volume2 className="w-7 h-7" />}
+              </button>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={isMuted ? 0 : volume}
+                onChange={handleVolumeChange}
+                className="w-0 group-hover/volume:w-24 transition-all duration-300 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"
+                style={{
+                  background: `linear-gradient(to right, #fd7e14 0%, #fd7e14 ${volume * 100}%, #4a5568 ${volume * 100}%, #4a5568 100%)`,
+                }}
+              />
+            </div>
+            <div className="text-white text-sm">
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            {pipAvailable && (
+              <button onClick={togglePip} className="text-white hover:scale-110 transition-transform">
+                <PictureInPicture className="w-7 h-7" />
+              </button>
+            )}
+            <button onClick={toggleFullscreen} className="text-white hover:scale-110 transition-transform">
+              {isFullscreen ? <Minimize className="w-7 h-7" /> : <Maximize className="w-7 h-7" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile controls */}
+        <div className="md:hidden space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button onClick={togglePlay} className="text-white hover:scale-110 transition-transform">
+                {isPlaying ? <Pause className="w-7 h-7" fill="white" /> : <Play className="w-7 h-7" fill="white" />}
+              </button>
               <button
-                className="p-2 rounded-full bg-white/10 hover:bg-white/20"
-                onClick={() => setShowEpisodePanel(false)}
-                aria-label="Close episodes"
+                onClick={handlePrev}
+                disabled={!hasPrev}
+                className={`text-white hover:scale-110 transition-transform ${!hasPrev ? "opacity-40 cursor-not-allowed" : ""}`}
               >
-                <X className="w-5 h-5" />
+                <SkipBack className="w-6 h-6" fill="white" />
+              </button>
+              <button
+                onClick={handleNext}
+                disabled={!hasNext}
+                className={`text-white hover:scale-110 transition-transform ${!hasNext ? "opacity-40 cursor-not-allowed" : ""}`}
+              >
+                <SkipForward className="w-6 h-6" fill="white" />
+              </button>
+              <button onClick={toggleMute} className="text-white hover:scale-110 transition-transform">
+                {isMuted || volume === 0 ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
               </button>
             </div>
-            <div className="p-4 space-y-2">
-              {normalizedEpisodes.map((ep) => {
+            <div className="flex items-center gap-3">
+              {normalizedEpisodes.length > 0 && (
+                <button onClick={() => setShowEpisodePanel(true)} className="text-white hover:scale-110 transition-transform">
+                  <List className="w-6 h-6" />
+                </button>
+              )}
+              {normalizedSources.length > 1 && (
+                <div className="relative">
+                  <button onClick={() => setShowQualityMenu((v) => !v)} className="text-white hover:scale-110 transition-transform">
+                    {currentSrc?.label ?? "HD"}
+                  </button>
+                  {showQualityMenu && (
+                    <div className="absolute bottom-full right-0 mb-2 bg-black/90 border border-white/10 rounded-lg shadow-lg min-w-[140px] z-10">
+                      {normalizedSources.map((s) => (
+                        <button
+                          key={s.src}
+                          className="w-full px-3 py-2 text-left text-white text-sm hover:bg-white/10 flex items-center justify-between"
+                          onClick={() => {
+                            handleQualityChange(s);
+                            setShowQualityMenu(false);
+                          }}
+                        >
+                          <span>{s.label ?? "HD"}</span>
+                          {currentSrc?.src === s.src ? <Check className="w-4 h-4" /> : null}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              <button onClick={toggleFullscreen} className="text-white hover:scale-110 transition-transform">
+                {isFullscreen ? <Minimize className="w-6 h-6" /> : <Maximize className="w-6 h-6" />}
+              </button>
+            </div>
+          </div>
+          <div className="flex items-center justify-between text-white text-xs">
+            <span>
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </span>
+            {currentSrc?.label ? <span>{currentSrc.label}</span> : null}
+          </div>
+        </div>
+      </div>
+
+      {/* Episode overlay */}
+      {showEpisodePanel && normalizedEpisodes.length > 0 && (
+        <div className="fixed inset-0 bg-black/95 z-[100000] overflow-y-auto">
+          <div className="max-w-6xl mx-auto p-4 md:p-8">
+            <div className="flex items-center justify-between mb-6 md:mb-8">
+              <div className="text-white">
+                <div className="font-semibold text-lg">Episodes</div>
+                <div className="text-xs text-white/60">Season {currentEpisode?.seasonNumber ?? "?"}</div>
+              </div>
+              <button
+                onClick={() => setShowEpisodePanel(false)}
+                className="text-white hover:bg-white/10 p-2 rounded-full transition-colors"
+                aria-label="Close episodes"
+              >
+                <X className="w-6 h-6 md:w-7 md:h-7" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 md:gap-4">
+              {normalizedEpisodes.map((ep, index) => {
                 const active = currentEpisode?.id === ep.id;
                 return (
                   <button
                     key={ep.id}
                     onClick={() => {
-                      const stream = ep.streamUrl || currentSrc.src;
-                      handleSourceChange(
-                        { src: stream, label: ep.name ?? `S${ep.seasonNumber}E${ep.episodeNumber}` },
-                        ep
-                      );
-                      setShowEpisodePanel(false);
+                      const stream = ep.streamUrl || currentSrc?.src;
+                      if (stream) {
+                        handleQualityChange({ src: stream, label: currentSrc?.label ?? "HD" });
+                        setCurrentEpisode(ep);
+                        setShowEpisodePanel(false);
+                      }
                     }}
-                    className={`w-full text-left rounded-lg p-3 border ${
-                      active ? "border-[#fd7e14] bg-[#fd7e14]/10" : "border-white/10 bg-white/5 hover:bg-white/10"
-                    } transition`}
+                    className={`group cursor-pointer rounded-lg overflow-hidden transition-all hover:bg-white/10 ${
+                      active ? "ring-2 ring-[#fd7e14]" : ""
+                    }`}
                   >
-                    <div className="flex items-center justify-between text-white text-sm">
-                      <span>
-                        S{ep.seasonNumber ?? "?"}E{ep.episodeNumber ?? "?"} · {ep.name ?? "Episode"}
-                      </span>
-                      {ep.runtimeMinutes ? (
-                        <span className="text-xs text-white/60">{ep.runtimeMinutes}m</span>
-                      ) : null}
+                    <div className="flex flex-col sm:flex-row gap-3 md:gap-4 p-3 md:p-4">
+                      <div className="relative flex-shrink-0 w-full sm:w-40 md:w-48 h-48 sm:h-24 md:h-28 bg-gray-800 rounded overflow-hidden">
+                        {ep.thumbnailUrl ? (
+                          <img src={ep.thumbnailUrl} alt={ep.name ?? "Episode"} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full bg-black/40 flex items-center justify-center text-white text-xs">Episode</div>
+                        )}
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Play className="w-10 h-10 md:w-12 md:h-12 text-white" fill="white" />
+                        </div>
+                        {active && (
+                          <div className="absolute top-2 right-2 bg-[#fd7e14] text-white px-2 py-1 rounded text-xs md:text-sm">
+                            Playing
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0 text-left">
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4 mb-2">
+                          <div className="flex-1">
+                            <h3 className="text-white mb-1 text-sm md:text-base">
+                              {index + 1}. {ep.name ?? "Episode"}
+                            </h3>
+                            {ep.synopsis ? (
+                              <p className="text-gray-300 text-xs md:text-sm line-clamp-2 sm:line-clamp-none">
+                                {ep.synopsis}
+                              </p>
+                            ) : null}
+                          </div>
+                          {ep.runtimeMinutes ? (
+                            <span className="text-gray-300 text-xs md:text-sm flex-shrink-0">
+                              {ep.runtimeMinutes}m
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="text-xs text-white/70">
+                          S{ep.seasonNumber ?? "?"} · E{ep.episodeNumber ?? index + 1}
+                        </div>
+                      </div>
                     </div>
-                    {ep.synopsis ? (
-                      <div className="text-xs text-white/60 mt-1 line-clamp-2">{ep.synopsis}</div>
-                    ) : null}
                   </button>
                 );
               })}
@@ -557,248 +599,6 @@ export function CustomMediaPlayer({
           </div>
         </div>
       )}
-
-      {/* Gestures */}
-      <div className="absolute inset-y-0 left-0 w-1/2" onClick={() => handleTap("left")} />
-      <div className="absolute inset-y-0 right-0 w-1/2" onClick={() => handleTap("right")} />
-
-      {/* Controls */}
-      {showControls && (
-        <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/80 via-black/20 to-transparent p-4">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-white font-semibold text-lg drop-shadow">
-              {title}
-              {currentEpisode ? (
-                <span className="text-sm text-white/70 ml-2">
-                  S{currentEpisode.seasonNumber ?? "?"}E{currentEpisode.episodeNumber ?? "?"} · {currentEpisode.name}
-                </span>
-              ) : null}
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                aria-label="Show help"
-                className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20"
-                onClick={() => setHelpOpen((v) => !v)}
-              >
-                <HelpCircle className="w-5 h-5" />
-              </button>
-              <button
-                aria-label="Close player"
-                className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20"
-                onClick={() => {
-                  reportProgress(true);
-                  onClose();
-                }}
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 mb-2">
-            {normalizedEpisodes.length > 0 && (
-              <div className="flex items-center gap-2">
-                <button
-                  className="px-3 py-2 rounded-lg bg-white/10 text-white text-sm disabled:opacity-50"
-                  disabled={
-                    !currentEpisode ||
-                    normalizedEpisodes.findIndex((e) => e.id === currentEpisode.id) <= 0
-                  }
-                  onClick={() => {
-                    if (!currentEpisode) return;
-                    const idx = normalizedEpisodes.findIndex((e) => e.id === currentEpisode.id);
-                    if (idx > 0) {
-                      const prev = normalizedEpisodes[idx - 1];
-                      const stream = prev.streamUrl || currentSrc.src;
-                      handleSourceChange(
-                        { src: stream, label: prev.name ?? `S${prev.seasonNumber}E${prev.episodeNumber}` },
-                        prev
-                      );
-                    }
-                  }}
-                >
-                  Prev episode
-                </button>
-                <button
-                  className="px-3 py-2 rounded-lg bg-white/10 text-white text-sm disabled:opacity-50"
-                  disabled={
-                    !currentEpisode ||
-                    normalizedEpisodes.findIndex((e) => e.id === currentEpisode.id) >=
-                      normalizedEpisodes.length - 1
-                  }
-                  onClick={() => {
-                    if (!currentEpisode) return;
-                    const idx = normalizedEpisodes.findIndex((e) => e.id === currentEpisode.id);
-                    if (idx >= 0 && idx < normalizedEpisodes.length - 1) {
-                      const next = normalizedEpisodes[idx + 1];
-                      const stream = next.streamUrl || currentSrc.src;
-                      handleSourceChange(
-                        { src: stream, label: next.name ?? `S${next.seasonNumber}E${next.episodeNumber}` },
-                        next
-                      );
-                    }
-                  }}
-                >
-                  Next episode
-                </button>
-              </div>
-            )}
-            <button
-              aria-label={playing ? "Pause" : "Play"}
-              className="p-3 rounded-full bg-white/10 text-white hover:bg-white/20"
-              onClick={togglePlay}
-            >
-              {playing ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
-            </button>
-            <button
-              aria-label={muted ? "Unmute" : "Mute"}
-              className="p-3 rounded-full bg-white/10 text-white hover:bg-white/20"
-              onClick={toggleMute}
-            >
-              {muted || volume === 0 ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
-            </button>
-            <input
-              aria-label="Volume"
-              type="range"
-              min={0}
-              max={1}
-              step={0.01}
-              value={muted ? 0 : volume}
-              onChange={(e) => setVolume(Number(e.target.value))}
-              className="w-24 accent-[#fd7e14]"
-            />
-            <div className="flex items-center gap-2 text-white text-sm ml-auto">
-              {normalizedSources.length > 1 ? (
-                <select
-                  aria-label="Quality"
-                  className="bg-white/10 text-white rounded px-2 py-1 text-sm"
-                  value={currentSrc?.src}
-                  onChange={(e) => {
-                    const next = normalizedSources.find((s) => s.src === e.target.value);
-                    if (next) handleSourceChange(next, currentEpisode ?? undefined);
-                  }}
-                >
-                  {normalizedSources.map((s) => (
-                    <option key={s.src} value={s.src} className="bg-neutral-900 text-white">
-                      {s.label ?? "HD"}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <div className="px-3 py-1 rounded bg-white/10 text-white text-xs border border-white/15">
-                  {normalizedSources[0]?.label ?? "HD"}
-                </div>
-              )}
-              {pipAvailable && (
-                <button
-                  aria-label="Picture in Picture"
-                  className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20"
-                  onClick={togglePip}
-                >
-                  <PictureInPicture className="w-5 h-5" />
-                </button>
-              )}
-              <button
-                aria-label="Fullscreen"
-                className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20"
-                onClick={toggleFullscreen}
-              >
-                {document.fullscreenElement ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
-              </button>
-            </div>
-          </div>
-
-          {/* Episodes button moved to top-right overlay */}
-
-          <div className="flex items-center gap-2 text-white text-xs">
-            <span className="w-12 tabular-nums text-right">{formatTime(currentTime)}</span>
-            <div className="relative flex-1">
-              <input
-                aria-label="Seek"
-                type="range"
-                min={0}
-                max={duration || 0}
-                step={0.1}
-                value={currentTime}
-                onChange={(e) => seekTo(Number(e.target.value))}
-                className="w-full accent-[#fd7e14]"
-                onMouseDown={() => setShowControls(true)}
-              />
-              <div className="absolute inset-0 pointer-events-none">
-                <div className="absolute inset-0 h-1 rounded-full bg-white/10" />
-                <div className="absolute inset-y-0 left-0 h-1 rounded-full bg-white/30" style={{ width: `${bufferedPct}%` }} />
-              </div>
-            </div>
-            <span className="w-12 tabular-nums text-left">{formatTime(duration)}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Tips / Help */}
-      {(showTips || helpOpen) && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/80 border border-white/10 rounded-lg px-4 py-3 max-w-lg text-white text-sm shadow-lg">
-          <div className="flex items-start gap-3">
-            <div className="flex-1 space-y-1">
-              <div className="font-semibold">Playback tips</div>
-              <ul className="list-disc list-inside space-y-1 text-neutral-200">
-                <li>Tap controls or press Space to play/pause.</li>
-                <li>Double-tap left/right to jump {gestureSeekSeconds}s.</li>
-                <li>Arrow keys seek ±5s; M mutes; F fullscreen.</li>
-                <li>Use the quality dropdown to switch renditions.</li>
-              </ul>
-            </div>
-            <button
-              aria-label="Dismiss tips"
-              className="p-2 rounded-full bg-white/10 hover:bg-white/20"
-              onClick={() => {
-                setHelpOpen(false);
-                dismissTips();
-              }}
-            >
-              <RefreshCw className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
-}
-
-function durGreaterThanZero(video: HTMLVideoElement) {
-  return Number.isFinite(video.duration) && video.duration > 0;
-}
-
-function maybePersistProgress(
-  key: string,
-  time: number,
-  duration: number,
-  lastSavedRef: MutableRefObject<number>,
-  options?: { force?: boolean }
-) {
-  if (typeof window === "undefined") return;
-  const now = Date.now();
-  if (!options?.force && now - lastSavedRef.current < 1000) return;
-  const completion = duration ? time / duration : 0;
-  lastSavedRef.current = now;
-  if (!duration || time < 5 || completion >= 0.97) {
-    localStorage.removeItem(key);
-    return;
-  }
-  localStorage.setItem(
-    key,
-    JSON.stringify({
-      time,
-      duration,
-      updatedAt: now,
-    })
-  );
-}
-
-function formatTime(value: number) {
-  if (!Number.isFinite(value)) return "0:00";
-  const minutes = Math.floor(value / 60);
-  const seconds = Math.floor(value % 60)
-    .toString()
-    .padStart(2, "0");
-  return `${minutes}:${seconds}`;
 }
