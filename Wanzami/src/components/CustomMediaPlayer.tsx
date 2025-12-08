@@ -411,13 +411,41 @@ export function CustomMediaPlayer({
       style={{ zIndex: 99999 }}
       onMouseMove={() => setShowControls(true)}
     >
-      {normalizedSources.length > 0 && (
-        <div className="absolute top-4 right-4 z-10">
-          <div className="px-3 py-1 rounded-full bg-white/15 text-white text-xs border border-white/25 shadow">
-            {currentSrc?.label ?? "HD"}
-          </div>
-        </div>
-      )}
+      <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+        {normalizedSources.length > 0 && (
+          <>
+            {normalizedSources.length > 1 ? (
+              <select
+                aria-label="Quality"
+                className="bg-white/15 text-white rounded px-2 py-1 text-xs border border-white/25 shadow"
+                value={currentSrc?.src}
+                onChange={(e) => {
+                  const next = normalizedSources.find((s) => s.src === e.target.value);
+                  if (next) handleSourceChange(next, currentEpisode ?? undefined);
+                }}
+              >
+                {normalizedSources.map((s) => (
+                  <option key={s.src} value={s.src} className="bg-neutral-900 text-white">
+                    {s.label ?? "HD"}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="px-3 py-1 rounded-full bg-white/15 text-white text-xs border border-white/25 shadow">
+                {currentSrc?.label ?? "HD"}
+              </div>
+            )}
+          </>
+        )}
+        {normalizedEpisodes.length > 0 && (
+          <button
+            className="px-3 py-1 rounded-full bg-white/15 text-white text-xs border border-white/25 shadow hover:bg-white/25"
+            onClick={() => setShowEpisodePanel(true)}
+          >
+            Episodes
+          </button>
+        )}
+      </div>
       <video
         ref={videoRef}
         className={`w-full h-full max-h-screen object-contain bg-black transition duration-200 ${isPaused ? "blur-sm brightness-75" : ""}`}
@@ -680,16 +708,7 @@ export function CustomMediaPlayer({
             </div>
           </div>
 
-          {normalizedEpisodes.length > 0 && (
-            <div className="flex items-center gap-3 mb-2">
-              <button
-                className="px-3 py-2 rounded-lg bg-white/10 text-white text-sm"
-                onClick={() => setShowEpisodePanel(true)}
-              >
-                Episodes
-              </button>
-            </div>
-          )}
+          {/* Episodes button moved to top-right overlay */}
 
           <div className="flex items-center gap-2 text-white text-xs">
             <span className="w-12 tabular-nums text-right">{formatTime(currentTime)}</span>
