@@ -58,9 +58,6 @@ export function CustomMediaPlayer({
 }: CustomMediaPlayerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const historyPushedRef = useRef(false);
-  const closingFromPopStateRef = useRef(false);
-  const previousHistoryStateRef = useRef<any>(null);
   const normalizedSources = useMemo(() => {
     if (!sources || !sources.length) return [];
     return sources.map((s, idx) => ({
@@ -176,6 +173,9 @@ export function CustomMediaPlayer({
   }, [isPlaying]);
 
   const handleClose = useCallback(() => {
+    // Debug aid: track close attempts (back button / escape)
+    // eslint-disable-next-line no-console
+    console.log("[CustomMediaPlayer] handleClose invoked");
     const exitFullscreenAndPip = async () => {
       try {
         if (document.pictureInPictureElement) {
@@ -201,14 +201,6 @@ export function CustomMediaPlayer({
     setShowQualityMenu(false);
     void exitFullscreenAndPip();
     onEvent?.("PLAY_END");
-    if (!closingFromPopStateRef.current && historyPushedRef.current && typeof window !== "undefined") {
-      // Remove the synthetic history entry without navigating away.
-      try {
-        window.history.replaceState(previousHistoryStateRef.current, "", window.location.href);
-      } catch {
-        // ignore
-      }
-    }
     onClose();
   }, [onClose, onEvent]);
 
@@ -224,23 +216,8 @@ export function CustomMediaPlayer({
   }, [handleClose]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    // Push a history entry so the browser/hardware back button closes the player instead of navigating away.
-    previousHistoryStateRef.current = window.history.state;
-    const state = { wanzamiPlayer: true, ts: Date.now() };
-    window.history.pushState(state, "");
-    historyPushedRef.current = true;
-
-    const onPopState = (event: PopStateEvent) => {
-      if (event.state?.wanzamiPlayer) {
-        closingFromPopStateRef.current = true;
-        handleClose();
-      }
-    };
-    window.addEventListener("popstate", onPopState);
-    return () => {
-      window.removeEventListener("popstate", onPopState);
-    };
+    // No history manipulation; rely on explicit close/back handlers.
+    return;
   }, [handleClose]);
 
   const togglePlay = () => {
@@ -409,7 +386,7 @@ export function CustomMediaPlayer({
         <div className="flex items-center gap-3">
           <button
             onClick={handleClose}
-            className="p-2 rounded-full bg-white/15 text-white hover:bg-white/25"
+            className="p-2 rounded-full bg-white/15 text-white hover:bg-white/25 cursor-pointer"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -463,19 +440,19 @@ export function CustomMediaPlayer({
             <button
               onClick={handlePrev}
               disabled={!hasPrev}
-              className={`text-white hover:scale-110 transition-transform ${!hasPrev ? "opacity-40 cursor-not-allowed" : ""}`}
+              className={`text-white hover:scale-110 transition-transform ${!hasPrev ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
             >
               <SkipBack className="w-7 h-7" fill="white" />
             </button>
             <button
               onClick={handleNext}
               disabled={!hasNext}
-              className={`text-white hover:scale-110 transition-transform ${!hasNext ? "opacity-40 cursor-not-allowed" : ""}`}
+              className={`text-white hover:scale-110 transition-transform ${!hasNext ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
             >
               <SkipForward className="w-7 h-7" fill="white" />
             </button>
             <div className="flex items-center gap-2 group/volume">
-              <button onClick={toggleMute} className="text-white hover:scale-110 transition-transform">
+              <button onClick={toggleMute} className="text-white hover:scale-110 transition-transform cursor-pointer">
                 {isMuted || volume === 0 ? <VolumeX className="w-7 h-7" /> : <Volume2 className="w-7 h-7" />}
               </button>
               <input
@@ -498,7 +475,7 @@ export function CustomMediaPlayer({
           <div className="flex items-center gap-4">
             {normalizedSources.length > 1 && (
               <div className="relative">
-                <button onClick={() => setShowQualityMenu((v) => !v)} className="text-white hover:scale-110 transition-transform flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 border border-white/15">
+                <button onClick={() => setShowQualityMenu((v) => !v)} className="text-white hover:scale-110 transition-transform flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 border border-white/15 cursor-pointer">
                   <Settings className="w-6 h-6" />
                   <span className="text-sm">{currentSrc?.label ?? "HD"}</span>
                 </button>
@@ -506,11 +483,11 @@ export function CustomMediaPlayer({
               </div>
             )}
             {pipAvailable && (
-              <button onClick={togglePip} className="text-white hover:scale-110 transition-transform">
+              <button onClick={togglePip} className="text-white hover:scale-110 transition-transform cursor-pointer">
                 <PictureInPicture className="w-7 h-7" />
               </button>
             )}
-            <button onClick={toggleFullscreen} className="text-white hover:scale-110 transition-transform">
+            <button onClick={toggleFullscreen} className="text-white hover:scale-110 transition-transform cursor-pointer">
               {isFullscreen ? <Minimize className="w-7 h-7" /> : <Maximize className="w-7 h-7" />}
             </button>
           </div>
@@ -518,48 +495,48 @@ export function CustomMediaPlayer({
 
         {/* Mobile controls */}
         <div className="md:hidden space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button onClick={togglePlay} className="text-white hover:scale-110 transition-transform">
-                {isPlaying ? <Pause className="w-7 h-7" fill="white" /> : <Play className="w-7 h-7" fill="white" />}
-              </button>
-              <button
-                onClick={handlePrev}
-                disabled={!hasPrev}
-                className={`text-white hover:scale-110 transition-transform ${!hasPrev ? "opacity-40 cursor-not-allowed" : ""}`}
-              >
-                <SkipBack className="w-6 h-6" fill="white" />
-              </button>
-              <button
-                onClick={handleNext}
-                disabled={!hasNext}
-                className={`text-white hover:scale-110 transition-transform ${!hasNext ? "opacity-40 cursor-not-allowed" : ""}`}
-              >
-                <SkipForward className="w-6 h-6" fill="white" />
-              </button>
-              <button onClick={toggleMute} className="text-white hover:scale-110 transition-transform">
-                {isMuted || volume === 0 ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
-              </button>
-            </div>
-            <div className="flex items-center gap-3">
-              {normalizedEpisodes.length > 0 && (
-                <button onClick={() => setShowEpisodePanel(true)} className="text-white hover:scale-110 transition-transform">
-                  <List className="w-6 h-6" />
-                </button>
-              )}
-              {normalizedSources.length > 1 && (
-                <div className="relative">
-                  <button onClick={() => setShowQualityMenu((v) => !v)} className="text-white hover:scale-110 transition-transform">
-                    <Settings className="w-6 h-6" />
-                  </button>
-                  {renderQualityMenu("bottom-full right-0 mb-2")}
-                </div>
-              )}
-              <button onClick={toggleFullscreen} className="text-white hover:scale-110 transition-transform">
-                {isFullscreen ? <Minimize className="w-6 h-6" /> : <Maximize className="w-6 h-6" />}
-              </button>
-            </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button onClick={togglePlay} className="text-white hover:scale-110 transition-transform cursor-pointer">
+              {isPlaying ? <Pause className="w-7 h-7" fill="white" /> : <Play className="w-7 h-7" fill="white" />}
+            </button>
+            <button
+              onClick={handlePrev}
+              disabled={!hasPrev}
+              className={`text-white hover:scale-110 transition-transform ${!hasPrev ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
+            >
+              <SkipBack className="w-6 h-6" fill="white" />
+            </button>
+            <button
+              onClick={handleNext}
+              disabled={!hasNext}
+              className={`text-white hover:scale-110 transition-transform ${!hasNext ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
+            >
+              <SkipForward className="w-6 h-6" fill="white" />
+            </button>
+            <button onClick={toggleMute} className="text-white hover:scale-110 transition-transform cursor-pointer">
+              {isMuted || volume === 0 ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
+            </button>
           </div>
+          <div className="flex items-center gap-3">
+            {normalizedEpisodes.length > 0 && (
+              <button onClick={() => setShowEpisodePanel(true)} className="text-white hover:scale-110 transition-transform cursor-pointer">
+                <List className="w-6 h-6" />
+              </button>
+            )}
+            {normalizedSources.length > 1 && (
+              <div className="relative">
+                <button onClick={() => setShowQualityMenu((v) => !v)} className="text-white hover:scale-110 transition-transform cursor-pointer">
+                  <Settings className="w-6 h-6" />
+                </button>
+                {renderQualityMenu("bottom-full right-0 mb-2")}
+              </div>
+            )}
+            <button onClick={toggleFullscreen} className="text-white hover:scale-110 transition-transform cursor-pointer">
+              {isFullscreen ? <Minimize className="w-6 h-6" /> : <Maximize className="w-6 h-6" />}
+            </button>
+          </div>
+        </div>
           <div className="flex items-center justify-between text-white text-xs">
             <span>
               {formatTime(currentTime)} / {formatTime(duration)}
