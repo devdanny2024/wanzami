@@ -173,9 +173,6 @@ export function CustomMediaPlayer({
   }, [isPlaying]);
 
   const handleClose = useCallback(() => {
-    // Debug aid: track close attempts (back button / escape)
-    // eslint-disable-next-line no-console
-    console.log("[CustomMediaPlayer] handleClose invoked");
     const exitFullscreenAndPip = async () => {
       try {
         if (document.pictureInPictureElement) {
@@ -213,13 +210,6 @@ export function CustomMediaPlayer({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleClose]);
-
-  useEffect(() => {
-    // Debug aid: component mount marker
-    // eslint-disable-next-line no-console
-    console.log("[CustomMediaPlayer] mounted");
-    return;
   }, [handleClose]);
 
   const togglePlay = () => {
@@ -373,10 +363,6 @@ export function CustomMediaPlayer({
       ref={containerRef}
       className="fixed inset-0 bg-black flex items-center justify-center"
       style={{ zIndex: 99999 }}
-      onClickCapture={(e) => {
-        // eslint-disable-next-line no-console
-        console.log("[CustomMediaPlayer] container click target:", (e.target as HTMLElement)?.tagName);
-      }}
     >
       <video
         ref={videoRef}
@@ -390,23 +376,17 @@ export function CustomMediaPlayer({
 
       {/* Top bar */}
       <div
-        className={`absolute top-0 left-0 right-0 p-4 md:p-6 flex items-start justify-between transition-all duration-300 ${showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-6"} z-[100000] pointer-events-auto`}
-        style={{ pointerEvents: "auto" }}
-        onClickCapture={(e) => {
-          // eslint-disable-next-line no-console
-          console.log("[CustomMediaPlayer] top bar click target:", (e.target as HTMLElement)?.tagName);
-        }}
+        className={`absolute top-0 left-0 right-0 p-4 md:p-6 flex items-start justify-between transition-all duration-300 ${
+          showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-6"
+        }`}
       >
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => {
-              // eslint-disable-next-line no-console
-              console.log("[CustomMediaPlayer] back button clicked");
               handleClose();
             }}
-            className="p-2 rounded-full bg-white/15 text-white hover:bg-white/25 cursor-pointer pointer-events-auto"
-            style={{ cursor: "pointer", pointerEvents: "auto", zIndex: 100001 }}
+            className="p-2 rounded-full bg-white/15 text-white hover:bg-white/25 cursor-pointer"
             aria-label="Back"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -439,8 +419,9 @@ export function CustomMediaPlayer({
 
       {/* Bottom controls */}
       <div
-        className={`absolute bottom-0 left-0 right-0 p-4 md:p-6 transition-all duration-300 ${showControls ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"} z-[100000] pointer-events-auto`}
-        style={{ pointerEvents: "auto" }}
+        className={`absolute bottom-0 left-0 right-0 p-4 md:p-6 transition-all duration-300 ${
+          showControls ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+        }`}
       >
         <div className="mb-3 md:mb-4">
           <input
@@ -574,7 +555,7 @@ export function CustomMediaPlayer({
 
       {/* Episode overlay */}
       {showEpisodePanel && normalizedEpisodes.length > 0 && (
-        <div className="fixed inset-0 bg-black/95 z-[100000] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/95 z-50 overflow-y-auto">
           <div className="max-w-6xl mx-auto p-4 md:p-8">
             <div className="flex items-center justify-between mb-6 md:mb-8">
               <div className="text-white">

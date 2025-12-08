@@ -1,4 +1,7 @@
-import { useEffect, useState } from 'react';
+'use client';
+
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { SplashScreen } from './components/SplashScreen';
 import { AuthPage } from './components/AuthPage';
 import { RegistrationFlow } from './components/RegistrationFlow';
@@ -33,15 +36,11 @@ import { Loader } from './components/ui/loader';
 
 export default function App() {
 
+  const router = useRouter();
+  const pathname = usePathname();
   const [showSplash, setShowSplash] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pendingVerification, setPendingVerification] = useState<{ email: string; name: string } | null>(null);
-  const [currentPage, setCurrentPage] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("currentPage") ?? "home";
-    }
-    return "home";
-  });
   const [selectedMovie, setSelectedMovie] = useState<any>(null);
   const [purchasedMovies, setPurchasedMovies] = useState<number[]>([]);
   const [ownedMovies, setOwnedMovies] = useState<number[]>([]);
@@ -68,6 +67,8 @@ export default function App() {
   const [uiTransitionLoading, setUiTransitionLoading] = useState(false);
   const [profileChooserLoading, setProfileChooserLoading] = useState(false);
   const [initialBlocker, setInitialBlocker] = useState(true);
+  const [routeLoading, setRouteLoading] = useState(false);
+  const [routeError, setRouteError] = useState<string | null>(null);
   const [cookieChoice, setCookieChoice] = useState<"accepted" | "rejected" | null>(() => {
     if (typeof window === "undefined") return null;
     const stored = localStorage.getItem("cookieConsent");
@@ -89,7 +90,130 @@ export default function App() {
     profileChooserLoading ||
     !pageAssetsLoaded ||
     uiTransitionLoading ||
-    bootLoader;
+    bootLoader ||
+    routeLoading;
+  const mapPathToPage = useCallback((path: string) => {
+    const clean = path || "/";
+    if (clean.startsWith("/search")) return "search";
+    if (clean.startsWith("/dashboard")) return "dashboard";
+    if (clean.startsWith("/ppv")) return "ppv";
+    if (clean.startsWith("/payment")) return "payment";
+    if (clean.startsWith("/movies")) return "movies";
+    if (clean.startsWith("/series")) return "series";
+    if (clean.startsWith("/kids")) return "kids";
+    if (clean.startsWith("/originals")) return "originals";
+    if (clean.startsWith("/mylist")) return "mylist";
+    if (clean.startsWith("/blog/post")) return "blogpost";
+    if (clean.startsWith("/blog/category")) return "blogcategory";
+    if (clean.startsWith("/blog/search")) return "blogsearch";
+    if (clean.startsWith("/blog")) return "blog";
+    return "home";
+  }, []);
+
+  const resolvedPage = useMemo(() => mapPathToPage(pathname ?? "/"), [mapPathToPage, pathname]);
+
+  const parsePathIds = useCallback((path: string) => {
+    const titleMatch = path.match(/^\/title\/([^/?#]+)/);
+    const playerMatch = path.match(/^\/player\/([^/?#]+)/);
+    const episodeMatch = path.match(/[?&]episodeId=([^&#]+)/);
+    const startMatch = path.match(/[?&]startTime=([^&#]+)/);
+    return {
+      titleId: titleMatch?.[1],
+      playerId: playerMatch?.[1],
+      episodeId: episodeMatch ? decodeURIComponent(episodeMatch[1]) : undefined,
+      startTime: startMatch ? Number(startMatch[1]) : undefined,
+    };
+  }, []);
+
+  const loadTitleById = useCallback(
+    async (id?: string | null) => {
+      if (!id) return null;
+      const fromCatalog = catalogMovies.find((m) => m.backendId === id || String(m.id) === id);
+      if (fromCatalog) return fromCatalog;
+      try {
+        const detail = await fetchTitleWithEpisodes(id);
+        if (!detail) return null;
+        return {
+          id: Number(detail.id) || Date.now(),
+          backendId: detail.id,
+          title: detail.name,
+          image: detail.thumbnailUrl || detail.posterUrl,
+          description: detail.description,
+          trailerUrl: detail.trailerUrl,
+          type: detail.type,
+          episodes: detail.episodes,
+        };
+      } catch {
+        return null;
+      }
+    },
+    [catalogMovies]
+  );
+
+  useEffect(() => {
+    const { titleId, playerId, episodeId, startTime } = parsePathIds(pathname ?? "/");
+    let cancelled = false;
+    const needsLoad = Boolean(titleId || playerId);
+    setRouteError(null);
+    setRouteLoading(needsLoad);
+
+    const hydrate = async () => {
+      if (titleId) {
+        const found = await loadTitleById(titleId);
+        if (!cancelled) {
+          if (found) {
+            setSelectedMovie(found);
+          } else {
+            setRouteError("Title not found");
+          }
+        }
+      }
+      if (playerId) {
+        const found = await loadTitleById(playerId);
+        if (!cancelled) {
+          if (found) {
+            const withStart = startTime ? { ...found, startTimeSeconds: startTime } : found;
+            const withEpisode = episodeId ? { ...withStart, currentEpisodeId: episodeId } : withStart;
+            setPlayerMovie(withEpisode);
+          } else {
+            setRouteError("Title not found");
+          }
+        }
+      }
+      if (!cancelled) {
+        setRouteLoading(false);
+      }
+    };
+
+    if (needsLoad) {
+      void hydrate();
+    } else {
+      setRouteLoading(false);
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname, parsePathIds, loadTitleById]);
+
+  // Blog route parsing for direct links
+  useEffect(() => {
+    const path = pathname ?? "/";
+    const postMatch = path.match(/^\/blog\/post\/([^/?#]+)/);
+    const categoryMatch = path.match(/^\/blog\/category\/([^/?#]+)/);
+
+    if (postMatch) {
+      const postId = decodeURIComponent(postMatch[1]);
+      if (!selectedBlogPost || String(selectedBlogPost.id) !== postId) {
+        setSelectedBlogPost({ id: postId, title: `Post ${postId}` } as BlogPost);
+      }
+    } else if (categoryMatch) {
+      const cat = decodeURIComponent(categoryMatch[1]);
+      if (selectedCategory !== cat) {
+        setSelectedCategory(cat);
+      }
+    }
+  }, [pathname, selectedBlogPost, selectedCategory]);
   const fetchWithTimeout = async (input: RequestInfo | URL, init?: RequestInit, timeoutMs = 8000) => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -194,38 +318,16 @@ export default function App() {
     }
   }, []);
 
+  // Deprecated persisted selection load (handled via URL now)
   useEffect(() => {
     if (restoredSelected) return;
-    try {
-      const saved = typeof window !== "undefined" ? localStorage.getItem("selectedMovie") : null;
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed?.id || parsed?.backendId) {
-          setSelectedMovie(parsed);
-        }
-      }
-    } catch {
-      // ignore bad saved state
-    } finally {
-      setRestoredSelected(true);
-    }
+    setRestoredSelected(true);
   }, [restoredSelected]);
 
+  // Deprecated persisted player load (handled via URL now)
   useEffect(() => {
     if (restoredPlayer) return;
-    try {
-      const saved = typeof window !== "undefined" ? localStorage.getItem("playerMovie") : null;
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed?.id || parsed?.backendId) {
-          setPlayerMovie(parsed);
-        }
-      }
-    } catch {
-      // ignore
-    } finally {
-      setRestoredPlayer(true);
-    }
+    setRestoredPlayer(true);
   }, [restoredPlayer]);
 
   useEffect(() => {
@@ -414,7 +516,6 @@ export default function App() {
 
   const handleLogout = (options?: { showLogin?: boolean }) => {
     setIsAuthenticated(false);
-    setCurrentPage('home');
     setSelectedMovie(null);
     setShowRegistration(options?.showLogin ? false : true);
     setPendingVerification(null);
@@ -431,11 +532,9 @@ export default function App() {
 
   const handleNavigate = (page: string) => {
     startUiTransition();
-    setCurrentPage(page);
     setSelectedMovie(null);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem("currentPage", page);
-    }
+    const targetPath = page === "home" ? "/" : `/${page}`;
+    router.push(targetPath);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -478,12 +577,9 @@ export default function App() {
       }
     }
     setSelectedMovie(enriched);
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem("selectedMovie", JSON.stringify(enriched));
-      } catch {
-        // ignore storage errors
-      }
+    const targetId = enriched.backendId ?? enriched.id;
+    if (targetId) {
+      router.push(`/title/${targetId}`);
     }
     void sendEvent("IMPRESSION", enriched);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -499,6 +595,7 @@ export default function App() {
     }
     const merged = combineContinueWatching(serverContinueWatching, activeProfile?.id);
     setContinueWatchingItems(merged);
+    router.push("/");
   };
 
   const handlePlayClick = (movie: any) => {
@@ -509,6 +606,10 @@ export default function App() {
       } catch {
         // ignore
       }
+    }
+    const targetId = movie?.backendId ?? movie?.id?.toString?.();
+    if (targetId) {
+      router.push(`/player/${targetId}`);
     }
     void sendEvent("PLAY_START", movie);
   };
@@ -522,6 +623,10 @@ export default function App() {
       } catch {
         // ignore
       }
+    }
+    const targetId = movie?.backendId ?? movie?.id?.toString?.();
+    if (targetId) {
+      router.push(`/player/${targetId}`);
     }
     void sendEvent("PLAY_START", movie);
   };
@@ -543,18 +648,18 @@ export default function App() {
 
   const handleBlogPostClick = (post: BlogPost) => {
     setSelectedBlogPost(post);
-    setCurrentPage('blogpost');
+    router.push(`/blog/post/${post.id ?? "post"}`);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleCategoryClick = (category: string) => {
     setSelectedCategory(category);
-    setCurrentPage('blogcategory');
+    router.push(`/blog/category/${encodeURIComponent(category)}`);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleBlogSearchClick = () => {
-    setCurrentPage('blogsearch');
+    router.push(`/blog/search`);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -657,16 +762,10 @@ export default function App() {
     });
   };
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("currentPage", currentPage);
-    }
-  }, [currentPage]);
-
   const handleBackToBlog = () => {
-    setCurrentPage('blog');
     setSelectedBlogPost(null);
     setSelectedCategory(null);
+    router.push('/blog');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -922,6 +1021,22 @@ export default function App() {
     );
   }
 
+  if (routeError) {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center px-6">
+        <TopLoader active />
+        <p className="mt-6 text-lg font-semibold">Oops, we couldn't load that title.</p>
+        <p className="text-sm text-gray-400 mt-2">{routeError}</p>
+        <button
+          className="mt-6 px-4 py-2 rounded-lg bg-[#fd7e14] hover:bg-[#e86f0f] text-white"
+          onClick={() => router.push("/")}
+        >
+          Go Home
+        </button>
+      </div>
+    );
+  }
+
   // Check if selected movie is a PPV movie
   const isPPVMovie = selectedMovie && selectedMovie.price !== undefined;
   const activeProfileId = activeProfile?.id;
@@ -938,7 +1053,7 @@ export default function App() {
       {/* Navbar - shown on all pages except movie detail */}
       {!selectedMovie && (
         <Navbar
-          currentPage={currentPage}
+          currentPage={resolvedPage}
           onNavigate={handleNavigate}
           onLogout={handleLogout}
           isAuthenticated={isAuthenticated}
@@ -966,7 +1081,7 @@ export default function App() {
             onPlayClick={handlePlayClick}
           />
         )
-      ) : currentPage === 'home' ? (
+      ) : resolvedPage === 'home' ? (
         <div key="home">
           <HomePage
             onMovieClick={handleMovieClick}
@@ -983,7 +1098,7 @@ export default function App() {
           />
           <Footer />
         </div>
-      ) : currentPage === 'search' ? (
+      ) : resolvedPage === 'search' ? (
         <div key="search">
           <SearchPage
             onMovieClick={handleMovieClick}
@@ -993,12 +1108,12 @@ export default function App() {
           />
           <Footer />
         </div>
-      ) : currentPage === 'dashboard' ? (
+      ) : resolvedPage === 'dashboard' ? (
         <div key="dashboard">
           <Dashboard onMovieClick={handleMovieClick} />
           <Footer />
         </div>
-      ) : currentPage === 'ppv' ? (
+      ) : resolvedPage === 'ppv' ? (
         <div key="ppv">
           <div className="min-h-screen bg-black pt-24 md:pt-32 pb-12 px-4 md:px-12 lg:px-16">
             <h1 className="text-white text-3xl md:text-4xl mb-4">Pay-Per-View</h1>
@@ -1007,12 +1122,12 @@ export default function App() {
           </div>
           <Footer />
         </div>
-      ) : currentPage === 'payment' ? (
+      ) : resolvedPage === 'payment' ? (
         <div key="payment">
           <PaymentPage />
           <Footer />
         </div>
-      ) : currentPage === 'movies' ? (
+      ) : resolvedPage === 'movies' ? (
         <div key="movies">
           <div className="min-h-screen bg-black pt-24 md:pt-32 pb-12 px-4 md:px-12 lg:px-16">
             <h1 className="text-white text-3xl md:text-4xl mb-8">Movies</h1>
@@ -1020,7 +1135,7 @@ export default function App() {
           </div>
           <Footer />
         </div>
-      ) : currentPage === 'series' ? (
+      ) : resolvedPage === 'series' ? (
         <div key="series">
           <div className="min-h-screen bg-black pt-24 md:pt-32 pb-12 px-4 md:px-12 lg:px-16">
             <h1 className="text-white text-3xl md:text-4xl mb-8">Series</h1>
@@ -1028,7 +1143,7 @@ export default function App() {
           </div>
           <Footer />
         </div>
-      ) : currentPage === 'kids' ? (
+      ) : resolvedPage === 'kids' ? (
         <div key="kids">
           <div className="min-h-screen bg-black pt-24 md:pt-32 pb-12 px-4 md:px-12 lg:px-16">
             <h1 className="text-white text-3xl md:text-4xl mb-8">Kids</h1>
@@ -1036,7 +1151,7 @@ export default function App() {
           </div>
           <Footer />
         </div>
-      ) : currentPage === 'originals' ? (
+      ) : resolvedPage === 'originals' ? (
         <div key="originals">
           <div className="min-h-screen bg-black pt-24 md:pt-32 pb-12 px-4 md:px-12 lg:px-16">
             <h1 className="text-white text-3xl md:text-4xl mb-8">Wanzami Originals</h1>
@@ -1044,7 +1159,7 @@ export default function App() {
           </div>
           <Footer />
         </div>
-      ) : currentPage === 'mylist' ? (
+      ) : resolvedPage === 'mylist' ? (
         <div key="mylist">
           <div className="min-h-screen bg-black pt-24 md:pt-32 pb-12 px-4 md:px-12 lg:px-16">
             <h1 className="text-white text-3xl md:text-4xl mb-8">My List</h1>
@@ -1052,22 +1167,22 @@ export default function App() {
           </div>
           <Footer />
         </div>
-      ) : currentPage === 'blog' ? (
+      ) : resolvedPage === 'blog' ? (
         <div key="blog">
           <BlogHomePage onPostClick={handleBlogPostClick} onCategoryClick={handleCategoryClick} onSearchClick={handleBlogSearchClick} />
           <Footer />
         </div>
-      ) : currentPage === 'blogpost' ? (
+      ) : resolvedPage === 'blogpost' ? (
         <div key="blogpost">
           <BlogPostPage post={selectedBlogPost} onBack={handleBackToBlog} />
           <Footer />
         </div>
-      ) : currentPage === 'blogcategory' ? (
+      ) : resolvedPage === 'blogcategory' ? (
         <div key="blogcategory">
           <BlogCategoryPage category={selectedCategory} onPostClick={handleBlogPostClick} onBack={handleBackToBlog} />
           <Footer />
         </div>
-      ) : currentPage === 'blogsearch' ? (
+      ) : resolvedPage === 'blogsearch' ? (
         <div key="blogsearch">
           <BlogSearchPage onPostClick={handleBlogPostClick} onBack={handleBackToBlog} />
           <Footer />
@@ -1173,7 +1288,19 @@ export default function App() {
             };
             void postEvents([payload], accessToken);
           }}
-          onClose={() => setPlayerMovie(null)}
+          onClose={() => {
+            setPlayerMovie(null);
+            if (typeof window !== "undefined" && window.history.length > 1) {
+              router.back();
+            } else {
+              const targetId = selectedMovie?.backendId ?? selectedMovie?.id;
+              if (targetId) {
+                router.push(`/title/${targetId}`);
+              } else {
+                router.push("/");
+              }
+            }
+          }}
         />
       )}
     </div>

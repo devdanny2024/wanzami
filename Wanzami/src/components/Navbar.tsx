@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Search, User, Menu, X, LogIn, Power } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import wanzamiLogo from '../assets/logo.png';
@@ -28,7 +29,15 @@ export function Navbar({
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const navItems = ['Home', 'Movies', 'Series', 'Pay-Per-View', 'Blog', 'Kids', 'My List'];
+  const navItems = [
+    { label: 'Home', page: 'home', href: '/' },
+    { label: 'Movies', page: 'movies', href: '/movies' },
+    { label: 'Series', page: 'series', href: '/series' },
+    { label: 'Pay-Per-View', page: 'ppv', href: '/ppv' },
+    { label: 'Blog', page: 'blog', href: '/blog' },
+    { label: 'Kids', page: 'kids', href: '/kids' },
+    { label: 'My List', page: 'mylist', href: '/mylist' },
+  ];
 
   return (
     <>
@@ -66,20 +75,20 @@ export function Navbar({
             {/* Desktop Navigation */}
             <div className="hidden lg:flex items-center gap-1">
               {navItems.map((item) => {
-                const itemPage = item.toLowerCase().replace(' ', '');
-                const isActive = currentPage === itemPage;
+                const isActive = currentPage === item.page;
                 
                 return (
-                  <button
-                    key={item}
-                    onClick={() => onNavigate(itemPage)}
+                  <Link
+                    key={item.page}
+                    href={item.href}
+                    onClick={() => onNavigate(item.page)}
                     className={`relative px-4 py-2 rounded-lg text-sm transition-all duration-300 ${
                       isActive
                         ? 'text-white'
                         : 'text-gray-400 hover:text-white'
                     }`}
                   >
-                    <span className="relative z-10">{item}</span>
+                    <span className="relative z-10">{item.label}</span>
                     
                     {/* Active indicator */}
                     {isActive && (
@@ -94,7 +103,7 @@ export function Navbar({
                     {!isActive && (
                       <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-0 h-0.5 bg-[#fd7e14] group-hover:w-1/2 transition-all duration-300" />
                     )}
-                  </button>
+                  </Link>
                 );
               })}
             </div>
@@ -190,14 +199,14 @@ export function Navbar({
             <div className="bg-[#0b0b0c]/98 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
               <div className="p-4 space-y-1">
                 {navItems.map((item) => {
-                  const itemPage = item.toLowerCase().replace(' ', '');
-                  const isActive = currentPage === itemPage;
+                  const isActive = currentPage === item.page;
                   
                   return (
-                    <button
-                      key={item}
+                    <Link
+                      key={item.page}
+                      href={item.href}
                       onClick={() => {
-                        onNavigate(itemPage);
+                        onNavigate(item.page);
                         setIsMobileMenuOpen(false);
                       }}
                       className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
@@ -206,8 +215,8 @@ export function Navbar({
                           : 'text-gray-400 hover:bg-white/5 hover:text-white'
                       }`}
                     >
-                      {item}
-                    </button>
+                      {item.label}
+                    </Link>
                   );
                 })}
                 
