@@ -60,6 +60,7 @@ export function CustomMediaPlayer({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const historyPushedRef = useRef(false);
   const closingFromPopStateRef = useRef(false);
+  const previousHistoryStateRef = useRef<any>(null);
   const normalizedSources = useMemo(() => {
     if (!sources || !sources.length) return [];
     return sources.map((s, idx) => ({
@@ -201,8 +202,12 @@ export function CustomMediaPlayer({
     void exitFullscreenAndPip();
     onEvent?.("PLAY_END");
     if (!closingFromPopStateRef.current && historyPushedRef.current && typeof window !== "undefined") {
-      // Pop the synthetic history entry we added when opening the player.
-      window.history.back();
+      // Remove the synthetic history entry without navigating away.
+      try {
+        window.history.replaceState(previousHistoryStateRef.current, "", window.location.href);
+      } catch {
+        // ignore
+      }
     }
     onClose();
   }, [onClose, onEvent]);
@@ -221,6 +226,7 @@ export function CustomMediaPlayer({
   useEffect(() => {
     if (typeof window === "undefined") return;
     // Push a history entry so the browser/hardware back button closes the player instead of navigating away.
+    previousHistoryStateRef.current = window.history.state;
     const state = { wanzamiPlayer: true, ts: Date.now() };
     window.history.pushState(state, "");
     historyPushedRef.current = true;
