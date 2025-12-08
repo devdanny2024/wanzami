@@ -81,6 +81,7 @@ export default function App() {
   });
   const [bootLoader, setBootLoader] = useState(true);
   const [restoredSelected, setRestoredSelected] = useState(false);
+  const [restoredPlayer, setRestoredPlayer] = useState(false);
   const globalLoading =
     catalogLoading ||
     recsLoading ||
@@ -209,6 +210,23 @@ export default function App() {
       setRestoredSelected(true);
     }
   }, [restoredSelected]);
+
+  useEffect(() => {
+    if (restoredPlayer) return;
+    try {
+      const saved = typeof window !== "undefined" ? localStorage.getItem("playerMovie") : null;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed?.id || parsed?.backendId) {
+          setPlayerMovie(parsed);
+        }
+      }
+    } catch {
+      // ignore
+    } finally {
+      setRestoredPlayer(true);
+    }
+  }, [restoredPlayer]);
 
   useEffect(() => {
     const t = setTimeout(() => setBootLoader(false), 1500);
@@ -454,8 +472,10 @@ export default function App() {
   const handleCloseMovie = () => {
     startUiTransition();
     setSelectedMovie(null);
+    setPlayerMovie(null);
     if (typeof window !== "undefined") {
       localStorage.removeItem("selectedMovie");
+      localStorage.removeItem("playerMovie");
     }
     const merged = combineContinueWatching(serverContinueWatching, activeProfile?.id);
     setContinueWatchingItems(merged);
@@ -463,12 +483,26 @@ export default function App() {
 
   const handlePlayClick = (movie: any) => {
     setPlayerMovie(movie);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("playerMovie", JSON.stringify(movie));
+      } catch {
+        // ignore
+      }
+    }
     void sendEvent("PLAY_START", movie);
   };
 
   const handleResumeClick = (movie: any) => {
     // For continue watching: jump straight into player
     setPlayerMovie(movie);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("playerMovie", JSON.stringify(movie));
+      } catch {
+        // ignore
+      }
+    }
     void sendEvent("PLAY_START", movie);
   };
 
