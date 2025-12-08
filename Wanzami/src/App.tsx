@@ -65,6 +65,7 @@ export default function App() {
   const [initialOverlay, setInitialOverlay] = useState(false);
   const [uiTransitionLoading, setUiTransitionLoading] = useState(false);
   const [profileChooserLoading, setProfileChooserLoading] = useState(false);
+  const [initialBlocker, setInitialBlocker] = useState(true);
   const [cookieChoice, setCookieChoice] = useState<"accepted" | "rejected" | null>(() => {
     if (typeof window === "undefined") return null;
     const stored = localStorage.getItem("cookieConsent");
@@ -191,6 +192,18 @@ export default function App() {
 
   useEffect(() => {
     const t = setTimeout(() => setBootLoader(false), 1500);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    if (pageAssetsLoaded && !authChecking && !catalogLoading) {
+      const t = setTimeout(() => setInitialBlocker(false), 150);
+      return () => clearTimeout(t);
+    }
+  }, [pageAssetsLoaded, authChecking, catalogLoading]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setInitialBlocker(false), 10000);
     return () => clearTimeout(t);
   }, []);
 
@@ -728,6 +741,15 @@ export default function App() {
   }, []);
 
   // Show splash screen
+  if (initialBlocker) {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center">
+        <TopLoader active />
+        <p className="mt-3 text-sm text-gray-300">Loading Wanzami...</p>
+      </div>
+    );
+  }
+
   if (authChecking) {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center">
