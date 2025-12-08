@@ -1134,7 +1134,21 @@ export default function App() {
               src:
                 playerMovie.trailerUrl ||
                 "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-              label: playerMovie.trailerUrl ? "Default" : "Demo",
+              label: playerMovie.trailerUrl ? "1080p" : "Demo",
+              type: "video/mp4",
+            },
+            {
+              src:
+                playerMovie.trailerUrl ||
+                "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+              label: playerMovie.trailerUrl ? "720p" : "Demo Alt",
+              type: "video/mp4",
+            },
+            {
+              src:
+                playerMovie.trailerUrl ||
+                "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
+              label: playerMovie.trailerUrl ? "540p" : "Demo Low",
               type: "video/mp4",
             },
           ]}

@@ -490,6 +490,15 @@ export function CustomMediaPlayer({
             </div>
           </div>
           <div className="flex items-center gap-4">
+            {normalizedSources.length > 1 && (
+              <div className="relative">
+                <button onClick={() => setShowQualityMenu((v) => !v)} className="text-white hover:scale-110 transition-transform flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 border border-white/15">
+                  <Settings className="w-6 h-6" />
+                  <span className="text-sm">{currentSrc?.label ?? "HD"}</span>
+                </button>
+                {renderQualityMenu("bottom-full right-0 mb-2")}
+              </div>
+            )}
             {pipAvailable && (
               <button onClick={togglePip} className="text-white hover:scale-110 transition-transform">
                 <PictureInPicture className="w-7 h-7" />
@@ -554,29 +563,7 @@ export function CustomMediaPlayer({
         </div>
       </div>
 
-      {/* Bottom-right quick controls (always visible for accessibility) */}
-      <div className="absolute bottom-6 right-6 flex items-center gap-2 z-20">
-        {normalizedEpisodes.length > 0 && (
-          <button
-            className="px-3 py-2 rounded-full bg-white/20 text-white text-xs border border-white/25 shadow hover:bg-white/30"
-            onClick={() => setShowEpisodePanel(true)}
-          >
-            <List className="w-4 h-4" />
-          </button>
-        )}
-        {normalizedSources.length > 0 && (
-          <div className="relative">
-            <button
-              className="px-3 py-2 rounded-full bg-white/20 text-white text-xs border border-white/25 shadow hover:bg-white/30 flex items-center gap-1"
-              onClick={() => setShowQualityMenu((v) => !v)}
-            >
-              <Settings className="w-4 h-4" />
-              <span>{currentSrc?.label ?? "HD"}</span>
-            </button>
-            {renderQualityMenu("bottom-full right-0 mb-2")}
-          </div>
-        )}
-      </div>
+      {/* Removed floating quick controls to keep settings anchored with bottom controls */}
 
       {/* Episode overlay */}
       {showEpisodePanel && normalizedEpisodes.length > 0 && (
