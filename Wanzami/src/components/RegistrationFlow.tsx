@@ -5,6 +5,7 @@ import Image from 'next/image';
 import wanzamiLogo from '../assets/logo.png';
 import { toast } from 'sonner';
 import { Loader } from './ui/loader';
+import { TopLoader } from './TopLoader';
 
 interface RegistrationFlowProps {
   onAuth: (data: { email: string; name: string }) => void;
@@ -105,6 +106,7 @@ export function RegistrationFlow({ onAuth, onBack, onLogin }: RegistrationFlowPr
 
   return (
     <div className="fixed inset-0 z-50 bg-[#0b0b0c] overflow-hidden">
+      <TopLoader active={loading || googleLoading} />
       {/* Film grain overlay */}
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIj48ZmlsdGVyIGlkPSJhIj48ZmVUdXJidWxlbmNlIGJhc2VGcmVxdWVuY3k9Ii43NSIgc3RpdGNoVGlsZXM9InN0aXRjaCIgdHlwZT0iZnJhY3RhbE5vaXNlIi8+PGZlQ29sb3JNYXRyaXggdHlwZT0ic2F0dXJhdGUiIHZhbHVlcz0iMCIvPjwvZmlsdGVyPjxwYXRoIGQ9Ik0wIDBoMzAwdjMwMEgweiIgZmlsdGVyPSJ1cmwoI2EpIiBvcGFjaXR5PSIuMDUiLz48L3N2Zz4=')]" />
       

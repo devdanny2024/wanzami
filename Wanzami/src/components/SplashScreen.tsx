@@ -2,6 +2,7 @@ import { motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import wanzamiLogo from '../assets/logo.png';
+import { TopLoader } from './TopLoader';
 
 interface SplashScreenProps {
   onStartRegistration: () => void;
@@ -74,6 +75,7 @@ export function SplashScreen({ onStartRegistration, onLogin }: SplashScreenProps
 
   return (
     <div className="fixed inset-0 z-50 bg-[#0b0b0c] overflow-hidden">
+      <TopLoader active />
       {/* Background video */}
       <video
         ref={videoRef}

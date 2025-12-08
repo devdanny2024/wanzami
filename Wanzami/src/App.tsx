@@ -63,6 +63,7 @@ export default function App() {
   const [authChecking, setAuthChecking] = useState(true);
   const [pageAssetsLoaded, setPageAssetsLoaded] = useState(false);
   const [initialOverlay, setInitialOverlay] = useState(true);
+  const [uiTransitionLoading, setUiTransitionLoading] = useState(false);
   const [profileChooserLoading, setProfileChooserLoading] = useState(false);
   const [cookieChoice, setCookieChoice] = useState<"accepted" | "rejected" | null>(() => {
     if (typeof window === "undefined") return null;
@@ -76,7 +77,8 @@ export default function App() {
     authChecking ||
     profileChooserLoading ||
     initialOverlay ||
-    !pageAssetsLoaded;
+    !pageAssetsLoaded ||
+    uiTransitionLoading;
   const fetchWithTimeout = async (input: RequestInfo | URL, init?: RequestInit, timeoutMs = 8000) => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -140,7 +142,8 @@ export default function App() {
     (isAuthenticated && activeProfile && recsLoading) ||
     profileChooserLoading ||
     initialOverlay ||
-    !pageAssetsLoaded;
+    !pageAssetsLoaded ||
+    uiTransitionLoading;
 
   const overlayText = catalogError
     ? `Catalog error: ${catalogError}`
@@ -156,7 +159,9 @@ export default function App() {
               ? "Loading profiles..."
               : !pageAssetsLoaded
                 ? "Preparing page..."
-                : "Loading...";
+                : uiTransitionLoading
+                  ? "Loading..."
+                  : "Loading...";
 
   const overlayDebug = {
     authChecking,
@@ -165,6 +170,7 @@ export default function App() {
     profileChooserLoading,
     initialOverlay,
     pageAssetsLoaded,
+    uiTransitionLoading,
     catalogError,
     recsError,
   };
@@ -184,12 +190,19 @@ export default function App() {
     </div>
   ) : null;
 
+  const startUiTransition = (duration = 600) => {
+    setUiTransitionLoading(true);
+    setTimeout(() => setUiTransitionLoading(false), duration);
+  };
+
   const handleSplashComplete = () => {
+    startUiTransition();
     setShowSplash(false);
     setShowRegistration(true); // Show registration after splash
   };
 
   const handleSplashLogin = () => {
+    startUiTransition();
     setShowSplash(false);
     setShowRegistration(false);
   };
@@ -334,11 +347,13 @@ export default function App() {
   };
 
   const handleShowLoginFromRegistration = () => {
+    startUiTransition();
     setShowRegistration(false);
     setPendingVerification(null);
   };
 
   const handleAuth = () => {
+    startUiTransition();
     setIsAuthenticated(true);
     setPendingVerification(null);
     const hasLabel = typeof window !== 'undefined' ? localStorage.getItem('deviceLabel') : null;
@@ -349,6 +364,7 @@ export default function App() {
   };
 
   const handleShowSignup = () => {
+    startUiTransition();
     setShowRegistration(true);
     setPendingVerification(null);
   };
