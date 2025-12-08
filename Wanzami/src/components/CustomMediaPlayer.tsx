@@ -58,6 +58,8 @@ export function CustomMediaPlayer({
 }: CustomMediaPlayerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const historyPushedRef = useRef(false);
+  const closingFromPopStateRef = useRef(false);
   const normalizedSources = useMemo(() => {
     if (!sources || !sources.length) return [];
     return sources.map((s, idx) => ({
@@ -198,6 +200,10 @@ export function CustomMediaPlayer({
     setShowQualityMenu(false);
     void exitFullscreenAndPip();
     onEvent?.("PLAY_END");
+    if (!closingFromPopStateRef.current && historyPushedRef.current && typeof window !== "undefined") {
+      // Pop the synthetic history entry we added when opening the player.
+      window.history.back();
+    }
     onClose();
   }, [onClose, onEvent]);
 
@@ -210,6 +216,25 @@ export function CustomMediaPlayer({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleClose]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    // Push a history entry so the browser/hardware back button closes the player instead of navigating away.
+    const state = { wanzamiPlayer: true, ts: Date.now() };
+    window.history.pushState(state, "");
+    historyPushedRef.current = true;
+
+    const onPopState = (event: PopStateEvent) => {
+      if (event.state?.wanzamiPlayer) {
+        closingFromPopStateRef.current = true;
+        handleClose();
+      }
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => {
+      window.removeEventListener("popstate", onPopState);
+    };
   }, [handleClose]);
 
   const togglePlay = () => {
