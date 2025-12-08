@@ -385,11 +385,12 @@ export function CustomMediaPlayer({
         className="w-full h-full object-contain bg-black"
         onClick={togglePlay}
         controls={false}
+        style={{ zIndex: 10 }}
       />
 
       {/* Top bar */}
       <div
-        className={`absolute top-0 left-0 right-0 p-4 md:p-6 flex items-start justify-between transition-all duration-300 ${showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-6"} z-30 pointer-events-auto`}
+        className={`absolute top-0 left-0 right-0 p-4 md:p-6 flex items-start justify-between transition-all duration-300 ${showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-6"} z-[100000] pointer-events-auto`}
         style={{ pointerEvents: "auto" }}
         onClickCapture={(e) => {
           // eslint-disable-next-line no-console
@@ -405,7 +406,7 @@ export function CustomMediaPlayer({
               handleClose();
             }}
             className="p-2 rounded-full bg-white/15 text-white hover:bg-white/25 cursor-pointer pointer-events-auto"
-            style={{ cursor: "pointer", pointerEvents: "auto" }}
+            style={{ cursor: "pointer", pointerEvents: "auto", zIndex: 100001 }}
             aria-label="Back"
           >
             <ArrowLeft className="w-5 h-5" />
