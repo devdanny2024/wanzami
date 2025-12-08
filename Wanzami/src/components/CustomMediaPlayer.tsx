@@ -61,7 +61,16 @@ export function CustomMediaPlayer({
 }: CustomMediaPlayerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [currentSrc, setCurrentSrc] = useState<MediaSource>(sources[0]);
+  const normalizedSources = useMemo(() => {
+    if (!sources || !sources.length) return [];
+    return sources.map((s, idx) => ({
+      ...s,
+      label:
+        s.label ||
+        (s.src.toLowerCase().includes("1080") ? "1080p" : s.src.toLowerCase().includes("720") ? "720p" : idx === 0 ? "HD" : `Source ${idx + 1}`),
+    }));
+  }, [sources]);
+  const [currentSrc, setCurrentSrc] = useState<MediaSource>(normalizedSources[0] ?? sources[0]);
   const normalizedEpisodes = useMemo(
     () =>
       (episodes ?? []).slice().sort((a, b) => {
@@ -547,21 +556,27 @@ export function CustomMediaPlayer({
               className="w-24 accent-[#fd7e14]"
             />
             <div className="flex items-center gap-2 text-white text-sm ml-auto">
-              <select
-                aria-label="Quality"
-                className="bg-white/10 text-white rounded px-2 py-1 text-sm"
-                value={currentSrc.src}
-                onChange={(e) => {
-                  const next = sources.find((s) => s.src === e.target.value);
-                  if (next) handleSourceChange(next);
-                }}
-              >
-                {sources.map((s) => (
-                  <option key={s.src} value={s.src} className="bg-neutral-900 text-white">
-                    {s.label ?? "Auto"}
-                  </option>
-                ))}
-              </select>
+              {normalizedSources.length > 1 ? (
+                <select
+                  aria-label="Quality"
+                  className="bg-white/10 text-white rounded px-2 py-1 text-sm"
+                  value={currentSrc?.src}
+                  onChange={(e) => {
+                    const next = normalizedSources.find((s) => s.src === e.target.value);
+                    if (next) handleSourceChange(next, currentEpisode ?? undefined);
+                  }}
+                >
+                  {normalizedSources.map((s) => (
+                    <option key={s.src} value={s.src} className="bg-neutral-900 text-white">
+                      {s.label ?? "HD"}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="px-3 py-1 rounded bg-white/10 text-white text-xs border border-white/15">
+                  {normalizedSources[0]?.label ?? "HD"}
+                </div>
+              )}
               {pipAvailable && (
                 <button
                   aria-label="Picture in Picture"
@@ -590,10 +605,7 @@ export function CustomMediaPlayer({
                   <button
                     key={ep.id}
                     onClick={() => {
-                      const stream =
-                        ep.streamUrl ||
-                        ep.thumbnailUrl ||
-                        currentSrc.src;
+                      const stream = ep.streamUrl || ep.thumbnailUrl || currentSrc.src;
                       handleSourceChange(
                         { src: stream, label: ep.name ?? `S${ep.seasonNumber}E${ep.episodeNumber}` },
                         ep

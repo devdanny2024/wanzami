@@ -229,6 +229,26 @@ export default function App() {
   }, [restoredPlayer]);
 
   useEffect(() => {
+    const maybeLoadEpisodes = async () => {
+      if (!playerMovie || playerMovie?.episodes || playerMovie?.type !== "SERIES") return;
+      try {
+        const detail = await fetchTitleWithEpisodes(playerMovie.backendId ?? playerMovie.id);
+        if (detail?.episodes?.length) {
+          const enriched = { ...playerMovie, episodes: detail.episodes };
+          setPlayerMovie(enriched);
+          setSelectedMovie((prev) => (prev ? { ...prev, episodes: detail.episodes } : prev));
+          if (typeof window !== "undefined") {
+            localStorage.setItem("playerMovie", JSON.stringify(enriched));
+          }
+        }
+      } catch {
+        // ignore
+      }
+    };
+    void maybeLoadEpisodes();
+  }, [playerMovie]);
+
+  useEffect(() => {
     const t = setTimeout(() => setBootLoader(false), 1500);
     return () => clearTimeout(t);
   }, []);
