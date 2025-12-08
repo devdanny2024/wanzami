@@ -31,6 +31,12 @@ import { TopLoader } from './components/TopLoader';
 import { X } from 'lucide-react';
 
 export default function App() {
+  const RingLoader = () => (
+    <div className="flex items-center justify-center">
+      <div className="h-12 w-12 border-4 border-[#fd7e14]/30 border-t-[#fd7e14] rounded-full animate-spin" aria-label="Loading" />
+    </div>
+  );
+
   const [showSplash, setShowSplash] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pendingVerification, setPendingVerification] = useState<{ email: string; name: string } | null>(null);
@@ -745,6 +751,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center">
         <TopLoader active />
+        <RingLoader />
         <p className="mt-3 text-sm text-gray-300">Loading Wanzami...</p>
       </div>
     );
