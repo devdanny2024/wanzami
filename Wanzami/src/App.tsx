@@ -80,6 +80,7 @@ export default function App() {
     return stored !== "accepted" && stored !== "rejected";
   });
   const [bootLoader, setBootLoader] = useState(true);
+  const [restoredSelected, setRestoredSelected] = useState(false);
   const globalLoading =
     catalogLoading ||
     recsLoading ||
@@ -191,6 +192,23 @@ export default function App() {
       setShowCookieBanner(true);
     }
   }, []);
+
+  useEffect(() => {
+    if (restoredSelected) return;
+    try {
+      const saved = typeof window !== "undefined" ? localStorage.getItem("selectedMovie") : null;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed?.id || parsed?.backendId) {
+          setSelectedMovie(parsed);
+        }
+      }
+    } catch {
+      // ignore bad saved state
+    } finally {
+      setRestoredSelected(true);
+    }
+  }, [restoredSelected]);
 
   useEffect(() => {
     const t = setTimeout(() => setBootLoader(false), 1500);
@@ -422,6 +440,13 @@ export default function App() {
       }
     }
     setSelectedMovie(enriched);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("selectedMovie", JSON.stringify(enriched));
+      } catch {
+        // ignore storage errors
+      }
+    }
     void sendEvent("IMPRESSION", enriched);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -429,6 +454,9 @@ export default function App() {
   const handleCloseMovie = () => {
     startUiTransition();
     setSelectedMovie(null);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("selectedMovie");
+    }
     const merged = combineContinueWatching(serverContinueWatching, activeProfile?.id);
     setContinueWatchingItems(merged);
   };
@@ -1045,6 +1073,8 @@ export default function App() {
           titleId={playerMovie.backendId ?? playerMovie.id?.toString?.()}
           startTimeSeconds={playerMovie.startTimeSeconds}
           profileId={activeProfileId}
+          episodes={playerMovie.episodes}
+          currentEpisodeId={playerMovie.currentEpisodeId}
           sources={[
             {
               src:

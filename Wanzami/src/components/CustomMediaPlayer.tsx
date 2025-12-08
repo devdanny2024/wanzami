@@ -28,6 +28,17 @@ type CustomMediaPlayerProps = {
   onClose: () => void;
   titleId?: string;
   profileId?: string;
+  episodes?: Array<{
+    id: string;
+    name: string;
+    seasonNumber?: number;
+    episodeNumber?: number;
+    synopsis?: string | null;
+    runtimeMinutes?: number | null;
+    thumbnailUrl?: string | null;
+    streamUrl?: string | null;
+  }>;
+  currentEpisodeId?: string;
   onEvent?: (eventType: string, metadata?: Record<string, any>) => void;
   gestureSeekSeconds?: number;
   startTimeSeconds?: number;
@@ -42,6 +53,8 @@ export function CustomMediaPlayer({
   onClose,
   titleId,
   profileId,
+  episodes = [],
+  currentEpisodeId,
   onEvent,
   gestureSeekSeconds = 10,
   startTimeSeconds,
@@ -49,6 +62,23 @@ export function CustomMediaPlayer({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [currentSrc, setCurrentSrc] = useState<MediaSource>(sources[0]);
+  const normalizedEpisodes = useMemo(
+    () =>
+      (episodes ?? []).slice().sort((a, b) => {
+        const sa = a.seasonNumber ?? 0;
+        const sb = b.seasonNumber ?? 0;
+        if (sa !== sb) return sa - sb;
+        return (a.episodeNumber ?? 0) - (b.episodeNumber ?? 0);
+      }),
+    [episodes]
+  );
+  const [currentEpisode, setCurrentEpisode] = useState(() => {
+    if (!normalizedEpisodes.length) return null;
+    if (currentEpisodeId) {
+      return normalizedEpisodes.find((e) => e.id === currentEpisodeId) ?? normalizedEpisodes[0];
+    }
+    return normalizedEpisodes[0];
+  });
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(0.8);
@@ -67,7 +97,7 @@ export function CustomMediaPlayer({
   const lastSavedRef = useRef<number>(0);
   const resumeKey =
     typeof window !== "undefined"
-      ? `progress:${profileId ?? "anon"}:${titleId ?? title}`
+      ? `progress:${profileId ?? "anon"}:${titleId ?? title}${currentEpisode ? `:ep-${currentEpisode.id}` : ""}`
       : null;
   const [resumeTime, setResumeTime] = useState<number | null>(null);
   const [resumeDuration, setResumeDuration] = useState<number | null>(null);
@@ -299,12 +329,14 @@ export function CustomMediaPlayer({
     }
   };
 
-  const handleSourceChange = (src: MediaSource) => {
+  const handleSourceChange = (src: MediaSource, nextEpisode?: typeof currentEpisode) => {
     setCurrentSrc(src);
     setBuffered(0);
     setCurrentTime(0);
     setDuration(0);
     setPlaying(false);
+    setIsPaused(true);
+    if (nextEpisode) setCurrentEpisode(nextEpisode);
     // Telemetry omitted to align with allowed event types
   };
 
@@ -407,7 +439,14 @@ export function CustomMediaPlayer({
       {showControls && (
         <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/80 via-black/20 to-transparent p-4">
           <div className="flex items-center justify-between mb-2">
-            <div className="text-white font-semibold text-lg drop-shadow">{title}</div>
+            <div className="text-white font-semibold text-lg drop-shadow">
+              {title}
+              {currentEpisode ? (
+                <span className="text-sm text-white/70 ml-2">
+                  S{currentEpisode.seasonNumber ?? "?"}E{currentEpisode.episodeNumber ?? "?"} · {currentEpisode.name}
+                </span>
+              ) : null}
+            </div>
             <div className="flex items-center gap-2">
               <button
                 aria-label="Show help"
@@ -430,6 +469,59 @@ export function CustomMediaPlayer({
           </div>
 
           <div className="flex items-center gap-3 mb-2">
+            {normalizedEpisodes.length > 0 && (
+              <div className="flex items-center gap-2">
+                <button
+                  className="px-3 py-2 rounded-lg bg-white/10 text-white text-sm disabled:opacity-50"
+                  disabled={
+                    !currentEpisode ||
+                    normalizedEpisodes.findIndex((e) => e.id === currentEpisode.id) <= 0
+                  }
+                  onClick={() => {
+                    if (!currentEpisode) return;
+                    const idx = normalizedEpisodes.findIndex((e) => e.id === currentEpisode.id);
+                    if (idx > 0) {
+                      const prev = normalizedEpisodes[idx - 1];
+                      const stream =
+                        prev.streamUrl ||
+                        prev.thumbnailUrl ||
+                        currentSrc.src;
+                      handleSourceChange(
+                        { src: stream, label: prev.name ?? `S${prev.seasonNumber}E${prev.episodeNumber}` },
+                        prev
+                      );
+                    }
+                  }}
+                >
+                  Prev episode
+                </button>
+                <button
+                  className="px-3 py-2 rounded-lg bg-white/10 text-white text-sm disabled:opacity-50"
+                  disabled={
+                    !currentEpisode ||
+                    normalizedEpisodes.findIndex((e) => e.id === currentEpisode.id) >=
+                      normalizedEpisodes.length - 1
+                  }
+                  onClick={() => {
+                    if (!currentEpisode) return;
+                    const idx = normalizedEpisodes.findIndex((e) => e.id === currentEpisode.id);
+                    if (idx >= 0 && idx < normalizedEpisodes.length - 1) {
+                      const next = normalizedEpisodes[idx + 1];
+                      const stream =
+                        next.streamUrl ||
+                        next.thumbnailUrl ||
+                        currentSrc.src;
+                      handleSourceChange(
+                        { src: stream, label: next.name ?? `S${next.seasonNumber}E${next.episodeNumber}` },
+                        next
+                      );
+                    }
+                  }}
+                >
+                  Next episode
+                </button>
+              </div>
+            )}
             <button
               aria-label={playing ? "Pause" : "Play"}
               className="p-3 rounded-full bg-white/10 text-white hover:bg-white/20"
@@ -488,6 +580,45 @@ export function CustomMediaPlayer({
               </button>
             </div>
           </div>
+
+          {normalizedEpisodes.length > 0 && (
+            <div className="max-h-52 overflow-y-auto mb-2 rounded-lg bg-black/40 border border-white/10 p-3 space-y-2">
+              <div className="text-white font-semibold mb-1">Episodes</div>
+              {normalizedEpisodes.map((ep) => {
+                const active = currentEpisode?.id === ep.id;
+                return (
+                  <button
+                    key={ep.id}
+                    onClick={() => {
+                      const stream =
+                        ep.streamUrl ||
+                        ep.thumbnailUrl ||
+                        currentSrc.src;
+                      handleSourceChange(
+                        { src: stream, label: ep.name ?? `S${ep.seasonNumber}E${ep.episodeNumber}` },
+                        ep
+                      );
+                    }}
+                    className={`w-full text-left rounded-lg p-2 border ${
+                      active ? "border-[#fd7e14] bg-[#fd7e14]/10" : "border-white/10 bg-white/5 hover:bg-white/10"
+                    } transition`}
+                  >
+                    <div className="flex items-center justify-between text-white text-sm">
+                      <span>
+                        S{ep.seasonNumber ?? "?"}E{ep.episodeNumber ?? "?"} · {ep.name ?? "Episode"}
+                      </span>
+                      {ep.runtimeMinutes ? (
+                        <span className="text-xs text-white/60">{ep.runtimeMinutes}m</span>
+                      ) : null}
+                    </div>
+                    {ep.synopsis ? (
+                      <div className="text-xs text-white/60 mt-1 line-clamp-2">{ep.synopsis}</div>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           <div className="flex items-center gap-2 text-white text-xs">
             <span className="w-12 tabular-nums text-right">{formatTime(currentTime)}</span>
