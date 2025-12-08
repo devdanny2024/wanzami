@@ -278,8 +278,10 @@ export function CustomMediaPlayer({
     if (video.paused) {
       void video.play();
       fireEvent("PLAY_START");
+      setIsPaused(false);
     } else {
       video.pause();
+      setIsPaused(true);
     }
   };
 
@@ -348,7 +350,24 @@ export function CustomMediaPlayer({
     setIsPaused(true);
     if (nextEpisode) setCurrentEpisode(nextEpisode);
     // Telemetry omitted to align with allowed event types
+    const video = videoRef.current;
+    if (video) {
+      video.pause();
+      video.src = src.src;
+      video.load();
+      void video.play().catch(() => undefined);
+    }
   };
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !currentSrc?.src) return;
+    video.src = currentSrc.src;
+    video.load();
+    void video.play().catch(() => undefined);
+    setIsPaused(false);
+    setPlaying(true);
+  }, [currentSrc?.src]);
 
   const reportProgress = (force?: boolean) => {
     const video = videoRef.current;
@@ -468,7 +487,7 @@ export function CustomMediaPlayer({
                   <button
                     key={ep.id}
                     onClick={() => {
-                      const stream = ep.streamUrl || ep.thumbnailUrl || currentSrc.src;
+                      const stream = ep.streamUrl || currentSrc.src;
                       handleSourceChange(
                         { src: stream, label: ep.name ?? `S${ep.seasonNumber}E${ep.episodeNumber}` },
                         ep
@@ -549,10 +568,7 @@ export function CustomMediaPlayer({
                     const idx = normalizedEpisodes.findIndex((e) => e.id === currentEpisode.id);
                     if (idx > 0) {
                       const prev = normalizedEpisodes[idx - 1];
-                      const stream =
-                        prev.streamUrl ||
-                        prev.thumbnailUrl ||
-                        currentSrc.src;
+                      const stream = prev.streamUrl || currentSrc.src;
                       handleSourceChange(
                         { src: stream, label: prev.name ?? `S${prev.seasonNumber}E${prev.episodeNumber}` },
                         prev
@@ -574,10 +590,7 @@ export function CustomMediaPlayer({
                     const idx = normalizedEpisodes.findIndex((e) => e.id === currentEpisode.id);
                     if (idx >= 0 && idx < normalizedEpisodes.length - 1) {
                       const next = normalizedEpisodes[idx + 1];
-                      const stream =
-                        next.streamUrl ||
-                        next.thumbnailUrl ||
-                        currentSrc.src;
+                      const stream = next.streamUrl || currentSrc.src;
                       handleSourceChange(
                         { src: stream, label: next.name ?? `S${next.seasonNumber}E${next.episodeNumber}` },
                         next
