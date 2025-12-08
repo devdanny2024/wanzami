@@ -332,42 +332,7 @@ export function CustomMediaPlayer({
           </div>
         </div>
         <div className="flex items-center gap-2 relative">
-          {normalizedEpisodes.length > 0 && (
-            <button
-              className="px-3 py-2 rounded-full bg-white/15 text-white text-xs border border-white/25 shadow hover:bg-white/25"
-              onClick={() => setShowEpisodePanel(true)}
-            >
-              <List className="w-4 h-4" />
-            </button>
-          )}
-          {normalizedSources.length > 0 && (
-            <div className="relative">
-              <button
-                className="px-3 py-2 rounded-full bg-white/15 text-white text-xs border border-white/25 shadow hover:bg-white/25 flex items-center gap-2"
-                onClick={() => setShowQualityMenu((v) => !v)}
-              >
-                <Settings className="w-4 h-4" />
-                <span>{currentSrc?.label ?? "HD"}</span>
-              </button>
-              {showQualityMenu && (
-                <div className="absolute right-0 mt-2 bg-black/90 border border-white/10 rounded-lg shadow-lg min-w-[140px] z-10">
-                  {normalizedSources.map((s) => (
-                    <button
-                      key={s.src}
-                      className="w-full px-3 py-2 text-left text-white text-sm hover:bg-white/10 flex items-center justify-between"
-                      onClick={() => {
-                        handleQualityChange(s);
-                        setShowQualityMenu(false);
-                      }}
-                    >
-                      <span>{s.label ?? "HD"}</span>
-                      {currentSrc?.src === s.src ? <Check className="w-4 h-4" /> : null}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+          {/* top right kept minimal; main controls moved bottom-right */}
         </div>
       </div>
 
@@ -518,6 +483,46 @@ export function CustomMediaPlayer({
             {currentSrc?.label ? <span>{currentSrc.label}</span> : null}
           </div>
         </div>
+      </div>
+
+      {/* Bottom-right quick controls (always visible for accessibility) */}
+      <div className="absolute bottom-6 right-6 flex items-center gap-2 z-20">
+        {normalizedEpisodes.length > 0 && (
+          <button
+            className="px-3 py-2 rounded-full bg-white/20 text-white text-xs border border-white/25 shadow hover:bg-white/30"
+            onClick={() => setShowEpisodePanel(true)}
+          >
+            <List className="w-4 h-4" />
+          </button>
+        )}
+        {normalizedSources.length > 0 && (
+          <div className="relative">
+            <button
+              className="px-3 py-2 rounded-full bg-white/20 text-white text-xs border border-white/25 shadow hover:bg-white/30 flex items-center gap-1"
+              onClick={() => setShowQualityMenu((v) => !v)}
+            >
+              <Settings className="w-4 h-4" />
+              <span>{currentSrc?.label ?? "HD"}</span>
+            </button>
+            {showQualityMenu && (
+              <div className="absolute bottom-full right-0 mb-2 bg-black/90 border border-white/10 rounded-lg shadow-lg min-w-[140px] z-30">
+                {normalizedSources.map((s) => (
+                  <button
+                    key={s.src}
+                    className="w-full px-3 py-2 text-left text-white text-sm hover:bg-white/10 flex items-center justify-between"
+                    onClick={() => {
+                      handleQualityChange(s);
+                      setShowQualityMenu(false);
+                    }}
+                  >
+                    <span>{s.label ?? "HD"}</span>
+                    {currentSrc?.src === s.src ? <Check className="w-4 h-4" /> : null}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Episode overlay */}
