@@ -62,7 +62,7 @@ export default function App() {
   const [playerMovie, setPlayerMovie] = useState<any | null>(null);
   const [authChecking, setAuthChecking] = useState(true);
   const [pageAssetsLoaded, setPageAssetsLoaded] = useState(false);
-  const [initialOverlay, setInitialOverlay] = useState(true);
+  const [initialOverlay, setInitialOverlay] = useState(false);
   const [uiTransitionLoading, setUiTransitionLoading] = useState(false);
   const [profileChooserLoading, setProfileChooserLoading] = useState(false);
   const [cookieChoice, setCookieChoice] = useState<"accepted" | "rejected" | null>(() => {
@@ -157,12 +157,14 @@ export default function App() {
     ) : null;
 
   const showOverlay =
-    authChecking ||
-    catalogLoading ||
-    (isAuthenticated && activeProfile && recsLoading) ||
-    profileChooserLoading ||
-    initialOverlay ||
-    !pageAssetsLoaded;
+    !showSplash &&
+    !showRegistration &&
+    !pendingVerification &&
+    (authChecking ||
+      catalogLoading ||
+      (isAuthenticated && activeProfile && recsLoading) ||
+      profileChooserLoading ||
+      !pageAssetsLoaded);
 
   const overlayText = catalogError
     ? `Catalog error: ${catalogError}`
