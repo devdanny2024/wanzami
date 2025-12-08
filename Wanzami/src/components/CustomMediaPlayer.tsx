@@ -12,6 +12,7 @@ import {
   SkipForward,
   Volume2,
   VolumeX,
+  X,
 } from "lucide-react";
 
 type MediaSource = {
