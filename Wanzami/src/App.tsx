@@ -747,7 +747,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center">
         <TopLoader active />
-        <Loader size={48} color="#fd7e14" />
+        <Loader size={56} color="#fd7e14" />
         <p className="mt-3 text-sm text-gray-300">Loading Wanzami...</p>
       </div>
     );
