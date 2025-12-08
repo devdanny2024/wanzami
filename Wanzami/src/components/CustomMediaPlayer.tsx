@@ -126,6 +126,12 @@ export function CustomMediaPlayer({
   };
 
   useEffect(() => {
+    if (!currentSrc && normalizedSources.length) {
+      setCurrentSrc(normalizedSources[0]);
+    }
+  }, [normalizedSources, currentSrc]);
+
+  useEffect(() => {
     if (resumeKey && typeof window !== "undefined") {
       const saved = localStorage.getItem(resumeKey);
       if (saved) {
@@ -405,6 +411,13 @@ export function CustomMediaPlayer({
       style={{ zIndex: 99999 }}
       onMouseMove={() => setShowControls(true)}
     >
+      {normalizedSources.length > 0 && (
+        <div className="absolute top-4 right-4 z-10">
+          <div className="px-3 py-1 rounded-full bg-white/15 text-white text-xs border border-white/25 shadow">
+            {currentSrc?.label ?? "HD"}
+          </div>
+        </div>
+      )}
       <video
         ref={videoRef}
         className={`w-full h-full max-h-screen object-contain bg-black transition duration-200 ${isPaused ? "blur-sm brightness-75" : ""}`}
