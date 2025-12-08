@@ -142,10 +142,45 @@ export default function App() {
     initialOverlay ||
     !pageAssetsLoaded;
 
+  const overlayText = catalogError
+    ? `Catalog error: ${catalogError}`
+    : recsError
+      ? `Recommendations error: ${recsError}`
+      : authChecking
+        ? "Checking your session..."
+        : catalogLoading
+          ? "Loading catalog..."
+          : recsLoading
+            ? "Loading recommendations..."
+            : profileChooserLoading
+              ? "Loading profiles..."
+              : !pageAssetsLoaded
+                ? "Preparing page..."
+                : "Loading...";
+
+  const overlayDebug = {
+    authChecking,
+    catalogLoading,
+    recsLoading,
+    profileChooserLoading,
+    initialOverlay,
+    pageAssetsLoaded,
+    catalogError,
+    recsError,
+  };
+
   const LoaderOverlay = showOverlay ? (
     <div className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center">
       <TopLoader active />
-      <p className="mt-3 text-sm text-gray-300">Loading...</p>
+      <p className="mt-3 text-sm text-gray-300 text-center px-6 max-w-xl">{overlayText}</p>
+      <div className="mt-4 text-[11px] text-gray-500 bg-white/5 border border-white/10 rounded-lg px-3 py-2 max-w-lg w-full">
+        {Object.entries(overlayDebug).map(([k, v]) => (
+          <div key={k} className="flex justify-between gap-2">
+            <span>{k}</span>
+            <span className="font-mono">{String(v)}</span>
+          </div>
+        ))}
+      </div>
     </div>
   ) : null;
 
@@ -172,6 +207,12 @@ export default function App() {
     } else {
       setCookieChoice(null);
     }
+  }, []);
+
+  useEffect(() => {
+    // Absolute safety valve so the overlay cannot stay forever even if a request never resolves
+    const t = setTimeout(() => setInitialOverlay(false), 12000);
+    return () => clearTimeout(t);
   }, []);
 
   useEffect(() => {
