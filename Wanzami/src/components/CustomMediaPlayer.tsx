@@ -93,7 +93,6 @@ export function CustomMediaPlayer({
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
-  const [isHovering, setIsHovering] = useState(false);
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [showEpisodePanel, setShowEpisodePanel] = useState(false);
   const [pipAvailable, setPipAvailable] = useState(false);
@@ -163,14 +162,8 @@ export function CustomMediaPlayer({
   }, []);
 
   useEffect(() => {
-    let timeout: NodeJS.Timeout;
-    if (isPlaying && !isHovering) {
-      timeout = setTimeout(() => setShowControls(false), 2500);
-    } else {
-      setShowControls(true);
-    }
-    return () => clearTimeout(timeout);
-  }, [isPlaying, isHovering]);
+    setShowControls(true);
+  }, [isPlaying]);
 
   const togglePlay = () => {
     const video = videoRef.current;
@@ -299,9 +292,6 @@ export function CustomMediaPlayer({
       ref={containerRef}
       className="fixed inset-0 bg-black flex items-center justify-center"
       style={{ zIndex: 99999 }}
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
-      onMouseMove={() => setIsHovering(true)}
     >
       <video
         ref={videoRef}
@@ -309,6 +299,7 @@ export function CustomMediaPlayer({
         poster={poster ?? undefined}
         className="w-full h-full object-contain bg-black"
         onClick={togglePlay}
+        controls={false}
       />
 
       {/* Top bar */}
