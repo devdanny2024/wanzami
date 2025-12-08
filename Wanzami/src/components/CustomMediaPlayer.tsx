@@ -216,7 +216,9 @@ export function CustomMediaPlayer({
   }, [handleClose]);
 
   useEffect(() => {
-    // No history manipulation; rely on explicit close/back handlers.
+    // Debug aid: component mount marker
+    // eslint-disable-next-line no-console
+    console.log("[CustomMediaPlayer] mounted");
     return;
   }, [handleClose]);
 
@@ -385,8 +387,15 @@ export function CustomMediaPlayer({
       <div className={`absolute top-0 left-0 right-0 p-4 md:p-6 flex items-start justify-between transition-all duration-300 ${showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-6"}`}>
         <div className="flex items-center gap-3">
           <button
-            onClick={handleClose}
+            type="button"
+            onClick={() => {
+              // eslint-disable-next-line no-console
+              console.log("[CustomMediaPlayer] back button clicked");
+              handleClose();
+            }}
             className="p-2 rounded-full bg-white/15 text-white hover:bg-white/25 cursor-pointer"
+            style={{ cursor: "pointer" }}
+            aria-label="Back"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
