@@ -71,6 +71,7 @@ export default function App() {
     if (stored === "accepted" || stored === "rejected") return stored as any;
     return null;
   });
+  const [bootLoader, setBootLoader] = useState(true);
   const globalLoading =
     catalogLoading ||
     recsLoading ||
@@ -78,7 +79,8 @@ export default function App() {
     profileChooserLoading ||
     initialOverlay ||
     !pageAssetsLoaded ||
-    uiTransitionLoading;
+    uiTransitionLoading ||
+    bootLoader;
   const fetchWithTimeout = async (input: RequestInfo | URL, init?: RequestInit, timeoutMs = 8000) => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -143,7 +145,8 @@ export default function App() {
     profileChooserLoading ||
     initialOverlay ||
     !pageAssetsLoaded ||
-    uiTransitionLoading;
+    uiTransitionLoading ||
+    bootLoader;
 
   const overlayText = catalogError
     ? `Catalog error: ${catalogError}`
@@ -161,7 +164,9 @@ export default function App() {
                 ? "Preparing page..."
                 : uiTransitionLoading
                   ? "Loading..."
-                  : "Loading...";
+                  : bootLoader
+                    ? "Loading..."
+                    : "Loading...";
 
   const overlayDebug = {
     authChecking,
@@ -171,6 +176,7 @@ export default function App() {
     initialOverlay,
     pageAssetsLoaded,
     uiTransitionLoading,
+    bootLoader,
     catalogError,
     recsError,
   };
@@ -233,6 +239,11 @@ export default function App() {
   useEffect(() => {
     // Absolute safety valve so the overlay cannot stay forever even if a request never resolves
     const t = setTimeout(() => setInitialOverlay(false), 12000);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => setBootLoader(false), 800);
     return () => clearTimeout(t);
   }, []);
 
