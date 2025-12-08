@@ -1,5 +1,19 @@
 import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
-import { X, Play, Pause, Volume2, VolumeX, Maximize, Minimize, Loader2, Captions, HelpCircle, RefreshCw } from "lucide-react";
+import {
+  X,
+  Play,
+  Pause,
+  Volume2,
+  VolumeX,
+  Maximize,
+  Minimize,
+  Loader2,
+  Captions,
+  HelpCircle,
+  RefreshCw,
+  PictureInPicture,
+  Shield,
+} from "lucide-react";
 
 type MediaSource = {
   src: string;
@@ -43,6 +57,7 @@ export function CustomMediaPlayer({
   const [buffered, setBuffered] = useState(0);
   const [buffering, setBuffering] = useState(false);
   const [showControls, setShowControls] = useState(true);
+  const [isPaused, setIsPaused] = useState(true);
   const [showTips, setShowTips] = useState(() => {
     if (typeof window === "undefined") return true;
     return localStorage.getItem(TIPS_STORAGE_KEY) !== "1";
@@ -56,6 +71,8 @@ export function CustomMediaPlayer({
       : null;
   const [resumeTime, setResumeTime] = useState<number | null>(null);
   const [resumeDuration, setResumeDuration] = useState<number | null>(null);
+  const [blockScreen, setBlockScreen] = useState(false);
+  const [pipAvailable, setPipAvailable] = useState(false);
 
   const percentage = useMemo(() => (duration ? (currentTime / duration) * 100 : 0), [currentTime, duration]);
 
@@ -120,8 +137,12 @@ export function CustomMediaPlayer({
     const onPlaying = () => {
       setBuffering(false);
       setPlaying(true);
+      setIsPaused(false);
     };
-    const onPause = () => setPlaying(false);
+    const onPause = () => {
+      setPlaying(false);
+      setIsPaused(true);
+    };
     const onEnded = () => {
       setPlaying(false);
       fireEvent("PLAY_END", { completionPercent: 1 });
@@ -178,9 +199,27 @@ export function CustomMediaPlayer({
     // lock scroll beneath the overlay
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        setBlockScreen(true);
+      } else {
+        setTimeout(() => setBlockScreen(false), 300);
+      }
+    };
+    const handleFocus = () => {
+      setTimeout(() => setBlockScreen(false), 200);
+    };
+    window.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("blur", handleVisibility);
+    window.addEventListener("focus", handleFocus);
+
     return () => {
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = originalOverflow;
+      window.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("blur", handleVisibility);
+      window.removeEventListener("focus", handleFocus);
     };
   }, []);
 
@@ -217,6 +256,20 @@ export function CustomMediaPlayer({
       await containerRef.current?.requestFullscreen().catch(() => undefined);
     } else {
       await document.exitFullscreen().catch(() => undefined);
+    }
+  };
+
+  const togglePip = async () => {
+    try {
+      const video = videoRef.current;
+      if (!video) return;
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+      } else if (document.pictureInPictureEnabled) {
+        await video.requestPictureInPicture();
+      }
+    } catch {
+      // ignore pip errors
     }
   };
 
@@ -266,6 +319,10 @@ export function CustomMediaPlayer({
     };
   }, [resumeKey]);
 
+  useEffect(() => {
+    setPipAvailable(Boolean((document as any).pictureInPictureEnabled));
+  }, []);
+
   const bufferedPct = useMemo(() => {
     if (!duration || !buffered) return 0;
     return Math.min(100, (buffered / duration) * 100);
@@ -280,7 +337,7 @@ export function CustomMediaPlayer({
     >
       <video
         ref={videoRef}
-        className="w-full h-full max-h-screen object-contain bg-black"
+        className={`w-full h-full max-h-screen object-contain bg-black transition duration-200 ${isPaused ? "blur-sm brightness-75" : ""}`}
         poster={poster ?? undefined}
         controls={false}
         playsInline
@@ -295,13 +352,18 @@ export function CustomMediaPlayer({
 
       {/* Center play/pause overlay for visibility */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <button
-          aria-label={playing ? "Pause" : "Play"}
-          className="pointer-events-auto w-16 h-16 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white hover:bg-white/30 transition"
-          onClick={togglePlay}
-        >
-          {playing ? <Pause className="w-8 h-8" /> : <Play className="w-8 h-8" />}
-        </button>
+        {!playing && !buffering && (
+          <div className="pointer-events-auto flex flex-col items-center gap-3">
+            <button
+              aria-label={playing ? "Pause" : "Play"}
+              className="w-20 h-20 rounded-full bg-black/60 border border-white/30 backdrop-blur flex items-center justify-center text-white hover:bg-white/20 transition"
+              onClick={togglePlay}
+            >
+              {playing ? <Pause className="w-9 h-9" /> : <Play className="w-9 h-9" />}
+            </button>
+            <span className="text-sm text-white/80">Tap to play</span>
+          </div>
+        )}
       </div>
 
       {buffering && (
@@ -309,6 +371,13 @@ export function CustomMediaPlayer({
           <div className="bg-black/60 rounded-full p-4">
             <Loader2 className="w-8 h-8 text-white animate-spin" />
           </div>
+        </div>
+      )}
+
+      {blockScreen && (
+        <div className="absolute inset-0 bg-black/95 text-white flex flex-col items-center justify-center z-[1]">
+          <Shield className="w-10 h-10 mb-3 text-[#fd7e14]" />
+          <p className="text-sm text-center px-6">Screen capture blocked. Focus the player to resume.</p>
         </div>
       )}
 
@@ -383,6 +452,15 @@ export function CustomMediaPlayer({
                   </option>
                 ))}
               </select>
+              {pipAvailable && (
+                <button
+                  aria-label="Picture in Picture"
+                  className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20"
+                  onClick={togglePip}
+                >
+                  <PictureInPicture className="w-5 h-5" />
+                </button>
+              )}
               <button
                 aria-label="Fullscreen"
                 className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20"
