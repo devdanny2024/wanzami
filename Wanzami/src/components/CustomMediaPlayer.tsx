@@ -438,7 +438,10 @@ export function CustomMediaPlayer({
       )}
 
       {/* Bottom controls */}
-      <div className={`absolute bottom-0 left-0 right-0 p-4 md:p-6 transition-all duration-300 ${showControls ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+      <div
+        className={`absolute bottom-0 left-0 right-0 p-4 md:p-6 transition-all duration-300 ${showControls ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"} z-[100000] pointer-events-auto`}
+        style={{ pointerEvents: "auto" }}
+      >
         <div className="mb-3 md:mb-4">
           <input
             type="range"
