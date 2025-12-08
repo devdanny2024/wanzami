@@ -175,6 +175,14 @@ export default function App() {
     recsError,
   };
 
+  useEffect(() => {
+    if (showOverlay) {
+      // Surface loader state to devtools for easier copying when the overlay auto-hides
+      // eslint-disable-next-line no-console
+      console.info("[LoaderOverlay]", overlayDebug);
+    }
+  }, [showOverlay, authChecking, catalogLoading, recsLoading, profileChooserLoading, initialOverlay, pageAssetsLoaded, uiTransitionLoading, catalogError, recsError]);
+
   const LoaderOverlay = showOverlay ? (
     <div className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center">
       <TopLoader active />
@@ -183,14 +191,14 @@ export default function App() {
         {Object.entries(overlayDebug).map(([k, v]) => (
           <div key={k} className="flex justify-between gap-2">
             <span>{k}</span>
-            <span className="font-mono">{String(v)}</span>
+            <span className="font-mono break-all text-right">{String(v)}</span>
           </div>
         ))}
       </div>
     </div>
   ) : null;
 
-  const startUiTransition = (duration = 600) => {
+  const startUiTransition = (duration = 1200) => {
     setUiTransitionLoading(true);
     setTimeout(() => setUiTransitionLoading(false), duration);
   };
@@ -387,6 +395,7 @@ export default function App() {
   };
 
   const handleNavigate = (page: string) => {
+    startUiTransition();
     setCurrentPage(page);
     setSelectedMovie(null);
     if (typeof window !== 'undefined') {
@@ -421,6 +430,7 @@ export default function App() {
   };
 
   const handleMovieClick = async (movie: any) => {
+    startUiTransition();
     let enriched = movie;
     if (movie?.type === "SERIES" && !movie.episodes) {
       try {
@@ -438,6 +448,7 @@ export default function App() {
   };
 
   const handleCloseMovie = () => {
+    startUiTransition();
     setSelectedMovie(null);
     const merged = combineContinueWatching(serverContinueWatching, activeProfile?.id);
     setContinueWatchingItems(merged);
