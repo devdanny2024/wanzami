@@ -373,6 +373,10 @@ export function CustomMediaPlayer({
       ref={containerRef}
       className="fixed inset-0 bg-black flex items-center justify-center"
       style={{ zIndex: 99999 }}
+      onClickCapture={(e) => {
+        // eslint-disable-next-line no-console
+        console.log("[CustomMediaPlayer] container click target:", (e.target as HTMLElement)?.tagName);
+      }}
     >
       <video
         ref={videoRef}
@@ -384,7 +388,14 @@ export function CustomMediaPlayer({
       />
 
       {/* Top bar */}
-      <div className={`absolute top-0 left-0 right-0 p-4 md:p-6 flex items-start justify-between transition-all duration-300 ${showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-6"}`}>
+      <div
+        className={`absolute top-0 left-0 right-0 p-4 md:p-6 flex items-start justify-between transition-all duration-300 ${showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-6"} z-30 pointer-events-auto`}
+        style={{ pointerEvents: "auto" }}
+        onClickCapture={(e) => {
+          // eslint-disable-next-line no-console
+          console.log("[CustomMediaPlayer] top bar click target:", (e.target as HTMLElement)?.tagName);
+        }}
+      >
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -393,8 +404,8 @@ export function CustomMediaPlayer({
               console.log("[CustomMediaPlayer] back button clicked");
               handleClose();
             }}
-            className="p-2 rounded-full bg-white/15 text-white hover:bg-white/25 cursor-pointer"
-            style={{ cursor: "pointer" }}
+            className="p-2 rounded-full bg-white/15 text-white hover:bg-white/25 cursor-pointer pointer-events-auto"
+            style={{ cursor: "pointer", pointerEvents: "auto" }}
             aria-label="Back"
           >
             <ArrowLeft className="w-5 h-5" />
