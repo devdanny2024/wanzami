@@ -113,6 +113,7 @@ export function CustomMediaPlayer({
   const [blockScreen, setBlockScreen] = useState(false);
   const [pipAvailable, setPipAvailable] = useState(false);
   const [screenshotShield, setScreenshotShield] = useState(false);
+  const [showEpisodePanel, setShowEpisodePanel] = useState(false);
 
   const percentage = useMemo(() => (duration ? (currentTime / duration) * 100 : 0), [currentTime, duration]);
 
@@ -440,6 +441,63 @@ export function CustomMediaPlayer({
         </div>
       )}
 
+      {showEpisodePanel && normalizedEpisodes.length > 0 && (
+        <div className="fixed inset-0 z-[100000] flex">
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setShowEpisodePanel(false)}
+          />
+          <div className="relative ml-auto h-full w-full max-w-md bg-neutral-950/95 border-l border-white/10 overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b border-white/10 text-white">
+              <div>
+                <div className="font-semibold">Episodes</div>
+                <div className="text-xs text-white/60">{normalizedEpisodes.length} total</div>
+              </div>
+              <button
+                className="p-2 rounded-full bg-white/10 hover:bg-white/20"
+                onClick={() => setShowEpisodePanel(false)}
+                aria-label="Close episodes"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 space-y-2">
+              {normalizedEpisodes.map((ep) => {
+                const active = currentEpisode?.id === ep.id;
+                return (
+                  <button
+                    key={ep.id}
+                    onClick={() => {
+                      const stream = ep.streamUrl || ep.thumbnailUrl || currentSrc.src;
+                      handleSourceChange(
+                        { src: stream, label: ep.name ?? `S${ep.seasonNumber}E${ep.episodeNumber}` },
+                        ep
+                      );
+                      setShowEpisodePanel(false);
+                    }}
+                    className={`w-full text-left rounded-lg p-3 border ${
+                      active ? "border-[#fd7e14] bg-[#fd7e14]/10" : "border-white/10 bg-white/5 hover:bg-white/10"
+                    } transition`}
+                  >
+                    <div className="flex items-center justify-between text-white text-sm">
+                      <span>
+                        S{ep.seasonNumber ?? "?"}E{ep.episodeNumber ?? "?"} · {ep.name ?? "Episode"}
+                      </span>
+                      {ep.runtimeMinutes ? (
+                        <span className="text-xs text-white/60">{ep.runtimeMinutes}m</span>
+                      ) : null}
+                    </div>
+                    {ep.synopsis ? (
+                      <div className="text-xs text-white/60 mt-1 line-clamp-2">{ep.synopsis}</div>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Gestures */}
       <div className="absolute inset-y-0 left-0 w-1/2" onClick={() => handleTap("left")} />
       <div className="absolute inset-y-0 right-0 w-1/2" onClick={() => handleTap("right")} />
@@ -597,38 +655,13 @@ export function CustomMediaPlayer({
           </div>
 
           {normalizedEpisodes.length > 0 && (
-            <div className="max-h-52 overflow-y-auto mb-2 rounded-lg bg-black/40 border border-white/10 p-3 space-y-2">
-              <div className="text-white font-semibold mb-1">Episodes</div>
-              {normalizedEpisodes.map((ep) => {
-                const active = currentEpisode?.id === ep.id;
-                return (
-                  <button
-                    key={ep.id}
-                    onClick={() => {
-                      const stream = ep.streamUrl || ep.thumbnailUrl || currentSrc.src;
-                      handleSourceChange(
-                        { src: stream, label: ep.name ?? `S${ep.seasonNumber}E${ep.episodeNumber}` },
-                        ep
-                      );
-                    }}
-                    className={`w-full text-left rounded-lg p-2 border ${
-                      active ? "border-[#fd7e14] bg-[#fd7e14]/10" : "border-white/10 bg-white/5 hover:bg-white/10"
-                    } transition`}
-                  >
-                    <div className="flex items-center justify-between text-white text-sm">
-                      <span>
-                        S{ep.seasonNumber ?? "?"}E{ep.episodeNumber ?? "?"} · {ep.name ?? "Episode"}
-                      </span>
-                      {ep.runtimeMinutes ? (
-                        <span className="text-xs text-white/60">{ep.runtimeMinutes}m</span>
-                      ) : null}
-                    </div>
-                    {ep.synopsis ? (
-                      <div className="text-xs text-white/60 mt-1 line-clamp-2">{ep.synopsis}</div>
-                    ) : null}
-                  </button>
-                );
-              })}
+            <div className="flex items-center gap-3 mb-2">
+              <button
+                className="px-3 py-2 rounded-lg bg-white/10 text-white text-sm"
+                onClick={() => setShowEpisodePanel(true)}
+              >
+                Episodes
+              </button>
             </div>
           )}
 
