@@ -99,7 +99,7 @@ export default function App() {
 
   const CookieBanner = () =>
     showCookieBanner ? (
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[9998] w-[95%] max-w-3xl">
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[10010] w-[95%] max-w-3xl">
         <div className="bg-neutral-900/95 border border-neutral-700 rounded-xl shadow-lg px-4 py-3 md:px-6 md:py-4 text-white">
           <div className="flex items-start gap-3">
             <div className="flex-1 space-y-2">
@@ -149,7 +149,7 @@ export default function App() {
   const CookieManagerButton =
     cookieChoice && !showCookieBanner ? (
       <button
-        className="fixed bottom-4 left-4 z-[9997] px-3 py-2 text-xs rounded-lg border border-white/20 bg-white/5 text-white hover:bg-white/10"
+        className="fixed bottom-4 left-4 z-[10005] px-3 py-2 text-xs rounded-lg border border-white/20 bg-white/5 text-white hover:bg-white/10"
         onClick={() => setShowCookieBanner(true)}
       >
         Cookie preferences
@@ -162,9 +162,7 @@ export default function App() {
     (isAuthenticated && activeProfile && recsLoading) ||
     profileChooserLoading ||
     initialOverlay ||
-    !pageAssetsLoaded ||
-    uiTransitionLoading ||
-    bootLoader;
+    !pageAssetsLoaded;
 
   const overlayText = catalogError
     ? `Catalog error: ${catalogError}`
@@ -175,16 +173,12 @@ export default function App() {
         : catalogLoading
           ? "Loading catalog..."
           : recsLoading
-            ? "Loading recommendations..."
-            : profileChooserLoading
-              ? "Loading profiles..."
-              : !pageAssetsLoaded
-                ? "Preparing page..."
-                : uiTransitionLoading
-                  ? "Loading..."
-                  : bootLoader
-                    ? "Loading..."
-                    : "Loading...";
+          ? "Loading recommendations..."
+          : profileChooserLoading
+            ? "Loading profiles..."
+            : !pageAssetsLoaded
+              ? "Preparing page..."
+              : "Loading...";
 
   const overlayDebug = {
     authChecking,
@@ -1047,7 +1041,7 @@ export default function App() {
 
       {/* Cookie consent */}
       {!cookieChoice && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[9998] w-[95%] max-w-3xl">
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[10010] w-[95%] max-w-3xl">
           <div className="bg-neutral-900/95 border border-neutral-700 rounded-xl shadow-lg px-4 py-3 md:px-6 md:py-4 text-white">
             <div className="flex items-start gap-3">
               <div className="flex-1 space-y-2">
