@@ -204,7 +204,7 @@ export default function App() {
     </div>
   ) : null;
 
-  const startUiTransition = (duration = 1200) => {
+  const startUiTransition = (duration = 600) => {
     setUiTransitionLoading(true);
     setTimeout(() => setUiTransitionLoading(false), duration);
   };
@@ -246,6 +246,12 @@ export default function App() {
     const t = setTimeout(() => setBootLoader(false), 800);
     return () => clearTimeout(t);
   }, []);
+
+  useEffect(() => {
+    if (!uiTransitionLoading) return;
+    const t = setTimeout(() => setUiTransitionLoading(false), 1500);
+    return () => clearTimeout(t);
+  }, [uiTransitionLoading]);
 
   useEffect(() => {
     let cancelled = false;
