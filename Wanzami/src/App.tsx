@@ -71,6 +71,11 @@ export default function App() {
     if (stored === "accepted" || stored === "rejected") return stored as any;
     return null;
   });
+  const [showCookieBanner, setShowCookieBanner] = useState(() => {
+    if (typeof window === "undefined") return true;
+    const stored = localStorage.getItem("cookieConsent");
+    return stored !== "accepted" && stored !== "rejected";
+  });
   const [bootLoader, setBootLoader] = useState(true);
   const globalLoading =
     catalogLoading ||
@@ -93,7 +98,7 @@ export default function App() {
   };
 
   const CookieBanner = () =>
-    !cookieChoice ? (
+    showCookieBanner ? (
       <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[9998] w-[95%] max-w-3xl">
         <div className="bg-neutral-900/95 border border-neutral-700 rounded-xl shadow-lg px-4 py-3 md:px-6 md:py-4 text-white">
           <div className="flex items-start gap-3">
@@ -107,6 +112,7 @@ export default function App() {
                   className="px-4 py-2 bg-[#fd7e14] hover:bg-[#e86f0f] text-white text-sm rounded-lg"
                   onClick={() => {
                     setCookieChoice("accepted");
+                    setShowCookieBanner(false);
                     localStorage.setItem("cookieConsent", "accepted");
                   }}
                 >
@@ -116,6 +122,7 @@ export default function App() {
                   className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm rounded-lg"
                   onClick={() => {
                     setCookieChoice("rejected");
+                    setShowCookieBanner(false);
                     localStorage.setItem("cookieConsent", "rejected");
                   }}
                 >
@@ -128,6 +135,7 @@ export default function App() {
               className="p-2 text-neutral-300 hover:text-white"
               onClick={() => {
                 setCookieChoice("rejected");
+                setShowCookieBanner(false);
                 localStorage.setItem("cookieConsent", "rejected");
               }}
             >
@@ -136,6 +144,16 @@ export default function App() {
           </div>
         </div>
       </div>
+    ) : null;
+
+  const CookieManagerButton =
+    cookieChoice && !showCookieBanner ? (
+      <button
+        className="fixed bottom-4 left-4 z-[9997] px-3 py-2 text-xs rounded-lg border border-white/20 bg-white/5 text-white hover:bg-white/10"
+        onClick={() => setShowCookieBanner(true)}
+      >
+        Cookie preferences
+      </button>
     ) : null;
 
   const showOverlay =
@@ -231,8 +249,10 @@ export default function App() {
     const storedConsent = typeof window !== "undefined" ? localStorage.getItem("cookieConsent") : null;
     if (storedConsent === "accepted" || storedConsent === "rejected") {
       setCookieChoice(storedConsent as any);
+      setShowCookieBanner(false);
     } else {
       setCookieChoice(null);
+      setShowCookieBanner(true);
     }
   }, []);
 
@@ -243,7 +263,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const t = setTimeout(() => setBootLoader(false), 800);
+    const t = setTimeout(() => setBootLoader(false), 1500);
     return () => clearTimeout(t);
   }, []);
 
@@ -800,6 +820,7 @@ export default function App() {
         />
         {LoaderOverlay}
         <CookieBanner />
+        {CookieManagerButton}
       </>
     );
   }
@@ -815,6 +836,7 @@ export default function App() {
         />
         {LoaderOverlay}
         <CookieBanner />
+        {CookieManagerButton}
       </>
     );
   }
@@ -847,6 +869,7 @@ export default function App() {
         <AuthPage onAuth={handleAuth} onShowSignup={handleShowSignup} />
         {LoaderOverlay}
         <CookieBanner />
+        {CookieManagerButton}
       </>
     );
   }
