@@ -73,6 +73,7 @@ export function CustomMediaPlayer({
   const [resumeDuration, setResumeDuration] = useState<number | null>(null);
   const [blockScreen, setBlockScreen] = useState(false);
   const [pipAvailable, setPipAvailable] = useState(false);
+  const [screenshotShield, setScreenshotShield] = useState(false);
 
   const percentage = useMemo(() => (duration ? (currentTime / duration) * 100 : 0), [currentTime, duration]);
 
@@ -210,9 +211,16 @@ export function CustomMediaPlayer({
     const handleFocus = () => {
       setTimeout(() => setBlockScreen(false), 200);
     };
+    const handleScreenshotKey = (e: KeyboardEvent) => {
+      if (e.key === "PrintScreen") {
+        setScreenshotShield(true);
+        setTimeout(() => setScreenshotShield(false), 1500);
+      }
+    };
     window.addEventListener("visibilitychange", handleVisibility);
     window.addEventListener("blur", handleVisibility);
     window.addEventListener("focus", handleFocus);
+    window.addEventListener("keydown", handleScreenshotKey);
 
     return () => {
       window.removeEventListener("keydown", onKey);
@@ -220,6 +228,7 @@ export function CustomMediaPlayer({
       window.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("blur", handleVisibility);
       window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("keydown", handleScreenshotKey);
     };
   }, []);
 
@@ -378,6 +387,15 @@ export function CustomMediaPlayer({
         <div className="absolute inset-0 bg-black/95 text-white flex flex-col items-center justify-center z-[1]">
           <Shield className="w-10 h-10 mb-3 text-[#fd7e14]" />
           <p className="text-sm text-center px-6">Screen capture blocked. Focus the player to resume.</p>
+        </div>
+      )}
+
+      {screenshotShield && (
+        <div className="absolute inset-0 bg-black/90 backdrop-blur z-[2] flex items-center justify-center text-white text-sm">
+          <div className="flex flex-col items-center gap-2">
+            <Shield className="w-8 h-8 text-[#fd7e14]" />
+            <span>Capture blocked</span>
+          </div>
         </div>
       )}
 
