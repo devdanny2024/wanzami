@@ -342,10 +342,11 @@ export function CustomMediaPlayer({
           {normalizedSources.length > 0 && (
             <div className="relative">
               <button
-                className="px-3 py-2 rounded-full bg-white/15 text-white text-xs border border-white/25 shadow hover:bg-white/25"
+                className="px-3 py-2 rounded-full bg-white/15 text-white text-xs border border-white/25 shadow hover:bg-white/25 flex items-center gap-2"
                 onClick={() => setShowQualityMenu((v) => !v)}
               >
-                {currentSrc?.label ?? "HD"}
+                <Settings className="w-4 h-4" />
+                <span>{currentSrc?.label ?? "HD"}</span>
               </button>
               {showQualityMenu && (
                 <div className="absolute right-0 mt-2 bg-black/90 border border-white/10 rounded-lg shadow-lg min-w-[140px] z-10">
@@ -427,7 +428,7 @@ export function CustomMediaPlayer({
                 step={0.01}
                 value={isMuted ? 0 : volume}
                 onChange={handleVolumeChange}
-                className="w-0 group-hover/volume:w-24 transition-all duration-300 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"
+                className="w-28 transition-all duration-300 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"
                 style={{
                   background: `linear-gradient(to right, #fd7e14 0%, #fd7e14 ${volume * 100}%, #4a5568 ${volume * 100}%, #4a5568 100%)`,
                 }}
@@ -483,7 +484,7 @@ export function CustomMediaPlayer({
               {normalizedSources.length > 1 && (
                 <div className="relative">
                   <button onClick={() => setShowQualityMenu((v) => !v)} className="text-white hover:scale-110 transition-transform">
-                    {currentSrc?.label ?? "HD"}
+                    <Settings className="w-6 h-6" />
                   </button>
                   {showQualityMenu && (
                     <div className="absolute bottom-full right-0 mb-2 bg-black/90 border border-white/10 rounded-lg shadow-lg min-w-[140px] z-10">
