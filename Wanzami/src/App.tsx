@@ -92,6 +92,34 @@ export default function App() {
     uiTransitionLoading ||
     bootLoader ||
     routeLoading;
+
+  useEffect(() => {
+    // Debug loading flags to diagnose blank screen
+    // eslint-disable-next-line no-console
+    console.log("[App] loading flags", {
+      bootLoader,
+      authChecking,
+      initialBlocker,
+      pageAssetsLoaded,
+      catalogLoading,
+      recsLoading,
+      uiTransitionLoading,
+      profileChooserLoading,
+      routeLoading,
+      globalLoading,
+    });
+  }, [
+    bootLoader,
+    authChecking,
+    initialBlocker,
+    pageAssetsLoaded,
+    catalogLoading,
+    recsLoading,
+    uiTransitionLoading,
+    profileChooserLoading,
+    routeLoading,
+    globalLoading,
+  ]);
   const mapPathToPage = useCallback((path: string) => {
     const clean = path || "/";
     if (clean.startsWith("/search")) return "search";
