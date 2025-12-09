@@ -32,7 +32,6 @@ import { MovieData } from './components/MovieCard';
 import { CustomMediaPlayer } from './components/CustomMediaPlayer';
 import { TopLoader } from './components/TopLoader';
 import { X } from 'lucide-react';
-import { Loader } from './components/ui/loader';
 
 export default function App() {
 
@@ -168,6 +167,18 @@ export default function App() {
     [catalogMovies]
   );
 
+  const fallbackDemo = useCallback(
+    (id?: string | null) => ({
+      id: id ?? Date.now(),
+      backendId: id ?? String(Date.now()),
+      title: `Title ${id ?? ""}`.trim(),
+      image: "https://placehold.co/800x450/111111/FD7E14?text=Wanzami",
+      trailerUrl: "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+      type: "MOVIE",
+    }),
+    []
+  );
+
   useEffect(() => {
     const { titleId, playerId, episodeId, startTime } = parsePathIds(pathname ?? "/");
     let cancelled = false;
@@ -182,7 +193,8 @@ export default function App() {
           if (found) {
             setSelectedMovie(found);
           } else {
-            setRouteError("Title not found");
+            // Keep UX alive with a placeholder
+            setSelectedMovie(fallbackDemo(titleId));
           }
         }
       }
@@ -194,7 +206,10 @@ export default function App() {
             const withEpisode = episodeId ? { ...withStart, currentEpisodeId: episodeId } : withStart;
             setPlayerMovie(withEpisode);
           } else {
-            setRouteError("Title not found");
+            const demo = fallbackDemo(playerId);
+            const withStart = startTime ? { ...demo, startTimeSeconds: startTime } : demo;
+            const withEpisode = episodeId ? { ...withStart, currentEpisodeId: episodeId } : withStart;
+            setPlayerMovie(withEpisode);
           }
         }
       }
@@ -946,8 +961,6 @@ export default function App() {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center">
         <TopLoader active />
-        <Loader size={56} color="#fd7e14" />
-        <p className="mt-3 text-sm text-gray-300">Loading Wanzami...</p>
       </div>
     );
   }
@@ -956,7 +969,6 @@ export default function App() {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center">
         <TopLoader active />
-        <p className="mt-3 text-sm text-gray-300">Checking your session...</p>
       </div>
     );
   }
