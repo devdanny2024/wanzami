@@ -117,7 +117,7 @@ worker.on("failed", async (job, err) => {
   if (!job?.data) return;
   const data = job.data as TranscodeJob;
   await prisma.uploadJob.update({
-    where: { id: data.uploadJobId },
+    where: { id: BigInt(data.uploadJobId) },
     data: { status: UploadStatus.FAILED, error: err?.message ?? "Transcode failed" },
   });
 });
