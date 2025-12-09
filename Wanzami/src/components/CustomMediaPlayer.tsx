@@ -337,7 +337,7 @@ export function CustomMediaPlayer({
   const renderQualityMenu = (placementClass: string) => {
     if (!showQualityMenu) return null;
     return (
-      <div className={`absolute ${placementClass} bg-black/95 border border-white/10 rounded-lg shadow-lg min-w-[160px] z-30`}>
+      <div className={`absolute ${placementClass} bg-black/95 border border-white/10 rounded-lg shadow-lg min-w-[160px]`}>
         <div className="px-3 py-2 border-b border-white/10">
           <p className="text-white text-sm">Quality</p>
         </div>
@@ -359,11 +359,7 @@ export function CustomMediaPlayer({
   };
 
   return (
-    <div
-      ref={containerRef}
-      className="fixed inset-0 bg-black flex items-center justify-center"
-      style={{ zIndex: 99999 }}
-    >
+    <div ref={containerRef} className="fixed inset-0 bg-black flex items-center justify-center">
       <video
         ref={videoRef}
         src={currentSrc?.src}
@@ -555,7 +551,7 @@ export function CustomMediaPlayer({
 
       {/* Episode overlay */}
       {showEpisodePanel && normalizedEpisodes.length > 0 && (
-        <div className="fixed inset-0 bg-black/95 z-50 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/95 overflow-y-auto">
           <div className="max-w-6xl mx-auto p-4 md:p-8">
             <div className="flex items-center justify-between mb-6 md:mb-8">
               <div className="text-white">

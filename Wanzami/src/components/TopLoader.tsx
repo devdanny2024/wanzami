@@ -22,7 +22,7 @@ export function TopLoader({ active }: TopLoaderProps) {
   return (
     <>
       <div
-        className="fixed top-0 left-0 w-full h-[8px] z-[2147483647] overflow-hidden pointer-events-none"
+        className="fixed top-0 left-0 w-full h-[8px] overflow-hidden pointer-events-none"
         style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
       >
         <div className="h-full top-loader-bar" />
