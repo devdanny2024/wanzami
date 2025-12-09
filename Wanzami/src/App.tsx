@@ -125,6 +125,24 @@ export default function App() {
     };
   }, []);
 
+  const makeStubBlogPost = useCallback(
+    (id: string): BlogPost => ({
+      id: Number(id) || Date.now(),
+      title: `Post ${id}`,
+      subtitle: "",
+      image: "https://placehold.co/800x450/111111/FD7E14?text=Blog+Post",
+      category: "General",
+      author: {
+        name: "Wanzami",
+        avatar: "https://placehold.co/64x64/111111/FD7E14?text=W",
+      },
+      date: new Date().toISOString().slice(0, 10),
+      readTime: "3 min read",
+      excerpt: "Content coming soon.",
+    }),
+    []
+  );
+
   const loadTitleById = useCallback(
     async (id?: string | null) => {
       if (!id) return null;
@@ -205,7 +223,7 @@ export default function App() {
     if (postMatch) {
       const postId = decodeURIComponent(postMatch[1]);
       if (!selectedBlogPost || String(selectedBlogPost.id) !== postId) {
-        setSelectedBlogPost({ id: postId, title: `Post ${postId}` } as BlogPost);
+        setSelectedBlogPost(makeStubBlogPost(postId));
       }
     } else if (categoryMatch) {
       const cat = decodeURIComponent(categoryMatch[1]);
@@ -213,7 +231,7 @@ export default function App() {
         setSelectedCategory(cat);
       }
     }
-  }, [pathname, selectedBlogPost, selectedCategory]);
+  }, [pathname, selectedBlogPost, selectedCategory, makeStubBlogPost]);
   const fetchWithTimeout = async (input: RequestInfo | URL, init?: RequestInit, timeoutMs = 8000) => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
