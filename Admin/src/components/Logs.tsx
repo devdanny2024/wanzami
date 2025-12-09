@@ -27,7 +27,14 @@ export function Logs() {
         const res = await fetch("/api/admin/logs", {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
-        const data = await res.json();
+        const text = await res.text();
+        let data: any = {};
+        try {
+          data = text ? JSON.parse(text) : {};
+        } catch {
+          // Non-JSON (e.g., HTML error page)
+          throw new Error("Logs endpoint did not return JSON");
+        }
         if (!res.ok) {
           throw new Error(data?.message || "Failed to load logs");
         }
