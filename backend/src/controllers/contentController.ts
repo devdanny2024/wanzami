@@ -424,13 +424,20 @@ export const updateTitle = async (req: Request, res: Response) => {
   }
   if (isOriginal !== undefined) data.isOriginal = isOriginal;
   if (pendingReview !== undefined) data.pendingReview = pendingReview;
-  const title = await prisma.title.update({ where: { id }, data });
-  void auditLog({
-    action: "TITLE_UPDATE",
-    resource: id.toString(),
-    detail: { fields: Object.keys(data) },
-  });
-  return res.json({ title: { id: title.id.toString(), name: title.name, type: title.type } });
+  try {
+    const title = await prisma.title.update({ where: { id }, data });
+    void auditLog({
+      action: "TITLE_UPDATE",
+      resource: id.toString(),
+      detail: { fields: Object.keys(data) },
+    });
+    return res.json({ title: { id: title.id.toString(), name: title.name, type: title.type } });
+  } catch (err: any) {
+    if (err?.code === "P2025") {
+      return res.status(404).json({ message: "Title not found" });
+    }
+    throw err;
+  }
 };
 
 export const publishTitle = async (req: Request, res: Response) => {
