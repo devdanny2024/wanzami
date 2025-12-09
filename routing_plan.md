@@ -36,3 +36,4 @@
 1) Add lightweight loaders for `/title/:id` and `/player/:id` to fetch details/episodes on direct hits and handle not-found gracefully.
 2) Remove player z-index/pointer hacks once routed overlay is stable.
 3) Verify all nav and deep-link flows end-to-end (home/search/blog/ppv/movies/series/kids/mylist; player back behavior; continue-watching resume; auth gating if needed).
+
