@@ -5,6 +5,7 @@ import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { MovieTitle } from "./MoviesManagement"; // reuse shape
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 export function AddEditSeriesForm({
   token,
@@ -25,9 +26,7 @@ export function AddEditSeriesForm({
   const [genres, setGenres] = useState<string[]>(series.genres ?? []);
   const [language, setLanguage] = useState(series.language ?? "en");
   const [maturityRating, setMaturityRating] = useState<string>(series.maturityRating ?? "");
-  const [countryAvailability, setCountryAvailability] = useState<string>(
-    (series.countryAvailability ?? []).join(",")
-  );
+  const [countryAvailability, setCountryAvailability] = useState<string[]>(series.countryAvailability ?? []);
   const [isOriginal, setIsOriginal] = useState<boolean>(!!series.isOriginal);
   const [posterFile, setPosterFile] = useState<File | null>(null);
   const [thumbFile, setThumbFile] = useState<File | null>(null);
@@ -42,7 +41,7 @@ export function AddEditSeriesForm({
     setGenres(series.genres ?? []);
     setLanguage(series.language ?? "en");
     setMaturityRating(series.maturityRating ?? "");
-    setCountryAvailability((series.countryAvailability ?? []).join(","));
+    setCountryAvailability(series.countryAvailability ?? []);
     setIsOriginal(!!series.isOriginal);
   }, [series.id]);
 
@@ -85,13 +84,7 @@ export function AddEditSeriesForm({
       setError("Maturity rating is required.");
       return;
     }
-    const countryCodes = countryAvailability
-      ? countryAvailability
-          .split(",")
-          .map((c) => c.trim().toUpperCase())
-          .filter(Boolean)
-      : [];
-    if (!countryCodes.length) {
+    if (!countryAvailability.length) {
       setError("At least one country code is required.");
       return;
     }
@@ -101,16 +94,16 @@ export function AddEditSeriesForm({
       const isEdit = !!series.id;
       const endpoint = isEdit ? `/api/admin/titles/${series.id}` : "/api/admin/titles";
       const method = isEdit ? "PATCH" : "POST";
-      const payload: any = {
-        name: title.trim(),
-        description: description.trim(),
-        type: "SERIES",
-        genres,
-        language,
-        maturityRating,
-        countryAvailability: countryCodes,
-        isOriginal,
-      };
+    const payload: any = {
+      name: title.trim(),
+      description: description.trim(),
+      type: "SERIES",
+      genres,
+      language,
+      maturityRating,
+      countryAvailability,
+      isOriginal,
+    };
       if (!isEdit) {
         payload.pendingReview = true;
         payload.archived = true;
@@ -192,32 +185,61 @@ export function AddEditSeriesForm({
           </div>
           <div>
             <Label className="text-neutral-300">Language</Label>
-            <Input
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              className="mt-1 bg-neutral-950 border-neutral-800 text-white"
-              placeholder="en"
-            />
+            <Select value={language} onValueChange={setLanguage}>
+              <SelectTrigger className="mt-1 bg-neutral-950 border-neutral-800 text-white">
+                <SelectValue placeholder="Select language" />
+              </SelectTrigger>
+              <SelectContent className="bg-neutral-900 border-neutral-800">
+                {["en", "fr", "es", "pt", "ha", "yo", "ig"].map((lang) => (
+                  <SelectItem key={lang} value={lang}>
+                    {lang.toUpperCase()}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label className="text-neutral-300">Maturity Rating</Label>
-            <Input
-              value={maturityRating}
-              onChange={(e) => setMaturityRating(e.target.value.toUpperCase())}
-              className="mt-1 bg-neutral-950 border-neutral-800 text-white"
-              placeholder="PG, PG-13, R"
-            />
+            <Select value={maturityRating} onValueChange={setMaturityRating}>
+              <SelectTrigger className="mt-1 bg-neutral-950 border-neutral-800 text-white">
+                <SelectValue placeholder="Select rating" />
+              </SelectTrigger>
+              <SelectContent className="bg-neutral-900 border-neutral-800">
+                {["G", "PG", "PG-13", "TV-Y", "TV-G", "TV-PG", "TV-14", "18+"].map((rate) => (
+                  <SelectItem key={rate} value={rate}>
+                    {rate}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div>
-            <Label className="text-neutral-300">Country Availability (comma separated)</Label>
-            <Input
-              value={countryAvailability}
-              onChange={(e) => setCountryAvailability(e.target.value)}
-              className="mt-1 bg-neutral-950 border-neutral-800 text-white"
-              placeholder="NG, US, UK"
-            />
+            <Label className="text-neutral-300">Country Availability</Label>
+            <div className="mt-1 flex flex-wrap gap-2">
+              {["NG", "US", "UK", "CA", "ZA", "GH", "KE", "DE", "FR", "IN"].map((code) => {
+                const active = countryAvailability.includes(code);
+                return (
+                  <button
+                    type="button"
+                    key={code}
+                    onClick={() =>
+                      setCountryAvailability((prev) =>
+                        prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
+                      )
+                    }
+                    className={`px-3 py-1 rounded-full text-sm border ${
+                      active
+                        ? "bg-[#fd7e14]/20 border-[#fd7e14] text-[#fd7e14]"
+                        : "bg-neutral-900 border-neutral-700 text-neutral-300 hover:border-neutral-500"
+                    }`}
+                  >
+                    {code}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">

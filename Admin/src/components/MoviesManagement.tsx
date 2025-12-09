@@ -264,7 +264,7 @@ function AddEditMovieForm({
   const [runtimeMinutes, setRuntimeMinutes] = useState<string>(movie?.runtimeMinutes ? String(movie.runtimeMinutes) : "");
   const [maturityRating, setMaturityRating] = useState<string>(movie?.maturityRating ?? "");
   const [releaseDate, setReleaseDate] = useState<string>(movie?.releaseDate?.slice(0, 10) ?? "");
-  const [countryAvailability, setCountryAvailability] = useState<string>("");
+  const [countryAvailability, setCountryAvailability] = useState<string[]>([]);
   const [isOriginal, setIsOriginal] = useState<boolean>(!!movie?.isOriginal);
   const [posterFile, setPosterFile] = useState<File | null>(null);
   const [thumbFile, setThumbFile] = useState<File | null>(null);
@@ -291,7 +291,7 @@ function AddEditMovieForm({
     setRuntimeMinutes((movie as any)?.runtimeMinutes ? String((movie as any).runtimeMinutes) : "");
     setMaturityRating((movie as any)?.maturityRating ?? "");
     setReleaseDate((movie as any)?.releaseDate?.slice(0, 10) ?? "");
-    setCountryAvailability(((movie as any)?.countryAvailability ?? []).join(","));
+    setCountryAvailability(((movie as any)?.countryAvailability ?? []) as string[]);
     setIsOriginal(!!(movie as any)?.isOriginal);
     setGenres(((movie as any)?.genres ?? []) as string[]);
   }, [movie?.id]);
@@ -339,12 +339,7 @@ function AddEditMovieForm({
         runtimeMinutes: runtimeMinutes ? Number(runtimeMinutes) : undefined,
         maturityRating: maturityRating || undefined,
         releaseDate: releaseDate ? new Date(releaseDate).toISOString() : undefined,
-        countryAvailability: countryAvailability
-          ? countryAvailability
-              .split(",")
-              .map((c) => c.trim().toUpperCase())
-              .filter(Boolean)
-          : [],
+        countryAvailability,
         isOriginal,
         genres,
       };
@@ -504,15 +499,21 @@ function AddEditMovieForm({
                 placeholder="Action, Drama, Comedy"
               />
             </div>
-            <div>
-              <Label className="text-neutral-300">Language</Label>
-              <Input
-                value={language}
-                onChange={(e) => setLanguage(e.target.value)}
-                className="mt-1 bg-neutral-950 border-neutral-800 text-white"
-                placeholder="en"
-              />
-            </div>
+        <div>
+          <Label className="text-neutral-300">Language</Label>
+          <Select value={language} onValueChange={setLanguage}>
+            <SelectTrigger className="mt-1 bg-neutral-950 border-neutral-800 text-white">
+              <SelectValue placeholder="Select language" />
+            </SelectTrigger>
+            <SelectContent className="bg-neutral-900 border-neutral-800">
+              {["en", "fr", "es", "pt", "ha", "yo", "ig"].map((lang) => (
+                <SelectItem key={lang} value={lang}>
+                  {lang.toUpperCase()}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4 mb-3">
@@ -526,15 +527,21 @@ function AddEditMovieForm({
                 placeholder="120"
               />
             </div>
-            <div>
-              <Label className="text-neutral-300">Maturity Rating</Label>
-              <Input
-                value={maturityRating}
-                onChange={(e) => setMaturityRating(e.target.value.toUpperCase())}
-                className="mt-1 bg-neutral-950 border-neutral-800 text-white"
-                placeholder="PG, PG-13, R"
-              />
-            </div>
+        <div>
+          <Label className="text-neutral-300">Maturity Rating</Label>
+          <Select value={maturityRating} onValueChange={setMaturityRating}>
+            <SelectTrigger className="mt-1 bg-neutral-950 border-neutral-800 text-white">
+              <SelectValue placeholder="Select rating" />
+            </SelectTrigger>
+            <SelectContent className="bg-neutral-900 border-neutral-800">
+              {["G", "PG", "PG-13", "TV-Y", "TV-G", "TV-PG", "TV-14", "18+"].map((rate) => (
+                <SelectItem key={rate} value={rate}>
+                  {rate}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4 mb-3">
@@ -547,16 +554,33 @@ function AddEditMovieForm({
                 className="mt-1 bg-neutral-950 border-neutral-800 text-white"
               />
             </div>
-            <div>
-              <Label className="text-neutral-300">Country Availability (comma separated)</Label>
-              <Input
-                value={countryAvailability}
-                onChange={(e) => setCountryAvailability(e.target.value)}
-                className="mt-1 bg-neutral-950 border-neutral-800 text-white"
-                placeholder="NG, US, UK"
-              />
-            </div>
+        <div>
+          <Label className="text-neutral-300">Country Availability</Label>
+          <div className="mt-1 flex flex-wrap gap-2">
+            {["NG", "US", "UK", "CA", "ZA", "GH", "KE", "DE", "FR", "IN"].map((code) => {
+              const active = countryAvailability.includes(code);
+              return (
+                <button
+                  type="button"
+                  key={code}
+                  onClick={() =>
+                    setCountryAvailability((prev) =>
+                      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
+                    )
+                  }
+                  className={`px-3 py-1 rounded-full text-sm border ${
+                    active
+                      ? "bg-[#fd7e14]/20 border-[#fd7e14] text-[#fd7e14]"
+                      : "bg-neutral-900 border-neutral-700 text-neutral-300 hover:border-neutral-500"
+                  }`}
+                >
+                  {code}
+                </button>
+              );
+            })}
           </div>
+        </div>
+      </div>
 
           <div className="flex items-center gap-2">
             <Switch
