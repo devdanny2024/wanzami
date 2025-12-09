@@ -21,6 +21,13 @@ export type Title = {
   episodeCount?: number;
   createdAt?: string;
   updatedAt?: string;
+  assetVersions?: {
+    rendition: "R4K" | "R2K" | "R1080" | "R720" | "R360" | string;
+    url?: string | null;
+    sizeBytes?: number;
+    durationSec?: number;
+    status?: string;
+  }[];
 };
 
 const DEFAULT_TIMEOUT = 8000;
@@ -67,6 +74,13 @@ export async function fetchTitleWithEpisodes(id: string) {
       name: string;
       synopsis?: string | null;
       runtimeMinutes?: number | null;
+      assetVersions?: {
+        rendition: "R4K" | "R2K" | "R1080" | "R720" | "R360" | string;
+        url?: string | null;
+        sizeBytes?: number;
+        durationSec?: number;
+        status?: string;
+      }[];
     }>;
   };
 }

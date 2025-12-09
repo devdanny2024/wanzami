@@ -15,6 +15,7 @@ type SeriesTitle = {
   id: string;
   name: string;
   type: string;
+  pendingReview?: boolean;
   thumbnailUrl?: string | null;
   posterUrl?: string | null;
   description?: string | null;
@@ -31,6 +32,7 @@ type Episode = {
   name?: string;
   synopsis?: string | null;
   createdAt?: string;
+  pendingReview?: boolean;
 };
 
 export function SeriesManagement() {
@@ -259,9 +261,10 @@ export function SeriesManagement() {
                       <p>Type: {item.type}</p>
                       <p>
                         Started:{" "}
-                        {item.releaseDate ? new Date(item.releaseDate).getFullYear() : "—"}
+                        {item.releaseDate ? new Date(item.releaseDate).getFullYear() : "--"}
                       </p>
                       <p>Created: {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '--'}</p>
+                      <p>Status: {item.archived ? "Archived" : item.pendingReview ? "Pending review" : "Live"}</p>
                     </div>
                     <div className="flex gap-2 mt-4">
                       <Button size="sm" variant="ghost" className="text-[#fd7e14] hover:text-[#ff9940] hover:bg-[#fd7e14]/10">
@@ -316,6 +319,38 @@ export function SeriesManagement() {
                       >
                         {item.archived ? "Unarchive" : "Archive"}
                       </Button>
+                      {(item.pendingReview || item.archived) && (
+                        <Button
+                          size="sm"
+                          className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                          onClick={async () => {
+                            await fetch(`/api/admin/titles/${item.id}/publish`, {
+                              method: "POST",
+                              headers: {
+                                "Content-Type": "application/json",
+                                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                              },
+                              body: JSON.stringify({ publishEpisodes: true }),
+                            });
+                            await loadSeries();
+                          }}
+                        >
+                          Publish
+                        </Button>
+                      )}
+                    </div>
+                    <div className="flex gap-2 mt-2">
+                      <Badge
+                        className={
+                          item.archived
+                            ? "bg-neutral-700 text-neutral-200"
+                            : item.pendingReview
+                            ? "bg-amber-500/20 text-amber-300"
+                            : "bg-emerald-500/20 text-emerald-300"
+                        }
+                      >
+                        {item.archived ? "Archived" : item.pendingReview ? "Pending review" : "Live"}
+                      </Badge>
                     </div>
                   </div>
                 </div>
@@ -460,16 +495,39 @@ export function SeriesManagement() {
                           size="sm"
                           variant="ghost"
                           className="text-[#fd7e14] hover:text-[#ff9940] hover:bg-[#fd7e14]/10"
-                          onClick={() => {
-                            setEditingEpisode(episode);
-                            setIsAddEpisodeOpen(true);
-                          }}
-                        >
+                            onClick={() => {
+                              setEditingEpisode(episode);
+                              setIsAddEpisodeOpen(true);
+                            }}
+                          >
                           <Edit className="w-4 h-4" />
                         </Button>
                               <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-300 hover:bg-red-500/10">
                                 <Trash2 className="w-4 h-4" />
                               </Button>
+                              {episode.pendingReview && (
+                                <Button
+                                  size="sm"
+                                  className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                                  onClick={async () => {
+                                    await fetch(`/api/admin/episodes/${episode.id}`, {
+                                      method: "PATCH",
+                                      headers: {
+                                        "Content-Type": "application/json",
+                                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                                      },
+                                      body: JSON.stringify({ pendingReview: false }),
+                                    });
+                                    const res = await fetch(`/api/admin/titles/${selectedSeries}/episodes`, {
+                                      headers: token ? { Authorization: `Bearer ${token}` } : {},
+                                    });
+                                    const data = await res.json();
+                                    if (res.ok) setEpisodes(data.episodes ?? []);
+                                  }}
+                                >
+                                  Publish
+                                </Button>
+                              )}
                               <label className="text-xs text-[#fd7e14] hover:text-[#ff9940] cursor-pointer">
                                 <input
                                   type="file"
@@ -477,13 +535,21 @@ export function SeriesManagement() {
                                   onChange={(e) => {
                                     const f = e.target.files?.[0];
                                     if (f) startUploadForEpisode(Number(episode.id), f);
-                                  }}
-                                />
-                                Upload video
+                                }}
+                              />
+                              Upload video
                               </label>
                             </div>
                           </div>
-                          <Badge className="bg-green-500/20 text-green-400 mt-2">Ready</Badge>
+                          <Badge
+                            className={
+                              episode.pendingReview
+                                ? "bg-amber-500/20 text-amber-300 mt-2"
+                                : "bg-emerald-500/20 text-emerald-300 mt-2"
+                            }
+                          >
+                            {episode.pendingReview ? "Pending review" : "Live"}
+                          </Badge>
                         </div>
                       </div>
                     </div>

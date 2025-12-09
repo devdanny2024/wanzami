@@ -7,6 +7,7 @@ import {
   getTitleWithEpisodes,
   createTitle,
   updateTitle,
+  publishTitle,
   presignAsset,
   presignAssetRead,
   deleteTitle,
@@ -25,6 +26,7 @@ router.get("/admin/titles", requireAuth, requireAdmin, listTitles);
 router.get("/admin/titles/:id/episodes", requireAuth, requireAdmin, listEpisodesForTitle);
 router.post("/admin/titles", requireAuth, requireAdmin, createTitle);
 router.patch("/admin/titles/:id", requireAuth, requireAdmin, updateTitle);
+router.post("/admin/titles/:id/publish", requireAuth, requireAdmin, publishTitle);
 router.delete("/admin/titles/:id", requireAuth, requireAdmin, deleteTitle);
 router.post("/admin/titles/:id/episodes", requireAuth, requireAdmin, createEpisode);
 router.patch("/admin/episodes/:episodeId", requireAuth, requireAdmin, updateEpisode);

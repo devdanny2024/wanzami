@@ -2,7 +2,12 @@ import React, { createContext, useContext, useEffect, useRef, useState } from "r
 import { UploadTask } from "@/components/UploadDock";
 import { initUpload, uploadMultipart } from "@/lib/uploadClient";
 
-type QueueTask = UploadTask & { file?: File; targetId?: number; kind: "MOVIE" | "EPISODE" | "SERIES" };
+type QueueTask = UploadTask & {
+  file?: File;
+  targetId?: number;
+  kind: "MOVIE" | "EPISODE" | "SERIES";
+  jobId?: string;
+};
 
 type UploadQueueContextValue = {
   tasks: QueueTask[];
@@ -65,6 +70,7 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
         },
         token ?? undefined
       );
+      setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, jobId: init.jobId } : t)));
       await uploadMultipart(task.file, init, token, (p) => {
         const elapsed = (performance.now() - startTime) / 1000;
         const speed = elapsed > 0 ? (p.uploadedBytes * 8) / (elapsed * 1_000_000) : undefined;
@@ -77,11 +83,7 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
         );
       });
       setTasks((prev) =>
-        prev.map((t) => (t.id === task.id ? { ...t, status: "processing", progress: 100 } : t))
-      );
-      // We don't yet poll transcoding state; mark as completed so the dock doesn't stick on "uploading".
-      setTasks((prev) =>
-        prev.map((t) => (t.id === task.id ? { ...t, status: "completed", speedMbps: undefined } : t))
+        prev.map((t) => (t.id === task.id ? { ...t, status: "processing", progress: 100, speedMbps: undefined } : t))
       );
     } catch (err: any) {
       setTasks((prev) =>
@@ -110,6 +112,54 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
   const removeTask = (id: string) => {
     setTasks((prev) => prev.filter((t) => t.id !== id));
   };
+
+  // Poll backend for upload/transcode status to update dock (including PROCESSING -> COMPLETED/FAILED).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const token = localStorage.getItem("accessToken");
+    if (!token) return;
+    const hasInFlight = tasks.some((t) => t.jobId && (t.status === "processing" || t.status === "uploading"));
+    if (!hasInFlight) return;
+
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const res = await fetch("/api/admin/uploads", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json().catch(() => ({}));
+        const uploads = (data as any)?.uploads ?? [];
+        if (!Array.isArray(uploads)) return;
+        if (cancelled) return;
+        setTasks((prev) =>
+          prev.map((t) => {
+            if (!t.jobId) return t;
+            const job = uploads.find((u: any) => String(u.id) === String(t.jobId));
+            if (!job) return t;
+            if (job.status === "COMPLETED") {
+              return { ...t, status: "completed", progress: 100, error: undefined };
+            }
+            if (job.status === "FAILED") {
+              return { ...t, status: "failed", progress: 100, error: job.error ?? t.error };
+            }
+            if (job.status === "PROCESSING") {
+              return { ...t, status: "processing", progress: 100 };
+            }
+            return t;
+          })
+        );
+      } catch {
+        // ignore polling errors
+      }
+    };
+
+    const interval = setInterval(poll, 8000);
+    void poll();
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [tasks]);
 
   return (
     <UploadQueueContext.Provider value={{ tasks, startUpload, removeTask }}>

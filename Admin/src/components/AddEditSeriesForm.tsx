@@ -111,6 +111,10 @@ export function AddEditSeriesForm({
         countryAvailability: countryCodes,
         isOriginal,
       };
+      if (!isEdit) {
+        payload.pendingReview = true;
+        payload.archived = true;
+      }
       if (releaseYear) payload.releaseYear = Number(releaseYear);
       if (posterFile) payload.posterUrl = await uploadAsset(posterFile, "poster");
       if (thumbFile) payload.thumbnailUrl = await uploadAsset(thumbFile, "thumbnail");

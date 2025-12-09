@@ -195,6 +195,7 @@ model Title {
   thumbnailUrl String?
   trailerUrl   String?
   archived    Boolean   @default(false)
+  pendingReview Boolean @default(false)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -216,6 +217,7 @@ model Episode {
   name          String
   synopsis      String?
   runtimeMinutes Int?
+  pendingReview Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

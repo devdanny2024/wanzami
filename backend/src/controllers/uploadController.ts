@@ -5,6 +5,7 @@ import { prisma } from "../prisma.js";
 import { createMultipartUpload, presignPartUrls, completeMultipartUpload, partSizeBytes } from "../upload/s3.js";
 import { config } from "../config.js";
 import { UploadStatus, Rendition, TitleType, AssetStatus } from "@prisma/client";
+import { transcodeQueue } from "../queues/transcodeQueue.js";
 
 const initSchema = z.object({
   kind: z.enum(["MOVIE", "SERIES", "EPISODE"]),
@@ -84,6 +85,9 @@ export const initUpload = async (req: Request, res: Response) => {
           data: {
             type: kind === "MOVIE" ? TitleType.MOVIE : TitleType.SERIES,
             name: titleName || fileName,
+            // New uploads start hidden until explicitly published.
+            archived: true,
+            pendingReview: true,
           },
         });
         resolvedTitleId = createdTitle.id;
@@ -107,6 +111,7 @@ export const initUpload = async (req: Request, res: Response) => {
             seasonNumber: seasonNumber ?? 1,
             episodeNumber: episodeNumber ?? 1,
             name: episodeName || fileName,
+            pendingReview: true,
           },
         });
         resolvedEpisodeId = createdEpisode.id;
@@ -200,7 +205,7 @@ export const completeUpload = async (req: Request, res: Response) => {
   const titleKey = job.titleId ?? BigInt(0);
   const episodeKey = job.episodeId ?? BigInt(0);
 
-  // Stub: mark asset versions as READY and point to the uploaded key for now.
+  // Mark asset versions as PROCESSING ahead of transcode; worker will update to READY.
   const assetData = {
     titleId: job.titleId ?? null,
     episodeId: job.episodeId ?? null,
@@ -215,12 +220,12 @@ export const completeUpload = async (req: Request, res: Response) => {
             rendition: r,
           },
         },
-        update: { url: `s3://${config.s3.bucket ?? ""}/${key}`, status: AssetStatus.READY },
+        update: { url: `s3://${config.s3.bucket ?? ""}/${key}`, status: AssetStatus.PROCESSING },
         create: {
           ...assetData,
           rendition: r,
           url: `s3://${config.s3.bucket ?? ""}/${key}`,
-          status: AssetStatus.READY,
+          status: AssetStatus.PROCESSING,
         },
       })
     )
@@ -229,10 +234,27 @@ export const completeUpload = async (req: Request, res: Response) => {
   const updated = await prisma.uploadJob.update({
     where: { id: jobId },
     data: {
-      status: UploadStatus.COMPLETED,
+      status: UploadStatus.PROCESSING,
       bytesUploaded: job.bytesTotal ?? job.bytesUploaded ?? BigInt(0),
+      error: null,
     },
   });
+
+  try {
+    await transcodeQueue.add("transcode", {
+      uploadJobId: updated.id,
+      key,
+      renditions: targetRenditions,
+      titleId: job.titleId,
+      episodeId: job.episodeId,
+    });
+  } catch (err: any) {
+    await prisma.uploadJob.update({
+      where: { id: jobId },
+      data: { status: UploadStatus.FAILED, error: err?.message ?? "Failed to enqueue transcode" },
+    });
+    return res.status(500).json({ message: "Failed to enqueue transcode", error: err?.message });
+  }
 
   return res.json({
     job: {

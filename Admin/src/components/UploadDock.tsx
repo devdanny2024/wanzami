@@ -9,6 +9,7 @@ export type UploadTask = {
   progress: number;
   speedMbps?: number;
   error?: string;
+  jobId?: string;
 };
 
 interface UploadDockProps {

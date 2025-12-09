@@ -188,6 +188,7 @@ export default function App() {
           trailerUrl: detail.trailerUrl,
           type: detail.type,
           episodes: detail.episodes,
+          assetVersions: detail.assetVersions,
         };
       } catch {
         return null;
@@ -1084,6 +1085,68 @@ export default function App() {
   const isPPVMovie = selectedMovie && selectedMovie.price !== undefined;
   const activeProfileId = activeProfile?.id;
 
+  const renditionRank: Record<string, number> = {
+    R4K: 5,
+    R2K: 4,
+    R1080: 3,
+    R720: 2,
+    R360: 1,
+  };
+
+  const labelForRendition = (r?: string) => {
+    switch (r) {
+      case "R4K":
+        return "4K";
+      case "R2K":
+        return "2K";
+      case "R1080":
+        return "1080p";
+      case "R720":
+        return "720p";
+      case "R360":
+        return "360p";
+      default:
+        return r ?? "Source";
+    }
+  };
+
+  const buildSources = (movie: any) => {
+    if (!movie) return [];
+    const currentEpisode = movie.currentEpisodeId
+      ? movie.episodes?.find((e: any) => String(e.id) === String(movie.currentEpisodeId))
+      : null;
+    const assets = (currentEpisode?.assetVersions ?? movie.assetVersions ?? []).filter((a: any) => a?.url);
+    const sorted = assets.sort((a: any, b: any) => (renditionRank[b.rendition] ?? 0) - (renditionRank[a.rendition] ?? 0));
+    if (sorted.length) {
+      return sorted.map((a: any) => ({
+        src: a.url,
+        label: labelForRendition(a.rendition),
+        type: "video/mp4",
+      }));
+    }
+    // Fallback to trailer/demo
+    return [
+      {
+        src:
+          movie.trailerUrl || "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+        label: movie.trailerUrl ? "1080p" : "Demo",
+        type: "video/mp4",
+      },
+      {
+        src:
+          movie.trailerUrl || "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+        label: movie.trailerUrl ? "720p" : "Demo Alt",
+        type: "video/mp4",
+      },
+      {
+        src:
+          movie.trailerUrl || "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
+        label: movie.trailerUrl ? "540p" : "Demo Low",
+        type: "video/mp4",
+      },
+    ];
+  };
+
   return (
     <div className="min-h-screen bg-black">
       <TopLoader active={globalLoading} />
@@ -1287,29 +1350,7 @@ export default function App() {
           profileId={activeProfileId}
           episodes={playerMovie.episodes}
           currentEpisodeId={playerMovie.currentEpisodeId}
-          sources={[
-            {
-              src:
-                playerMovie.trailerUrl ||
-                "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-              label: playerMovie.trailerUrl ? "1080p" : "Demo",
-              type: "video/mp4",
-            },
-            {
-              src:
-                playerMovie.trailerUrl ||
-                "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-              label: playerMovie.trailerUrl ? "720p" : "Demo Alt",
-              type: "video/mp4",
-            },
-            {
-              src:
-                playerMovie.trailerUrl ||
-                "https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
-              label: playerMovie.trailerUrl ? "540p" : "Demo Low",
-              type: "video/mp4",
-            },
-          ]}
+          sources={buildSources(playerMovie)}
           onEvent={(eventType, metadata) => {
             const allowed: Array<"PLAY_START" | "PLAY_END" | "SCRUB" | "IMPRESSION"> = [
               "PLAY_START",

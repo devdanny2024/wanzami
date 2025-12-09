@@ -18,6 +18,7 @@ export type MovieTitle = {
   id: string;
   name: string;
   type: string;
+  pendingReview?: boolean;
   thumbnailUrl?: string | null;
   posterUrl?: string | null;
   description?: string | null;
@@ -127,6 +128,7 @@ export function MoviesManagement() {
                   <th className="text-left py-3 px-4 text-neutral-400">Title</th>
                   <th className="text-left py-3 px-4 text-neutral-400">Type</th>
                   <th className="text-left py-3 px-4 text-neutral-400">Episodes</th>
+                  <th className="text-left py-3 px-4 text-neutral-400">Status</th>
                   <th className="text-left py-3 px-4 text-neutral-400">Created</th>
                   <th className="text-left py-3 px-4 text-neutral-400">Actions</th>
                 </tr>
@@ -144,6 +146,13 @@ export function MoviesManagement() {
                     <td className="py-3 px-4 text-white">{movie.name}</td>
                     <td className="py-3 px-4 text-neutral-300">{movie.type}</td>
                     <td className="py-3 px-4 text-neutral-300">{movie.episodeCount ?? 0}</td>
+                    <td className="py-3 px-4 text-neutral-300">
+                      {movie.archived
+                        ? "Archived"
+                        : movie.pendingReview
+                        ? "Pending review"
+                        : "Live"}
+                    </td>
                     <td className="py-3 px-4 text-neutral-300">
                       {movie.createdAt ? new Date(movie.createdAt).toLocaleDateString() : "--"}
                     </td>
@@ -193,6 +202,24 @@ export function MoviesManagement() {
                         >
                           {movie.archived ? "Unarchive" : "Archive"}
                         </Button>
+                        {(movie.pendingReview || movie.archived) && (
+                          <Button
+                            size="sm"
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                            onClick={async () => {
+                              await fetch(`/api/admin/titles/${movie.id}/publish`, {
+                                method: "POST",
+                                headers: {
+                                  "Content-Type": "application/json",
+                                  ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                                },
+                              });
+                              void reloadMovies();
+                            }}
+                          >
+                            Publish
+                          </Button>
+                        )}
                         <label className="text-xs text-[#fd7e14] hover:text-[#ff9940] cursor-pointer">
                           <input
                             type="file"
@@ -342,6 +369,12 @@ function AddEditMovieForm({
         payload.price = undefined;
         payload.buyPrice = undefined;
         payload.rentalPeriod = undefined;
+      }
+
+      if (!movie?.id) {
+        // New titles start pending review and archived until published.
+        payload.pendingReview = true;
+        payload.archived = true;
       }
 
       // Require all key fields before save

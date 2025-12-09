@@ -5,6 +5,7 @@ import { presignPutObject, presignGetObject } from "../upload/s3.js";
 import { config } from "../config.js";
 import { resolveCountry } from "../utils/country.js";
 import { auditLog } from "../utils/audit.js";
+import { AssetStatus } from "@prisma/client";
 
 const kidSafeRatings = ["G", "PG", "TV-Y", "TV-G", "TV-PG", "PG-13"];
 const teenSafeRatings = ["PG-13", "TV-14"];
@@ -37,6 +38,7 @@ export const listTitles = async (_req: Request, res: Response) => {
       thumbnailUrl: t.thumbnailUrl,
       trailerUrl: t.trailerUrl,
       archived: t.archived,
+      pendingReview: t.pendingReview,
       createdAt: t.createdAt,
       updatedAt: t.updatedAt,
       episodeCount: t.episodes.length,
@@ -102,6 +104,7 @@ export const listPublicTitles = async (req: Request, res: Response) => {
   const titles = await prisma.title.findMany({
     where: {
       archived: false,
+      pendingReview: false,
       OR: [
         { countryAvailability: { has: country } },
         { countryAvailability: { equals: [] } },
@@ -137,6 +140,7 @@ export const listPublicTitles = async (req: Request, res: Response) => {
       thumbnailUrl: t.thumbnailUrl,
       trailerUrl: t.trailerUrl,
       archived: t.archived,
+      pendingReview: t.pendingReview,
       createdAt: t.createdAt,
       updatedAt: t.updatedAt,
       episodeCount: t.episodes.length,
@@ -159,6 +163,7 @@ export const getTitleWithEpisodes = async (req: Request, res: Response) => {
     where: {
       id: titleId,
       archived: false,
+      pendingReview: false,
       OR: [
         { countryAvailability: { has: country } },
         { countryAvailability: { equals: [] } },
@@ -171,6 +176,15 @@ export const getTitleWithEpisodes = async (req: Request, res: Response) => {
           { seasonNumber: "asc" },
           { episodeNumber: "asc" },
         ],
+        where: { pendingReview: false },
+        include: {
+          assetVersions: {
+            where: { status: AssetStatus.READY },
+          },
+        },
+      },
+      assetVersions: {
+        where: { status: AssetStatus.READY },
       },
     },
   });
@@ -201,6 +215,14 @@ export const getTitleWithEpisodes = async (req: Request, res: Response) => {
       updatedAt: title.updatedAt,
       releaseYear: title.releaseDate ? title.releaseDate.getUTCFullYear() : undefined,
       episodeCount: title.episodes.length,
+      assetVersions: title.assetVersions.map((a) => ({
+        id: a.id.toString(),
+        rendition: a.rendition,
+        url: a.url,
+        sizeBytes: a.sizeBytes ? Number(a.sizeBytes) : undefined,
+        durationSec: a.durationSec ?? undefined,
+        status: a.status,
+      })),
       episodes: title.episodes.map((e) => ({
         id: e.id.toString(),
         titleId: e.titleId.toString(),
@@ -211,6 +233,14 @@ export const getTitleWithEpisodes = async (req: Request, res: Response) => {
         runtimeMinutes: e.runtimeMinutes,
         createdAt: e.createdAt,
         updatedAt: e.updatedAt,
+        assetVersions: (e as any).assetVersions?.map((a: any) => ({
+          id: a.id.toString(),
+          rendition: a.rendition,
+          url: a.url,
+          sizeBytes: a.sizeBytes ? Number(a.sizeBytes) : undefined,
+          durationSec: a.durationSec ?? undefined,
+          status: a.status,
+        })),
       })),
     },
   });
@@ -228,6 +258,11 @@ export const listEpisodesForTitle = async (req: Request, res: Response) => {
       { seasonNumber: "asc" },
       { episodeNumber: "asc" },
     ],
+    include: {
+      assetVersions: {
+        where: { status: AssetStatus.READY },
+      },
+    },
   });
 
   return res.json({
@@ -239,6 +274,15 @@ export const listEpisodesForTitle = async (req: Request, res: Response) => {
       name: e.name,
       synopsis: e.synopsis,
       runtimeMinutes: e.runtimeMinutes,
+      pendingReview: e.pendingReview,
+      assetVersions: (e as any).assetVersions?.map((a: any) => ({
+        id: a.id.toString(),
+        rendition: a.rendition,
+        url: a.url,
+        sizeBytes: a.sizeBytes ? Number(a.sizeBytes) : undefined,
+        durationSec: a.durationSec ?? undefined,
+        status: a.status,
+      })),
       createdAt: e.createdAt,
       updatedAt: e.updatedAt,
     })),
@@ -262,6 +306,7 @@ export const createTitle = async (req: Request, res: Response) => {
     runtimeMinutes,
     countryAvailability,
     isOriginal,
+    pendingReview,
   } = req.body as {
     name?: string;
     type?: "MOVIE" | "SERIES";
@@ -278,6 +323,7 @@ export const createTitle = async (req: Request, res: Response) => {
     runtimeMinutes?: number | string;
     countryAvailability?: string[];
     isOriginal?: boolean;
+    pendingReview?: boolean;
   };
   if (!name || !type) {
     return res.status(400).json({ message: "name and type are required" });
@@ -304,6 +350,7 @@ export const createTitle = async (req: Request, res: Response) => {
       countryAvailability: Array.isArray(countryAvailability) ? countryAvailability.map(String) : [],
       isOriginal: isOriginal ?? false,
       archived: false,
+      pendingReview: pendingReview ?? false,
     },
   });
   void auditLog({
@@ -335,6 +382,7 @@ export const updateTitle = async (req: Request, res: Response) => {
     runtimeMinutes,
     countryAvailability,
     isOriginal,
+    pendingReview,
   } = req.body as {
     name?: string;
     description?: string;
@@ -351,6 +399,7 @@ export const updateTitle = async (req: Request, res: Response) => {
     runtimeMinutes?: number | string;
     countryAvailability?: string[];
     isOriginal?: boolean;
+    pendingReview?: boolean;
   };
   const data: any = {};
   if (name !== undefined) data.name = name;
@@ -374,6 +423,7 @@ export const updateTitle = async (req: Request, res: Response) => {
     data.countryAvailability = Array.isArray(countryAvailability) ? countryAvailability.map(String) : [];
   }
   if (isOriginal !== undefined) data.isOriginal = isOriginal;
+  if (pendingReview !== undefined) data.pendingReview = pendingReview;
   const title = await prisma.title.update({ where: { id }, data });
   void auditLog({
     action: "TITLE_UPDATE",
@@ -381,6 +431,28 @@ export const updateTitle = async (req: Request, res: Response) => {
     detail: { fields: Object.keys(data) },
   });
   return res.json({ title: { id: title.id.toString(), name: title.name, type: title.type } });
+};
+
+export const publishTitle = async (req: Request, res: Response) => {
+  const id = req.params.id ? BigInt(req.params.id) : null;
+  if (!id) return res.status(400).json({ message: "Missing title id" });
+  const publishEpisodes = (req.body as any)?.publishEpisodes ?? true;
+  const title = await prisma.title.update({
+    where: { id },
+    data: { archived: false, pendingReview: false },
+  });
+  if (publishEpisodes && title.type === "SERIES") {
+    await prisma.episode.updateMany({
+      where: { titleId: id },
+      data: { pendingReview: false },
+    });
+  }
+  void auditLog({
+    action: "TITLE_PUBLISH",
+    resource: id.toString(),
+    detail: { publishEpisodes },
+  });
+  return res.json({ title: { id: title.id.toString(), name: title.name, type: title.type, pendingReview: title.pendingReview, archived: title.archived } });
 };
 
 export const createEpisode = async (req: Request, res: Response) => {
@@ -392,6 +464,7 @@ export const createEpisode = async (req: Request, res: Response) => {
     name?: string;
     synopsis?: string;
     runtimeMinutes?: number | string;
+    pendingReview?: boolean;
   };
   if (!seasonNumber || !episodeNumber || !name) {
     return res.status(400).json({ message: "seasonNumber, episodeNumber, and name are required" });
@@ -407,6 +480,7 @@ export const createEpisode = async (req: Request, res: Response) => {
         runtimeMinutes !== undefined && !Number.isNaN(Number(runtimeMinutes))
           ? Number(runtimeMinutes)
           : undefined,
+      pendingReview: (req.body as any)?.pendingReview ?? true,
     },
   });
   return res.status(201).json({
@@ -418,6 +492,7 @@ export const createEpisode = async (req: Request, res: Response) => {
       name: ep.name,
       synopsis: ep.synopsis,
       runtimeMinutes: ep.runtimeMinutes,
+      pendingReview: ep.pendingReview,
     },
   });
   void auditLog({
@@ -430,12 +505,13 @@ export const createEpisode = async (req: Request, res: Response) => {
 export const updateEpisode = async (req: Request, res: Response) => {
   const episodeId = req.params.episodeId ? BigInt(req.params.episodeId) : null;
   if (!episodeId) return res.status(400).json({ message: "Missing episode id" });
-  const { seasonNumber, episodeNumber, name, synopsis, runtimeMinutes } = req.body as {
+  const { seasonNumber, episodeNumber, name, synopsis, runtimeMinutes, pendingReview } = req.body as {
     seasonNumber?: number;
     episodeNumber?: number;
     name?: string;
     synopsis?: string;
     runtimeMinutes?: number | string;
+    pendingReview?: boolean;
   };
   const data: any = {};
   if (seasonNumber !== undefined) data.seasonNumber = seasonNumber;
@@ -445,6 +521,7 @@ export const updateEpisode = async (req: Request, res: Response) => {
   if (runtimeMinutes !== undefined && !Number.isNaN(Number(runtimeMinutes))) {
     data.runtimeMinutes = Number(runtimeMinutes);
   }
+   if (pendingReview !== undefined) data.pendingReview = pendingReview;
   const ep = await prisma.episode.update({ where: { id: episodeId }, data });
   return res.json({
     episode: {
@@ -455,6 +532,7 @@ export const updateEpisode = async (req: Request, res: Response) => {
       name: ep.name,
       synopsis: ep.synopsis,
       runtimeMinutes: ep.runtimeMinutes,
+      pendingReview: ep.pendingReview,
     },
   });
   void auditLog({
