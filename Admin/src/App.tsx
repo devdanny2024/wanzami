@@ -15,6 +15,7 @@ import { Settings } from './components/Settings';
 import { TeamManagement } from './components/TeamManagement';
 import { UploadDock } from './components/UploadDock';
 import { UploadQueueProvider, useUploadQueue } from './context/UploadQueueProvider';
+import { Logs } from './components/Logs';
 
 export default function App() {
   return (
@@ -97,6 +98,8 @@ function AppContent() {
         return <Settings />;
       case 'team':
         return <TeamManagement />;
+      case 'logs':
+        return <Logs />;
       default:
         return <Dashboard />;
     }

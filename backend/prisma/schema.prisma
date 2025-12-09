@@ -263,6 +263,19 @@ model UploadJob {
   @@index([titleId, episodeId, status])
 }
 
+model ErrorLog {
+  id        BigInt   @id @default(autoincrement())
+  level     String   @default("ERROR")
+  message   String
+  stack     String?
+  path      String?
+  context   Json?
+  userId    BigInt?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
 model AdminAuditLog {
   id        BigInt   @id @default(autoincrement())
   user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)

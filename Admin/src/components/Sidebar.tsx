@@ -10,6 +10,7 @@ import {
   BarChart3, 
   Settings,
   ShieldQuestion,
+  Bug,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -29,6 +30,7 @@ const navItems = [
   { id: 'moderation', label: 'Moderation', icon: Shield },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   { id: 'settings', label: 'Settings', icon: Settings },
+  { id: 'logs', label: 'Logs', icon: Bug },
 ];
 
 export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
