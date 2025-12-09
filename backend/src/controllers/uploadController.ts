@@ -242,11 +242,11 @@ export const completeUpload = async (req: Request, res: Response) => {
 
   try {
     await transcodeQueue.add("transcode", {
-      uploadJobId: updated.id,
+      uploadJobId: updated.id.toString(),
       key,
       renditions: targetRenditions,
-      titleId: job.titleId,
-      episodeId: job.episodeId,
+      titleId: job.titleId ? job.titleId.toString() : null,
+      episodeId: job.episodeId ? job.episodeId.toString() : null,
     });
   } catch (err: any) {
     await prisma.uploadJob.update({
@@ -273,8 +273,8 @@ export const listUploads = async (_req: Request, res: Response) => {
     uploads: jobs.map((j) => ({
       id: j.id.toString(),
       status: j.status,
-      bytesUploaded: j.bytesUploaded,
-      bytesTotal: j.bytesTotal,
+      bytesUploaded: Number(j.bytesUploaded ?? 0),
+      bytesTotal: j.bytesTotal ? Number(j.bytesTotal) : null,
       error: j.error,
       createdAt: j.createdAt,
       updatedAt: j.updatedAt,

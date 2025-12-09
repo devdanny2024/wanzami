@@ -15,11 +15,11 @@ if (ffmpegStatic) {
 }
 
 type TranscodeJob = {
-  uploadJobId: bigint;
+  uploadJobId: string | number;
   key: string;
   renditions: Rendition[];
-  titleId: bigint | null;
-  episodeId: bigint | null;
+  titleId: string | number | null;
+  episodeId: string | number | null;
 };
 
 const connection = new IORedis(config.redisUrl);
@@ -61,6 +61,9 @@ const worker = new Worker<TranscodeJob>(
   "transcode",
   async (job: Job<TranscodeJob>) => {
     const data = job.data;
+    const uploadJobId = BigInt(data.uploadJobId);
+    const titleId = data.titleId != null ? BigInt(data.titleId) : null;
+    const episodeId = data.episodeId != null ? BigInt(data.episodeId) : null;
     const tmpDir = await mkdtemp(path.join(os.tmpdir(), "wanzami-"));
     const srcPath = path.join(tmpDir, "source");
     try {
@@ -80,8 +83,8 @@ const worker = new Worker<TranscodeJob>(
 
         await prisma.assetVersion.updateMany({
           where: {
-            titleId: data.titleId,
-            episodeId: data.episodeId,
+            titleId,
+            episodeId,
             rendition,
           },
           data: {
@@ -94,12 +97,12 @@ const worker = new Worker<TranscodeJob>(
       }
 
       await prisma.uploadJob.update({
-        where: { id: data.uploadJobId },
+        where: { id: uploadJobId },
         data: { status: UploadStatus.COMPLETED },
       });
     } catch (err: any) {
       await prisma.uploadJob.update({
-        where: { id: data.uploadJobId },
+        where: { id: uploadJobId },
         data: { status: UploadStatus.FAILED, error: err?.message ?? "Transcode failed" },
       });
       throw err;
