@@ -66,7 +66,7 @@ export default function App() {
   const [initialOverlay, setInitialOverlay] = useState(false);
   const [uiTransitionLoading, setUiTransitionLoading] = useState(false);
   const [profileChooserLoading, setProfileChooserLoading] = useState(false);
-  const [initialBlocker, setInitialBlocker] = useState(true);
+  const [initialBlocker, setInitialBlocker] = useState(false);
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
   const [cookieChoice, setCookieChoice] = useState<"accepted" | "rejected" | null>(() => {
@@ -956,23 +956,6 @@ export default function App() {
     window.addEventListener("load", markAssetsLoaded);
     return () => window.removeEventListener("load", markAssetsLoaded);
   }, []);
-
-  // Show splash screen
-  if (initialBlocker) {
-    return (
-      <>
-        <TopLoader active />
-      </>
-    );
-  }
-
-  if (authChecking) {
-    return (
-      <>
-        <TopLoader active />
-      </>
-    );
-  }
 
   if (showSplash) {
     return (
