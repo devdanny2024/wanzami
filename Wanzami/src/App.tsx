@@ -208,6 +208,7 @@ export default function App() {
     []
   );
 
+  
   useEffect(() => {
     const { titleId, playerId, episodeId, startTime } = parsePathIds(pathname ?? "/");
     let cancelled = false;
