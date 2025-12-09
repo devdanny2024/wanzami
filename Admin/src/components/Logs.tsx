@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
+import { authFetch } from "@/lib/authClient";
 
 type LogEntry = {
   id: string;
@@ -24,21 +25,13 @@ export function Logs() {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch("/api/admin/logs", {
+        const res = await authFetch("/admin/logs", {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
-        const text = await res.text();
-        let data: any = {};
-        try {
-          data = text ? JSON.parse(text) : {};
-        } catch {
-          // Non-JSON (e.g., HTML error page)
-          throw new Error("Logs endpoint did not return JSON");
-        }
         if (!res.ok) {
-          throw new Error(data?.message || "Failed to load logs");
+          throw new Error(res.data?.message || `Failed to load logs (${res.status})`);
         }
-        setLogs(data.logs ?? []);
+        setLogs(res.data?.logs ?? []);
       } catch (err: any) {
         setError(err?.message || "Failed to load logs");
       } finally {
