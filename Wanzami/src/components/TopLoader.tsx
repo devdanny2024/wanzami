@@ -21,7 +21,10 @@ export function TopLoader({ active }: TopLoaderProps) {
 
   return (
     <>
-      <div className="fixed top-0 left-0 w-full h-[4px] z-[2147483647] overflow-hidden pointer-events-none bg-transparent">
+      <div
+        className="fixed top-0 left-0 w-full h-[8px] z-[2147483647] overflow-hidden pointer-events-none"
+        style={{ backgroundColor: "rgba(0,0,0,0.4)" }}
+      >
         <div className="h-full top-loader-bar" />
       </div>
       <style>{`
@@ -29,10 +32,10 @@ export function TopLoader({ active }: TopLoaderProps) {
           position: relative;
           width: 100%;
           height: 100%;
-          background: linear-gradient(90deg, #ff8a1f, #ffb366, #ff8a1f);
+          background: linear-gradient(90deg, #fd7e14, #ffb366, #fd7e14);
           background-size: 200% 100%;
           animation: top-loader-indeterminate 1.4s ease-in-out infinite;
-          box-shadow: 0 1px 4px rgba(255, 138, 31, 0.35);
+          box-shadow: 0 2px 8px rgba(255, 138, 31, 0.45);
         }
         @keyframes top-loader-indeterminate {
           0% { transform: translateX(-30%) scaleX(0.3); background-position: 0% 50%; }
