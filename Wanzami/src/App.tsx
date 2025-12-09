@@ -32,6 +32,7 @@ import { MovieData } from './components/MovieCard';
 import { CustomMediaPlayer } from './components/CustomMediaPlayer';
 import { TopLoader } from './components/TopLoader';
 import { X } from 'lucide-react';
+import { Loader } from './components/ui/loader';
 
 export default function App() {
 
@@ -959,17 +960,17 @@ export default function App() {
   // Show splash screen
   if (initialBlocker) {
     return (
-      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center">
+      <>
         <TopLoader active />
-      </div>
+      </>
     );
   }
 
   if (authChecking) {
     return (
-      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center">
+      <>
         <TopLoader active />
-      </div>
+      </>
     );
   }
 
