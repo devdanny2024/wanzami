@@ -2,7 +2,10 @@ import { Queue } from "bullmq";
 import IORedis from "ioredis";
 import { config } from "../config.js";
 
-const connection = new IORedis(config.redisUrl);
+const connection = new IORedis(config.redisUrl, {
+  maxRetriesPerRequest: null,
+  enableReadyCheck: false,
+});
 
 export const transcodeQueue = new Queue("transcode", {
   connection,

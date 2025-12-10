@@ -22,7 +22,10 @@ type TranscodeJob = {
   episodeId: string | number | null;
 };
 
-const connection = new IORedis(config.redisUrl);
+const connection = new IORedis(config.redisUrl, {
+  maxRetriesPerRequest: null,
+  enableReadyCheck: false,
+});
 
 const renditionToHeight = (r: Rendition) => {
   switch (r) {
