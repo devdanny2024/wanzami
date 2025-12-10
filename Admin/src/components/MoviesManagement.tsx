@@ -13,6 +13,7 @@ import { Plus, Edit, Trash2, Search } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { useUploadQueue } from "@/context/UploadQueueProvider";
 import { toast } from "sonner";
+import { authFetch } from "@/lib/authClient";
 
 export type MovieTitle = {
   id: string;
@@ -55,13 +56,16 @@ export function MoviesManagement() {
   }, [token]);
 
   const reloadMovies = async () => {
-    const res = await fetch("/api/admin/titles", {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    const data = await res.json();
-    if (res.ok) {
-      const onlyMovies = (data.titles ?? []).filter((t: any) => t.type === "MOVIE");
-      setMovies(onlyMovies);
+    try {
+      const res = await authFetch("/admin/titles", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        const onlyMovies = ((res.data as any)?.titles ?? []).filter((t: any) => t.type === "MOVIE");
+        setMovies(onlyMovies);
+      }
+    } catch {
+      // ignore reload errors; UI will show empty
     }
   };
 
@@ -78,7 +82,13 @@ export function MoviesManagement() {
       setPreviewError(null);
       setPreviewAssets(null);
       const res = await fetch(`/api/titles/${movie.id}`);
-      const data = await res.json().catch(() => ({}));
+      const text = await res.text();
+      let data: any = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        throw new Error("Failed to parse preview response");
+      }
       if (!res.ok) {
         throw new Error(data?.message || "Failed to load title");
       }
