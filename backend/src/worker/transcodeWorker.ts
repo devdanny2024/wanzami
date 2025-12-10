@@ -119,7 +119,10 @@ const worker = new Worker<TranscodeJob>(
       await rm(tmpDir, { recursive: true, force: true });
     }
   },
-  { connection }
+  {
+    connection,
+    concurrency: 1,
+  }
 );
 
 worker.on("failed", async (job, err) => {

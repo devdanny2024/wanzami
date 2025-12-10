@@ -38,8 +38,6 @@ const completeSchema = z.object({
 });
 
 const defaultRenditions: Rendition[] = [
-  Rendition.R4K,
-  Rendition.R2K,
   Rendition.R1080,
   Rendition.R720,
   Rendition.R360,
