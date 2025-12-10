@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { UploadTask } from "@/components/UploadDock";
 import { initUpload, uploadMultipart } from "@/lib/uploadClient";
+import { authFetch } from "@/lib/authClient";
 
 type QueueTask = UploadTask & {
   file?: File;
@@ -124,11 +125,11 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
     let cancelled = false;
     const poll = async () => {
       try {
-        const res = await fetch("/api/admin/uploads", {
+        const res = await authFetch("/admin/uploads", {
           headers: { Authorization: `Bearer ${token}` },
         });
-        const data = await res.json().catch(() => ({}));
-        const uploads = (data as any)?.uploads ?? [];
+        if (!res.ok) return;
+        const uploads = (res.data as any)?.uploads ?? [];
         if (!Array.isArray(uploads)) return;
         if (cancelled) return;
         setTasks((prev) =>
