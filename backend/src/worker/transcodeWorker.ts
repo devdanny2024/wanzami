@@ -71,10 +71,16 @@ const worker = new Worker<TranscodeJob>(
     const srcPath = path.join(tmpDir, "source");
     try {
       await downloadToFile(data.key, srcPath);
-      const probe = await new Promise<any>((resolve, reject) =>
-        ffmpeg.ffprobe(srcPath, (err: any, meta: any) => (err ? reject(err) : resolve(meta)))
-      );
-      const durationSec = Math.round(probe.format?.duration ?? 0);
+      let durationSec = 0;
+      try {
+        const probe = await new Promise<any>((resolve, reject) =>
+          ffmpeg.ffprobe(srcPath, (err: any, meta: any) => (err ? reject(err) : resolve(meta)))
+        );
+        durationSec = Math.round(probe.format?.duration ?? 0);
+      } catch {
+        // If ffprobe is unavailable, continue without duration to avoid failing the whole job.
+        durationSec = 0;
+      }
 
       for (const rendition of data.renditions) {
         const outPath = path.join(tmpDir, `${rendition}.mp4`);
