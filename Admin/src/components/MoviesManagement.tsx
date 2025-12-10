@@ -38,6 +38,12 @@ export type MovieTitle = {
 export function MoviesManagement() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingMovie, setEditingMovie] = useState<MovieTitle | null>(null);
+  const [previewMovie, setPreviewMovie] = useState<MovieTitle | null>(null);
+  const [previewAssets, setPreviewAssets] = useState<
+    { rendition: string; url?: string | null; status?: string }[] | null
+  >(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [movies, setMovies] = useState<MovieTitle[]>([]);
   const { startUpload } = useUploadQueue();
@@ -64,6 +70,26 @@ export function MoviesManagement() {
   };
 
   const filteredMovies = movies.filter((m) => m.name?.toLowerCase().includes(searchQuery.toLowerCase()));
+
+  const openPreview = async (movie: MovieTitle) => {
+    try {
+      setPreviewMovie(movie);
+      setPreviewLoading(true);
+      setPreviewError(null);
+      setPreviewAssets(null);
+      const res = await fetch(`/api/titles/${movie.id}`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to load title");
+      }
+      const assets = (data?.title?.assetVersions as any[]) || [];
+      setPreviewAssets(assets);
+    } catch (err: any) {
+      setPreviewError(err?.message || "Failed to load preview");
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -114,6 +140,53 @@ export function MoviesManagement() {
         </CardContent>
       </Card>
 
+      {/* Preview Dialog */}
+      <Dialog open={!!previewMovie} onOpenChange={(open) => !open && setPreviewMovie(null)}>
+        <DialogContent className="bg-neutral-900 border-neutral-800 text-white max-w-4xl">
+          <DialogHeader>
+            <DialogTitle className="text-white">
+              Preview {previewMovie?.name ?? ""}
+            </DialogTitle>
+          </DialogHeader>
+          {previewLoading && <p className="text-neutral-400 text-sm">Loading preview...</p>}
+          {previewError && <p className="text-red-400 text-sm">{previewError}</p>}
+          {!previewLoading && !previewError && (
+            <div className="space-y-4">
+              <div className="bg-neutral-950 border border-neutral-800 rounded-lg p-3">
+                <p className="text-sm text-neutral-300 mb-2">Renditions</p>
+                {previewAssets && previewAssets.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {previewAssets.map((a) => (
+                      <Badge
+                        key={`${a.rendition}-${a.url ?? ""}`}
+                        className={
+                          a.status === "READY"
+                            ? "bg-emerald-500/20 text-emerald-300"
+                            : "bg-amber-500/20 text-amber-300"
+                        }
+                      >
+                        {a.rendition} {a.status ? `(${a.status})` : ""}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-neutral-500">No ready renditions yet (still processing or not uploaded).</p>
+                )}
+              </div>
+              {previewAssets && previewAssets.some((a) => a.url) ? (
+                <video
+                  className="w-full rounded-lg border border-neutral-800"
+                  controls
+                  src={previewAssets.find((a) => a.url)?.url}
+                />
+              ) : (
+                <p className="text-sm text-neutral-400">No playable source available yet.</p>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Movies Grid */}
       <Card className="bg-neutral-900 border-neutral-800">
         <CardHeader>
@@ -145,12 +218,20 @@ export function MoviesManagement() {
                         <Button
                           size="sm"
                           className="bg-white/10 text-white hover:bg-white/20"
+                          onClick={() => openPreview(movie)}
+                        >
+                          Preview
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="bg-white/10 text-white hover:bg-white/20"
                           onClick={() => {
                             setEditingMovie(movie);
                             setIsAddDialogOpen(true);
                           }}
                         >
-                          Preview / Edit
+                          Edit
                         </Button>
                       </div>
                     </div>
@@ -200,12 +281,12 @@ export function MoviesManagement() {
                                 "Content-Type": "application/json",
                                 ...(token ? { Authorization: `Bearer ${token}` } : {}),
                               },
-                              body: JSON.stringify({ pendingReview: false }),
+                              body: JSON.stringify({ archived: !movie.archived }),
                             });
                             void reloadMovies();
                           }}
                         >
-                          Approve
+                          {movie.archived ? "Unarchive" : "Archive"}
                         </Button>
                         <Button
                           size="sm"
