@@ -14,10 +14,10 @@ export const transcodeQueue = new Queue("transcode", {
     backoff: { type: "exponential", delay: 5000 },
     removeOnComplete: 1000,
     removeOnFail: 5000,
-    // Ensure only one job runs at a time to limit memory usage.
-    limiter: {
-      max: 1,
-      duration: 1000,
-    },
+  },
+  // Ensure only one job runs at a time to limit memory usage.
+  limiter: {
+    max: 1,
+    duration: 1000,
   },
 });
