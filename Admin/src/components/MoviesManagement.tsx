@@ -114,61 +114,65 @@ export function MoviesManagement() {
         </CardContent>
       </Card>
 
-      {/* Movies Table */}
+      {/* Movies Grid */}
       <Card className="bg-neutral-900 border-neutral-800">
         <CardHeader>
           <CardTitle className="text-white">All Movies</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-neutral-800">
-                  <th className="text-left py-3 px-4 text-neutral-400">Thumbnail</th>
-                  <th className="text-left py-3 px-4 text-neutral-400">Title</th>
-                  <th className="text-left py-3 px-4 text-neutral-400">Type</th>
-                  <th className="text-left py-3 px-4 text-neutral-400">Episodes</th>
-                  <th className="text-left py-3 px-4 text-neutral-400">Status</th>
-                  <th className="text-left py-3 px-4 text-neutral-400">Created</th>
-                  <th className="text-left py-3 px-4 text-neutral-400">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredMovies.map((movie) => (
-                  <tr key={movie.id} className="border-b border-neutral-800 hover:bg-neutral-800/50 transition-colors">
-                    <td className="py-3 px-4">
+          {filteredMovies.length === 0 ? (
+            <p className="text-neutral-500 text-sm">No movies found.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredMovies.map((movie) => {
+                const statusLabel = movie.archived
+                  ? "Archived"
+                  : movie.pendingReview
+                  ? "Pending review"
+                  : "Live";
+                return (
+                  <div
+                    key={movie.id}
+                    className="relative rounded-xl overflow-hidden border border-neutral-800 bg-neutral-950 group"
+                  >
+                    <div className="relative h-56">
                       <ImageWithFallback
                         src={movie.thumbnailUrl || movie.posterUrl || ""}
                         alt={movie.name}
-                        className="w-16 h-24 object-cover rounded-lg"
+                        className="w-full h-full object-cover"
                       />
-                    </td>
-                    <td className="py-3 px-4 text-white">{movie.name}</td>
-                    <td className="py-3 px-4 text-neutral-300">{movie.type}</td>
-                    <td className="py-3 px-4 text-neutral-300">{movie.episodeCount ?? 0}</td>
-                    <td className="py-3 px-4 text-neutral-300">
-                      {movie.archived
-                        ? "Archived"
-                        : movie.pendingReview
-                        ? "Pending review"
-                        : "Live"}
-                    </td>
-                    <td className="py-3 px-4 text-neutral-300">
-                      {movie.createdAt ? new Date(movie.createdAt).toLocaleDateString() : "--"}
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex gap-2 items-center">
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
                         <Button
                           size="sm"
-                          variant="ghost"
-                          className="text-[#fd7e14] hover:text-[#ff9940] hover:bg-[#fd7e14]/10"
+                          className="bg-white/10 text-white hover:bg-white/20"
                           onClick={() => {
                             setEditingMovie(movie);
                             setIsAddDialogOpen(true);
                           }}
                         >
-                          <Edit className="w-4 h-4" />
+                          Preview / Edit
                         </Button>
+                      </div>
+                    </div>
+                    <div className="p-4 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-white font-semibold line-clamp-1">{movie.name}</p>
+                          <p className="text-xs text-neutral-400">{statusLabel}</p>
+                        </div>
+                        <Badge
+                          className={
+                            movie.archived
+                              ? "bg-neutral-700 text-neutral-200"
+                              : movie.pendingReview
+                              ? "bg-amber-500/20 text-amber-300"
+                              : "bg-emerald-500/20 text-emerald-300"
+                          }
+                        >
+                          {statusLabel}
+                        </Badge>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
                         <Button
                           size="sm"
                           variant="ghost"
@@ -182,12 +186,13 @@ export function MoviesManagement() {
                             void reloadMovies();
                           }}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Delete
                         </Button>
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="text-neutral-300 hover:text-white hover:bg-neutral-700"
+                          className="text-[#fd7e14] hover:text-[#ff9940] hover:bg-[#fd7e14]/10"
                           onClick={async () => {
                             await fetch(`/api/admin/titles/${movie.id}`, {
                               method: "PATCH",
@@ -195,49 +200,36 @@ export function MoviesManagement() {
                                 "Content-Type": "application/json",
                                 ...(token ? { Authorization: `Bearer ${token}` } : {}),
                               },
-                              body: JSON.stringify({ archived: !movie.archived }),
+                              body: JSON.stringify({ pendingReview: false }),
                             });
                             void reloadMovies();
                           }}
                         >
-                          {movie.archived ? "Unarchive" : "Archive"}
+                          Approve
                         </Button>
-                        {(movie.pendingReview || movie.archived) && (
-                          <Button
-                            size="sm"
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white"
-                            onClick={async () => {
-                              await fetch(`/api/admin/titles/${movie.id}/publish`, {
-                                method: "POST",
-                                headers: {
-                                  "Content-Type": "application/json",
-                                  ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                                },
-                              });
-                              void reloadMovies();
-                            }}
-                          >
-                            Publish
-                          </Button>
-                        )}
-                        <label className="text-xs text-[#fd7e14] hover:text-[#ff9940] cursor-pointer">
-                          <input
-                            type="file"
-                            className="hidden"
-                            onChange={(e) => {
-                              const f = e.target.files?.[0];
-                              if (f) startUploadForMovie(Number(movie.id), f);
-                            }}
-                          />
-                          Upload video
-                        </label>
+                        <Button
+                          size="sm"
+                          className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                          onClick={async () => {
+                            await fetch(`/api/admin/titles/${movie.id}/publish`, {
+                              method: "POST",
+                              headers: {
+                                "Content-Type": "application/json",
+                                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                              },
+                            });
+                            void reloadMovies();
+                          }}
+                        >
+                          Publish
+                        </Button>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
