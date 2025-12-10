@@ -14,9 +14,5 @@ export const transcodeQueue = new Queue("transcode", {
     backoff: { type: "exponential", delay: 5000 },
     removeOnComplete: 1000,
     removeOnFail: 5000,
-    limiter: {
-      max: 1,
-      duration: 1000,
-    },
   },
 });
