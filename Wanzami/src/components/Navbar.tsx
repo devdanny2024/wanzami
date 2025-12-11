@@ -145,7 +145,7 @@ export function Navbar({
 
               {/* Profile (unchanged behavior) */}
               <button
-                onClick={() => onNavigate('dashboard')}
+                onClick={() => onNavigate('settings')}
                 className="hidden md:flex w-10 h-10 items-center justify-center bg-gradient-to-br from-[#fd7e14] to-[#ff9f4d] hover:shadow-lg hover:shadow-[#fd7e14]/30 rounded-xl transition-all duration-300 group"
               >
                 <User className="w-5 h-5 text-white" />

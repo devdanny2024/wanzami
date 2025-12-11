@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { HomePage } from "@/components/HomePage";
-import { Footer } from "@/components/Footer";
 import { HomeSkeleton } from "@/components/Skeletons";
 import {
   fetchTitles,
@@ -176,7 +175,6 @@ export default function HomeRoute() {
           recsError={recsError}
         />
       )}
-      <Footer />
     </div>
   );
 }
