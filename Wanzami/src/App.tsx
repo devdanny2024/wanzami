@@ -267,6 +267,25 @@ export default function App() {
     };
   }, [pathname, parsePathIds, loadTitleById]);
 
+  // Safety: if landing on /player/:id and playerMovie is still null, hydrate it
+  useEffect(() => {
+    const { playerId, episodeId, startTime } = parsePathIds(pathname ?? "/");
+    if (!playerId || playerMovie) return;
+    let cancelled = false;
+    const hydrate = async () => {
+      const found = await loadTitleById(playerId);
+      if (cancelled) return;
+      const base = found ?? fallbackDemo(playerId);
+      const withStart = startTime ? { ...base, startTimeSeconds: startTime } : base;
+      const withEpisode = episodeId ? { ...withStart, currentEpisodeId: episodeId } : withStart;
+      setPlayerMovie(withEpisode);
+    };
+    void hydrate();
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname, parsePathIds, loadTitleById, fallbackDemo, playerMovie]);
+
   // Blog route parsing for direct links
   useEffect(() => {
     const path = pathname ?? "/";
