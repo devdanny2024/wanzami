@@ -1133,6 +1133,19 @@ export default function App() {
     R360: 1,
   };
 
+  const convertS3Url = (url?: string | null) => {
+    if (!url) return url;
+    if (url.startsWith("s3://")) {
+      const withoutScheme = url.replace("s3://", "");
+      const [bucket, ...rest] = withoutScheme.split("/");
+      const key = rest.join("/");
+      // Default region matches backend env; adjust if bucket/region changes.
+      const region = process.env.NEXT_PUBLIC_S3_REGION || "eu-north-1";
+      return `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+    }
+    return url;
+  };
+
   const labelForRendition = (r?: string) => {
     switch (r) {
       case "R4K":
@@ -1155,7 +1168,10 @@ export default function App() {
     const currentEpisode = movie.currentEpisodeId
       ? movie.episodes?.find((e: any) => String(e.id) === String(movie.currentEpisodeId))
       : null;
-    const assets = (currentEpisode?.assetVersions ?? movie.assetVersions ?? []).filter((a: any) => a?.url);
+    const assets = (currentEpisode?.assetVersions ?? movie.assetVersions ?? []).map((a: any) => ({
+      ...a,
+      url: convertS3Url(a?.url),
+    })).filter((a: any) => a?.url);
     const sorted = assets.sort((a: any, b: any) => (renditionRank[b.rendition] ?? 0) - (renditionRank[a.rendition] ?? 0));
     if (sorted.length) {
       return sorted.map((a: any) => ({
