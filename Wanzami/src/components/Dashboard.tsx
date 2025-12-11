@@ -7,140 +7,17 @@ interface DashboardProps {
   onMovieClick: (movie: MovieData) => void;
 }
 
-const continueWatching: Array<MovieData & { progress: number }> = [
-  {
-    id: 1,
-    title: "King of Boys",
-    image: "https://images.unsplash.com/photo-1713845784782-51b36d805391?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwd29tYW4lMjBwb3J0cmFpdCUyMGNpbmVtYXRpY3xlbnwxfHx8fDE3NjM3OTI2NjJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    rating: "18+",
-    duration: "2h 45m",
-    progress: 68
-  },
-  {
-    id: 2,
-    title: "Lagos Hustle",
-    image: "https://images.unsplash.com/photo-1677435013662-ef31e32ff9f8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsYWdvcyUyMGNpdHklMjBuaWdodHxlbnwxfHx8fDE3NjM3OTI2NjJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    rating: "16+",
-    duration: "1h 55m",
-    progress: 42
-  },
-  {
-    id: 3,
-    title: "Heritage",
-    image: "https://images.unsplash.com/photo-1657356217561-6ed26b47e116?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwY3VsdHVyZSUyMHRyYWRpdGlvbmFsfGVufDF8fHx8MTc2Mzc5MjY2M3ww&ixlib=rb-4.1.0&q=80&w=1080",
-    rating: "13+",
-    duration: "2h 10m",
-    progress: 15
-  }
-];
+const continueWatching: Array<MovieData & { progress: number }> = [];
 
 // Purchased PPV Movies with expiry
-const purchasedPPV: Array<MovieData & { expiresIn: string; isExpiringSoon: boolean; price: number }> = [
-  {
-    id: 101,
-    title: "The Governor",
-    image: "https://images.unsplash.com/photo-1713845784782-51b36d805391?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwd29tYW4lMjBwb3J0cmFpdCUyMGNpbmVtYXRpY3xlbnwxfHx8fDE3NjM3OTI2NjJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    rating: "18+",
-    genre: "Political Thriller",
-    expiresIn: "1 day 13 hours",
-    isExpiringSoon: false,
-    price: 3500
-  },
-  {
-    id: 102,
-    title: "Lagos Vice",
-    image: "https://images.unsplash.com/photo-1677435013662-ef31e32ff9f8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsYWdvcyUyMGNpdHklMjBuaWdodHxlbnwxfHx8fDE3NjM3OTI2NjJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    rating: "18+",
-    genre: "Action",
-    expiresIn: "5 hours",
-    isExpiringSoon: true,
-    price: 2800
-  }
-];
+const purchasedPPV: Array<MovieData & { expiresIn: string; isExpiringSoon: boolean; price: number }> = [];
 
 // Owned Movies (Purchased permanently)
-const ownedMovies: Array<MovieData & { purchaseDate: string; buyPrice: number }> = [
-  {
-    id: 103,
-    title: "Anikulapo: Rise of the Spectre",
-    image: "https://images.unsplash.com/photo-1657356217561-6ed26b47e116?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwY3VsdHVyZSUyMHRyYWRpdGlvbmFsfGVufDF8fHx8MTc2Mzc5MjY2M3ww&ixlib=rb-4.1.0&q=80&w=1080",
-    rating: "16+",
-    genre: "Fantasy",
-    purchaseDate: "Nov 15, 2024",
-    buyPrice: 7500
-  },
-  {
-    id: 105,
-    title: "Omo Ghetto: The Saga Continues",
-    image: "https://images.unsplash.com/photo-1577897113176-6888367369bf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwZmFtaWx5JTIwaGFwcHl8ZW58MXx8fHwxNzYzNzkyNjYzfDA&ixlib=rb-4.1.0&q=80&w=1080",
-    rating: "13+",
-    genre: "Comedy",
-    purchaseDate: "Nov 10, 2024",
-    buyPrice: 5000
-  }
-];
+const ownedMovies: Array<MovieData & { purchaseDate: string; buyPrice: number }> = [];
 
-const myList: MovieData[] = [
-  {
-    id: 4,
-    title: "Family Ties",
-    image: "https://images.unsplash.com/photo-1577897113176-6888367369bf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwZmFtaWx5JTIwaGFwcHl8ZW58MXx8fHwxNzYzNzkyNjYzfDA&ixlib=rb-4.1.0&q=80&w=1080",
-    rating: "PG",
-    genre: "Comedy"
-  },
-  {
-    id: 5,
-    title: "Rhythm & Soul",
-    image: "https://images.unsplash.com/photo-1758875913518-7869eb5e1e91?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwZGFuY2UlMjBjZWxlYnJhdGlvbnxlbnwxfHx8fDE3NjM3OTI2NjR8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    rating: "13+",
-    genre: "Musical"
-  },
-  {
-    id: 6,
-    title: "City Lights",
-    image: "https://images.unsplash.com/photo-1621276336795-925346853745?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaW5lbWElMjBtb3ZpZSUyMHRoZWF0ZXIlMjBkYXJrfGVufDF8fHx8MTc2Mzc5MjY2M3ww&ixlib=rb-4.1.0&q=80&w=1080",
-    rating: "16+",
-    genre: "Thriller"
-  },
-  {
-    id: 7,
-    title: "Heritage Keepers",
-    image: "https://images.unsplash.com/photo-1618051438543-9f85cab01c60?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxuaWdlcmlhbiUyMG1hbiUyMHBvcnRyYWl0fGVufDF8fHx8MTc2Mzc5MjY2NHww&ixlib=rb-4.1.0&q=80&w=1080",
-    rating: "13+",
-    genre: "Adventure"
-  }
-];
+const myList: MovieData[] = [];
 
-const recentlyAdded: MovieData[] = [
-  {
-    id: 8,
-    title: "Power Play",
-    image: "https://images.unsplash.com/photo-1761370980993-3ec8c23709fc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxuaWdlcmlhbiUyMGNpbmVtYSUyMG1vdmllfGVufDF8fHx8MTc2Mzc5MjY2MXww&ixlib=rb-4.1.0&q=80&w=1080",
-    rating: "18+",
-    genre: "Political Thriller"
-  },
-  {
-    id: 9,
-    title: "Dance Revolution",
-    image: "https://images.unsplash.com/photo-1758875913518-7869eb5e1e91?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwZGFuY2UlMjBjZWxlYnJhdGlvbnxlbnwxfHx8fDE3NjM3OTI2NjR8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    rating: "PG",
-    genre: "Musical"
-  },
-  {
-    id: 10,
-    title: "Urban Tales",
-    image: "https://images.unsplash.com/photo-1677435013662-ef31e32ff9f8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsYWdvcyUyMGNpdHklMjBuaWdodHxlbnwxfHx8fDE3NjM3OTI2NjJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    rating: "16+",
-    genre: "Drama"
-  },
-  {
-    id: 11,
-    title: "Ancestral Calling",
-    image: "https://images.unsplash.com/photo-1657356217561-6ed26b47e116?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwY3VsdHVyZSUyMHRyYWRpdGlvbmFsfGVufDF8fHx8MTc2Mzc5MjY2M3ww&ixlib=rb-4.1.0&q=80&w=1080",
-    rating: "13+",
-    genre: "Fantasy"
-  }
-];
+const recentlyAdded: MovieData[] = [];
 
 export function Dashboard({ onMovieClick }: DashboardProps) {
   return (
