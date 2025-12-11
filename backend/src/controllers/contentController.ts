@@ -95,6 +95,22 @@ const maturityClause = (kidMode: boolean, age: number | null) => {
   return undefined;
 };
 
+const resolvePlaybackUrl = async (url?: string | null) => {
+  if (!url) return url;
+  if (url.startsWith("s3://")) {
+    const withoutScheme = url.replace("s3://", "");
+    const [, ...rest] = withoutScheme.split("/");
+    const key = rest.join("/");
+    try {
+      return await presignGetObject(key, 3600);
+    } catch (err) {
+      console.error("presign playback url failed", { key, err });
+      return null;
+    }
+  }
+  return url;
+};
+
 export const listPublicTitles = async (req: Request, res: Response) => {
   const countryOverride = (req.query.country as string | undefined)?.toUpperCase()?.trim();
   const country = countryOverride || resolveCountry(req);
@@ -193,6 +209,41 @@ export const getTitleWithEpisodes = async (req: Request, res: Response) => {
     return res.status(404).json({ message: "Title not found" });
   }
 
+  const assetVersions = await Promise.all(
+    title.assetVersions.map(async (a) => ({
+      id: a.id.toString(),
+      rendition: a.rendition,
+      url: await resolvePlaybackUrl(a.url),
+      sizeBytes: a.sizeBytes ? Number(a.sizeBytes) : undefined,
+      durationSec: a.durationSec ?? undefined,
+      status: a.status,
+    }))
+  );
+
+  const episodes = await Promise.all(
+    title.episodes.map(async (e) => ({
+      id: e.id.toString(),
+      titleId: e.titleId.toString(),
+      seasonNumber: e.seasonNumber,
+      episodeNumber: e.episodeNumber,
+      name: e.name,
+      synopsis: e.synopsis,
+      runtimeMinutes: e.runtimeMinutes,
+      createdAt: e.createdAt,
+      updatedAt: e.updatedAt,
+      assetVersions: await Promise.all(
+        (e as any).assetVersions?.map(async (a: any) => ({
+          id: a.id.toString(),
+          rendition: a.rendition,
+          url: await resolvePlaybackUrl(a.url),
+          sizeBytes: a.sizeBytes ? Number(a.sizeBytes) : undefined,
+          durationSec: a.durationSec ?? undefined,
+          status: a.status,
+        })) ?? []
+      ),
+    }))
+  );
+
   return res.json({
     title: {
       id: title.id.toString(),
@@ -215,33 +266,8 @@ export const getTitleWithEpisodes = async (req: Request, res: Response) => {
       updatedAt: title.updatedAt,
       releaseYear: title.releaseDate ? title.releaseDate.getUTCFullYear() : undefined,
       episodeCount: title.episodes.length,
-      assetVersions: title.assetVersions.map((a) => ({
-        id: a.id.toString(),
-        rendition: a.rendition,
-        url: a.url,
-        sizeBytes: a.sizeBytes ? Number(a.sizeBytes) : undefined,
-        durationSec: a.durationSec ?? undefined,
-        status: a.status,
-      })),
-      episodes: title.episodes.map((e) => ({
-        id: e.id.toString(),
-        titleId: e.titleId.toString(),
-        seasonNumber: e.seasonNumber,
-        episodeNumber: e.episodeNumber,
-        name: e.name,
-        synopsis: e.synopsis,
-        runtimeMinutes: e.runtimeMinutes,
-        createdAt: e.createdAt,
-        updatedAt: e.updatedAt,
-        assetVersions: (e as any).assetVersions?.map((a: any) => ({
-          id: a.id.toString(),
-          rendition: a.rendition,
-          url: a.url,
-          sizeBytes: a.sizeBytes ? Number(a.sizeBytes) : undefined,
-          durationSec: a.durationSec ?? undefined,
-          status: a.status,
-        })),
-      })),
+      assetVersions,
+      episodes,
     },
   });
 };
