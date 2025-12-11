@@ -67,6 +67,12 @@ export function CustomMediaPlayer({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const hasAppliedStart = useRef(false);
   const hideControlsTimer = useRef<NodeJS.Timeout | null>(null);
+  const hasSources = useMemo(() => {
+    return Boolean(
+      (sources && sources.length > 0) ||
+        episodes?.some((ep) => ep.streamUrl)
+    );
+  }, [sources, episodes]);
 
   const normalizedSources = useMemo(() => {
     if (!sources || !sources.length) return [];
@@ -326,7 +332,7 @@ export function CustomMediaPlayer({
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-screen bg-black group"
+      className="relative w-full h-screen bg-black group overflow-hidden"
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
       onMouseMove={() => setIsHovering(true)}
@@ -337,18 +343,22 @@ export function CustomMediaPlayer({
         poster={poster ?? undefined}
         className="w-full h-full object-contain bg-black"
         onClick={togglePlay}
+        controls={false}
+        style={{ zIndex: 1 }}
       />
 
       <div
         className={`absolute inset-0 bg-gradient-to-t from-black via-transparent to-black pointer-events-none transition-opacity duration-300 ${
           showControls ? "opacity-100" : "opacity-0"
         }`}
+        style={{ zIndex: 5 }}
       />
 
       <div
         className={`absolute top-0 left-0 right-0 p-4 md:p-6 flex items-start justify-between transition-all duration-300 ${
           showControls ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0"
         }`}
+        style={{ zIndex: 10 }}
       >
         <div className="flex items-center gap-3 md:gap-4 flex-1">
           <button
@@ -385,7 +395,7 @@ export function CustomMediaPlayer({
       </div>
 
       {!isPlaying && (
-        <div className="absolute inset-0 flex items-center justify-center">
+        <div className="absolute inset-0 flex items-center justify-center" style={{ zIndex: 15 }}>
           <button
             onClick={togglePlay}
             className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center hover:bg-white/30 transition-all hover:scale-110"
@@ -399,7 +409,14 @@ export function CustomMediaPlayer({
         className={`absolute bottom-0 left-0 right-0 p-3 md:p-6 transition-all duration-300 ${
           showControls ? "translate-y-0 opacity-100" : "translate-y-full opacity-0"
         }`}
+        style={{ zIndex: 12 }}
       >
+        {!hasSources ? (
+          <div className="text-center text-white/80 text-sm mb-3">
+            No playable sources found for this title.
+          </div>
+        ) : null}
+
         <div className="mb-3 md:mb-4">
           <input
             type="range"
