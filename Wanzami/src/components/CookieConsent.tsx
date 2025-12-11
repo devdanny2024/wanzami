@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 
 type Consent = "accepted" | "rejected" | null;
 type Category = {
@@ -16,6 +17,7 @@ const categories: Category[] = [
 ];
 
 export function CookieConsent() {
+  const pathname = usePathname();
   const [consent, setConsent] = useState<Consent>(null);
   const [prefs, setPrefs] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(categories.map((c) => [c.key, c.key === "essential"]))
@@ -42,7 +44,10 @@ export function CookieConsent() {
     }
   }, []);
 
-  const visible = useMemo(() => consent !== "accepted", [consent]);
+  const hiddenRoutes = ["/login", "/register", "/forgot-password", "/reset-password", "/verify-email"];
+  const isAuthRoute = pathname ? hiddenRoutes.some((r) => pathname.startsWith(r)) : false;
+
+  const visible = useMemo(() => consent !== "accepted" && !isAuthRoute, [consent, isAuthRoute]);
   if (!visible) return null;
 
   const handleAcceptAll = () => {
@@ -76,11 +81,11 @@ export function CookieConsent() {
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-10 items-start">
           <div className="lg:col-span-2 space-y-3">
             <div className="text-lg md:text-xl font-semibold text-black">This website uses cookies</div>
-            <p className="text-sm leading-relaxed">
+            <p className="text-sm leading-relaxed text-black/80">
               We use cookies to provide the best experience on our website. This includes cookies for website functionality, to manage
               our commercial objectives and optimization. You can decide which cookie categories you would like to permit.
             </p>
-            <p className="text-sm leading-relaxed">
+            <p className="text-sm leading-relaxed text-black/80">
               Please note that depending on your settings, the full functionality of our website may no longer be available. For more
               detailed information about our cookies, and to change your preferences at a later time, see our{" "}
               <a className="underline" href="/privacy-policy">
@@ -97,7 +102,7 @@ export function CookieConsent() {
                 <label key={cat.key} className="flex items-center gap-2 cursor-pointer select-none">
                   <input
                     type="checkbox"
-                    className="h-4 w-4 border border-black"
+                    className="h-4 w-4 border border-black accent-[#fd7e14]"
                     checked={Boolean(prefs[cat.key])}
                     onChange={() => togglePref(cat.key)}
                   />
