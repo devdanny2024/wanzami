@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { Play, Download, Users, MonitorPlay, Tv } from "lucide-react";
-import logo from "figma:asset/52f508780a280edf3aa2f53d71125a2531ed7f18.png";
+import logo from "@/assets/logo.png";
 
 const features = [
   {
