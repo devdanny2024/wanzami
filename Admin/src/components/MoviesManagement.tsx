@@ -81,18 +81,13 @@ export function MoviesManagement() {
       setPreviewLoading(true);
       setPreviewError(null);
       setPreviewAssets(null);
-      const res = await fetch(`/api/titles/${movie.id}`);
-      const text = await res.text();
-      let data: any = {};
-      try {
-        data = text ? JSON.parse(text) : {};
-      } catch {
-        throw new Error("Failed to parse preview response");
-      }
+      const res = await authFetch(`/admin/titles/${movie.id}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (!res.ok) {
-        throw new Error(data?.message || "Failed to load title");
+        throw new Error((res.data as any)?.message || "Failed to load title");
       }
-      const assets = (data?.title?.assetVersions as any[]) || [];
+      const assets = ((res.data as any)?.title?.assetVersions as any[]) || [];
       setPreviewAssets(assets);
     } catch (err: any) {
       setPreviewError(err?.message || "Failed to load preview");
