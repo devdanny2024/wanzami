@@ -37,7 +37,11 @@ function Header({ onLogin, onRegister }: { onLogin: () => void; onRegister: () =
     <header className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-sm border-b border-white/10">
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <img src={(logo as any).src ?? (logo as string)} alt="Wanzami" className="w-10 h-10" />
+          <img
+            src={(logo as { src?: string }).src ?? (logo as unknown as string)}
+            alt="Wanzami"
+            className="w-10 h-10"
+          />
           <span className="text-white text-lg font-semibold">Wanzami</span>
         </div>
 
