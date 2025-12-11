@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   Check,
@@ -6,14 +6,13 @@ import {
   Maximize,
   Minimize,
   Pause,
-  Settings,
-  PictureInPicture,
   Play,
+  Settings,
   SkipBack,
   SkipForward,
   Volume2,
   VolumeX,
-  X,
+  PictureInPicture,
 } from "lucide-react";
 
 type MediaSource = {
@@ -46,6 +45,13 @@ type CustomMediaPlayerProps = {
   startTimeSeconds?: number;
 };
 
+const pickInitialSource = (sources: MediaSource[]) => {
+  if (!sources.length) return undefined;
+  const byLabel = (label: string) =>
+    sources.find((s) => (s.label ?? "").toLowerCase().includes(label));
+  return byLabel("1080") || sources[0];
+};
+
 export function CustomMediaPlayer({
   title,
   poster,
@@ -58,21 +64,24 @@ export function CustomMediaPlayer({
 }: CustomMediaPlayerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const hasAppliedStart = useRef(false);
+  const hideControlsTimer = useRef<NodeJS.Timeout | null>(null);
+
   const normalizedSources = useMemo(() => {
     if (!sources || !sources.length) return [];
     return sources.map((s, idx) => ({
       ...s,
       label:
         s.label ||
-        (s.src.toLowerCase().includes("1080") ? "1080p" : s.src.toLowerCase().includes("720") ? "720p" : idx === 0 ? "HD" : `Source ${idx + 1}`),
+        (s.src.toLowerCase().includes("1080")
+          ? "1080p"
+          : s.src.toLowerCase().includes("720")
+          ? "720p"
+          : idx === 0
+          ? "HD"
+          : `Source ${idx + 1}`),
     }));
   }, [sources]);
-  const preferredSource = useMemo(() => {
-    if (!normalizedSources.length) return undefined;
-    const hd1080 = normalizedSources.find((s) => (s.label ?? "").toLowerCase().includes("1080"));
-    return hd1080 ?? normalizedSources[0];
-  }, [normalizedSources]);
-  const [currentSrc, setCurrentSrc] = useState<MediaSource | undefined>(preferredSource ?? normalizedSources[0] ?? sources[0]);
 
   const normalizedEpisodes = useMemo(() => {
     return (episodes ?? []).slice().sort((a, b) => {
@@ -83,6 +92,9 @@ export function CustomMediaPlayer({
     });
   }, [episodes]);
 
+  const [currentSrc, setCurrentSrc] = useState<MediaSource | undefined>(
+    pickInitialSource(normalizedSources) ?? normalizedSources[0]
+  );
   const [currentEpisode, setCurrentEpisode] = useState<Episode | null>(() => {
     if (!normalizedEpisodes.length) return null;
     if (currentEpisodeId) {
@@ -90,18 +102,29 @@ export function CustomMediaPlayer({
     }
     return normalizedEpisodes[0];
   });
-
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(0.9);
+  const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
+  const [isHovering, setIsHovering] = useState(false);
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [showEpisodePanel, setShowEpisodePanel] = useState(false);
   const [pipAvailable, setPipAvailable] = useState(false);
   const [playbackError, setPlaybackError] = useState<string | null>(null);
+
+  const hasPrev = currentEpisode
+    ? normalizedEpisodes.findIndex((e) => e.id === currentEpisode.id) > 0
+    : false;
+  const hasNext = currentEpisode
+    ? normalizedEpisodes.findIndex((e) => e.id === currentEpisode.id) < normalizedEpisodes.length - 1
+    : false;
+
+  useEffect(() => {
+    setPipAvailable(Boolean((document as any).pictureInPictureEnabled));
+  }, []);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -111,15 +134,7 @@ export function CustomMediaPlayer({
     if (isPlaying) {
       void video.play().catch(() => undefined);
     }
-  }, [currentSrc?.src]);
-
-  useEffect(() => {
-    if (!normalizedSources.length) return;
-    const inList = currentSrc ? normalizedSources.some((s) => s.src === currentSrc.src) : false;
-    if (!inList) {
-      setCurrentSrc(preferredSource ?? normalizedSources[0]);
-    }
-  }, [normalizedSources, currentSrc, preferredSource]);
+  }, [currentSrc?.src, isPlaying]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -130,109 +145,65 @@ export function CustomMediaPlayer({
     };
     const handleLoadedMetadata = () => {
       setDuration(video.duration);
-      if (startTimeSeconds && video.duration > startTimeSeconds) {
+      if (!hasAppliedStart.current && startTimeSeconds && video.duration > startTimeSeconds) {
         video.currentTime = startTimeSeconds;
+        hasAppliedStart.current = true;
       }
     };
     const handleEnded = () => {
       setIsPlaying(false);
-      // auto-next episode
-      if (currentEpisode && normalizedEpisodes.length) {
-        const idx = normalizedEpisodes.findIndex((e) => e.id === currentEpisode.id);
-        if (idx >= 0 && idx < normalizedEpisodes.length - 1) {
-          const next = normalizedEpisodes[idx + 1];
-          const stream = next.streamUrl || currentSrc.src;
-          switchEpisode(next, stream);
-          return;
-        }
+      if (hasNext) {
+        handleNext();
+        return;
       }
       onEvent?.("PLAY_END");
+    };
+    const handleError = () => {
+      const idx = normalizedSources.findIndex((s) => s.src === currentSrc?.src);
+      const fallback =
+        normalizedSources[idx + 1] ?? normalizedSources.find((s) => s.src !== currentSrc?.src);
+      if (fallback) {
+        setPlaybackError(null);
+        setCurrentSrc(fallback);
+      } else {
+        setPlaybackError("We hit a streaming error.");
+      }
     };
 
     video.addEventListener("timeupdate", handleTimeUpdate);
     video.addEventListener("loadedmetadata", handleLoadedMetadata);
     video.addEventListener("ended", handleEnded);
+    video.addEventListener("error", handleError);
 
     return () => {
       video.removeEventListener("timeupdate", handleTimeUpdate);
       video.removeEventListener("loadedmetadata", handleLoadedMetadata);
       video.removeEventListener("ended", handleEnded);
+      video.removeEventListener("error", handleError);
     };
-  }, [currentEpisode, normalizedEpisodes, currentSrc?.src, startTimeSeconds, onEvent]);
+  }, [hasNext, onEvent, startTimeSeconds, currentSrc, normalizedSources]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
     };
     document.addEventListener("fullscreenchange", handleFullscreenChange);
-    setPipAvailable(Boolean((document as any).pictureInPictureEnabled));
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
 
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    const handleError = () => {
-      const currentIdx = normalizedSources.findIndex((s) => s.src === currentSrc?.src);
-      const fallback = normalizedSources[currentIdx + 1] ?? normalizedSources.find((s) => s.src !== currentSrc?.src);
-      if (fallback) {
-        setPlaybackError(null);
-        setCurrentSrc(fallback);
-        return;
-      }
-      setPlaybackError("We hit a streaming error. Trying a fallback source didn't work.");
-    };
-    video.addEventListener("error", handleError);
-    return () => video.removeEventListener("error", handleError);
-  }, [normalizedSources, currentSrc]);
-
-  useEffect(() => {
-    setShowControls(true);
-  }, [isPlaying]);
+    if (isPlaying && !isHovering) {
+      if (hideControlsTimer.current) clearTimeout(hideControlsTimer.current);
+      hideControlsTimer.current = setTimeout(() => setShowControls(false), 3000);
+    } else {
+      setShowControls(true);
+      if (hideControlsTimer.current) clearTimeout(hideControlsTimer.current);
+    }
+  }, [isPlaying, isHovering]);
 
   useEffect(() => {
     setPlaybackError(null);
   }, [currentSrc?.src]);
-
-  const handleClose = useCallback(() => {
-    const exitFullscreenAndPip = async () => {
-      try {
-        if (document.pictureInPictureElement) {
-          await document.exitPictureInPicture();
-        }
-      } catch {
-        // ignore
-      }
-      try {
-        if (document.fullscreenElement) {
-          await document.exitFullscreen();
-        }
-      } catch {
-        // ignore
-      }
-    };
-
-    const video = videoRef.current;
-    if (video) {
-      video.pause();
-    }
-    setShowEpisodePanel(false);
-    setShowQualityMenu(false);
-    void exitFullscreenAndPip();
-    onEvent?.("PLAY_END");
-    onClose();
-  }, [onClose, onEvent]);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" || e.key === "Backspace" || e.key === "BrowserBack") {
-        e.preventDefault();
-        handleClose();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleClose]);
 
   const togglePlay = () => {
     const video = videoRef.current;
@@ -281,12 +252,10 @@ export function CustomMediaPlayer({
 
   const togglePip = async () => {
     try {
-      const video = videoRef.current;
-      if (!video) return;
       if (document.pictureInPictureElement) {
         await document.exitPictureInPicture();
-      } else if (document.pictureInPictureEnabled) {
-        await video.requestPictureInPicture();
+      } else if (document.pictureInPictureEnabled && videoRef.current) {
+        await videoRef.current.requestPictureInPicture();
       }
     } catch {
       // ignore
@@ -306,25 +275,26 @@ export function CustomMediaPlayer({
           void videoRef.current.play().catch(() => undefined);
         }
       }
-    }, 50);
+    }, 100);
   };
 
-  const switchEpisode = (ep: Episode, srcOverride?: string) => {
-    const source = srcOverride ? { src: srcOverride, label: currentSrc?.label ?? "HD" } : currentSrc;
+  const switchEpisode = (ep: Episode) => {
     setCurrentEpisode(ep);
-    if (source) handleQualityChange(source);
+    setShowEpisodePanel(false);
+    setPlaybackError(null);
+    setCurrentTime(0);
+    hasAppliedStart.current = false;
     if (videoRef.current) {
       videoRef.current.currentTime = 0;
     }
+    onEvent?.("PLAY_START", { episodeId: ep.id });
   };
 
   const handlePrev = () => {
     if (!currentEpisode) return;
     const idx = normalizedEpisodes.findIndex((e) => e.id === currentEpisode.id);
     if (idx > 0) {
-      const prev = normalizedEpisodes[idx - 1];
-      const stream = prev.streamUrl || currentSrc?.src;
-      if (stream) switchEpisode(prev, stream);
+      switchEpisode(normalizedEpisodes[idx - 1]);
     }
   };
 
@@ -332,89 +302,66 @@ export function CustomMediaPlayer({
     if (!currentEpisode) return;
     const idx = normalizedEpisodes.findIndex((e) => e.id === currentEpisode.id);
     if (idx >= 0 && idx < normalizedEpisodes.length - 1) {
-      const next = normalizedEpisodes[idx + 1];
-      const stream = next.streamUrl || currentSrc?.src;
-      if (stream) switchEpisode(next, stream);
+      switchEpisode(normalizedEpisodes[idx + 1]);
     }
   };
 
   const formatTime = (time: number) => {
-    if (!Number.isFinite(time)) return "0:00";
     const hours = Math.floor(time / 3600);
     const minutes = Math.floor((time % 3600) / 60);
     const seconds = Math.floor(time % 60)
       .toString()
       .padStart(2, "0");
-    if (hours > 0) return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds}`;
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds}`;
+    }
     return `${minutes}:${seconds}`;
   };
 
-  const hasPrev = currentEpisode
-    ? normalizedEpisodes.findIndex((e) => e.id === currentEpisode.id) > 0
-    : false;
-  const hasNext = currentEpisode
-    ? normalizedEpisodes.findIndex((e) => e.id === currentEpisode.id) < normalizedEpisodes.length - 1
-    : false;
-
-  const renderQualityMenu = (placementClass: string) => {
-    if (!showQualityMenu) return null;
-    return (
-      <div className={`absolute ${placementClass} bg-black/95 border border-white/10 rounded-lg shadow-lg min-w-[160px]`}>
-        <div className="px-3 py-2 border-b border-white/10">
-          <p className="text-white text-sm">Quality</p>
-        </div>
-        {normalizedSources.map((s) => (
-          <button
-            key={s.src}
-            className="w-full px-3 py-2 text-left text-white text-sm hover:bg-white/10 flex items-center justify-between"
-            onClick={() => {
-              handleQualityChange(s);
-              setShowQualityMenu(false);
-            }}
-          >
-            <span>{s.label ?? "HD"}</span>
-            {currentSrc?.src === s.src ? <Check className="w-4 h-4" /> : null}
-          </button>
-        ))}
-      </div>
-    );
-  };
+  const currentEpisodeLabel = currentEpisode
+    ? `S${currentEpisode.seasonNumber ?? "?"} E${currentEpisode.episodeNumber ?? "?"}`
+    : null;
 
   return (
-    <div ref={containerRef} className="fixed inset-0 bg-black flex items-center justify-center">
+    <div
+      ref={containerRef}
+      className="relative w-full h-screen bg-black group"
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
+      onMouseMove={() => setIsHovering(true)}
+    >
       <video
         ref={videoRef}
-        src={currentSrc?.src}
+        src={currentEpisode?.streamUrl || currentSrc?.src}
         poster={poster ?? undefined}
         className="w-full h-full object-contain bg-black"
         onClick={togglePlay}
-        controls={false}
-        style={{ zIndex: 10 }}
       />
 
-      {/* Top bar */}
+      <div
+        className={`absolute inset-0 bg-gradient-to-t from-black via-transparent to-black pointer-events-none transition-opacity duration-300 ${
+          showControls ? "opacity-100" : "opacity-0"
+        }`}
+      />
+
       <div
         className={`absolute top-0 left-0 right-0 p-4 md:p-6 flex items-start justify-between transition-all duration-300 ${
-          showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-6"
+          showControls ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0"
         }`}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 md:gap-4 flex-1">
           <button
             type="button"
-            onClick={() => {
-              handleClose();
-            }}
-            className="p-2 rounded-full bg-white/15 text-white hover:bg-white/25 cursor-pointer"
+            onClick={onClose}
+            className="text-white hover:bg-white/20 p-2 rounded-full transition-colors"
             aria-label="Back"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-5 h-5 md:w-6 md:h-6" />
           </button>
           <div className="text-white">
             <div className="font-semibold text-lg">{title}</div>
-            {currentEpisode ? (
-              <div className="text-sm text-white/70">
-                S{currentEpisode.seasonNumber ?? "?"}E{currentEpisode.episodeNumber ?? "?"} · {currentEpisode.name}
-              </div>
+            {currentEpisodeLabel ? (
+              <div className="text-sm text-white/70">{currentEpisodeLabel}</div>
             ) : null}
             {playbackError ? (
               <div className="mt-2 text-xs text-red-200 bg-red-900/40 border border-red-800 rounded px-3 py-2 max-w-md">
@@ -423,12 +370,19 @@ export function CustomMediaPlayer({
             ) : null}
           </div>
         </div>
-        <div className="flex items-center gap-2 relative">
-          {/* top right kept minimal; main controls moved bottom-right */}
+        <div className="flex items-center gap-2">
+          {pipAvailable ? (
+            <button
+              onClick={togglePip}
+              className="text-white hover:bg-white/20 p-2 rounded-full transition-colors"
+              aria-label="Picture in picture"
+            >
+              <PictureInPicture className="w-5 h-5" />
+            </button>
+          ) : null}
         </div>
       </div>
 
-      {/* Center overlay */}
       {!isPlaying && (
         <div className="absolute inset-0 flex items-center justify-center">
           <button
@@ -440,10 +394,9 @@ export function CustomMediaPlayer({
         </div>
       )}
 
-      {/* Bottom controls */}
       <div
-        className={`absolute bottom-0 left-0 right-0 p-4 md:p-6 transition-all duration-300 ${
-          showControls ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+        className={`absolute bottom-0 left-0 right-0 p-3 md:p-6 transition-all duration-300 ${
+          showControls ? "translate-y-0 opacity-100" : "translate-y-full opacity-0"
         }`}
       >
         <div className="mb-3 md:mb-4">
@@ -453,11 +406,83 @@ export function CustomMediaPlayer({
             max={duration || 0}
             value={currentTime}
             onChange={handleSeek}
-            className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+            className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"
             style={{
-              background: `linear-gradient(to right, #fd7e14 0%, #fd7e14 ${(currentTime / (duration || 1)) * 100}%, #4a5568 ${(currentTime / (duration || 1)) * 100}%, #4a5568 100%)`,
+              background: `linear-gradient(to right, #e50914 0%, #e50914 ${
+                duration ? (currentTime / duration) * 100 : 0
+              }%, #4a5568 ${duration ? (currentTime / duration) * 100 : 0}%, #4a5568 100%)`,
             }}
           />
+        </div>
+
+        <div className="block md:hidden space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button onClick={togglePlay} className="text-white hover:scale-110 transition-transform">
+                {isPlaying ? <Pause className="w-7 h-7" fill="white" /> : <Play className="w-7 h-7" fill="white" />}
+              </button>
+              <button
+                onClick={handlePrev}
+                disabled={!hasPrev}
+                className={`text-white hover:scale-110 transition-transform ${!hasPrev ? "opacity-40 cursor-not-allowed" : ""}`}
+              >
+                <SkipBack className="w-6 h-6" fill="white" />
+              </button>
+              <button
+                onClick={handleNext}
+                disabled={!hasNext}
+                className={`text-white hover:scale-110 transition-transform ${!hasNext ? "opacity-40 cursor-not-allowed" : ""}`}
+              >
+                <SkipForward className="w-6 h-6" fill="white" />
+              </button>
+              <button onClick={toggleMute} className="text-white hover:scale-110 transition-transform">
+                {isMuted || volume === 0 ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
+              </button>
+            </div>
+            <div className="flex items-center gap-3">
+              {normalizedEpisodes.length ? (
+                <button onClick={() => setShowEpisodePanel(true)} className="text-white hover:scale-110 transition-transform">
+                  <List className="w-6 h-6" />
+                </button>
+              ) : null}
+              {normalizedSources.length > 1 ? (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowQualityMenu((v) => !v)}
+                    className="text-white hover:scale-110 transition-transform"
+                  >
+                    <Settings className="w-6 h-6" />
+                  </button>
+                  {showQualityMenu && (
+                    <div className="absolute bottom-full right-0 mb-2 bg-black/95 backdrop-blur-sm rounded-lg overflow-hidden min-w-40">
+                      <div className="p-2 border-b border-gray-700">
+                        <p className="text-white text-sm">Quality</p>
+                      </div>
+                      {normalizedSources.map((quality) => (
+                        <button
+                          key={quality.src}
+                          onClick={() => handleQualityChange(quality)}
+                          className="w-full px-3 py-2 text-left text-white text-sm hover:bg-white/10 transition-colors flex items-center justify-between"
+                        >
+                          <span>{quality.label}</span>
+                          {currentSrc?.src === quality.src ? <Check className="w-4 h-4" /> : null}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+              <button onClick={toggleFullscreen} className="text-white hover:scale-110 transition-transform">
+                {isFullscreen ? <Minimize className="w-6 h-6" /> : <Maximize className="w-6 h-6" />}
+              </button>
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="text-white text-xs">
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </div>
+            <div className="text-white text-xs">{currentSrc?.label}</div>
+          </div>
         </div>
 
         <div className="hidden md:flex items-center justify-between">
@@ -468,19 +493,19 @@ export function CustomMediaPlayer({
             <button
               onClick={handlePrev}
               disabled={!hasPrev}
-              className={`text-white hover:scale-110 transition-transform ${!hasPrev ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
+              className={`text-white hover:scale-110 transition-transform ${!hasPrev ? "opacity-40 cursor-not-allowed" : ""}`}
             >
               <SkipBack className="w-7 h-7" fill="white" />
             </button>
             <button
               onClick={handleNext}
               disabled={!hasNext}
-              className={`text-white hover:scale-110 transition-transform ${!hasNext ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
+              className={`text-white hover:scale-110 transition-transform ${!hasNext ? "opacity-40 cursor-not-allowed" : ""}`}
             >
               <SkipForward className="w-7 h-7" fill="white" />
             </button>
             <div className="flex items-center gap-2 group/volume">
-              <button onClick={toggleMute} className="text-white hover:scale-110 transition-transform cursor-pointer">
+              <button onClick={toggleMute} className="text-white hover:scale-110 transition-transform">
                 {isMuted || volume === 0 ? <VolumeX className="w-7 h-7" /> : <Volume2 className="w-7 h-7" />}
               </button>
               <input
@@ -490,93 +515,56 @@ export function CustomMediaPlayer({
                 step={0.01}
                 value={isMuted ? 0 : volume}
                 onChange={handleVolumeChange}
-                className="w-28 transition-all duration-300 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"
+                className="w-0 group-hover/volume:w-24 transition-all duration-300 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"
                 style={{
-                  background: `linear-gradient(to right, #fd7e14 0%, #fd7e14 ${volume * 100}%, #4a5568 ${volume * 100}%, #4a5568 100%)`,
+                  background: `linear-gradient(to right, white 0%, white ${volume * 100}%, #4a5568 ${volume * 100}%, #4a5568 100%)`,
                 }}
               />
             </div>
-            <div className="text-white text-sm">
+            <div className="text-white">
               {formatTime(currentTime)} / {formatTime(duration)}
             </div>
           </div>
           <div className="flex items-center gap-4">
-            {normalizedSources.length > 1 && (
-              <div className="relative">
-                <button onClick={() => setShowQualityMenu((v) => !v)} className="text-white hover:scale-110 transition-transform flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 border border-white/15 cursor-pointer">
-                  <Settings className="w-6 h-6" />
-                  <span className="text-sm">{currentSrc?.label ?? "HD"}</span>
-                </button>
-                {renderQualityMenu("bottom-full right-0 mb-2")}
-              </div>
-            )}
-            {pipAvailable && (
-              <button onClick={togglePip} className="text-white hover:scale-110 transition-transform cursor-pointer">
-                <PictureInPicture className="w-7 h-7" />
+            {normalizedEpisodes.length ? (
+              <button onClick={() => setShowEpisodePanel(true)} className="text-white hover:scale-110 transition-transform">
+                <List className="w-7 h-7" />
               </button>
-            )}
-            <button onClick={toggleFullscreen} className="text-white hover:scale-110 transition-transform cursor-pointer">
+            ) : null}
+            {normalizedSources.length > 1 ? (
+              <div className="relative">
+                <button
+                  onClick={() => setShowQualityMenu((v) => !v)}
+                  className="text-white hover:scale-110 transition-transform"
+                >
+                  <Settings className="w-7 h-7" />
+                </button>
+                {showQualityMenu && (
+                  <div className="absolute bottom-full right-0 mb-2 bg-black/95 backdrop-blur-sm rounded-lg overflow-hidden min-w-48">
+                    <div className="p-3 border-b border-gray-700">
+                      <p className="text-white">Quality</p>
+                    </div>
+                    {normalizedSources.map((quality) => (
+                      <button
+                        key={quality.src}
+                        onClick={() => handleQualityChange(quality)}
+                        className="w-full px-4 py-3 text-left text-white hover:bg-white/10 transition-colors flex items-center justify-between"
+                      >
+                        <span>{quality.label}</span>
+                        {currentSrc?.src === quality.src ? <Check className="w-5 h-5" /> : null}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : null}
+            <button onClick={toggleFullscreen} className="text-white hover:scale-110 transition-transform">
               {isFullscreen ? <Minimize className="w-7 h-7" /> : <Maximize className="w-7 h-7" />}
             </button>
           </div>
         </div>
-
-        {/* Mobile controls */}
-        <div className="md:hidden space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={togglePlay} className="text-white hover:scale-110 transition-transform cursor-pointer">
-              {isPlaying ? <Pause className="w-7 h-7" fill="white" /> : <Play className="w-7 h-7" fill="white" />}
-            </button>
-            <button
-              onClick={handlePrev}
-              disabled={!hasPrev}
-              className={`text-white hover:scale-110 transition-transform ${!hasPrev ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
-            >
-              <SkipBack className="w-6 h-6" fill="white" />
-            </button>
-            <button
-              onClick={handleNext}
-              disabled={!hasNext}
-              className={`text-white hover:scale-110 transition-transform ${!hasNext ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
-            >
-              <SkipForward className="w-6 h-6" fill="white" />
-            </button>
-            <button onClick={toggleMute} className="text-white hover:scale-110 transition-transform cursor-pointer">
-              {isMuted || volume === 0 ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
-            </button>
-          </div>
-          <div className="flex items-center gap-3">
-            {normalizedEpisodes.length > 0 && (
-              <button onClick={() => setShowEpisodePanel(true)} className="text-white hover:scale-110 transition-transform cursor-pointer">
-                <List className="w-6 h-6" />
-              </button>
-            )}
-            {normalizedSources.length > 1 && (
-              <div className="relative">
-                <button onClick={() => setShowQualityMenu((v) => !v)} className="text-white hover:scale-110 transition-transform cursor-pointer">
-                  <Settings className="w-6 h-6" />
-                </button>
-                {renderQualityMenu("bottom-full right-0 mb-2")}
-              </div>
-            )}
-            <button onClick={toggleFullscreen} className="text-white hover:scale-110 transition-transform cursor-pointer">
-              {isFullscreen ? <Minimize className="w-6 h-6" /> : <Maximize className="w-6 h-6" />}
-            </button>
-          </div>
-        </div>
-          <div className="flex items-center justify-between text-white text-xs">
-            <span>
-              {formatTime(currentTime)} / {formatTime(duration)}
-            </span>
-            {currentSrc?.label ? <span>{currentSrc.label}</span> : null}
-          </div>
-        </div>
       </div>
 
-      {/* Removed floating quick controls to keep settings anchored with bottom controls */}
-
-      {/* Episode overlay */}
       {showEpisodePanel && normalizedEpisodes.length > 0 && (
         <div className="fixed inset-0 bg-black/95 overflow-y-auto">
           <div className="max-w-6xl mx-auto p-4 md:p-8">
@@ -600,14 +588,7 @@ export function CustomMediaPlayer({
                 return (
                   <button
                     key={ep.id}
-                    onClick={() => {
-                      const stream = ep.streamUrl || currentSrc?.src;
-                      if (stream) {
-                        handleQualityChange({ src: stream, label: currentSrc?.label ?? "HD" });
-                        setCurrentEpisode(ep);
-                        setShowEpisodePanel(false);
-                      }
-                    }}
+                    onClick={() => switchEpisode(ep)}
                     className={`group cursor-pointer rounded-lg overflow-hidden transition-all hover:bg-white/10 ${
                       active ? "ring-2 ring-[#fd7e14]" : ""
                     }`}
