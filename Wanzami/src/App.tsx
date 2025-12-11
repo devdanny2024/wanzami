@@ -346,9 +346,9 @@ export default function App() {
 
   const CookieBanner = () =>
     showCookieBanner ? (
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[10010] w-[95%] max-w-3xl">
-        <div className="bg-neutral-900/95 border border-neutral-700 rounded-xl shadow-lg px-4 py-3 md:px-6 md:py-4 text-white">
-          <div className="flex items-start gap-3">
+      <div className="fixed bottom-0 left-0 right-0 z-[10010]">
+        <div className="w-full bg-neutral-900/95 border-t border-neutral-700 px-4 py-3 md:px-8 md:py-4 text-white shadow-lg">
+          <div className="max-w-6xl mx-auto flex items-start gap-3">
             <div className="flex-1 space-y-2">
               <div className="font-semibold text-sm md:text-base">Cookies & Preferences</div>
               <p className="text-xs md:text-sm text-neutral-300">
@@ -369,7 +369,7 @@ export default function App() {
                   className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm rounded-lg"
                   onClick={() => {
                     setCookieChoice("rejected");
-                    setShowCookieBanner(false);
+                    setShowCookieBanner(true);
                     localStorage.setItem("cookieConsent", "rejected");
                   }}
                 >
@@ -382,7 +382,7 @@ export default function App() {
               className="p-2 text-neutral-300 hover:text-white"
               onClick={() => {
                 setCookieChoice("rejected");
-                setShowCookieBanner(false);
+                setShowCookieBanner(true);
                 localStorage.setItem("cookieConsent", "rejected");
               }}
             >
@@ -428,11 +428,11 @@ export default function App() {
       setPendingVerification(null);
     }
     const storedConsent = typeof window !== "undefined" ? localStorage.getItem("cookieConsent") : null;
-    if (storedConsent === "accepted" || storedConsent === "rejected") {
-      setCookieChoice(storedConsent as any);
+    if (storedConsent === "accepted") {
+      setCookieChoice("accepted");
       setShowCookieBanner(false);
     } else {
-      setCookieChoice(null);
+      setCookieChoice(storedConsent === "rejected" ? "rejected" : null);
       setShowCookieBanner(true);
     }
   }, []);
@@ -1050,14 +1050,6 @@ export default function App() {
   }, []);
 
   // Avoid flashing the auth screen while we are still validating any existing session.
-  if (authChecking && !allowGuestPlayback) {
-    return (
-      <div className="min-h-screen bg-black">
-        <TopLoader active />
-      </div>
-    );
-  }
-
   if (showSplash && !allowGuestPlayback) {
     return (
       <>
