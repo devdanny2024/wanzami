@@ -182,10 +182,11 @@ export default function App() {
     async (id?: string | null) => {
       if (!id) return null;
       const fromCatalog = catalogMovies.find((m) => m.backendId === id || String(m.id) === id);
-      if (fromCatalog) return fromCatalog;
+      const needsDetail = !fromCatalog || !(fromCatalog as any).assetVersions;
+      if (!needsDetail) return fromCatalog;
       try {
         const detail = await fetchTitleWithEpisodes(id);
-        if (!detail) return null;
+        if (!detail) return fromCatalog ?? null;
         return {
           id: Number(detail.id) || Date.now(),
           backendId: detail.id,
@@ -198,7 +199,7 @@ export default function App() {
           assetVersions: detail.assetVersions,
         };
       } catch {
-        return null;
+        return fromCatalog ?? null;
       }
     },
     [catalogMovies]
