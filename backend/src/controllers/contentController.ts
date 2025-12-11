@@ -209,6 +209,8 @@ export const getTitleWithEpisodes = async (req: Request, res: Response) => {
     return res.status(404).json({ message: "Title not found" });
   }
 
+  const trailerUrl = await resolvePlaybackUrl(title.trailerUrl);
+
   const assetVersions = await Promise.all(
     title.assetVersions.map(async (a) => ({
       id: a.id.toString(),
@@ -260,7 +262,7 @@ export const getTitleWithEpisodes = async (req: Request, res: Response) => {
       isOriginal: title.isOriginal,
       posterUrl: title.posterUrl,
       thumbnailUrl: title.thumbnailUrl,
-      trailerUrl: title.trailerUrl,
+      trailerUrl,
       archived: title.archived,
       createdAt: title.createdAt,
       updatedAt: title.updatedAt,
