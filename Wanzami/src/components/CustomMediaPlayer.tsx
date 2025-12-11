@@ -6,6 +6,7 @@ import {
   Maximize,
   Minimize,
   Pause,
+  X,
   Play,
   Settings,
   SkipBack,
