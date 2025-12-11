@@ -226,34 +226,47 @@ export default function App() {
     setRouteLoading(needsLoad);
 
     const hydrate = async () => {
-      if (titleId) {
-        const found = await loadTitleById(titleId);
-        if (!cancelled) {
-          if (found) {
-            setSelectedMovie(found);
-          } else {
-            // Keep UX alive with a placeholder
-            setSelectedMovie(fallbackDemo(titleId));
+      try {
+        if (titleId) {
+          const found = await loadTitleById(titleId);
+          if (!cancelled) {
+            if (found) {
+              setSelectedMovie(found);
+            } else {
+              // Keep UX alive with a placeholder
+              setSelectedMovie(fallbackDemo(titleId));
+            }
           }
         }
-      }
-      if (playerId) {
-        const found = await loadTitleById(playerId);
-        if (!cancelled) {
-          if (found) {
-            const withStart = startTime ? { ...found, startTimeSeconds: startTime } : found;
-            const withEpisode = episodeId ? { ...withStart, currentEpisodeId: episodeId } : withStart;
-            setPlayerMovie(withEpisode);
-          } else {
-            const demo = fallbackDemo(playerId);
-            const withStart = startTime ? { ...demo, startTimeSeconds: startTime } : demo;
+        if (playerId) {
+          let found: any | null = null;
+          try {
+            found = await loadTitleById(playerId);
+          } catch (err: any) {
+            // Gracefully fall back even if the fetch rejects
+            console.warn("[player] loadTitleById failed, falling back to demo", err);
+          }
+          if (!cancelled) {
+            const base = found ?? fallbackDemo(playerId);
+            const withStart = startTime ? { ...base, startTimeSeconds: startTime } : base;
             const withEpisode = episodeId ? { ...withStart, currentEpisodeId: episodeId } : withStart;
             setPlayerMovie(withEpisode);
           }
         }
-      }
-      if (!cancelled) {
-        setRouteLoading(false);
+      } catch (err: any) {
+        if (!cancelled) {
+          setRouteError(err?.message ?? "Unable to load title");
+          if (playerId) {
+            const base = fallbackDemo(playerId);
+            const withStart = startTime ? { ...base, startTimeSeconds: startTime } : base;
+            const withEpisode = episodeId ? { ...withStart, currentEpisodeId: episodeId } : withStart;
+            setPlayerMovie(withEpisode);
+          }
+        }
+      } finally {
+        if (!cancelled) {
+          setRouteLoading(false);
+        }
       }
     };
 
@@ -274,12 +287,20 @@ export default function App() {
     if (!playerId || playerMovie) return;
     let cancelled = false;
     const hydrate = async () => {
-      const found = await loadTitleById(playerId);
-      if (cancelled) return;
-      const base = found ?? fallbackDemo(playerId);
-      const withStart = startTime ? { ...base, startTimeSeconds: startTime } : base;
-      const withEpisode = episodeId ? { ...withStart, currentEpisodeId: episodeId } : withStart;
-      setPlayerMovie(withEpisode);
+      try {
+        const found = await loadTitleById(playerId);
+        if (cancelled) return;
+        const base = found ?? fallbackDemo(playerId);
+        const withStart = startTime ? { ...base, startTimeSeconds: startTime } : base;
+        const withEpisode = episodeId ? { ...withStart, currentEpisodeId: episodeId } : withStart;
+        setPlayerMovie(withEpisode);
+      } catch (err: any) {
+        if (cancelled) return;
+        const demo = fallbackDemo(playerId);
+        const withStart = startTime ? { ...demo, startTimeSeconds: startTime } : demo;
+        const withEpisode = episodeId ? { ...withStart, currentEpisodeId: episodeId } : withStart;
+        setPlayerMovie(withEpisode);
+      }
     };
     void hydrate();
     return () => {
