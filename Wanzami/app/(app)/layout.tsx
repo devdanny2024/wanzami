@@ -54,7 +54,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           router.push(targetPath);
           window.scrollTo({ top: 0, behavior: "smooth" });
         }}
-        onLogout={() => router.push("/login")}
+        onLogout={() => {
+          if (typeof window !== "undefined") {
+            localStorage.removeItem("accessToken");
+            localStorage.removeItem("refreshToken");
+            localStorage.removeItem("deviceId");
+            localStorage.removeItem("activeProfileId");
+            localStorage.removeItem("activeProfileName");
+            localStorage.removeItem("activeProfileAvatar");
+          }
+          router.replace("/login");
+        }}
         isAuthenticated={true}
       />
       {children}
