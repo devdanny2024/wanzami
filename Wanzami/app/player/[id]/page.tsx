@@ -120,6 +120,14 @@ export default function PlayerPage({ params }: { params: { id: string } }) {
   const [title, setTitle] = useState<Title | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [authInfo, setAuthInfo] = useState<{ token?: string; profileId?: string; deviceId?: string }>({});
+
+  useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') ?? undefined : undefined;
+    const profile = typeof window !== 'undefined' ? localStorage.getItem('activeProfileId') ?? undefined : undefined;
+    const device = typeof window !== 'undefined' ? localStorage.getItem('deviceId') ?? undefined : undefined;
+    setAuthInfo({ token, profileId: profile, deviceId: device });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -192,6 +200,9 @@ export default function PlayerPage({ params }: { params: { id: string } }) {
         currentEpisodeId={episodeId}
         startTimeSeconds={startTime}
         titleId={title.id}
+        accessToken={authInfo.token}
+        profileId={authInfo.profileId}
+        deviceId={authInfo.deviceId}
         onClose={handleClose}
       />
     </div>

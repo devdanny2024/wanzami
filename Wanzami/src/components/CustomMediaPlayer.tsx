@@ -15,6 +15,7 @@ import {
   VolumeX,
   PictureInPicture,
 } from "lucide-react";
+import { postEvents } from "@/lib/contentClient";
 
 type MediaSource = {
   src: string;
@@ -40,9 +41,10 @@ type CustomMediaPlayerProps = {
   onClose: () => void;
   titleId?: string;
   profileId?: string;
+  accessToken?: string;
+  deviceId?: string;
   episodes?: Episode[];
   currentEpisodeId?: string;
-  onEvent?: (eventType: string, metadata?: Record<string, any>) => void;
   startTimeSeconds?: number;
 };
 
@@ -58,9 +60,11 @@ export function CustomMediaPlayer({
   poster,
   sources,
   onClose,
+  accessToken,
+  deviceId,
+  profileId,
   episodes = [],
   currentEpisodeId,
-  onEvent,
   startTimeSeconds,
 }: CustomMediaPlayerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -123,6 +127,45 @@ export function CustomMediaPlayer({
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const [isBuffering, setIsBuffering] = useState(true);
   const pendingResume = useRef(false);
+  const lastProgressSent = useRef<number>(0);
+  const hasSentStart = useRef(false);
+  const unmounted = useRef(false);
+
+  const emitEvent = useCallback(
+    async (eventType: "PLAY_START" | "PLAY_END" | "SCRUB", metadata?: Record<string, any>, force = false) => {
+      if (!accessToken || !titleId) return;
+      const now = Date.now();
+      if (!force && eventType === "PLAY_END" && now - lastProgressSent.current < 12000) {
+        return;
+      }
+      lastProgressSent.current = now;
+      const time = videoRef.current?.currentTime ?? 0;
+      const dur = videoRef.current?.duration ?? duration ?? 0;
+      try {
+        await postEvents(
+          [
+            {
+              eventType,
+              titleId,
+              profileId,
+              episodeId: currentEpisode?.id,
+              deviceId,
+              metadata: {
+                positionSec: time,
+                durationSec: dur,
+                sourceLabel: currentSrc?.label,
+                ...metadata,
+              },
+            },
+          ],
+          accessToken
+        );
+      } catch {
+        // ignore logging errors
+      }
+    },
+    [accessToken, currentEpisode?.id, currentSrc?.label, deviceId, duration, profileId, titleId]
+  );
 
   const hasPrev = currentEpisode
     ? normalizedEpisodes.findIndex((e) => e.id === currentEpisode.id) > 0
@@ -151,6 +194,7 @@ export function CustomMediaPlayer({
 
     const handleTimeUpdate = () => {
       setCurrentTime(video.currentTime);
+      void emitEvent("PLAY_END", { reason: "progress" }, false);
     };
     const handleLoadedMetadata = () => {
       setDuration(video.duration);
@@ -166,7 +210,7 @@ export function CustomMediaPlayer({
         handleNext();
         return;
       }
-      onEvent?.("PLAY_END");
+      void emitEvent("PLAY_END", { reason: "ended" }, true);
     };
     const handleError = () => {
       const idx = normalizedSources.findIndex((s) => s.src === currentSrc?.src);
@@ -206,7 +250,7 @@ export function CustomMediaPlayer({
       video.removeEventListener("canplay", handleCanPlay);
       video.removeEventListener("waiting", handleWaiting);
     };
-  }, [hasNext, onEvent, startTimeSeconds, currentSrc, normalizedSources]);
+  }, [emitEvent, hasNext, startTimeSeconds, currentSrc, normalizedSources]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -236,10 +280,14 @@ export function CustomMediaPlayer({
     if (isPlaying) {
       video.pause();
       setIsPlaying(false);
+      void emitEvent("PLAY_END", { reason: "pause" }, true);
     } else {
       void video.play().catch(() => undefined);
       setIsPlaying(true);
-      onEvent?.("PLAY_START");
+      if (!hasSentStart.current) {
+        hasSentStart.current = true;
+        void emitEvent("PLAY_START", { reason: "play" }, true);
+      }
     }
   };
 
@@ -249,6 +297,7 @@ export function CustomMediaPlayer({
     if (!video) return;
     video.currentTime = time;
     setCurrentTime(time);
+    void emitEvent("SCRUB", { reason: "seek", positionSec: time }, true);
   };
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -317,7 +366,7 @@ export function CustomMediaPlayer({
     if (videoRef.current) {
       videoRef.current.currentTime = 0;
     }
-    onEvent?.("PLAY_START", { episodeId: ep.id });
+    void emitEvent("PLAY_START", { reason: "switch_episode", episodeId: ep.id }, true);
   };
 
   const handlePrev = () => {
@@ -335,6 +384,13 @@ export function CustomMediaPlayer({
       switchEpisode(normalizedEpisodes[idx + 1]);
     }
   };
+
+  useEffect(() => {
+    return () => {
+      unmounted.current = true;
+      void emitEvent("PLAY_END", { reason: "unmount" }, true);
+    };
+  }, [emitEvent]);
 
   const formatTime = (time: number) => {
     const hours = Math.floor(time / 3600);
