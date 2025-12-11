@@ -36,8 +36,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       pathname?.startsWith("/forgot-password") ||
       pathname?.startsWith("/reset-password") ||
       pathname?.startsWith("/verify-email");
-    if (isAuthRoute || isProfileRoute) return;
     const token = localStorage.getItem("accessToken");
+
+    // If logged out, send to splash instead of silently showing the app shell
+    if (!token && !isAuthRoute && !pathname?.startsWith("/splash")) {
+      router.replace("/splash");
+      return;
+    }
+
+    if (isAuthRoute || isProfileRoute) return;
     const profileId = localStorage.getItem("activeProfileId");
     if (token && !profileId) {
       router.replace("/profiles");
