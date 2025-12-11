@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { SearchPage } from "@/components/SearchPage";
 import { fetchTitles } from "@/lib/contentClient";
 import { MovieData } from "@/components/MovieCard";
+import { ListSkeleton } from "@/components/Skeletons";
 
 export default function SearchRoute() {
   const [catalogMovies, setCatalogMovies] = useState<MovieData[]>([]);
@@ -62,17 +63,21 @@ export default function SearchRoute() {
 
   return (
     <div className="min-h-screen bg-black">
-      <SearchPage
-        onMovieClick={(movie) => {
-          const targetId = movie?.backendId ?? movie?.id;
-          if (targetId) {
-            window.location.href = `/title/${targetId}`;
-          }
-        }}
-        movies={catalogMovies}
-        loading={catalogLoading}
-        error={catalogError}
-      />
+      {catalogLoading ? (
+        <ListSkeleton title="Search" />
+      ) : (
+        <SearchPage
+          onMovieClick={(movie) => {
+            const targetId = movie?.backendId ?? movie?.id;
+            if (targetId) {
+              window.location.href = `/title/${targetId}`;
+            }
+          }}
+          movies={catalogMovies}
+          loading={catalogLoading}
+          error={catalogError}
+        />
+      )}
     </div>
   );
 }

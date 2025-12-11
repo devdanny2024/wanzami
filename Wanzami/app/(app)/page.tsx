@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { HomePage } from "@/components/HomePage";
 import { Footer } from "@/components/Footer";
+import { HomeSkeleton } from "@/components/Skeletons";
 import {
   fetchTitles,
   fetchPopularity,
@@ -158,19 +159,23 @@ export default function HomeRoute() {
 
   return (
     <div className="min-h-screen bg-black">
-      <HomePage
-        onMovieClick={handleMovieClick}
-        onContinueClick={handleResumeClick}
-        movies={catalogMovies}
-        loading={catalogLoading}
-        error={catalogError}
-        top10={top10}
-        trending={trending}
-        continueWatching={continueWatchingItems}
-        becauseYouWatched={becauseYouWatchedItems}
-        recsLoading={recsLoading}
-        recsError={recsError}
-      />
+      {catalogLoading ? (
+        <HomeSkeleton />
+      ) : (
+        <HomePage
+          onMovieClick={handleMovieClick}
+          onContinueClick={handleResumeClick}
+          movies={catalogMovies}
+          loading={catalogLoading}
+          error={catalogError}
+          top10={top10}
+          trending={trending}
+          continueWatching={continueWatchingItems}
+          becauseYouWatched={becauseYouWatchedItems}
+          recsLoading={recsLoading}
+          recsError={recsError}
+        />
+      )}
       <Footer />
     </div>
   );
