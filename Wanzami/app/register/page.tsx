@@ -449,8 +449,16 @@ export default function RegisterPage() {
       localStorage.setItem("accessToken", data.accessToken);
       localStorage.setItem("refreshToken", data.refreshToken);
       localStorage.setItem("deviceId", data.deviceId);
-      toast.success("Account created");
-      router.replace("/profiles");
+
+      // Trigger verification email and route to verify page
+      void fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: form.email }),
+      });
+
+      toast.success("Account created. Please verify your email.");
+      router.replace(`/verify-email?email=${encodeURIComponent(form.email)}`);
     } catch (err) {
       toast.error("Unable to register right now. Please try again.");
     } finally {
