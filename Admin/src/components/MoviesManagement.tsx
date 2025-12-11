@@ -47,7 +47,7 @@ export function MoviesManagement() {
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [movies, setMovies] = useState<MovieTitle[]>([]);
-  const { startUpload } = useUploadQueue();
+  const { startUpload, tasks } = useUploadQueue();
 
   const token = useMemo(() => (typeof window !== "undefined" ? localStorage.getItem("accessToken") : null), []);
 
@@ -265,7 +265,7 @@ export function MoviesManagement() {
                           className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
                           onClick={async () => {
                             if (!confirm("Delete this title?")) return;
-                            await fetch(`/api/admin/titles/${movie.id}`, {
+                            await authFetch(`/admin/titles/${movie.id}`, {
                               method: "DELETE",
                               headers: token ? { Authorization: `Bearer ${token}` } : {},
                             });
@@ -280,12 +280,9 @@ export function MoviesManagement() {
                           variant="ghost"
                           className="text-[#fd7e14] hover:text-[#ff9940] hover:bg-[#fd7e14]/10"
                           onClick={async () => {
-                            await fetch(`/api/admin/titles/${movie.id}`, {
+                            await authFetch(`/admin/titles/${movie.id}`, {
                               method: "PATCH",
-                              headers: {
-                                "Content-Type": "application/json",
-                                ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                              },
+                              headers: token ? { Authorization: `Bearer ${token}` } : {},
                               body: JSON.stringify({ archived: !movie.archived }),
                             });
                             void reloadMovies();
@@ -293,22 +290,27 @@ export function MoviesManagement() {
                         >
                           {movie.archived ? "Unarchive" : "Archive"}
                         </Button>
-                        <Button
-                          size="sm"
-                          className="bg-emerald-600 hover:bg-emerald-500 text-white"
-                          onClick={async () => {
-                            await fetch(`/api/admin/titles/${movie.id}/publish`, {
-                              method: "POST",
-                              headers: {
-                                "Content-Type": "application/json",
-                                ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                              },
-                            });
-                            void reloadMovies();
-                          }}
-                        >
-                          Publish
-                        </Button>
+                        {!tasks.some(
+                          (t) =>
+                            t.kind === "MOVIE" &&
+                            String(t.targetId) === String(movie.id) &&
+                            t.status !== "completed" &&
+                            t.status !== "failed"
+                        ) && (
+                          <Button
+                            size="sm"
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                            onClick={async () => {
+                              await authFetch(`/admin/titles/${movie.id}/publish`, {
+                                method: "POST",
+                                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                              });
+                              void reloadMovies();
+                            }}
+                          >
+                            Publish
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>
