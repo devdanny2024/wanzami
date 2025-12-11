@@ -76,10 +76,10 @@ export function CookieConsent() {
   };
 
   return (
-    <div className="fixed inset-0 z-[10010] pointer-events-none">
-      <div className="absolute inset-0 bg-black/50" />
-      <div className="absolute bottom-0 left-0 right-0 pointer-events-auto">
-        <div className="w-full bg-[#fcd68f] text-black px-4 py-6 md:px-10 md:py-8 shadow-2xl border-t border-black/10">
+    <div className="fixed left-0 right-0 top-2/3 bottom-0 z-[10010] pointer-events-none">
+      <div className="absolute inset-0 bg-black/40" />
+      <div className="absolute inset-0 pointer-events-auto">
+        <div className="w-full h-full bg-[#fcd68f] text-black px-4 py-6 md:px-10 md:py-8 shadow-2xl border-t border-black/10 overflow-auto">
           <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-10 items-start">
             <div className="lg:col-span-2 space-y-3">
               <div className="text-lg md:text-xl font-semibold text-black">This website uses cookies</div>
