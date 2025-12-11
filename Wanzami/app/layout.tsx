@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Toaster } from "@/components/ui/toaster";
+import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: "Wanzami",
@@ -15,8 +15,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-black text-white">
-        {children}
-        <Toaster richColors position="top-right" />
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

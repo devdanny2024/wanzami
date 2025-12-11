@@ -31,7 +31,6 @@ import {
 import { MovieData } from './components/MovieCard';
 import { CustomMediaPlayer } from './components/CustomMediaPlayer';
 import { TopLoader } from './components/TopLoader';
-import { X } from 'lucide-react';
 import { Loader } from './components/ui/loader';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://wanzami.duckdns.org";
@@ -71,17 +70,6 @@ export default function App() {
   const [initialBlocker, setInitialBlocker] = useState(false);
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
-  const [cookieChoice, setCookieChoice] = useState<"accepted" | "rejected" | null>(() => {
-    if (typeof window === "undefined") return null;
-    const stored = localStorage.getItem("cookieConsent");
-    if (stored === "accepted" || stored === "rejected") return stored as any;
-    return null;
-  });
-  const [showCookieBanner, setShowCookieBanner] = useState(() => {
-    if (typeof window === "undefined") return true;
-    const stored = localStorage.getItem("cookieConsent");
-    return stored !== "accepted" && stored !== "rejected";
-  });
   const [bootLoader, setBootLoader] = useState(true);
   const [restoredSelected, setRestoredSelected] = useState(false);
   const [restoredPlayer, setRestoredPlayer] = useState(false);
@@ -159,6 +147,22 @@ export default function App() {
     const { playerId } = parsePathIds(pathname ?? "/");
     return Boolean(playerId);
   }, [parsePathIds, pathname]);
+
+  useEffect(() => {
+    if (authChecking) return;
+    if (!allowGuestPlayback && !isAuthenticated) {
+      router.push("/login");
+    }
+  }, [authChecking, allowGuestPlayback, isAuthenticated, router]);
+
+  // If the route requires auth and the user is not authenticated, bail out with the loader while redirecting.
+  if (!allowGuestPlayback && !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-black">
+        <TopLoader active />
+      </div>
+    );
+  }
 
   const makeStubBlogPost = useCallback(
     (id: string): BlogPost => ({
@@ -344,65 +348,6 @@ export default function App() {
     }
   };
 
-  const CookieBanner = () =>
-    showCookieBanner ? (
-      <div className="fixed bottom-0 left-0 right-0 z-[10010]">
-        <div className="w-full bg-neutral-900/95 border-t border-neutral-700 px-4 py-3 md:px-8 md:py-4 text-white shadow-lg">
-          <div className="max-w-6xl mx-auto flex items-start gap-3">
-            <div className="flex-1 space-y-2">
-              <div className="font-semibold text-sm md:text-base">Cookies & Preferences</div>
-              <p className="text-xs md:text-sm text-neutral-300">
-                We use cookies to improve your experience. Accept to allow all, or reject to opt out of non-essential cookies.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  className="px-4 py-2 bg-[#fd7e14] hover:bg-[#e86f0f] text-white text-sm rounded-lg"
-                  onClick={() => {
-                    setCookieChoice("accepted");
-                    setShowCookieBanner(false);
-                    localStorage.setItem("cookieConsent", "accepted");
-                  }}
-                >
-                  Accept
-                </button>
-                <button
-                  className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm rounded-lg"
-                  onClick={() => {
-                    setCookieChoice("rejected");
-                    setShowCookieBanner(true);
-                    localStorage.setItem("cookieConsent", "rejected");
-                  }}
-                >
-                  Reject
-                </button>
-              </div>
-            </div>
-            <button
-              aria-label="Close cookie banner"
-              className="p-2 text-neutral-300 hover:text-white"
-              onClick={() => {
-                setCookieChoice("rejected");
-                setShowCookieBanner(true);
-                localStorage.setItem("cookieConsent", "rejected");
-              }}
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-    ) : null;
-
-  const CookieManagerButton =
-    cookieChoice && !showCookieBanner ? (
-      <button
-        className="fixed bottom-4 left-4 z-[10005] px-3 py-2 text-xs rounded-lg border border-white/20 bg-white/5 text-white hover:bg-white/10"
-        onClick={() => setShowCookieBanner(true)}
-      >
-        Cookie preferences
-      </button>
-    ) : null;
-
   const startUiTransition = (duration = 600) => {
     setUiTransitionLoading(true);
     setTimeout(() => setUiTransitionLoading(false), duration);
@@ -426,14 +371,6 @@ export default function App() {
       setShowSplash(false);
       setShowRegistration(true);
       setPendingVerification(null);
-    }
-    const storedConsent = typeof window !== "undefined" ? localStorage.getItem("cookieConsent") : null;
-    if (storedConsent === "accepted") {
-      setCookieChoice("accepted");
-      setShowCookieBanner(false);
-    } else {
-      setCookieChoice(storedConsent === "rejected" ? "rejected" : null);
-      setShowCookieBanner(true);
     }
   }, []);
 
@@ -1057,8 +994,6 @@ export default function App() {
           onStartRegistration={handleSplashComplete}
           onLogin={handleSplashLogin}
         />
-        <CookieBanner />
-        {CookieManagerButton}
       </>
     );
   }
@@ -1072,8 +1007,6 @@ export default function App() {
           onBack={handleRegistrationBack}
           onLogin={handleShowLoginFromRegistration}
         />
-        <CookieBanner />
-        {CookieManagerButton}
       </>
     );
   }
@@ -1097,15 +1030,12 @@ export default function App() {
               </a>
             </div>
           </div>
-          <CookieBanner />
         </>
       );
     }
     return (
       <>
         <AuthPage onAuth={handleAuth} onShowSignup={handleShowSignup} />
-        <CookieBanner />
-        {CookieManagerButton}
       </>
     );
   }
@@ -1393,52 +1323,6 @@ export default function App() {
           <Footer />
         </div>
       ) : null}
-
-      {/* Cookie consent */}
-      {!cookieChoice && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[10010] w-[95%] max-w-3xl">
-          <div className="bg-neutral-900/95 border border-neutral-700 rounded-xl shadow-lg px-4 py-3 md:px-6 md:py-4 text-white">
-            <div className="flex items-start gap-3">
-              <div className="flex-1 space-y-2">
-                <div className="font-semibold text-sm md:text-base">Cookies & Preferences</div>
-                <p className="text-xs md:text-sm text-neutral-300">
-                  We use cookies to improve your experience. Accept to allow all, or reject to opt out of non-essential cookies.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    className="px-4 py-2 bg-[#fd7e14] hover:bg-[#e86f0f] text-white text-sm rounded-lg"
-                    onClick={() => {
-                      setCookieChoice("accepted");
-                      localStorage.setItem("cookieConsent", "accepted");
-                    }}
-                  >
-                    Accept
-                  </button>
-                  <button
-                    className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm rounded-lg"
-                    onClick={() => {
-                      setCookieChoice("rejected");
-                      localStorage.setItem("cookieConsent", "rejected");
-                    }}
-                  >
-                    Reject
-                  </button>
-                </div>
-              </div>
-              <button
-                aria-label="Close cookie banner"
-                className="p-2 text-neutral-300 hover:text-white"
-                onClick={() => {
-                  setCookieChoice("rejected");
-                  localStorage.setItem("cookieConsent", "rejected");
-                }}
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {playerMovie && (
         <CustomMediaPlayer
