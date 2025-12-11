@@ -34,6 +34,8 @@ import { TopLoader } from './components/TopLoader';
 import { X } from 'lucide-react';
 import { Loader } from './components/ui/loader';
 
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "https://wanzami.duckdns.org";
+
 export default function App() {
 
   const router = useRouter();
@@ -283,11 +285,18 @@ export default function App() {
       }
     }
   }, [pathname, selectedBlogPost, selectedCategory, makeStubBlogPost]);
+  const resolveApiUrl = (input: RequestInfo | URL) => {
+    if (typeof input === "string" && input.startsWith("/api/")) {
+      return `${API_BASE}${input}`;
+    }
+    return input;
+  };
+
   const fetchWithTimeout = async (input: RequestInfo | URL, init?: RequestInit, timeoutMs = 8000) => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const res = await fetch(input, { ...init, signal: controller.signal });
+      const res = await fetch(resolveApiUrl(input), { ...init, signal: controller.signal });
       return res;
     } finally {
       clearTimeout(timer);
