@@ -1049,6 +1049,16 @@ export default function App() {
     return () => window.removeEventListener("load", markAssetsLoaded);
   }, []);
 
+  // Avoid flashing the auth screen while we are still validating any existing session.
+  if (authChecking && !allowGuestPlayback) {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center">
+        <TopLoader active />
+        <p className="mt-3 text-sm text-gray-300">Checking your session...</p>
+      </div>
+    );
+  }
+
   if (showSplash && !allowGuestPlayback) {
     return (
       <>
