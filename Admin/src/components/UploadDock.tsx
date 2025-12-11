@@ -32,8 +32,8 @@ export function UploadDock({ tasks, onRemove }: UploadDockProps) {
     : `${tasks.length} completed`;
 
   return (
-    <div className="fixed inset-x-0 bottom-3 z-40 flex justify-center pointer-events-none px-3">
-      <div className="bg-neutral-900/95 border border-neutral-800 rounded-xl shadow-2xl backdrop-blur w-[95%] max-w-3xl pointer-events-auto">
+    <div className="fixed bottom-4 right-4 z-40 pointer-events-none w-full max-w-md">
+      <div className="bg-neutral-900/95 border border-neutral-800 rounded-xl shadow-2xl backdrop-blur pointer-events-auto">
         <div className="px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
