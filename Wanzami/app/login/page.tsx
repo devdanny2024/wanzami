@@ -9,7 +9,7 @@ export default function LoginPage() {
   return (
     <AuthPage
       onAuth={() => router.push("/")}
-      onShowSignup={() => router.push("/?signup=1")}
+      onShowSignup={() => router.push("/register")}
     />
   );
 }
