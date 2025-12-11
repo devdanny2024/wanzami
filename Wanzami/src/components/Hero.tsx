@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Play, Plus, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { Skeleton } from './ui/skeleton';
 
 interface HeroContent {
   id: number;
@@ -13,43 +14,13 @@ interface HeroContent {
   genre: string;
 }
 
-const heroContent: HeroContent[] = [
-  {
-    id: 1,
-    title: "King of Boys",
-    description: "When a powerful businesswoman's political ambitions are threatened, she must navigate the dangerous underworld of Lagos politics and organized crime.",
-    image: "https://images.unsplash.com/photo-1713845784782-51b36d805391?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwd29tYW4lMjBwb3J0cmFpdCUyMGNpbmVtYXRpY3xlbnwxfHx8fDE3NjM3OTI2NjJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    rating: "18+",
-    year: "2024",
-    genre: "Crime Drama"
-  },
-  {
-    id: 2,
-    title: "Lagos Nights",
-    description: "A gripping tale of love, betrayal, and redemption set against the vibrant backdrop of Nigeria's bustling capital city.",
-    image: "https://images.unsplash.com/photo-1677435013662-ef31e32ff9f8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsYWdvcyUyMGNpdHklMjBuaWdodHxlbnwxfHx8fDE3NjM3OTI2NjJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    rating: "16+",
-    year: "2024",
-    genre: "Romance Drama"
-  },
-  {
-    id: 3,
-    title: "Heritage",
-    description: "An epic journey through generations, exploring the rich tapestry of African traditions and the modern challenges facing a family's legacy.",
-    image: "https://images.unsplash.com/photo-1657356217561-6ed26b47e116?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwY3VsdHVyZSUyMHRyYWRpdGlvbmFsfGVufDF8fHx8MTc2Mzc5MjY2M3ww&ixlib=rb-4.1.0&q=80&w=1080",
-    rating: "13+",
-    year: "2024",
-    genre: "Family Drama"
-  }
-];
-
 interface HeroProps {
   onPlayClick: (content: HeroContent) => void;
   featured?: HeroContent[];
 }
 
 export function Hero({ onPlayClick, featured }: HeroProps) {
-  const slides = featured && featured.length > 0 ? featured : heroContent;
+  const slides = featured && featured.length > 0 ? featured : [];
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
@@ -65,7 +36,29 @@ export function Hero({ onPlayClick, featured }: HeroProps) {
   }, [slides.length]);
 
   if (slides.length === 0) {
-    return null;
+    return (
+      <div className="relative h-[85vh] md:h-[95vh] w-full overflow-hidden">
+        <div className="absolute inset-0">
+          <Skeleton className="h-full w-full rounded-none" />
+        </div>
+        <div className="relative h-full flex items-center px-4 md:px-12 lg:px-16">
+          <div className="max-w-2xl space-y-4 md:space-y-6">
+            <Skeleton className="h-8 w-36" />
+            <Skeleton className="h-14 w-3/4" />
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-6 w-12" />
+              <Skeleton className="h-6 w-10" />
+              <Skeleton className="h-6 w-24" />
+            </div>
+            <Skeleton className="h-16 w-full" />
+            <div className="flex gap-3">
+              <Skeleton className="h-12 w-32" />
+              <Skeleton className="h-12 w-32" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const current = slides[currentIndex % slides.length];
