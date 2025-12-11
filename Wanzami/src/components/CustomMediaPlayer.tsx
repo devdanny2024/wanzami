@@ -57,6 +57,7 @@ const pickInitialSource = (sources: MediaSource[]) => {
 
 export function CustomMediaPlayer({
   title,
+  titleId,
   poster,
   sources,
   onClose,
