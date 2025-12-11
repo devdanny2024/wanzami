@@ -153,6 +153,11 @@ export default function App() {
     };
   }, []);
 
+  const allowGuestPlayback = useMemo(() => {
+    const { playerId } = parsePathIds(pathname ?? "/");
+    return Boolean(playerId);
+  }, [parsePathIds, pathname]);
+
   const makeStubBlogPost = useCallback(
     (id: string): BlogPost => ({
       id: Number(id) || Date.now(),
@@ -381,6 +386,13 @@ export default function App() {
       setShowCookieBanner(true);
     }
   }, []);
+
+  useEffect(() => {
+    if (allowGuestPlayback) {
+      setShowSplash(false);
+      setShowRegistration(false);
+    }
+  }, [allowGuestPlayback]);
 
   // Deprecated persisted selection load (handled via URL now)
   useEffect(() => {
@@ -987,7 +999,7 @@ export default function App() {
     return () => window.removeEventListener("load", markAssetsLoaded);
   }, []);
 
-  if (showSplash) {
+  if (showSplash && !allowGuestPlayback) {
     return (
       <>
         <SplashScreen
@@ -1001,7 +1013,7 @@ export default function App() {
   }
 
   // Show registration page if not authenticated
-  if (!isAuthenticated && showRegistration) {
+  if (!isAuthenticated && showRegistration && !allowGuestPlayback) {
     return (
       <>
         <RegistrationFlow
@@ -1016,7 +1028,7 @@ export default function App() {
   }
 
   // Show auth page if not authenticated
-  if (!isAuthenticated) {
+  if (!isAuthenticated && !allowGuestPlayback) {
     if (pendingVerification) {
       return (
         <>
@@ -1048,7 +1060,7 @@ export default function App() {
   }
 
   // Force profile selection before entering the app
-  if (isAuthenticated && !activeProfile) {
+  if (isAuthenticated && !activeProfile && !allowGuestPlayback) {
     if (profileChooserLoading) {
       return (
         <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center">
