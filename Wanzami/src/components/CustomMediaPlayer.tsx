@@ -121,6 +121,8 @@ export function CustomMediaPlayer({
   const [showEpisodePanel, setShowEpisodePanel] = useState(false);
   const [pipAvailable, setPipAvailable] = useState(false);
   const [playbackError, setPlaybackError] = useState<string | null>(null);
+  const [isBuffering, setIsBuffering] = useState(true);
+  const pendingResume = useRef(false);
 
   const hasPrev = currentEpisode
     ? normalizedEpisodes.findIndex((e) => e.id === currentEpisode.id) > 0
@@ -156,6 +158,7 @@ export function CustomMediaPlayer({
         video.currentTime = startTimeSeconds;
         hasAppliedStart.current = true;
       }
+      setIsBuffering(false);
     };
     const handleEnded = () => {
       setIsPlaying(false);
@@ -175,18 +178,33 @@ export function CustomMediaPlayer({
       } else {
         setPlaybackError("We hit a streaming error.");
       }
+      setIsBuffering(false);
+    };
+    const handleCanPlay = () => {
+      setIsBuffering(false);
+      if (pendingResume.current && isPlaying) {
+        void video.play().catch(() => undefined);
+      }
+      pendingResume.current = false;
+    };
+    const handleWaiting = () => {
+      setIsBuffering(true);
     };
 
     video.addEventListener("timeupdate", handleTimeUpdate);
     video.addEventListener("loadedmetadata", handleLoadedMetadata);
     video.addEventListener("ended", handleEnded);
     video.addEventListener("error", handleError);
+    video.addEventListener("canplay", handleCanPlay);
+    video.addEventListener("waiting", handleWaiting);
 
     return () => {
       video.removeEventListener("timeupdate", handleTimeUpdate);
       video.removeEventListener("loadedmetadata", handleLoadedMetadata);
       video.removeEventListener("ended", handleEnded);
       video.removeEventListener("error", handleError);
+      video.removeEventListener("canplay", handleCanPlay);
+      video.removeEventListener("waiting", handleWaiting);
     };
   }, [hasNext, onEvent, startTimeSeconds, currentSrc, normalizedSources]);
 
@@ -273,12 +291,17 @@ export function CustomMediaPlayer({
     const video = videoRef.current;
     const time = video?.currentTime ?? 0;
     const wasPlaying = isPlaying;
+    setIsBuffering(true);
     setCurrentSrc(source);
     setShowQualityMenu(false);
+    if (video) {
+      video.pause();
+    }
     setTimeout(() => {
       if (videoRef.current) {
         videoRef.current.currentTime = time;
         if (wasPlaying) {
+          pendingResume.current = true;
           void videoRef.current.play().catch(() => undefined);
         }
       }
@@ -402,6 +425,12 @@ export function CustomMediaPlayer({
           >
             <Play className="w-10 h-10 text-white ml-1" fill="white" />
           </button>
+        </div>
+      )}
+
+      {isBuffering && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-sm" style={{ zIndex: 14 }}>
+          <div className="h-12 w-12 border-2 border-white/40 border-t-white rounded-full animate-spin" />
         </div>
       )}
 
