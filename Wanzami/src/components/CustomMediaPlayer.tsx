@@ -101,6 +101,7 @@ export function CustomMediaPlayer({
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [showEpisodePanel, setShowEpisodePanel] = useState(false);
   const [pipAvailable, setPipAvailable] = useState(false);
+  const [playbackError, setPlaybackError] = useState<string | null>(null);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -169,8 +170,29 @@ export function CustomMediaPlayer({
   }, []);
 
   useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const handleError = () => {
+      const currentIdx = normalizedSources.findIndex((s) => s.src === currentSrc?.src);
+      const fallback = normalizedSources[currentIdx + 1] ?? normalizedSources.find((s) => s.src !== currentSrc?.src);
+      if (fallback) {
+        setPlaybackError(null);
+        setCurrentSrc(fallback);
+        return;
+      }
+      setPlaybackError("We hit a streaming error. Trying a fallback source didn't work.");
+    };
+    video.addEventListener("error", handleError);
+    return () => video.removeEventListener("error", handleError);
+  }, [normalizedSources, currentSrc]);
+
+  useEffect(() => {
     setShowControls(true);
   }, [isPlaying]);
+
+  useEffect(() => {
+    setPlaybackError(null);
+  }, [currentSrc?.src]);
 
   const handleClose = useCallback(() => {
     const exitFullscreenAndPip = async () => {
@@ -392,6 +414,11 @@ export function CustomMediaPlayer({
             {currentEpisode ? (
               <div className="text-sm text-white/70">
                 S{currentEpisode.seasonNumber ?? "?"}E{currentEpisode.episodeNumber ?? "?"} · {currentEpisode.name}
+              </div>
+            ) : null}
+            {playbackError ? (
+              <div className="mt-2 text-xs text-red-200 bg-red-900/40 border border-red-800 rounded px-3 py-2 max-w-md">
+                {playbackError}
               </div>
             ) : null}
           </div>

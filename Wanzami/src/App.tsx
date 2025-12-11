@@ -1136,15 +1136,27 @@ export default function App() {
 
   const convertS3Url = (url?: string | null) => {
     if (!url) return url;
-    if (url.startsWith("s3://")) {
-      const withoutScheme = url.replace("s3://", "");
+    const trimmed = url.trim();
+    if (!trimmed) return trimmed;
+
+    const ensureHttps = (value: string) => {
+      if (value.startsWith("https://")) return value;
+      if (value.startsWith("http://")) return `https://${value.slice(7)}`;
+      if (value.startsWith("//")) return `https:${value}`;
+      if (/^[a-z0-9.-]+\\.s3\\./i.test(value)) return `https://${value}`;
+      return value;
+    };
+
+    if (trimmed.startsWith("s3://")) {
+      const withoutScheme = trimmed.replace("s3://", "");
       const [bucket, ...rest] = withoutScheme.split("/");
       const key = rest.join("/");
       // Default region matches backend env; adjust if bucket/region changes.
       const region = process.env.NEXT_PUBLIC_S3_REGION || "eu-north-1";
-      return `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+      return ensureHttps(`${bucket}.s3.${region}.amazonaws.com/${key}`);
     }
-    return url;
+
+    return ensureHttps(trimmed);
   };
 
   const labelForRendition = (r?: string) => {
@@ -1175,11 +1187,19 @@ export default function App() {
     })).filter((a: any) => a?.url);
     const sorted = assets.sort((a: any, b: any) => (renditionRank[b.rendition] ?? 0) - (renditionRank[a.rendition] ?? 0));
     if (sorted.length) {
-      return sorted.map((a: any) => ({
+      const mapped = sorted.map((a: any) => ({
         src: a.url,
         label: labelForRendition(a.rendition),
         type: "video/mp4",
       }));
+      if (movie.trailerUrl) {
+        mapped.push({
+          src: convertS3Url(movie.trailerUrl) ?? movie.trailerUrl,
+          label: "Trailer",
+          type: "video/mp4",
+        });
+      }
+      return mapped;
     }
     // Fallback to trailer/demo
     return [
