@@ -332,7 +332,7 @@ export function CustomMediaPlayer({
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-screen bg-black group overflow-hidden"
+      className="fixed inset-0 bg-black group overflow-hidden"
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
       onMouseMove={() => setIsHovering(true)}
@@ -341,7 +341,7 @@ export function CustomMediaPlayer({
         ref={videoRef}
         src={currentEpisode?.streamUrl || currentSrc?.src}
         poster={poster ?? undefined}
-        className="w-full h-full object-contain bg-black"
+        className="absolute inset-0 w-full h-full object-contain bg-black"
         onClick={togglePlay}
         controls={false}
         style={{ zIndex: 1 }}
