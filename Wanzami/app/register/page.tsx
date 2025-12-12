@@ -49,10 +49,10 @@ const GENRES = [
   "Adventure",
 ];
 
-const heroShapes = [
-  { type: "circle" as const, color: "bg-teal-400", size: "w-52 h-52", x: 18, y: 62, duration: 18 },
-  { type: "rounded" as const, color: "bg-purple-500", size: "w-60 h-60", x: 65, y: 26, duration: 20 },
-  { type: "circle" as const, color: "bg-orange-500", size: "w-64 h-64", x: 42, y: 54, duration: 16 },
+const geometricShapes = [
+  { type: "circle" as const, color: "bg-orange-500", size: "w-64 h-64", x: 12, y: 60, duration: 18 },
+  { type: "rounded" as const, color: "bg-purple-500", size: "w-64 h-64", x: 64, y: 24, duration: 20 },
+  { type: "circle" as const, color: "bg-teal-400", size: "w-52 h-52", x: 42, y: 54, duration: 16 },
 ];
 
 function StepOne({
@@ -481,18 +481,33 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
       <TopLoader active={loading} />
 
-      <div className="flex flex-col lg:flex-row w-screen min-h-screen">
-        {/* Left hero - gradient reversed */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "row",
+          flexWrap: "nowrap",
+          width: "100vw",
+          height: "100vh",
+        }}
+      >
+        {/* Left hero - matches login */}
         <div
-          className="relative overflow-hidden flex items-center justify-center w-full h-[33vh] lg:h-auto lg:w-[50vw] lg:min-w-[50vw] lg:max-w-[50vw] lg:min-h-screen"
+          className="relative overflow-hidden items-center justify-center"
           style={{
+            width: "50vw",
+            minWidth: "50vw",
+            maxWidth: "50vw",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
             background:
-              "radial-gradient(circle at 15% 20%, rgba(0,194,168,0.55), transparent 42%), radial-gradient(circle at 70% 10%, rgba(194,71,255,0.55), transparent 48%), radial-gradient(circle at 60% 72%, rgba(255,123,57,0.65), transparent 50%), linear-gradient(135deg, #00c2a8, #c247ff 45%, #ff7b39)",
+              "radial-gradient(circle at 15% 20%, rgba(255,123,57,0.65), transparent 42%), radial-gradient(circle at 72% 10%, rgba(194,71,255,0.55), transparent 48%), radial-gradient(circle at 58% 72%, rgba(0,194,168,0.55), transparent 50%), linear-gradient(135deg, #ff7b39, #c247ff 45%, #00c2a8)",
+            minHeight: "100vh",
           }}
         >
-          <div className="absolute inset-0 backdrop-blur-3xl bg-gradient-to-br from-[#00c2a8]/25 via-[#c247ff]/25 to-[#ff7b39]/25" />
+          <div className="absolute inset-0 backdrop-blur-3xl bg-gradient-to-br from-[#ff7b39]/30 via-[#c247ff]/25 to-[#00c2a8]/25" />
           <div className="absolute inset-0" style={{ perspective: "1000px" }}>
-            {heroShapes.map((shape, index) => (
+            {geometricShapes.map((shape, index) => (
               <motion.div
                 key={`${shape.type}-${index}`}
                 className={`absolute ${shape.size}`}
@@ -535,13 +550,13 @@ export default function RegisterPage() {
             ))}
           </div>
 
-          <div className="relative z-10 flex flex-col items-center justify-center w-full px-10 text-center">
+          <div className="relative z-10 flex flex-col items-center justify-center w-full px-12 text-center">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
               <Image src={whiteLogo} alt="Wanzami" width={140} height={140} priority className="mx-auto" />
-              <h1 className="text-white text-4xl lg:text-5xl font-semibold mt-6 mb-4 drop-shadow-[0_5px_30px_rgba(0,0,0,0.4)]">
+              <h1 className="text-white text-5xl font-semibold mt-6 mb-4 drop-shadow-[0_5px_30px_rgba(0,0,0,0.4)]">
                 Join Wanzami
               </h1>
-              <p className="text-white/80 text-lg lg:text-xl max-w-md mx-auto">
+              <p className="text-white/80 text-xl max-w-md mx-auto">
                 Start your streaming journey in just a few steps.
               </p>
             </motion.div>
@@ -549,7 +564,15 @@ export default function RegisterPage() {
         </div>
 
         {/* Right side - form */}
-        <div className="flex items-center justify-center px-4 sm:px-8 py-10 lg:py-16 bg-black w-full flex-1 min-h-[67vh] lg:w-[50vw] lg:min-w-[50vw] lg:max-w-[50vw] lg:min-h-screen overflow-y-auto">
+        <div
+          className="flex items-center justify-center px-6 py-16 bg-black"
+          style={{
+            width: "50vw",
+            minWidth: "50vw",
+            maxWidth: "50vw",
+            minHeight: "100vh",
+          }}
+        >
           <div className="w-full max-w-5xl">
             <div className="flex items-center justify-between mb-10">
               <Image src={whiteLogo} alt="Wanzami" width={64} height={64} priority className="lg:hidden" />
