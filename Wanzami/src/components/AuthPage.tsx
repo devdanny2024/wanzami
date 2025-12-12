@@ -98,7 +98,7 @@ export function AuthPage({ onAuth, onShowSignup }: AuthPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white relative overflow-hidden flex flex-col lg:grid lg:grid-cols-2">
+    <div className="min-h-screen bg-black text-white relative overflow-hidden grid grid-cols-1 lg:grid-cols-2">
       <TopLoader active={loading || googleLoading} />
 
       {/* Left gradient hero with soft floating shapes */}
