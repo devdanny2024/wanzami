@@ -101,14 +101,12 @@ export function AuthPage({ onAuth, onShowSignup }: AuthPageProps) {
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
       <TopLoader active={loading || googleLoading} />
       <div
-        className="mx-auto w-full"
         style={{
           display: 'flex',
           flexDirection: 'row',
           flexWrap: 'nowrap',
           width: '100vw',
           height: '100vh',
-          maxWidth: '1600px',
         }}
       >
         {/* Left gradient hero with soft floating shapes */}
