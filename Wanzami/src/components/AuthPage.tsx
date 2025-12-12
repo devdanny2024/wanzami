@@ -103,9 +103,9 @@ export function AuthPage({ onAuth, onShowSignup }: AuthPageProps) {
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
       <TopLoader active={loading || googleLoading} />
       <div className="flex flex-col lg:flex-row w-screen min-h-screen">
-        {/* Left gradient hero with soft floating shapes */}
+        {/* Left gradient hero with soft floating shapes (desktop only) */}
         <div
-          className="relative overflow-hidden flex items-center justify-center w-full h-[33vh] lg:h-auto lg:w-[50vw] lg:min-w-[50vw] lg:max-w-[50vw] lg:min-h-screen"
+          className="hidden lg:flex relative overflow-hidden items-center justify-center w-[50vw] min-w-[50vw] max-w-[50vw] min-h-screen"
           style={{
             background:
               'radial-gradient(circle at 15% 20%, rgba(255,123,57,0.65), transparent 42%), radial-gradient(circle at 72% 10%, rgba(194,71,255,0.55), transparent 48%), radial-gradient(circle at 58% 72%, rgba(0,194,168,0.55), transparent 50%), linear-gradient(135deg, #ff7b39, #c247ff 45%, #00c2a8)',
@@ -171,7 +171,7 @@ export function AuthPage({ onAuth, onShowSignup }: AuthPageProps) {
 
         {/* Right column: centered dark card on black */}
         <div
-          className="flex items-center justify-center px-6 py-16 bg-black w-full flex-1 min-h-[67vh] lg:w-[50vw] lg:min-w-[50vw] lg:max-w-[50vw] lg:min-h-screen"
+          className="flex items-center justify-center px-6 py-16 bg-black w-full flex-1 min-h-screen lg:w-[50vw] lg:min-w-[50vw] lg:max-w-[50vw]"
         >
           <div className="relative w-full max-w-md">
             <div className="absolute inset-0 rounded-3xl bg-gradient-to-b from-white/4 to-white/0 blur-lg" />
