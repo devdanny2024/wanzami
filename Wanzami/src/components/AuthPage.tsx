@@ -95,8 +95,14 @@ export function AuthPage({ onAuth, onShowSignup }: AuthPageProps) {
       <TopLoader active={loading || googleLoading} />
 
       {/* Left gradient hero with soft floating shapes */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-[#ff7b39] via-[#c247ff] to-[#00c2a8]">
-        <div className="absolute inset-0 backdrop-blur-3xl bg-gradient-to-br from-[#ff7b39]/35 via-[#c247ff]/30 to-[#00c2a8]/30" />
+      <div
+        className="hidden lg:flex lg:w-1/2 relative overflow-hidden"
+        style={{
+          background:
+            'radial-gradient(circle at 15% 20%, rgba(255,123,57,0.65), transparent 40%), radial-gradient(circle at 70% 10%, rgba(194,71,255,0.55), transparent 45%), radial-gradient(circle at 60% 70%, rgba(0,194,168,0.55), transparent 45%), linear-gradient(135deg, #ff7b39, #c247ff 45%, #00c2a8)',
+        }}
+      >
+        <div className="absolute inset-0 backdrop-blur-3xl bg-gradient-to-br from-[#ff7b39]/30 via-[#c247ff]/25 to-[#00c2a8]/25" />
         <div className="absolute inset-0" style={{ perspective: '1000px' }}>
           {[
             { type: 'circle', color: 'bg-orange-500', size: 'w-56 h-56', x: 18, y: 60, duration: 18 },
