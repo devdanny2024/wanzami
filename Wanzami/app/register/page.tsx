@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
+import Image from "next/image";
 import { toast } from "sonner";
 import {
   Eye,
@@ -18,7 +19,7 @@ import {
   Radio,
 } from "lucide-react";
 import { TopLoader } from "@/components/TopLoader";
-import { Logo } from "@/components/Logo";
+import whiteLogo from "../../src/assets/WhiteWanzmiiLogo.png";
 
 type Step = 1 | 2 | 3;
 
@@ -46,6 +47,12 @@ const GENRES = [
   "Fantasy",
   "Mystery",
   "Adventure",
+];
+
+const heroShapes = [
+  { type: "circle" as const, color: "bg-teal-400", size: "w-52 h-52", x: 18, y: 62, duration: 18 },
+  { type: "rounded" as const, color: "bg-purple-500", size: "w-60 h-60", x: 65, y: 26, duration: 20 },
+  { type: "circle" as const, color: "bg-orange-500", size: "w-64 h-64", x: 42, y: 54, duration: 16 },
 ];
 
 function StepOne({
@@ -474,106 +481,171 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
       <TopLoader active={loading} />
 
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-24 -left-16 w-72 h-72 bg-purple-600/20 rounded-full blur-3xl" />
-        <div className="absolute top-20 right-0 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-10 w-80 h-80 bg-teal-400/10 rounded-full blur-3xl" />
-      </div>
-
-      <div className="relative z-10 max-w-6xl mx-auto px-4 py-12 md:py-16">
-        <div className="flex items-center justify-between mb-10">
-          <Logo size="splash" />
-          <button
-            onClick={() => router.push("/login")}
-            className="text-sm text-white/70 hover:text-white transition-colors"
-          >
-            Already have an account? <span className="text-orange-500 font-semibold">Login</span>
-          </button>
-        </div>
-
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-10 shadow-2xl">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
-            <div className="space-y-2">
-              <h1 className="text-3xl md:text-4xl font-semibold">Create your Wanzami account</h1>
-              <p className="text-white/70">
-                A quick multi-step setup. We&apos;ll personalize your experience and get you streaming fast.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3 text-sm text-white/80">
-              {[1, 2, 3].map((s) => {
-                const active = step === s;
-                const done = step > s;
-                return (
-                  <div key={s} className="flex items-center gap-2">
-                    <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors ${
-                        done
-                          ? "bg-orange-600 border-orange-600"
-                          : active
-                          ? "border-orange-600 text-orange-500"
-                          : "border-white/20 text-white/60"
-                      }`}
-                    >
-                      {done ? <Check className="w-5 h-5 text-white" /> : s}
-                    </div>
-                    {s < 3 && <div className="w-12 h-0.5 bg-white/15" />}
-                  </div>
-                );
-              })}
-            </div>
+      <div className="flex flex-col lg:flex-row w-screen min-h-screen">
+        {/* Left hero - gradient reversed */}
+        <div
+          className="relative overflow-hidden flex items-center justify-center w-full h-[33vh] lg:h-auto lg:w-[50vw] lg:min-w-[50vw] lg:max-w-[50vw] lg:min-h-screen"
+          style={{
+            background:
+              "radial-gradient(circle at 15% 20%, rgba(0,194,168,0.55), transparent 42%), radial-gradient(circle at 70% 10%, rgba(194,71,255,0.55), transparent 48%), radial-gradient(circle at 60% 72%, rgba(255,123,57,0.65), transparent 50%), linear-gradient(135deg, #00c2a8, #c247ff 45%, #ff7b39)",
+          }}
+        >
+          <div className="absolute inset-0 backdrop-blur-3xl bg-gradient-to-br from-[#00c2a8]/25 via-[#c247ff]/25 to-[#ff7b39]/25" />
+          <div className="absolute inset-0" style={{ perspective: "1000px" }}>
+            {heroShapes.map((shape, index) => (
+              <motion.div
+                key={`${shape.type}-${index}`}
+                className={`absolute ${shape.size}`}
+                style={{ left: `${shape.x}%`, top: `${shape.y}%` }}
+                initial={{ opacity: 0.75, scale: 1 }}
+                animate={{
+                  x: [0, 30, 0],
+                  y: [0, -25, 0],
+                  scale: [1, 1.05, 1],
+                  opacity: [0.75, 0.9, 0.75],
+                }}
+                transition={{
+                  duration: shape.duration ?? 18,
+                  delay: index * 1.2,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              >
+                <div
+                  className={`w-full h-full ${shape.color} ${
+                    shape.type === "circle"
+                      ? "rounded-full"
+                      : shape.type === "rounded"
+                      ? "rounded-3xl rotate-45"
+                      : "rounded-lg"
+                  }`}
+                  style={{ boxShadow: "0 30px 90px rgba(0, 0, 0, 0.35)", filter: "blur(1px)" }}
+                />
+                <div
+                  className={`absolute inset-0 ${shape.color} ${
+                    shape.type === "circle"
+                      ? "rounded-full"
+                      : shape.type === "rounded"
+                      ? "rounded-3xl rotate-45"
+                      : "rounded-lg"
+                  }`}
+                  style={{ filter: "blur(30px)", opacity: 0.65, transform: "scale(1.25)" }}
+                />
+              </motion.div>
+            ))}
           </div>
 
-          <AnimatePresence mode="wait">
-            {step === 1 && (
-              <motion.div
-                key="step1"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-              >
-                <StepOne
-                  formData={form}
-                  onUpdate={(data) => setForm((prev) => ({ ...prev, ...data }))}
-                  onNext={() => setStep(2)}
-                />
-              </motion.div>
-            )}
+          <div className="relative z-10 flex flex-col items-center justify-center w-full px-10 text-center">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
+              <Image src={whiteLogo} alt="Wanzami" width={140} height={140} priority className="mx-auto" />
+              <h1 className="text-white text-4xl lg:text-5xl font-semibold mt-6 mb-4 drop-shadow-[0_5px_30px_rgba(0,0,0,0.4)]">
+                Join Wanzami
+              </h1>
+              <p className="text-white/80 text-lg lg:text-xl max-w-md mx-auto">
+                Start your streaming journey in just a few steps.
+              </p>
+            </motion.div>
+          </div>
+        </div>
 
-            {step === 2 && (
-              <motion.div
-                key="step2"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
+        {/* Right side - form */}
+        <div className="flex items-center justify-center px-4 sm:px-8 py-10 lg:py-16 bg-black w-full flex-1 min-h-[67vh] lg:w-[50vw] lg:min-w-[50vw] lg:max-w-[50vw] lg:min-h-screen overflow-y-auto">
+          <div className="w-full max-w-5xl">
+            <div className="flex items-center justify-between mb-10">
+              <Image src={whiteLogo} alt="Wanzami" width={64} height={64} priority className="lg:hidden" />
+              <button
+                onClick={() => router.push("/login")}
+                className="text-sm text-white/70 hover:text-white transition-colors ml-auto"
               >
-                <StepTwo
-                  selectedGenres={form.preferredGenres}
-                  onUpdate={(genres) => setForm((prev) => ({ ...prev, preferredGenres: genres }))}
-                  onNext={() => setStep(3)}
-                  onBack={() => setStep(1)}
-                />
-              </motion.div>
-            )}
+                Already have an account? <span className="text-orange-500 font-semibold">Login</span>
+              </button>
+            </div>
 
-            {step === 3 && (
-              <motion.div
-                key="step3"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-              >
-                <StepThree
-                  source={form.heardFrom}
-                  otherText={form.heardOther}
-                  onOtherChange={(val) => setForm((prev) => ({ ...prev, heardOther: val }))}
-                  onUpdate={(source) => setForm((prev) => ({ ...prev, heardFrom: source }))}
-                  onComplete={handleSubmit}
-                  onBack={() => setStep(2)}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-10 shadow-2xl">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
+                <div className="space-y-2">
+                  <h1 className="text-3xl md:text-4xl font-semibold">Create your Wanzami account</h1>
+                  <p className="text-white/70">
+                    A quick multi-step setup. We&apos;ll personalize your experience and get you streaming fast.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3 text-sm text-white/80">
+                  {[1, 2, 3].map((s) => {
+                    const active = step === s;
+                    const done = step > s;
+                    return (
+                      <div key={s} className="flex items-center gap-2">
+                        <div
+                          className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors ${
+                            done
+                              ? "bg-orange-600 border-orange-600"
+                              : active
+                              ? "border-orange-600 text-orange-500"
+                              : "border-white/20 text-white/60"
+                          }`}
+                        >
+                          {done ? <Check className="w-5 h-5 text-white" /> : s}
+                        </div>
+                        {s < 3 && <div className="w-12 h-0.5 bg-white/15" />}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <AnimatePresence mode="wait">
+                {step === 1 && (
+                  <motion.div
+                    key="step1"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                  >
+                    <StepOne
+                      formData={form}
+                      onUpdate={(data) => setForm((prev) => ({ ...prev, ...data }))}
+                      onNext={() => setStep(2)}
+                    />
+                  </motion.div>
+                )}
+
+                {step === 2 && (
+                  <motion.div
+                    key="step2"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                  >
+                    <StepTwo
+                      selectedGenres={form.preferredGenres}
+                      onUpdate={(genres) => setForm((prev) => ({ ...prev, preferredGenres: genres }))}
+                      onNext={() => setStep(3)}
+                      onBack={() => setStep(1)}
+                    />
+                  </motion.div>
+                )}
+
+                {step === 3 && (
+                  <motion.div
+                    key="step3"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                  >
+                    <StepThree
+                      source={form.heardFrom}
+                      otherText={form.heardOther}
+                      onOtherChange={(val) => setForm((prev) => ({ ...prev, heardOther: val }))}
+                      onUpdate={(source) => setForm((prev) => ({ ...prev, heardFrom: source }))}
+                      onComplete={handleSubmit}
+                      onBack={() => setStep(2)}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
         </div>
       </div>
     </div>
