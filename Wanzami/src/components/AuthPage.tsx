@@ -98,12 +98,12 @@ export function AuthPage({ onAuth, onShowSignup }: AuthPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white relative overflow-hidden grid grid-cols-1 lg:grid-cols-2">
+    <div className="min-h-screen bg-black text-white relative overflow-hidden flex flex-col lg:flex-row">
       <TopLoader active={loading || googleLoading} />
 
       {/* Left gradient hero with soft floating shapes */}
       <div
-        className="hidden lg:flex min-h-screen relative overflow-hidden items-center justify-center"
+        className="hidden lg:flex min-h-screen relative overflow-hidden items-center justify-center flex-1 basis-1/2 max-w-[50vw]"
         style={{
           background:
             'radial-gradient(circle at 15% 20%, rgba(255,123,57,0.65), transparent 42%), radial-gradient(circle at 72% 10%, rgba(194,71,255,0.55), transparent 48%), radial-gradient(circle at 58% 72%, rgba(0,194,168,0.55), transparent 50%), linear-gradient(135deg, #ff7b39, #c247ff 45%, #00c2a8)',
@@ -168,7 +168,7 @@ export function AuthPage({ onAuth, onShowSignup }: AuthPageProps) {
       </div>
 
       {/* Right column: centered dark card on black */}
-      <div className="w-full flex items-center justify-center px-6 py-16 bg-black min-h-screen">
+      <div className="w-full lg:flex-1 lg:basis-1/2 lg:max-w-[50vw] flex items-center justify-center px-6 py-16 bg-black min-h-screen">
         <div className="relative w-full max-w-md">
           <div className="absolute inset-0 rounded-3xl bg-gradient-to-b from-white/4 to-white/0 blur-lg" />
           <div className="relative rounded-3xl bg-[#0d0d0f] border border-white/10 shadow-[0_30px_80px_rgba(0,0,0,0.55)] p-8">
