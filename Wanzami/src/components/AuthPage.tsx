@@ -100,16 +100,30 @@ export function AuthPage({ onAuth, onShowSignup }: AuthPageProps) {
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
       <TopLoader active={loading || googleLoading} />
-      <div className="mx-auto flex min-h-screen w-full max-w-[1600px] flex-col lg:flex-row">
+      <div
+        className="mx-auto w-full"
+        style={{
+          display: 'flex',
+          flexDirection: 'row',
+          flexWrap: 'nowrap',
+          width: '100vw',
+          height: '100vh',
+          maxWidth: '1600px',
+        }}
+      >
         {/* Left gradient hero with soft floating shapes */}
         <div
-          className="hidden lg:flex min-h-screen relative overflow-hidden items-center justify-center"
+          className="relative overflow-hidden items-center justify-center"
           style={{
             width: '50vw',
             minWidth: '50vw',
             maxWidth: '50vw',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             background:
               'radial-gradient(circle at 15% 20%, rgba(255,123,57,0.65), transparent 42%), radial-gradient(circle at 72% 10%, rgba(194,71,255,0.55), transparent 48%), radial-gradient(circle at 58% 72%, rgba(0,194,168,0.55), transparent 50%), linear-gradient(135deg, #ff7b39, #c247ff 45%, #00c2a8)',
+            minHeight: '100vh',
           }}
         >
           <div className="absolute inset-0 backdrop-blur-3xl bg-gradient-to-br from-[#ff7b39]/30 via-[#c247ff]/25 to-[#00c2a8]/25" />
@@ -172,8 +186,13 @@ export function AuthPage({ onAuth, onShowSignup }: AuthPageProps) {
 
         {/* Right column: centered dark card on black */}
         <div
-          className="w-full flex items-center justify-center px-6 py-16 bg-black min-h-screen"
-          style={{ width: '100%', maxWidth: '100%', ...(typeof window === 'undefined' ? {} : { }) }}
+          className="flex items-center justify-center px-6 py-16 bg-black"
+          style={{
+            width: '50vw',
+            minWidth: '50vw',
+            maxWidth: '50vw',
+            minHeight: '100vh',
+          }}
         >
           <div className="relative w-full max-w-md">
             <div className="absolute inset-0 rounded-3xl bg-gradient-to-b from-white/4 to-white/0 blur-lg" />
