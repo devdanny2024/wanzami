@@ -573,7 +573,7 @@ export default function RegisterPage() {
             minHeight: "100vh",
           }}
         >
-          <div className="w-full max-w-5xl">
+          <div className="w-full max-w-3xl">
             <div className="flex items-center justify-between mb-10">
               <Image src={whiteLogo} alt="Wanzami" width={64} height={64} priority className="lg:hidden" />
               <button
@@ -584,8 +584,8 @@ export default function RegisterPage() {
               </button>
             </div>
 
-            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-10 shadow-2xl">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-8">
+            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-10 shadow-2xl flex flex-col gap-8">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
                 <div className="space-y-2">
                   <h1 className="text-3xl md:text-4xl font-semibold">Create your Wanzami account</h1>
                   <p className="text-white/70">
