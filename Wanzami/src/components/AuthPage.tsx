@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { motion } from 'motion/react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Logo } from './Logo';
 import { Loader } from './ui/loader';
 import { TopLoader } from './TopLoader';
+import whiteLogo from '../assets/WhiteWanzmiiLogo.png';
 
 interface AuthPageProps {
   onAuth: () => void;
@@ -171,7 +173,7 @@ export function AuthPage({ onAuth, onShowSignup }: AuthPageProps) {
 
           <div className="relative z-10 flex flex-col items-center justify-center w-full px-12 text-center">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
-              <Logo size="splash" />
+              <Image src={whiteLogo} alt="Wanzami" width={140} height={140} priority className="mx-auto" />
               <h1 className="text-white text-5xl font-semibold mt-6 mb-4 drop-shadow-[0_5px_30px_rgba(0,0,0,0.4)]">
                 Welcome Back
               </h1>
@@ -196,8 +198,7 @@ export function AuthPage({ onAuth, onShowSignup }: AuthPageProps) {
             <div className="absolute inset-0 rounded-3xl bg-gradient-to-b from-white/4 to-white/0 blur-lg" />
             <div className="relative rounded-3xl bg-[#0d0d0f] border border-white/10 shadow-[0_30px_80px_rgba(0,0,0,0.55)] p-8">
               <div className="lg:hidden flex items-center justify-center gap-2 mb-8">
-                <Logo size="large" />
-                <span className="text-2xl">Wanzami</span>
+                <Image src={whiteLogo} alt="Wanzami" width={72} height={72} priority className="mx-auto" />
               </div>
 
               <div className="mb-8">
