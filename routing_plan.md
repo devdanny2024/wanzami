@@ -5,6 +5,7 @@
 - Give player/detail views real URLs so browser back/forward works without z-index hacks.
 - Keep backend calls (`fetchTitles`, `fetchTitleWithEpisodes`, `postEvents`, etc.) unchanged.
 
+
 ## Route Map (Next.js app router + client navigation)
 - `/` → HomePage
 - `/search` → SearchPage
