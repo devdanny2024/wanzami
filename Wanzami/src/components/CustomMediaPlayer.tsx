@@ -179,9 +179,22 @@ export function CustomMediaPlayer({
     ? normalizedEpisodes.findIndex((e) => e.id === currentEpisode.id) < normalizedEpisodes.length - 1
     : false;
 
+  const sendPlayStart = useCallback(
+    (reason: string) => {
+      if (hasSentStart.current) return;
+      hasSentStart.current = true;
+      void emitEvent("PLAY_START", { reason }, true);
+    },
+    [emitEvent]
+  );
+
   useEffect(() => {
     setPipAvailable(Boolean((document as any).pictureInPictureEnabled));
   }, []);
+
+  useEffect(() => {
+    hasSentStart.current = false;
+  }, [currentSrc?.src, currentEpisode?.id]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -201,7 +214,8 @@ export function CustomMediaPlayer({
     void video.play().catch(() => {
       pendingResume.current = true;
     });
-  }, [shouldAutoplay]);
+    sendPlayStart("auto_play");
+  }, [sendPlayStart, shouldAutoplay]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -249,6 +263,10 @@ export function CustomMediaPlayer({
     const handleWaiting = () => {
       setIsBuffering(true);
     };
+    const handlePlaying = () => {
+      setIsPlaying(true);
+      sendPlayStart("playing");
+    };
 
     video.addEventListener("timeupdate", handleTimeUpdate);
     video.addEventListener("loadedmetadata", handleLoadedMetadata);
@@ -256,6 +274,7 @@ export function CustomMediaPlayer({
     video.addEventListener("error", handleError);
     video.addEventListener("canplay", handleCanPlay);
     video.addEventListener("waiting", handleWaiting);
+    video.addEventListener("playing", handlePlaying);
 
     return () => {
       video.removeEventListener("timeupdate", handleTimeUpdate);
@@ -264,8 +283,9 @@ export function CustomMediaPlayer({
       video.removeEventListener("error", handleError);
       video.removeEventListener("canplay", handleCanPlay);
       video.removeEventListener("waiting", handleWaiting);
+      video.removeEventListener("playing", handlePlaying);
     };
-  }, [emitEvent, hasNext, startTimeSeconds, currentSrc, normalizedSources]);
+  }, [emitEvent, hasNext, startTimeSeconds, currentSrc, normalizedSources, sendPlayStart]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -299,10 +319,7 @@ export function CustomMediaPlayer({
     } else {
       void video.play().catch(() => undefined);
       setIsPlaying(true);
-      if (!hasSentStart.current) {
-        hasSentStart.current = true;
-        void emitEvent("PLAY_START", { reason: "play" }, true);
-      }
+      sendPlayStart("play");
     }
   };
 
