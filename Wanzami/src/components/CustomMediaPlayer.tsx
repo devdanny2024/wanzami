@@ -114,7 +114,11 @@ export function CustomMediaPlayer({
     }
     return normalizedEpisodes[0];
   });
-  const [isPlaying, setIsPlaying] = useState(false);
+  const shouldAutoplay = useMemo(
+    () => Boolean((sources?.length ?? 0) > 0 || episodes?.some((ep) => ep.streamUrl)),
+    [episodes, sources]
+  );
+  const [isPlaying, setIsPlaying] = useState<boolean>(shouldAutoplay);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
@@ -188,6 +192,16 @@ export function CustomMediaPlayer({
       void video.play().catch(() => undefined);
     }
   }, [currentSrc?.src, isPlaying]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !shouldAutoplay) return;
+    video.autoplay = true;
+    setIsPlaying(true);
+    void video.play().catch(() => {
+      pendingResume.current = true;
+    });
+  }, [shouldAutoplay]);
 
   useEffect(() => {
     const video = videoRef.current;
