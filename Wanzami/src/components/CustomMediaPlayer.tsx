@@ -595,7 +595,10 @@ export function CustomMediaPlayer({
                     <Settings className="w-6 h-6" />
                   </button>
                   {showQualityMenu && (
-                    <div className="absolute bottom-full right-0 translate-y-[-10px] bg-black/95 backdrop-blur-sm rounded-lg overflow-hidden min-w-40 z-50 max-h-64 overflow-auto">
+                    <div
+                      className="absolute right-0 bg-black/95 backdrop-blur-sm rounded-lg overflow-hidden min-w-40 z-50 max-h-64 overflow-auto shadow-lg"
+                      style={{ bottom: "calc(100% + 12px)" }}
+                    >
                       <div className="p-2 border-b border-gray-700">
                         <p className="text-white text-sm">Quality</p>
                       </div>
@@ -681,7 +684,10 @@ export function CustomMediaPlayer({
                   <Settings className="w-7 h-7" />
                 </button>
                 {showQualityMenu && (
-                  <div className="absolute bottom-full right-0 translate-y-[-12px] bg-black/95 backdrop-blur-sm rounded-lg overflow-hidden min-w-48 z-50 max-h-72 overflow-auto">
+                  <div
+                    className="absolute right-0 bg-black/95 backdrop-blur-sm rounded-lg overflow-hidden min-w-48 z-50 max-h-72 overflow-auto shadow-lg"
+                    style={{ bottom: "calc(100% + 14px)" }}
+                  >
                     <div className="p-3 border-b border-gray-700">
                       <p className="text-white">Quality</p>
                     </div>
