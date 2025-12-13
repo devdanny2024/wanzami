@@ -155,6 +155,7 @@ export function CustomMediaPlayer({
       lastProgressSent.current = now;
       const time = videoRef.current?.currentTime ?? 0;
       const dur = videoRef.current?.duration ?? duration ?? 0;
+      const completionPercent = dur > 0 ? Math.max(0, Math.min(1, time / dur)) : 0;
       try {
         await postEvents(
           [
@@ -167,6 +168,7 @@ export function CustomMediaPlayer({
               metadata: {
                 positionSec: time,
                 durationSec: dur,
+                completionPercent,
                 sourceLabel: currentSrc?.label,
                 ...metadata,
               },
