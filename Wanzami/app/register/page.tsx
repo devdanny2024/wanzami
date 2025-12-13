@@ -573,7 +573,7 @@ export default function RegisterPage() {
             minHeight: "100vh",
           }}
         >
-          <div className="w-full max-w-3xl">
+          <div className="w-full max-w-md">
             <div className="flex items-center justify-between mb-10">
               <Image src={whiteLogo} alt="Wanzami" width={64} height={64} priority className="lg:hidden" />
               <button
