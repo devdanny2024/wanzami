@@ -551,7 +551,7 @@ export default function RegisterPage() {
 
         {/* Right side - form */}
         <div
-          className="flex flex-wrap items-center justify-center px-6 py-16 bg-black w-full md:w-1/2 md:min-h-screen max-h-screen overflow-y-auto"
+          className="flex flex-wrap items-center justify-center px-6 py-16 bg-black w-full md:w-1/2 h-screen overflow-y-auto"
           style={{
             minHeight: "100vh",
           }}
