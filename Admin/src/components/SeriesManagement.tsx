@@ -1,68 +1,53 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
-import { Badge } from './ui/badge';
-import { Plus, Edit, Trash2, PlayCircle, GripVertical, Upload } from 'lucide-react';
-import { ImageWithFallback } from './figma/ImageWithFallback';
-import { useUploadQueue } from '@/context/UploadQueueProvider';
-import { AddEditSeriesForm } from './AddEditSeriesForm';
+import { useEffect, useMemo, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { Textarea } from "./ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { Badge } from "./ui/badge";
+import { Plus, Edit, Search, Upload, Layers } from "lucide-react";
+import { ImageWithFallback } from "./figma/ImageWithFallback";
+import { AddEditSeriesForm } from "./AddEditSeriesForm";
+import { useUploadQueue } from "@/context/UploadQueueProvider";
+import { authFetch } from "@/lib/authClient";
+import { MovieTitle } from "./MoviesManagement"; // reuse shape for series titles
+import { Eye } from "lucide-react";
 
-type SeriesTitle = {
-  id: string;
-  name: string;
-  type: string;
-  pendingReview?: boolean;
-  thumbnailUrl?: string | null;
-  posterUrl?: string | null;
-  description?: string | null;
-  archived?: boolean;
-  createdAt?: string;
-  releaseDate?: string | null;
+type SeriesTitle = MovieTitle & {
+  episodeCount?: number;
 };
 
 type Episode = {
-  id: string;
-  titleId: string;
-  seasonNumber?: number;
-  episodeNumber?: number;
-  name?: string;
-  synopsis?: string | null;
-  previewSpriteUrl?: string | null;
+  id?: string | number;
+  titleId: string | number;
+  seasonNumber: number;
+  episodeNumber: number;
+  name: string;
+  synopsis?: string;
+  introStartSec?: number | null;
+  introEndSec?: number | null;
   previewVttUrl?: string | null;
-  createdAt?: string;
-  pendingReview?: boolean;
 };
 
 export function SeriesManagement() {
-  const [selectedSeries, setSelectedSeries] = useState<string | null>(null);
-  const [isAddEpisodeOpen, setIsAddEpisodeOpen] = useState(false);
-  const [editingSeries, setEditingSeries] = useState<SeriesTitle | null>(null);
-  const [editingEpisode, setEditingEpisode] = useState<Episode | null>(null);
   const [series, setSeries] = useState<SeriesTitle[]>([]);
-  const [episodes, setEpisodes] = useState<Episode[]>([]);
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [isBulkOpen, setIsBulkOpen] = useState(false);
-  const [bulkText, setBulkText] = useState("");
-  const [bulkSaving, setBulkSaving] = useState(false);
-  const [bulkVideos, setBulkVideos] = useState<FileList | null>(null);
-  const token = useMemo(() => (typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null), []);
+  const [search, setSearch] = useState("");
+  const [editingSeries, setEditingSeries] = useState<SeriesTitle | null>(null);
+  const [isSeriesDialogOpen, setIsSeriesDialogOpen] = useState(false);
+  const [episodesTarget, setEpisodesTarget] = useState<SeriesTitle | null>(null);
+  const token = useMemo(() => (typeof window !== "undefined" ? localStorage.getItem("accessToken") : null), []);
   const { startUpload } = useUploadQueue();
 
-  const startUploadForSeries = (seriesId: number, file: File) => {
-    startUpload("SERIES", seriesId, file);
-  };
+  const filtered = series.filter((s) => s.name?.toLowerCase().includes(search.toLowerCase()));
 
   const loadSeries = async () => {
-    const res = await fetch('/api/admin/titles', {
+    const res = await authFetch("/admin/titles", {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
-    const data = await res.json();
     if (res.ok) {
-      const onlySeries = (data.titles ?? []).filter((t: any) => t.type === 'SERIES');
+      const onlySeries = ((res.data as any)?.titles ?? []).filter((t: any) => t.type === "SERIES");
       setSeries(onlySeries);
     }
   };
@@ -71,110 +56,24 @@ export function SeriesManagement() {
     void loadSeries();
   }, [token]);
 
-  useEffect(() => {
-    const loadEpisodes = async () => {
-      if (!selectedSeries) {
-        setEpisodes([]);
-        return;
-      }
-      const res = await fetch(`/api/admin/titles/${selectedSeries}/episodes`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setEpisodes(data.episodes ?? []);
-      }
-    };
-    void loadEpisodes();
-  }, [selectedSeries, token]);
-
-  const startUploadForEpisode = (episodeId: number, file: File) => {
-    startUpload("EPISODE", episodeId, file);
+  const openAddSeries = () => {
+    setEditingSeries({
+      id: "",
+      name: "",
+      type: "SERIES",
+      description: "",
+      thumbnailUrl: "",
+      posterUrl: "",
+      archived: false,
+      createdAt: "",
+    } as SeriesTitle);
+    setIsSeriesDialogOpen(true);
   };
 
-  const persistEpisodeOrder = async (ordered: Episode[]) => {
-    for (let i = 0; i < ordered.length; i++) {
-      const ep = ordered[i];
-      await fetch(`/api/admin/episodes/${ep.id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ episodeNumber: i + 1 }),
-      });
-    }
-  };
-
-  const handleDragStart = (idx: number) => setDragIndex(idx);
-  const handleDrop = async (idx: number) => {
-    if (dragIndex === null || dragIndex === idx) return;
-    setDragIndex(null);
-    const filtered = episodes.filter((ep) => String(ep.titleId) === String(selectedSeries));
-    const reordered = [...filtered];
-    const [moved] = reordered.splice(dragIndex, 1);
-    reordered.splice(idx, 0, moved);
-    // Merge back into episodes array
-    const others = episodes.filter((ep) => String(ep.titleId) !== String(selectedSeries));
-    const newOrdered = reordered.map((ep, i) => ({ ...ep, episodeNumber: i + 1 }));
-    setEpisodes([...others, ...newOrdered]);
-    await persistEpisodeOrder(newOrdered);
-  };
-
-  const handleBulkCreate = async () => {
-    if (!selectedSeries) return;
-    const lines = bulkText
-      .split("\n")
-      .map((l) => l.trim())
-      .filter(Boolean);
-    if (!lines.length) return;
-    setBulkSaving(true);
-    try {
-      const records: Array<{ seasonNumber: number; episodeNumber: number; name: string; synopsis: string }> = [];
-      for (const line of lines) {
-        const parts = line.split(",").map((p) => p.trim());
-        const seasonNumber = Number(parts[0] || 1);
-        const episodeNumber = Number(parts[1] || 1);
-        const name = parts[2] || `Episode ${episodeNumber}`;
-        const synopsis = parts.slice(3).join(",") || "";
-        records.push({ seasonNumber, episodeNumber, name, synopsis });
-        await fetch(`/api/admin/titles/${selectedSeries}/episodes`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify({ seasonNumber, episodeNumber, name, synopsis }),
-        });
-      }
-      setBulkText("");
-      setIsBulkOpen(false);
-      const res = await fetch(`/api/admin/titles/${selectedSeries}/episodes`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setEpisodes(data.episodes ?? []);
-        // If videos were provided, map them by order to the records (season/episode)
-        if (bulkVideos && bulkVideos.length) {
-          const list = Array.from(bulkVideos);
-          for (let i = 0; i < Math.min(list.length, records.length); i++) {
-            const rec = records[i];
-            const file = list[i];
-            const ep = (data.episodes ?? []).find(
-              (e: any) =>
-                e.seasonNumber === rec.seasonNumber &&
-                e.episodeNumber === rec.episodeNumber,
-            );
-            if (ep?.id) {
-              startUploadForEpisode(Number(ep.id), file);
-            }
-          }
-        }
-      }
-    } finally {
-      setBulkSaving(false);
-    }
+  const handleSeriesSaved = async () => {
+    setIsSeriesDialogOpen(false);
+    setEditingSeries(null);
+    await loadSeries();
   };
 
   return (
@@ -182,432 +81,304 @@ export function SeriesManagement() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl text-white">Series Management</h1>
-          <p className="text-neutral-400 mt-1">Manage episodic content</p>
+          <p className="text-neutral-400 mt-1">Manage episodic content with bulk or weekly uploads.</p>
         </div>
-        <Dialog
-          open={!!editingSeries}
-          onOpenChange={(open) => {
-            if (open) {
-              setEditingSeries({
-                id: "",
-                name: "",
-                type: "SERIES",
-                description: "",
-                thumbnailUrl: "",
-                posterUrl: "",
-                archived: false,
-                createdAt: "",
-              });
-            } else {
-              setEditingSeries(null);
-            }
-          }}
-        >
-          <DialogTrigger asChild>
-            <Button
-              className="bg-[#fd7e14] hover:bg-[#ff9940] text-white"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Series
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="bg-neutral-900 border-neutral-800 text-white">
-            <DialogHeader>
-              <DialogTitle className="text-white">{editingSeries?.id ? "Edit Series" : "Add Series"}</DialogTitle>
-            </DialogHeader>
-            {editingSeries && (
-              <AddEditSeriesForm
-                token={token ?? undefined}
-                series={editingSeries}
-                onClose={() => setEditingSeries(null)}
-                onSaved={async () => {
-                  setEditingSeries(null);
-                  await loadSeries();
-                }}
-                onQueueUpload={(id, file) => startUploadForSeries(id, file)}
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search className="w-4 h-4 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search series"
+              className="pl-9 bg-neutral-900 border-neutral-800 text-white"
+            />
+          </div>
+          <Dialog open={isSeriesDialogOpen} onOpenChange={setIsSeriesDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={openAddSeries} className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Series
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-neutral-900 border-neutral-800 text-white max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-white">{editingSeries?.id ? "Edit Series" : "Add Series"}</DialogTitle>
+              </DialogHeader>
+              {editingSeries && (
+                <AddEditSeriesForm
+                  token={token ?? undefined}
+                  series={editingSeries}
+                  onClose={() => setIsSeriesDialogOpen(false)}
+                  onSaved={handleSeriesSaved}
+                  onQueueUpload={(id, file) => startUpload("SERIES", id, file)}
+                />
+              )}
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filtered.map((item) => (
+          <Card key={item.id} className="bg-neutral-900 border-neutral-800 overflow-hidden">
+            <div className="relative">
+              <ImageWithFallback
+                src={item.thumbnailUrl || item.posterUrl || ""}
+                alt={item.name}
+                className="w-full h-48 object-cover"
               />
-            )}
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Series List */}
-        <Card className="bg-neutral-900 border-neutral-800">
-          <CardHeader>
-            <CardTitle className="text-white">All Series</CardTitle>
-          <p className="text-neutral-500 text-sm">
-            Select a series to manage episodes. Use bulk add to paste multiple episodes. All media uploads go to the upload queue dock.
-          </p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {series.map((item) => (
-              <div
-                key={item.id}
-                className={`p-4 rounded-lg border transition-all cursor-pointer ${
-                  selectedSeries === item.id
-                    ? 'border-[#fd7e14] bg-[#fd7e14]/10'
-                    : 'border-neutral-800 hover:border-neutral-700 bg-neutral-950'
-                }`}
-                onClick={() => setSelectedSeries(item.id)}
-              >
-                <div className="flex gap-4">
-                  <ImageWithFallback
-                    src={item.thumbnailUrl || item.posterUrl || ""}
-                    alt={item.name}
-                    className="w-24 h-36 object-cover rounded-lg"
-                  />
-                  <div className="flex-1">
-                    <h3 className="text-white mb-2">{item.name}</h3>
-                    <div className="space-y-1 text-sm text-neutral-400">
-                      <p>Type: {item.type}</p>
-                      <p>
-                        Started:{" "}
-                        {item.releaseDate ? new Date(item.releaseDate).getFullYear() : "--"}
-                      </p>
-                      <p>Created: {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '--'}</p>
-                      <p>Status: {item.archived ? "Archived" : item.pendingReview ? "Pending review" : "Live"}</p>
-                    </div>
-                    <div className="flex gap-2 mt-4">
-                      <Button size="sm" variant="ghost" className="text-[#fd7e14] hover:text-[#ff9940] hover:bg-[#fd7e14]/10">
-                        <Edit className="w-4 h-4" onClick={() => setEditingSeries(item)} />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                        onClick={async () => {
-                          if (!confirm("Delete this series?")) return;
-                          await fetch(`/api/admin/titles/${item.id}`, {
-                            method: "DELETE",
-                            headers: token ? { Authorization: `Bearer ${token}` } : {},
-                          });
-                          setSelectedSeries(null);
-                          // refresh list
-                          const res = await fetch('/api/admin/titles', {
-                            headers: token ? { Authorization: `Bearer ${token}` } : {},
-                          });
-                          const data = await res.json();
-                          if (res.ok) {
-                            const onlySeries = (data.titles ?? []).filter((t: any) => t.type === 'SERIES');
-                            setSeries(onlySeries);
-                          }
-                        }}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-neutral-300 hover:text-white hover:bg-neutral-700"
-                        onClick={async () => {
-                          await fetch(`/api/admin/titles/${item.id}`, {
-                            method: "PATCH",
-                            headers: {
-                              "Content-Type": "application/json",
-                              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                            },
-                            body: JSON.stringify({ archived: !item.archived }),
-                          });
-                          const res = await fetch('/api/admin/titles', {
-                            headers: token ? { Authorization: `Bearer ${token}` } : {},
-                          });
-                          const data = await res.json();
-                          if (res.ok) {
-                            const onlySeries = (data.titles ?? []).filter((t: any) => t.type === 'SERIES');
-                            setSeries(onlySeries);
-                          }
-                        }}
-                      >
-                        {item.archived ? "Unarchive" : "Archive"}
-                      </Button>
-                      {(item.pendingReview || item.archived) && (
-                        <Button
-                          size="sm"
-                          className="bg-emerald-600 hover:bg-emerald-500 text-white"
-                          onClick={async () => {
-                            await fetch(`/api/admin/titles/${item.id}/publish`, {
-                              method: "POST",
-                              headers: {
-                                "Content-Type": "application/json",
-                                ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                              },
-                              body: JSON.stringify({ publishEpisodes: true }),
-                            });
-                            await loadSeries();
-                          }}
-                        >
-                          Publish
-                        </Button>
-                      )}
-                    </div>
-                    <div className="flex gap-2 mt-2">
-                      <Badge
-                        className={
-                          item.archived
-                            ? "bg-neutral-700 text-neutral-200"
-                            : item.pendingReview
-                            ? "bg-amber-500/20 text-amber-300"
-                            : "bg-emerald-500/20 text-emerald-300"
-                        }
-                      >
-                        {item.archived ? "Archived" : item.pendingReview ? "Pending review" : "Live"}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-            {series.length === 0 && (
-              <div className="text-neutral-500 text-sm">No series yet.</div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Episodes for Selected Series */}
-        <Card className="bg-neutral-900 border-neutral-800">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="text-white">Episodes</CardTitle>
-              <p className="text-sm text-neutral-400 mt-1">
-                {selectedSeries ? series.find((s: any) => s.id === selectedSeries)?.name : 'Select a series'}
-              </p>
+              {item.pendingReview && (
+                <Badge className="absolute top-2 left-2 bg-amber-500 text-white">Pending</Badge>
+              )}
             </div>
-            {selectedSeries && (
-              <Dialog open={isAddEpisodeOpen} onOpenChange={(open) => { setIsAddEpisodeOpen(open); if (!open) setEditingEpisode(null); }}>
-                <DialogTrigger asChild>
-                  <Button size="sm" className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Episode
+            <CardHeader className="pb-2">
+              <CardTitle className="text-white flex items-center justify-between">
+                <span className="truncate">{item.name}</span>
+                <div className="flex gap-2">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="text-neutral-300 hover:text-white"
+                    onClick={() => {
+                      setEditingSeries(item);
+                      setIsSeriesDialogOpen(true);
+                    }}
+                  >
+                    <Edit className="w-4 h-4" />
                   </Button>
-                </DialogTrigger>
-                <DialogContent className="bg-neutral-900 border-neutral-800 text-white">
-                  <DialogHeader>
-                    <DialogTitle className="text-white">{editingEpisode ? "Edit Episode" : "Add Episode"}</DialogTitle>
-                  </DialogHeader>
-                  <AddEpisodeForm
-                    token={token ?? undefined}
-                    titleId={selectedSeries}
-                    episode={editingEpisode ?? undefined}
-                    onClose={() => {
-                      setIsAddEpisodeOpen(false);
-                      setEditingEpisode(null);
-                    }}
-                    onSaved={async (ep) => {
-                      setIsAddEpisodeOpen(false);
-                      setEditingEpisode(null);
-                      setEpisodes((prev) => {
-                        const others = prev.filter((e) => e.id !== ep.id);
-                        return [ep, ...others];
-                      });
-                      const res = await fetch(`/api/admin/titles/${selectedSeries}/episodes`, {
-                        headers: token ? { Authorization: `Bearer ${token}` } : {},
-                      });
-                      const data = await res.json();
-                      if (res.ok) setEpisodes(data.episodes ?? []);
-                    }}
-                  />
-                </DialogContent>
-              </Dialog>
-            )}
-          </CardHeader>
-          <CardContent>
-            {selectedSeries ? (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <Dialog open={isBulkOpen} onOpenChange={setIsBulkOpen}>
-                    <DialogTrigger asChild>
-                      <Button size="sm" className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
-                        <Upload className="w-4 h-4 mr-2" />
-                        Bulk Add Episodes
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="bg-neutral-900 border-neutral-800 text-white max-w-xl">
-                    <DialogHeader>
-                      <DialogTitle className="text-white">Bulk Add Episodes</DialogTitle>
-                    </DialogHeader>
-                    <p className="text-sm text-neutral-400 mb-2">
-                      One per line: season, episode, title, synopsis. Example: <code>1,1,Pilot,The journey begins</code>
-                    </p>
-                    <Textarea
-                      rows={6}
-                      value={bulkText}
-                      onChange={(e) => setBulkText(e.target.value)}
-                      className="bg-neutral-950 border-neutral-800 text-white"
-                      placeholder="1,1,Pilot,The journey begins&#10;1,2,Second,Next steps"
-                    />
-                    <div className="mt-3">
-                      <Label className="text-neutral-300">Optional: Upload video files (ordered to match lines above)</Label>
-                      <input
-                        type="file"
-                        accept="video/*"
-                        multiple
-                        onChange={(e) => setBulkVideos(e.target.files)}
-                        className="mt-2 text-sm text-neutral-200"
-                      />
-                      <p className="text-xs text-neutral-500 mt-1">Files will be matched in order to the episodes you paste.</p>
-                    </div>
-                    <div className="flex justify-end gap-2 mt-3">
-                      <Button variant="outline" onClick={() => setIsBulkOpen(false)} className="border-neutral-700 text-neutral-300">
-                        Cancel
-                      </Button>
-                      <Button onClick={handleBulkCreate} disabled={bulkSaving} className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
-                          {bulkSaving ? "Saving..." : "Add Episodes"}
-                        </Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                  <p className="text-xs text-neutral-500">Drag episodes to reorder; numbers update automatically.</p>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="text-neutral-300 hover:text-white"
+                    onClick={() => setEpisodesTarget(item)}
+                    title="Manage episodes"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </Button>
                 </div>
-
-                {episodes
-                  .filter((ep) => String(ep.titleId) === String(selectedSeries))
-                  .sort((a, b) => (a.episodeNumber ?? 0) - (b.episodeNumber ?? 0))
-                  .map((episode, idx) => (
-                    <div
-                      key={episode.id}
-                      className="p-4 rounded-lg border border-neutral-800 bg-neutral-950 hover:border-neutral-700 transition-colors"
-                      draggable
-                      onDragStart={() => handleDragStart(idx)}
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={() => handleDrop(idx)}
-                    >
-                      <div className="flex gap-4">
-                        <div className="flex items-center">
-                          <GripVertical className="w-5 h-5 text-neutral-500 cursor-move" />
-                        </div>
-                        <div className="relative">
-                          <ImageWithFallback
-                            src={""}
-                            alt={episode.name || "Episode"}
-                            className="w-32 h-20 object-cover rounded-lg"
-                          />
-                          <PlayCircle className="absolute inset-0 m-auto w-8 h-8 text-white opacity-80" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <h4 className="text-white">
-                                S{episode.seasonNumber ?? "-"}E{episode.episodeNumber ?? "-"}: {episode.name ?? "Untitled"}
-                              </h4>
-                              {episode.synopsis && <p className="text-sm text-neutral-400 mt-1">{episode.synopsis}</p>}
-                            </div>
-                            <div className="flex gap-2 items-center">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-[#fd7e14] hover:text-[#ff9940] hover:bg-[#fd7e14]/10"
-                            onClick={() => {
-                              setEditingEpisode(episode);
-                              setIsAddEpisodeOpen(true);
-                            }}
-                          >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                              <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-300 hover:bg-red-500/10">
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                              {episode.pendingReview && (
-                                <Button
-                                  size="sm"
-                                  className="bg-emerald-600 hover:bg-emerald-500 text-white"
-                                  onClick={async () => {
-                                    await fetch(`/api/admin/episodes/${episode.id}`, {
-                                      method: "PATCH",
-                                      headers: {
-                                        "Content-Type": "application/json",
-                                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                                      },
-                                      body: JSON.stringify({ pendingReview: false }),
-                                    });
-                                    const res = await fetch(`/api/admin/titles/${selectedSeries}/episodes`, {
-                                      headers: token ? { Authorization: `Bearer ${token}` } : {},
-                                    });
-                                    const data = await res.json();
-                                    if (res.ok) setEpisodes(data.episodes ?? []);
-                                  }}
-                                >
-                                  Publish
-                                </Button>
-                              )}
-                              <label className="text-xs text-[#fd7e14] hover:text-[#ff9940] cursor-pointer">
-                                <input
-                                  type="file"
-                                  className="hidden"
-                                  onChange={(e) => {
-                                    const f = e.target.files?.[0];
-                                    if (f) startUploadForEpisode(Number(episode.id), f);
-                                }}
-                              />
-                              Upload video
-                              </label>
-                            </div>
-                          </div>
-                          <Badge
-                            className={
-                              episode.pendingReview
-                                ? "bg-amber-500/20 text-amber-300 mt-2"
-                                : "bg-emerald-500/20 text-emerald-300 mt-2"
-                            }
-                          >
-                            {episode.pendingReview ? "Pending review" : "Live"}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+              </CardTitle>
+              <p className="text-sm text-neutral-500 line-clamp-2">{item.description}</p>
+            </CardHeader>
+            <CardContent className="pt-0 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm text-neutral-400">
+                <Layers className="w-4 h-4" />
+                <span>{item.episodeCount ?? 0} episodes</span>
               </div>
-            ) : (
-              <div className="text-center py-12 text-neutral-500">
-                Select a series to view episodes
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              <Button
+                size="sm"
+                className="bg-[#fd7e14] hover:bg-[#ff9940] text-white"
+                onClick={() => setEpisodesTarget(item)}
+              >
+                Add Episodes
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
       </div>
+
+      <AddEpisodesDialog
+        open={!!episodesTarget}
+        onOpenChange={(open) => !open && setEpisodesTarget(null)}
+        series={episodesTarget}
+        token={token ?? undefined}
+      />
     </div>
   );
 }
 
-function AddEpisodeForm({
+function AddEpisodesDialog({
+  open,
+  onOpenChange,
+  series,
   token,
-  titleId,
-  episode,
-  onClose,
-  onSaved,
 }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  series: SeriesTitle | null;
   token?: string;
-  titleId: string | null;
-  episode?: Episode;
-  onClose: () => void;
-  onSaved: (ep: Episode) => void;
 }) {
-  const [season, setSeason] = useState(episode?.seasonNumber ?? 1);
-  const [episodeNumber, setEpisodeNumber] = useState(episode?.episodeNumber ?? 1);
-  const [name, setName] = useState(episode?.name ?? "");
-  const [synopsis, setSynopsis] = useState(episode?.synopsis ?? "");
-  const [previewSpriteFile, setPreviewSpriteFile] = useState<File | null>(null);
-  const [previewVttFile, setPreviewVttFile] = useState<File | null>(null);
-  const [saving, setSaving] = useState(false);
+  const { startUpload } = useUploadQueue();
+  const [bulkText, setBulkText] = useState("");
+  const [bulkVideos, setBulkVideos] = useState<FileList | null>(null);
+  const [savingBulk, setSavingBulk] = useState(false);
+  const [weeklyEp, setWeeklyEp] = useState<Episode>({
+    titleId: series?.id ?? "",
+    seasonNumber: 1,
+    episodeNumber: 1,
+    name: "",
+    synopsis: "",
+  });
+  const [weeklyVideo, setWeeklyVideo] = useState<File | null>(null);
+  const [weeklyVtt, setWeeklyVtt] = useState<File | null>(null);
+  const [weeklySaving, setWeeklySaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [episodes, setEpisodes] = useState<Episode[]>([]);
+  const [loadingEpisodes, setLoadingEpisodes] = useState(false);
 
   useEffect(() => {
-    setSeason(episode?.seasonNumber ?? 1);
-    setEpisodeNumber(episode?.episodeNumber ?? 1);
-    setName(episode?.name ?? "");
-    setSynopsis(episode?.synopsis ?? "");
-    setPreviewSpriteFile(null);
-    setPreviewVttFile(null);
-  }, [episode?.id]);
+    if (series) {
+      setWeeklyEp((prev) => ({ ...prev, titleId: series.id }));
+    }
+  }, [series?.id]);
 
-  const uploadAsset = async (file: File, kind: "thumbnail" | "previewSprite" | "previewVtt") => {
+  const loadEpisodes = async () => {
+    if (!series) return;
+    setLoadingEpisodes(true);
+    try {
+      const res = await authFetch(`/admin/titles/${series.id}/episodes`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        setEpisodes(((res.data as any)?.episodes ?? []) as Episode[]);
+      }
+    } finally {
+      setLoadingEpisodes(false);
+    }
+  };
+
+  useEffect(() => {
+    if (open && series) {
+      void loadEpisodes();
+    } else {
+      setEpisodes([]);
+    }
+  }, [open, series?.id]);
+
+  const parseBulkLines = () => {
+    return bulkText
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line, idx) => {
+        const parts = line.split(",").map((p) => p.trim());
+        const seasonNumber = Number(parts[0] || 1);
+        const episodeNumber = Number(parts[1] || 1);
+        const name = parts[2] || "";
+        return {
+          line: idx + 1,
+          raw: line,
+          seasonNumber,
+          episodeNumber,
+          name,
+          synopsis: parts.slice(3).join(","),
+        };
+      });
+  };
+
+  const handleBulkSave = async () => {
+    if (!series) return;
+    const records = parseBulkLines();
+    if (!records.length) {
+      setError("Provide at least one line: seasonNumber,episodeNumber,name[,synopsis]");
+      return;
+    }
+    // validation: positive numbers, name required, duplicates
+    const seen = new Set<string>();
+    for (const rec of records) {
+      if (!rec.name.trim()) {
+        setError(`Line ${rec.line}: name is required`);
+        return;
+      }
+      if (!Number.isFinite(rec.seasonNumber) || rec.seasonNumber < 1) {
+        setError(`Line ${rec.line}: seasonNumber must be >= 1`);
+        return;
+      }
+      if (!Number.isFinite(rec.episodeNumber) || rec.episodeNumber < 1) {
+        setError(`Line ${rec.line}: episodeNumber must be >= 1`);
+        return;
+      }
+      const key = `${rec.seasonNumber}-${rec.episodeNumber}`;
+      if (seen.has(key)) {
+        setError(`Duplicate season/episode on line ${rec.line} (${key})`);
+        return;
+      }
+      seen.add(key);
+    }
+    setSavingBulk(true);
+    setError(null);
+    try {
+      for (let i = 0; i < records.length; i++) {
+        const rec = records[i];
+        const res = await authFetch(`/admin/titles/${series.id}/episodes`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            seasonNumber: rec.seasonNumber,
+            episodeNumber: rec.episodeNumber,
+            name: rec.name.trim() || `Episode ${rec.episodeNumber}`,
+            synopsis: rec.synopsis,
+          }),
+        });
+        if (!res.ok) throw new Error((res.data as any)?.message || "Failed to create episode");
+        const epId = (res.data as any)?.episode?.id;
+        if (bulkVideos && bulkVideos[i]) {
+          startUpload("EPISODE", Number(epId), bulkVideos[i]);
+        }
+      }
+      onOpenChange(false);
+      setBulkText("");
+      setBulkVideos(null);
+      await loadEpisodes();
+    } catch (err: any) {
+      setError(err?.message || "Bulk upload failed");
+    } finally {
+      setSavingBulk(false);
+    }
+  };
+
+  const handleWeeklySave = async () => {
+    if (!series) return;
+    if (!weeklyEp.name.trim()) {
+      setError("Episode name is required.");
+      return;
+    }
+    if (weeklyEp.introStartSec && weeklyEp.introEndSec && weeklyEp.introStartSec >= weeklyEp.introEndSec) {
+      setError("Intro end must be greater than intro start.");
+      return;
+    }
+    setWeeklySaving(true);
+    setError(null);
+    try {
+      const res = await authFetch(`/admin/titles/${series.id}/episodes`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          seasonNumber: weeklyEp.seasonNumber,
+          episodeNumber: weeklyEp.episodeNumber,
+          name: weeklyEp.name.trim(),
+          synopsis: weeklyEp.synopsis,
+          introStartSec: weeklyEp.introStartSec ?? undefined,
+          introEndSec: weeklyEp.introEndSec ?? undefined,
+          previewVttUrl: weeklyVtt ? await uploadAsset(weeklyVtt, token) : undefined,
+        }),
+      });
+      if (!res.ok) throw new Error((res.data as any)?.message || "Failed to create episode");
+      const epId = (res.data as any)?.episode?.id;
+      if (weeklyVideo && epId) {
+        startUpload("EPISODE", Number(epId), weeklyVideo);
+      }
+      await loadEpisodes();
+    } catch (err: any) {
+      setError(err?.message || "Save failed");
+    } finally {
+      setWeeklySaving(false);
+    }
+  };
+
+  const uploadAsset = async (file: File, token?: string) => {
     const res = await fetch("/api/admin/assets/presign", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ contentType: file.type || "application/octet-stream", kind }),
+      body: JSON.stringify({ contentType: file.type || "application/octet-stream", kind: "previewVtt" }),
     });
     const data = await res.json();
     if (!res.ok || !data.url || !data.key) {
@@ -615,7 +386,9 @@ function AddEpisodeForm({
     }
     const putRes = await fetch(data.url, {
       method: "PUT",
-      headers: { "Content-Type": file.type || "application/octet-stream" },
+      headers: {
+        "Content-Type": file.type || "application/octet-stream",
+      },
       body: file,
     });
     if (!putRes.ok) {
@@ -624,154 +397,261 @@ function AddEpisodeForm({
     return (data.publicUrl as string) || (data.key as string);
   };
 
-  const handleSave = async () => {
-    if (!titleId) {
-      setError("Select a series first.");
-      return;
-    }
-    if (!name.trim() || !season || !episodeNumber) {
-      setError("Season, episode number, and name are required.");
-      return;
-    }
-    try {
-      setSaving(true);
-      setError(null);
-      if (episode?.id) {
-        const res = await fetch(`/api/admin/episodes/${episode.id}`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify({
-            seasonNumber: season,
-            episodeNumber,
-            name: name.trim(),
-            synopsis,
-            previewSpriteUrl: previewSpriteFile ? await uploadAsset(previewSpriteFile, "previewSprite") : undefined,
-            previewVttUrl: previewVttFile ? await uploadAsset(previewVttFile, "previewVtt") : undefined,
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data?.message || "Failed to update episode");
-        onSaved({ ...episode, ...data.episode });
-      } else {
-        const res = await fetch(`/api/admin/titles/${titleId}/episodes`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify({
-            seasonNumber: season,
-            episodeNumber,
-            name: name.trim(),
-            synopsis,
-            previewSpriteUrl: previewSpriteFile ? await uploadAsset(previewSpriteFile, "previewSprite") : undefined,
-            previewVttUrl: previewVttFile ? await uploadAsset(previewVttFile, "previewVtt") : undefined,
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data?.message || "Failed to create episode");
-        onSaved(data.episode);
-      }
-    } catch (err: any) {
-      setError(err?.message || "Save failed");
-    } finally {
-      setSaving(false);
-    }
-  };
-
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label className="text-neutral-300">Season</Label>
-          <Input
-            type="number"
-            value={season}
-            onChange={(e) => setSeason(Number(e.target.value))}
-            className="mt-1 bg-neutral-950 border-neutral-800 text-white"
-            placeholder="1"
-          />
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-neutral-900 border-neutral-800 text-white max-w-5xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-white">Add Episodes {series ? `for ${series.name}` : ""}</DialogTitle>
+        </DialogHeader>
+
+        <div className="mb-4">
+          <h3 className="text-sm font-semibold text-neutral-200 mb-2">Existing episodes</h3>
+          {loadingEpisodes ? (
+            <p className="text-neutral-400 text-sm">Loading...</p>
+          ) : episodes.length === 0 ? (
+            <p className="text-neutral-500 text-sm">No episodes yet.</p>
+          ) : (
+            <div className="space-y-3 max-h-64 overflow-auto pr-1">
+              {Array.from(new Set(episodes.map((e) => e.seasonNumber))).sort((a, b) => a - b).map((season) => {
+                const seasonEps = episodes
+                  .filter((e) => e.seasonNumber === season)
+                  .sort((a, b) => (a.episodeNumber || 0) - (b.episodeNumber || 0));
+                return (
+                  <div key={season} className="border border-neutral-800 rounded-lg p-3 bg-neutral-950/50">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-neutral-200 font-semibold">Season {season}</span>
+                      <span className="text-neutral-500 text-xs">{seasonEps.length} episodes</span>
+                    </div>
+                    <div className="space-y-1">
+                      {seasonEps.map((ep) => (
+                        <div
+                          key={`${season}-${ep.episodeNumber}`}
+                          className="flex items-center justify-between text-sm text-neutral-300 bg-neutral-900 rounded px-2 py-1"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-neutral-500">
+                              S{ep.seasonNumber}E{ep.episodeNumber}
+                            </span>
+                            <span className="font-medium">{ep.name}</span>
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-neutral-500">
+                            {ep.introStartSec != null && ep.introEndSec != null && (
+                              <span>
+                                Intro {ep.introStartSec}s–{ep.introEndSec}s
+                              </span>
+                            )}
+                            {ep.previewVttUrl && <span className="text-[#fd7e14]">VTT</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
-        <div>
-          <Label className="text-neutral-300">Episode Number</Label>
-          <Input
-            type="number"
-            value={episodeNumber}
-            onChange={(e) => setEpisodeNumber(Number(e.target.value))}
-            className="mt-1 bg-neutral-950 border-neutral-800 text-white"
-            placeholder="1"
-          />
-        </div>
-      </div>
 
-      <div>
-        <Label className="text-neutral-300">Episode Name</Label>
-        <Input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="mt-1 bg-neutral-950 border-neutral-800 text-white"
-          placeholder="Enter episode name"
-        />
-      </div>
+        <Tabs defaultValue="weekly" className="mt-2">
+          <TabsList className="bg-neutral-800 border-neutral-700">
+            <TabsTrigger value="weekly" className="data-[state=active]:bg-[#fd7e14] data-[state=active]:text-white">
+              Weekly
+            </TabsTrigger>
+            <TabsTrigger value="bulk" className="data-[state=active]:bg-[#fd7e14] data-[state=active]:text-white">
+              Bulk
+            </TabsTrigger>
+          </TabsList>
 
-      <div>
-        <Label className="text-neutral-300">Synopsis</Label>
-        <Textarea
-          value={synopsis}
-          onChange={(e) => setSynopsis(e.target.value)}
-          className="mt-1 bg-neutral-950 border-neutral-800 text-white"
-          placeholder="Short summary"
-        />
-      </div>
+          <TabsContent value="weekly" className="space-y-4 mt-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-neutral-300">Season</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={weeklyEp.seasonNumber}
+                  onChange={(e) => setWeeklyEp((prev) => ({ ...prev, seasonNumber: Number(e.target.value) }))}
+                  className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+                />
+              </div>
+              <div>
+                <Label className="text-neutral-300">Episode Number</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={weeklyEp.episodeNumber}
+                  onChange={(e) => setWeeklyEp((prev) => ({ ...prev, episodeNumber: Number(e.target.value) }))}
+                  className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+                />
+              </div>
+            </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <Label className="text-neutral-300">Preview Sprite (for hover thumbnails)</Label>
-          <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              id="episode-preview-sprite-upload"
-              onChange={(e) => setPreviewSpriteFile(e.target.files?.[0] ?? null)}
+            <div>
+              <Label className="text-neutral-300">Episode Name</Label>
+              <Input
+                value={weeklyEp.name}
+                onChange={(e) => setWeeklyEp((prev) => ({ ...prev, name: e.target.value }))}
+                className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+                placeholder="Episode title"
+              />
+            </div>
+
+            <div>
+              <Label className="text-neutral-300">Synopsis</Label>
+              <Textarea
+                value={weeklyEp.synopsis}
+                onChange={(e) => setWeeklyEp((prev) => ({ ...prev, synopsis: e.target.value }))}
+                className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+                placeholder="Short summary"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-neutral-300">Intro start (s)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={weeklyEp.introStartSec ?? ""}
+                  onChange={(e) =>
+                    setWeeklyEp((prev) => ({
+                      ...prev,
+                      introStartSec: e.target.value === "" ? undefined : Number(e.target.value),
+                    }))
+                  }
+                  className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+                  placeholder="e.g. 10"
+                />
+              </div>
+              <div>
+                <Label className="text-neutral-300">Intro end (s)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={weeklyEp.introEndSec ?? ""}
+                  onChange={(e) =>
+                    setWeeklyEp((prev) => ({
+                      ...prev,
+                      introEndSec: e.target.value === "" ? undefined : Number(e.target.value),
+                    }))
+                  }
+                  className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+                  placeholder="e.g. 55"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-neutral-300">Episode video</Label>
+                <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
+                  <input
+                    type="file"
+                    accept="video/*"
+                    className="hidden"
+                    id="weekly-episode-video"
+                    onChange={(e) => setWeeklyVideo(e.target.files?.[0] ?? null)}
+                  />
+                  <label htmlFor="weekly-episode-video" className="block text-neutral-400">
+                    {weeklyVideo ? `Selected: ${weeklyVideo.name}` : "Drop or click to upload video"}
+                  </label>
+                </div>
+              </div>
+              <div>
+                <Label className="text-neutral-300">Preview VTT (optional)</Label>
+                <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
+                  <input
+                    type="file"
+                    accept=".vtt,text/vtt"
+                    className="hidden"
+                    id="weekly-episode-vtt"
+                    onChange={(e) => setWeeklyVtt(e.target.files?.[0] ?? null)}
+                  />
+                  <label htmlFor="weekly-episode-vtt" className="block text-neutral-400">
+                    {weeklyVtt ? `Selected: ${weeklyVtt.name}` : "Upload WebVTT with sprite cues"}
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {error && <p className="text-red-400 text-sm">{error}</p>}
+
+            <div className="flex justify-end gap-3 border-t border-neutral-800 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                className="border-neutral-700 text-neutral-300 hover:bg-neutral-800"
+              >
+                Cancel
+              </Button>
+              <Button
+                disabled={weeklySaving}
+                onClick={handleWeeklySave}
+                className="bg-[#fd7e14] hover:bg-[#ff9940] text-white"
+              >
+                {weeklySaving ? "Saving..." : "Save Episode"}
+              </Button>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="bulk" className="space-y-4 mt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-neutral-300 text-sm">
+                  Paste CSV lines: <code>seasonNumber,episodeNumber,name[,synopsis]</code>
+                </p>
+                <p className="text-neutral-500 text-xs mt-1">
+                  Videos (optional) will map in order of the rows.
+                </p>
+              </div>
+              <div className="border border-dashed border-neutral-700 rounded-lg p-3 bg-neutral-950/50">
+                <input
+                  type="file"
+                  accept="video/*"
+                  multiple
+                  className="hidden"
+                  id="bulk-episode-videos"
+                  onChange={(e) => setBulkVideos(e.target.files)}
+                />
+                <label htmlFor="bulk-episode-videos" className="flex items-center gap-2 text-neutral-300 cursor-pointer">
+                  <Upload className="w-4 h-4" />
+                  Attach episode videos (ordered)
+                </label>
+                {bulkVideos && (
+                  <p className="text-xs text-[#fd7e14] mt-1">{bulkVideos.length} file(s) selected</p>
+                )}
+              </div>
+            </div>
+
+            <Textarea
+              value={bulkText}
+              onChange={(e) => setBulkText(e.target.value)}
+              rows={10}
+              className="bg-neutral-950 border-neutral-800 text-white"
+              placeholder={`1,1,Pilot,Our first episode\n1,2,Next Chapter,The saga continues`}
             />
-            <label htmlFor="episode-preview-sprite-upload" className="block text-neutral-400">
-              {previewSpriteFile ? `Selected: ${previewSpriteFile.name}` : "Upload sprite sheet (JPG/PNG)"}
-            </label>
-            <p className="text-xs text-neutral-500 mt-1">Evenly spaced frames used for seek previews.</p>
-          </div>
-        </div>
-        <div>
-          <Label className="text-neutral-300">Preview VTT (timestamp map)</Label>
-          <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
-            <input
-              type="file"
-              accept=".vtt,text/vtt"
-              className="hidden"
-              id="episode-preview-vtt-upload"
-              onChange={(e) => setPreviewVttFile(e.target.files?.[0] ?? null)}
-            />
-            <label htmlFor="episode-preview-vtt-upload" className="block text-neutral-400">
-              {previewVttFile ? `Selected: ${previewVttFile.name}` : "Upload WebVTT cue file"}
-            </label>
-            <p className="text-xs text-neutral-500 mt-1">WebVTT cues referencing the sprite coordinates.</p>
-          </div>
-        </div>
-      </div>
 
-      {error && <p className="text-red-400 text-sm">{error}</p>}
+            {error && <p className="text-red-400 text-sm">{error}</p>}
 
-      <div className="flex justify-end gap-3 pt-4 border-t border-neutral-800">
-        <Button variant="outline" onClick={onClose} className="border-neutral-700 text-neutral-300 hover:bg-neutral-800">
-          Cancel
-        </Button>
-        <Button disabled={saving} onClick={handleSave} className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
-          {saving ? "Saving..." : "Save Episode"}
-        </Button>
-      </div>
-    </div>
+            <div className="flex justify-end gap-3 border-t border-neutral-800 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                className="border-neutral-700 text-neutral-300 hover:bg-neutral-800"
+              >
+                Cancel
+              </Button>
+              <Button
+                disabled={savingBulk}
+                onClick={handleBulkSave}
+                className="bg-[#fd7e14] hover:bg-[#ff9940] text-white"
+              >
+                {savingBulk ? "Saving..." : "Create Episodes"}
+              </Button>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
   );
 }

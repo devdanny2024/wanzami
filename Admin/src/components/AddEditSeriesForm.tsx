@@ -30,9 +30,10 @@ export function AddEditSeriesForm({
   const [isOriginal, setIsOriginal] = useState<boolean>(!!series.isOriginal);
   const [posterFile, setPosterFile] = useState<File | null>(null);
   const [thumbFile, setThumbFile] = useState<File | null>(null);
-  const [previewSpriteFile, setPreviewSpriteFile] = useState<File | null>(null);
   const [previewVttFile, setPreviewVttFile] = useState<File | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [introStart, setIntroStart] = useState<number | "">("");
+  const [introEnd, setIntroEnd] = useState<number | "">("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,9 +46,14 @@ export function AddEditSeriesForm({
     setMaturityRating(series.maturityRating ?? "");
     setCountryAvailability(series.countryAvailability ?? []);
     setIsOriginal(!!series.isOriginal);
+    setIntroStart((series as any)?.introStartSec ?? "");
+    setIntroEnd((series as any)?.introEndSec ?? "");
+    setPosterFile(null);
+    setThumbFile(null);
+    setPreviewVttFile(null);
   }, [series.id]);
 
-  const uploadAsset = async (file: File, kind: "poster" | "thumbnail" | "previewSprite" | "previewVtt") => {
+  const uploadAsset = async (file: File, kind: "poster" | "thumbnail" | "previewVtt") => {
     const res = await fetch("/api/admin/assets/presign", {
       method: "POST",
       headers: {
@@ -90,30 +96,43 @@ export function AddEditSeriesForm({
       setError("At least one country code is required.");
       return;
     }
+    if (introStart !== "" && Number(introStart) < 0) {
+      setError("Intro start must be zero or positive seconds.");
+      return;
+    }
+    if (introEnd !== "" && Number(introEnd) < 0) {
+      setError("Intro end must be zero or positive seconds.");
+      return;
+    }
+    if (introStart !== "" && introEnd !== "" && Number(introStart) >= Number(introEnd)) {
+      setError("Intro end must be greater than intro start.");
+      return;
+    }
     try {
       setSaving(true);
       setError(null);
       const isEdit = !!series.id;
       const endpoint = isEdit ? `/api/admin/titles/${series.id}` : "/api/admin/titles";
       const method = isEdit ? "PATCH" : "POST";
-    const payload: any = {
-      name: title.trim(),
-      description: description.trim(),
-      type: "SERIES",
-      genres,
-      language,
-      maturityRating,
-      countryAvailability,
-      isOriginal,
-    };
+      const payload: any = {
+        name: title.trim(),
+        description: description.trim(),
+        type: "SERIES",
+        genres,
+        language,
+        maturityRating,
+        countryAvailability,
+        isOriginal,
+      };
       if (!isEdit) {
         payload.pendingReview = true;
         payload.archived = true;
       }
       if (releaseYear) payload.releaseYear = Number(releaseYear);
+      if (introStart !== "") payload.introStartSec = Number(introStart);
+      if (introEnd !== "") payload.introEndSec = Number(introEnd);
       if (posterFile) payload.posterUrl = await uploadAsset(posterFile, "poster");
       if (thumbFile) payload.thumbnailUrl = await uploadAsset(thumbFile, "thumbnail");
-      if (previewSpriteFile) payload.previewSpriteUrl = await uploadAsset(previewSpriteFile, "previewSprite");
       if (previewVttFile) payload.previewVttUrl = await uploadAsset(previewVttFile, "previewVtt");
       const res = await fetch(endpoint, {
         method,
@@ -165,6 +184,30 @@ export function AddEditSeriesForm({
               className="mt-1 bg-neutral-950 border-neutral-800 text-white"
               placeholder="e.g. 2020"
             />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-neutral-300">Intro start (s)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={introStart}
+                onChange={(e) => setIntroStart(e.target.value === "" ? "" : Number(e.target.value))}
+                className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+                placeholder="e.g. 12"
+              />
+            </div>
+            <div>
+              <Label className="text-neutral-300">Intro end (s)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={introEnd}
+                onChange={(e) => setIntroEnd(e.target.value === "" ? "" : Number(e.target.value))}
+                className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+                placeholder="e.g. 58"
+              />
+            </div>
           </div>
         </div>
         <div>
@@ -258,6 +301,9 @@ export function AddEditSeriesForm({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label className="text-neutral-300">Poster</Label>
+            {series.posterUrl && !posterFile && (
+              <p className="text-xs text-neutral-500 mb-1">Current: {series.posterUrl}</p>
+            )}
             <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
               <input
                 type="file"
@@ -273,6 +319,9 @@ export function AddEditSeriesForm({
           </div>
           <div>
             <Label className="text-neutral-300">Thumbnail</Label>
+            {series.thumbnailUrl && !thumbFile && (
+              <p className="text-xs text-neutral-500 mb-1">Current: {series.thumbnailUrl}</p>
+            )}
             <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
               <input
                 type="file"
@@ -287,41 +336,27 @@ export function AddEditSeriesForm({
             </div>
           </div>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label className="text-neutral-300">Preview Sprite (for hover thumbnails)</Label>
-            <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                id="series-preview-sprite-upload"
-                onChange={(e) => setPreviewSpriteFile(e.target.files?.[0] ?? null)}
-              />
-              <label htmlFor="series-preview-sprite-upload" className="block text-neutral-400">
-                {previewSpriteFile ? `Selected: ${previewSpriteFile.name}` : "Upload sprite sheet (JPG/PNG)"}
-              </label>
-              <p className="text-xs text-neutral-500 mt-1">Use evenly spaced frames for seek previews.</p>
-            </div>
-          </div>
-          <div>
-            <Label className="text-neutral-300">Preview VTT (timestamp map)</Label>
-            <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
-              <input
-                type="file"
-                accept=".vtt,text/vtt"
-                className="hidden"
-                id="series-preview-vtt-upload"
-                onChange={(e) => setPreviewVttFile(e.target.files?.[0] ?? null)}
-              />
-              <label htmlFor="series-preview-vtt-upload" className="block text-neutral-400">
-                {previewVttFile ? `Selected: ${previewVttFile.name}` : "Upload WebVTT cue file"}
-              </label>
-              <p className="text-xs text-neutral-500 mt-1">References the sprite coordinates per timestamp.</p>
-            </div>
+        <div>
+          <Label className="text-neutral-300">Preview VTT (optional)</Label>
+          {series.previewVttUrl && !previewVttFile && (
+            <p className="text-xs text-neutral-500 mb-1">Current: {series.previewVttUrl}</p>
+          )}
+          <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
+            <input
+              type="file"
+              accept=".vtt,text/vtt"
+              className="hidden"
+              id="series-preview-vtt-upload"
+              onChange={(e) => setPreviewVttFile(e.target.files?.[0] ?? null)}
+            />
+            <label htmlFor="series-preview-vtt-upload" className="block text-neutral-400">
+              {previewVttFile ? `Selected: ${previewVttFile.name}` : "Upload WebVTT sprite map (optional)"}
+            </label>
+            <p className="text-xs text-neutral-500 mt-1">Optional cue file for hover thumbnails; sprite is generated.</p>
           </div>
         </div>
+
+        {/* Preview sprite is generated by the pipeline; no manual upload needed */}
         <div>
           <Label className="text-neutral-300">Series video (optional)</Label>
           <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
