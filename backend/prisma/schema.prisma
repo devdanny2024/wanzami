@@ -196,11 +196,14 @@ model Title {
   trailerUrl   String?
   previewSpriteUrl String?
   previewVttUrl String?
+  introStartSec   Int?
+  introEndSec     Int?
   archived    Boolean   @default(false)
   pendingReview Boolean @default(false)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  seasons        Season[]
   episodes       Episode[]
   assetVersions  AssetVersion[]
   uploadJobs     UploadJob[]
@@ -214,6 +217,8 @@ model Episode {
   id            BigInt   @id @default(autoincrement())
   title         Title    @relation(fields: [titleId], references: [id], onDelete: Cascade)
   titleId       BigInt
+  season        Season?  @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  seasonId      BigInt?
   seasonNumber  Int
   episodeNumber Int
   name          String
@@ -221,6 +226,8 @@ model Episode {
   runtimeMinutes Int?
   previewSpriteUrl String?
   previewVttUrl String?
+  introStartSec   Int?
+  introEndSec     Int?
   pendingReview Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -230,6 +237,28 @@ model Episode {
   engagementEvents EngagementEvent[]
 
   @@index([titleId, seasonNumber, episodeNumber])
+}
+
+model Season {
+  id            BigInt   @id @default(autoincrement())
+  title         Title    @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  titleId       BigInt
+  seasonNumber  Int
+  name          String?
+  description   String?
+  releaseDate   DateTime?
+  status        String?
+  posterUrl     String?
+  thumbnailUrl  String?
+  previewSpriteUrl String?
+  previewVttUrl String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  episodes      Episode[]
+
+  @@unique([titleId, seasonNumber])
+  @@index([titleId])
 }
 
 model AssetVersion {
