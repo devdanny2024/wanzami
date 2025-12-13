@@ -545,8 +545,8 @@ export function CustomMediaPlayer({
         <div className="mb-3 md:mb-4 relative">
           {previewTime !== null && duration > 0 && (
             <div
-              className="absolute -top-24 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded-lg shadow-lg overflow-hidden border border-white/10"
-              style={{ left: `${previewPos}%`, zIndex: 25 }}
+              className="absolute bg-black/90 text-white text-xs rounded-lg shadow-lg overflow-hidden border border-white/10 pointer-events-none"
+              style={{ left: `${previewPos}%`, top: "-130px", transform: "translateX(-50%)", zIndex: 25 }}
             >
               <div className="w-40 h-24 bg-black">
                 {poster || currentEpisode?.thumbnailUrl ? (
