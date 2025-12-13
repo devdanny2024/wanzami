@@ -14,6 +14,7 @@ type UploadQueueContextValue = {
   tasks: QueueTask[];
   startUpload: (kind: QueueTask["kind"], targetId: number, file: File) => void;
   removeTask: (id: string) => void;
+  clearTasks: () => void;
 };
 
 const UploadQueueContext = createContext<UploadQueueContextValue | undefined>(undefined);
@@ -114,6 +115,12 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
     setTasks((prev) => prev.filter((t) => t.id !== id));
   };
 
+  const clearTasks = () => {
+    setTasks([]);
+    activeCount.current = 0;
+    setRunning(false);
+  };
+
   // Poll backend for upload/transcode status to update dock (including PROCESSING -> COMPLETED/FAILED).
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -163,7 +170,7 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
   }, [tasks]);
 
   return (
-    <UploadQueueContext.Provider value={{ tasks, startUpload, removeTask }}>
+    <UploadQueueContext.Provider value={{ tasks, startUpload, removeTask, clearTasks }}>
       {children}
     </UploadQueueContext.Provider>
   );

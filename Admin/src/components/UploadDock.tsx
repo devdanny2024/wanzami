@@ -16,9 +16,10 @@ export type UploadTask = {
 interface UploadDockProps {
   tasks: UploadTask[];
   onRemove: (id: string) => void;
+  onClear: () => void;
 }
 
-export function UploadDock({ tasks, onRemove }: UploadDockProps) {
+export function UploadDock({ tasks, onRemove, onClear }: UploadDockProps) {
   const [collapsed, setCollapsed] = useState(false);
   if (!tasks.length) return null;
 
@@ -58,7 +59,7 @@ export function UploadDock({ tasks, onRemove }: UploadDockProps) {
               </div>
             )}
             <button
-              onClick={() => tasks.forEach((t) => onRemove(t.id))}
+              onClick={onClear}
               className="text-xs text-neutral-400 hover:text-white"
             >
               Clear
