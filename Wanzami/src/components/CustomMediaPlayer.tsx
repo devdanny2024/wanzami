@@ -131,6 +131,8 @@ export function CustomMediaPlayer({
   const [pipAvailable, setPipAvailable] = useState(false);
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const [isBuffering, setIsBuffering] = useState(true);
+  const [previewTime, setPreviewTime] = useState<number | null>(null);
+  const [previewPos, setPreviewPos] = useState<number>(0);
   const pendingResume = useRef(false);
   const lastProgressSent = useRef<number>(0);
   const hasSentStart = useRef(false);
@@ -458,7 +460,7 @@ export function CustomMediaPlayer({
         ref={videoRef}
         src={currentEpisode?.streamUrl || currentSrc?.src}
         poster={poster ?? undefined}
-        className="absolute inset-0 w-full h-full object-contain bg-black"
+        className={`absolute inset-0 w-full h-full object-contain bg-black ${isBuffering ? "blur-sm" : ""}`}
         onClick={togglePlay}
         controls={false}
         style={{ zIndex: 1 }}
@@ -523,7 +525,7 @@ export function CustomMediaPlayer({
       )}
 
       {isBuffering && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-sm" style={{ zIndex: 14 }}>
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 14 }}>
           <div className="h-12 w-12 border-2 border-white/40 border-t-white rounded-full animate-spin" />
         </div>
       )}
@@ -540,13 +542,42 @@ export function CustomMediaPlayer({
           </div>
         ) : null}
 
-        <div className="mb-3 md:mb-4">
+        <div className="mb-3 md:mb-4 relative">
+          {showPreview && previewTime !== null && duration > 0 && (
+            <div
+              className="absolute -top-24 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded-lg shadow-lg overflow-hidden border border-white/10"
+              style={{ left: `${previewPos}%`, zIndex: 25 }}
+            >
+              <div className="w-40 h-24 bg-black">
+                {poster || currentEpisode?.thumbnailUrl ? (
+                  <img
+                    src={currentEpisode?.thumbnailUrl ?? poster ?? ""}
+                    alt="Preview"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-white/70 text-xs">Preview</div>
+                )}
+              </div>
+              <div className="px-2 py-1 text-center border-t border-white/10">{formatTime(previewTime)}</div>
+            </div>
+          )}
           <input
             type="range"
             min={0}
             max={duration || 0}
             value={currentTime}
             onChange={handleSeek}
+            onMouseMove={(e) => {
+              if (!duration) return;
+              const rect = (e.target as HTMLInputElement).getBoundingClientRect();
+              const pct = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1);
+              setPreviewPos(pct * 100);
+              setPreviewTime(pct * duration);
+            }}
+            onMouseLeave={() => {
+              setPreviewTime(null);
+            }}
             className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"
             style={{
               background: `linear-gradient(to right, #e50914 0%, #e50914 ${
