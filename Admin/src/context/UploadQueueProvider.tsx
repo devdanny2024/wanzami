@@ -172,6 +172,15 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
     };
   }, [tasks]);
 
+  // Auto-clear once every task is completed (no pending/uploading/processing).
+  useEffect(() => {
+    if (tasks.length === 0) return;
+    const hasInFlight = tasks.some((t) => t.status === "pending" || t.status === "uploading" || t.status === "processing");
+    if (hasInFlight) return;
+    const timer = setTimeout(() => clearTasks(), 2000);
+    return () => clearTimeout(timer);
+  }, [tasks]);
+
   return (
     <UploadQueueContext.Provider value={{ tasks, startUpload, removeTask, clearTasks }}>
       {children}
