@@ -543,7 +543,7 @@ export function CustomMediaPlayer({
         ) : null}
 
         <div className="mb-3 md:mb-4 relative">
-          {showPreview && previewTime !== null && duration > 0 && (
+          {previewTime !== null && duration > 0 && (
             <div
               className="absolute -top-24 transform -translate-x-1/2 bg-black/90 text-white text-xs rounded-lg shadow-lg overflow-hidden border border-white/10"
               style={{ left: `${previewPos}%`, zIndex: 25 }}
