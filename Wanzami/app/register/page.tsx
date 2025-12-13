@@ -550,8 +550,8 @@ export default function RegisterPage() {
         </div>
 
         {/* Right side - form */}
-        <div className="flex flex-col items-start justify-start px-6 py-16 bg-black w-full md:w-1/2 min-h-screen md:h-full md:overflow-y-auto">
-          <div className="w-full max-w-5xl">
+        <div className="flex items-center justify-center px-6 py-16 bg-black w-full md:w-1/2 min-h-screen md:h-full md:overflow-y-auto">
+          <div className="relative w-full max-w-3xl">
             <div className="flex items-center justify-between mb-10">
               <Image src={whiteLogo} alt="Wanzami" width={64} height={64} priority className="lg:hidden" />
               <button
