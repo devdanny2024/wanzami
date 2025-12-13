@@ -586,7 +586,7 @@ export function CustomMediaPlayer({
                   <List className="w-6 h-6" />
                 </button>
               ) : null}
-              {normalizedSources.length > 1 ? (
+              {normalizedSources.length > 0 ? (
                 <div className="relative">
                   <button
                     onClick={() => setShowQualityMenu((v) => !v)}
@@ -595,7 +595,7 @@ export function CustomMediaPlayer({
                     <Settings className="w-6 h-6" />
                   </button>
                   {showQualityMenu && (
-                    <div className="absolute bottom-full right-0 mb-2 bg-black/95 backdrop-blur-sm rounded-lg overflow-hidden min-w-40">
+                    <div className="absolute bottom-full right-0 mb-2 bg-black/95 backdrop-blur-sm rounded-lg overflow-hidden min-w-40 z-30 max-h-64 overflow-auto">
                       <div className="p-2 border-b border-gray-700">
                         <p className="text-white text-sm">Quality</p>
                       </div>
@@ -672,7 +672,7 @@ export function CustomMediaPlayer({
                 <List className="w-7 h-7" />
               </button>
             ) : null}
-            {normalizedSources.length > 1 ? (
+            {normalizedSources.length > 0 ? (
               <div className="relative">
                 <button
                   onClick={() => setShowQualityMenu((v) => !v)}
@@ -681,7 +681,7 @@ export function CustomMediaPlayer({
                   <Settings className="w-7 h-7" />
                 </button>
                 {showQualityMenu && (
-                  <div className="absolute bottom-full right-0 mb-2 bg-black/95 backdrop-blur-sm rounded-lg overflow-hidden min-w-48">
+                  <div className="absolute bottom-full right-0 mb-2 bg-black/95 backdrop-blur-sm rounded-lg overflow-hidden min-w-48 z-30 max-h-72 overflow-auto">
                     <div className="p-3 border-b border-gray-700">
                       <p className="text-white">Quality</p>
                     </div>
