@@ -449,7 +449,7 @@ export function CustomMediaPlayer({
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 bg-black group overflow-hidden"
+      className="fixed inset-0 bg-black group overflow-visible"
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
       onMouseMove={() => setIsHovering(true)}
