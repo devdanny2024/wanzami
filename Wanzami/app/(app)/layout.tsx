@@ -4,11 +4,37 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { TopLoader } from "@/components/TopLoader";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+function getExpiryMs(token: string | null) {
+  if (!token) return null;
+  const parts = token.split(".");
+  if (parts.length < 2) return null;
+  try {
+    const payload = JSON.parse(atob(parts[1]));
+    if (typeof payload.exp === "number") {
+      return payload.exp * 1000;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const logout = useCallback(() => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("deviceId");
+      localStorage.removeItem("activeProfileId");
+      localStorage.removeItem("activeProfileName");
+      localStorage.removeItem("activeProfileAvatar");
+    }
+    router.replace("/login");
+  }, [router]);
   const [canRenderShell, setCanRenderShell] = useState(() => {
     if (typeof window === "undefined") return false;
     const token = localStorage.getItem("accessToken");
@@ -77,6 +103,31 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (isAuthRoute || isProfileRoute) return;
   }, [pathname, router]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const checkExpiry = () => {
+      const token = localStorage.getItem("accessToken");
+      const expMs = getExpiryMs(token);
+      if (!expMs) return;
+      if (expMs <= Date.now()) {
+        logout();
+      }
+    };
+
+    checkExpiry();
+    const interval = window.setInterval(checkExpiry, 15000);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "accessToken") {
+        checkExpiry();
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [logout]);
+
   // Avoid rendering the home shell before redirecting unauthenticated users to splash
   if (!canRenderShell) {
     return null;
@@ -92,17 +143,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           router.push(targetPath);
           window.scrollTo({ top: 0, behavior: "smooth" });
         }}
-        onLogout={() => {
-          if (typeof window !== "undefined") {
-            localStorage.removeItem("accessToken");
-            localStorage.removeItem("refreshToken");
-            localStorage.removeItem("deviceId");
-            localStorage.removeItem("activeProfileId");
-            localStorage.removeItem("activeProfileName");
-            localStorage.removeItem("activeProfileAvatar");
-          }
-          router.replace("/login");
-        }}
+        onLogout={logout}
         isAuthenticated={true}
       />
       {children}
