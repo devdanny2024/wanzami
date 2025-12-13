@@ -4,11 +4,17 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { TopLoader } from "@/components/TopLoader";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [canRenderShell, setCanRenderShell] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const token = localStorage.getItem("accessToken");
+    const isSplashRoute = pathname?.startsWith("/splash");
+    return !!token || isSplashRoute;
+  });
 
   const currentPage = useMemo(() => {
     if (!pathname) return "home";
@@ -37,12 +43,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       pathname?.startsWith("/reset-password") ||
       pathname?.startsWith("/verify-email");
     const token = localStorage.getItem("accessToken");
+    const isSplashRoute = pathname?.startsWith("/splash");
+    const shouldBlockAppShell = !token && !isAuthRoute && !isSplashRoute;
 
     // If logged out, send to splash instead of silently showing the app shell
-    if (!token && !isAuthRoute && !pathname?.startsWith("/splash")) {
+    if (shouldBlockAppShell) {
+      setCanRenderShell(false);
       router.replace("/splash");
       return;
     }
+
+    setCanRenderShell(true);
 
     if (isAuthRoute || isProfileRoute) return;
     const profileId = localStorage.getItem("activeProfileId");
@@ -50,6 +61,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       router.replace("/profiles");
     }
   }, [pathname, router]);
+
+  // Avoid rendering the home shell before redirecting unauthenticated users to splash
+  if (!canRenderShell) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-black text-white">
