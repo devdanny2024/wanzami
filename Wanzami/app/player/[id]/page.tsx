@@ -66,29 +66,13 @@ const buildSources = (movie?: Title | null) => {
     (a, b) => (renditionRank[b.rendition] ?? 0) - (renditionRank[a.rendition] ?? 0)
   );
   if (sorted.length) {
-    const mapped = sorted.map((a) => ({
+    return sorted.map((a) => ({
       src: a.url as string,
       label: labelForRendition(a.rendition),
       type: 'video/mp4',
     }));
-    if (movie.trailerUrl) {
-      mapped.push({
-        src: convertS3Url(movie.trailerUrl) ?? movie.trailerUrl,
-        label: 'Trailer',
-        type: 'video/mp4',
-      });
-    }
-    return mapped;
   }
-  if (movie.trailerUrl) {
-    return [
-      {
-        src: convertS3Url(movie.trailerUrl) ?? movie.trailerUrl,
-        label: 'Trailer',
-        type: 'video/mp4',
-      },
-    ];
-  }
+
   return [
     {
       src: 'https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
