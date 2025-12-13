@@ -7,7 +7,7 @@ import { Textarea } from "./ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Badge } from "./ui/badge";
-import { Plus, Edit, Search, Upload, Layers } from "lucide-react";
+import { Plus, Edit, Search, Upload, Layers, Trash2 } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { AddEditSeriesForm } from "./AddEditSeriesForm";
 import { useUploadQueue } from "@/context/UploadQueueProvider";
@@ -29,6 +29,7 @@ type Episode = {
   introStartSec?: number | null;
   introEndSec?: number | null;
   previewVttUrl?: string | null;
+  archived?: boolean;
 };
 
 export function SeriesManagement() {
@@ -217,6 +218,8 @@ function AddEpisodesDialog({
   const [error, setError] = useState<string | null>(null);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [loadingEpisodes, setLoadingEpisodes] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | number | null>(null);
+  const [archivingId, setArchivingId] = useState<string | number | null>(null);
 
   useEffect(() => {
     if (series) {
@@ -246,6 +249,44 @@ function AddEpisodesDialog({
       setEpisodes([]);
     }
   }, [open, series?.id]);
+
+  const handleDeleteEpisode = async (epId: string | number | undefined) => {
+    if (!epId) return;
+    setDeletingId(epId);
+    try {
+      const res = await authFetch(`/admin/episodes/${epId}`, {
+        method: "DELETE",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error((res.data as any)?.message || "Failed to delete episode");
+      await loadEpisodes();
+    } catch (err: any) {
+      setError(err?.message || "Delete failed");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleArchiveEpisode = async (epId: string | number | undefined, archive: boolean) => {
+    if (!epId) return;
+    setArchivingId(epId);
+    try {
+      const res = await authFetch(`/admin/episodes/${epId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ archived: archive }),
+      });
+      if (!res.ok) throw new Error((res.data as any)?.message || "Failed to update episode");
+      await loadEpisodes();
+    } catch (err: any) {
+      setError(err?.message || "Archive failed");
+    } finally {
+      setArchivingId(null);
+    }
+  };
 
   const parseBulkLines = () => {
     return bulkText
@@ -456,6 +497,22 @@ function AddEpisodesDialog({
                               </span>
                             )}
                             {ep.previewVttUrl && <span className="text-[#fd7e14]">VTT</span>}
+                            <button
+                              className="text-xs text-neutral-400 hover:text-white p-1 rounded border border-neutral-700"
+                              onClick={() => handleArchiveEpisode(ep.id, !(ep.archived ?? false))}
+                              disabled={archivingId === ep.id}
+                              title={ep.archived ? "Unarchive" : "Archive"}
+                            >
+                              {archivingId === ep.id ? "…" : ep.archived ? "Unarchive" : "Archive"}
+                            </button>
+                            <button
+                              className="text-red-400 hover:text-red-300 p-1"
+                              onClick={() => handleDeleteEpisode(ep.id)}
+                              disabled={deletingId === ep.id}
+                              title="Delete episode"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
                         </div>
                       ))}
