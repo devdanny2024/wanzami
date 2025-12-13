@@ -571,9 +571,11 @@ export default function RegisterPage() {
             minWidth: "50vw",
             maxWidth: "50vw",
             minHeight: "100vh",
+            maxHeight: "100vh",
+            overflowY: "auto",
           }}
         >
-          <div className="w-full max-w-md">
+          <div className="w-full max-w-5xl">
             <div className="flex items-center justify-between mb-10">
               <Image src={whiteLogo} alt="Wanzami" width={64} height={64} priority className="lg:hidden" />
               <button
