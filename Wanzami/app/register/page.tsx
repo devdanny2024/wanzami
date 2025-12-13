@@ -481,25 +481,11 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
       <TopLoader active={loading} />
 
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "row",
-          flexWrap: "nowrap",
-          width: "100vw",
-          height: "100vh",
-        }}
-      >
+      <div className="flex flex-col lg:flex-row w-full min-h-screen">
         {/* Left hero - matches login */}
         <div
-          className="relative overflow-hidden items-center justify-center"
+          className="relative overflow-hidden items-center justify-center hidden lg:flex lg:w-1/2"
           style={{
-            width: "50vw",
-            minWidth: "50vw",
-            maxWidth: "50vw",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
             background:
               "radial-gradient(circle at 15% 20%, rgba(255,123,57,0.65), transparent 42%), radial-gradient(circle at 72% 10%, rgba(194,71,255,0.55), transparent 48%), radial-gradient(circle at 58% 72%, rgba(0,194,168,0.55), transparent 50%), linear-gradient(135deg, #ff7b39, #c247ff 45%, #00c2a8)",
             minHeight: "100vh",
@@ -565,14 +551,9 @@ export default function RegisterPage() {
 
         {/* Right side - form */}
         <div
-          className="flex flex-wrap items-center justify-center px-6 py-16 bg-black"
+          className="flex flex-wrap items-center justify-center px-6 py-16 bg-black w-full lg:w-1/2 lg:min-h-screen max-h-screen overflow-y-auto"
           style={{
-            width: "50vw",
-            minWidth: "50vw",
-            maxWidth: "50vw",
             minHeight: "100vh",
-            maxHeight: "100vh",
-            overflowY: "auto",
           }}
         >
           <div className="w-full max-w-5xl">
