@@ -225,3 +225,35 @@ html {
 .film-grain {
   animation: grain 8s steps(10) infinite;
 }
+
+@layer utilities {
+  /* Brand orange utilities (not present in precompiled Tailwind bundle) */
+  .bg-orange-500 { background-color: #fd7e14; }
+  .bg-orange-600 { background-color: #fd7e14; }
+  .bg-orange-700 { background-color: #e86f0f; }
+  .bg-orange-600\/10 { background-color: rgb(253 126 20 / 0.1); }
+  .bg-orange-600\/20 { background-color: rgb(253 126 20 / 0.2); }
+  .bg-orange-600\/30 { background-color: rgb(253 126 20 / 0.3); }
+
+  .border-orange-600 { border-color: #fd7e14; }
+  .border-orange-600\/30 { border-color: rgb(253 126 20 / 0.3); }
+  .border-orange-600\/50 { border-color: rgb(253 126 20 / 0.5); }
+
+  .text-orange-400 { color: #ffb366; }
+  .text-orange-500 { color: #fd7e14; }
+  .text-orange-600 { color: #e86f0f; }
+  .hover\:text-orange-400:hover { color: #ffb366; }
+  .hover\:text-orange-500:hover { color: #fd7e14; }
+
+  .hover\:bg-orange-600:hover { background-color: #fd7e14; }
+  .hover\:bg-orange-700:hover { background-color: #e86f0f; }
+  .hover\:border-orange-600\/50:hover { border-color: rgb(253 126 20 / 0.5); }
+
+  .focus\:border-orange-600:focus { border-color: #fd7e14; }
+  .focus\:ring-orange-600:focus { --tw-ring-color: #fd7e14; }
+
+  .shadow-orange-600\/20 { --tw-shadow-color: rgb(253 126 20 / 0.2); }
+
+  /* Auth button base color */
+  .bg-\[\#e25a00\] { background-color: #e25a00; }
+}
