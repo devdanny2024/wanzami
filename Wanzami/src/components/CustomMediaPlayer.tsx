@@ -201,10 +201,10 @@ export function CustomMediaPlayer({
     if (!video || !currentSrc?.src) return;
     video.src = currentSrc.src;
     video.load();
-    if (isPlaying) {
+    if (shouldAutoplay) {
       void video.play().catch(() => undefined);
     }
-  }, [currentSrc?.src, isPlaying]);
+  }, [currentSrc?.src, shouldAutoplay]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -220,6 +220,12 @@ export function CustomMediaPlayer({
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
+
+    if (isPlaying) {
+      void video.play().catch(() => undefined);
+    } else {
+      video.pause();
+    }
 
     const handleTimeUpdate = () => {
       setCurrentTime(video.currentTime);
