@@ -102,10 +102,10 @@ export function AuthPage({ onAuth, onShowSignup }: AuthPageProps) {
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
       <TopLoader active={loading || googleLoading} />
-      <div className="flex flex-col lg:flex-row w-full min-h-screen">
+      <div className="flex flex-row w-full min-h-screen">
         {/* Left gradient hero with soft floating shapes */}
         <div
-          className="relative overflow-hidden items-center justify-center hidden lg:flex lg:w-1/2"
+          className="relative overflow-hidden items-center justify-center hidden md:flex md:w-1/2"
           style={{
             background:
               'radial-gradient(circle at 15% 20%, rgba(255,123,57,0.65), transparent 42%), radial-gradient(circle at 72% 10%, rgba(194,71,255,0.55), transparent 48%), radial-gradient(circle at 58% 72%, rgba(0,194,168,0.55), transparent 50%), linear-gradient(135deg, #ff7b39, #c247ff 45%, #00c2a8)',
@@ -172,7 +172,7 @@ export function AuthPage({ onAuth, onShowSignup }: AuthPageProps) {
 
         {/* Right column: centered dark card on black */}
         <div
-          className="flex items-center justify-center px-6 py-16 bg-black w-full lg:w-1/2"
+          className="flex items-center justify-center px-6 py-16 bg-black w-full md:w-1/2"
           style={{
             minHeight: '100vh',
           }}
