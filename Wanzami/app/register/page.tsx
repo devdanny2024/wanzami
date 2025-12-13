@@ -565,7 +565,7 @@ export default function RegisterPage() {
 
         {/* Right side - form */}
         <div
-          className="flex items-center justify-center px-6 py-16 bg-black"
+          className="flex flex-wrap items-center justify-center px-6 py-16 bg-black"
           style={{
             width: "50vw",
             minWidth: "50vw",
