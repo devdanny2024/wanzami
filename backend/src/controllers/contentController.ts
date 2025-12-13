@@ -37,6 +37,10 @@ export const listTitles = async (_req: Request, res: Response) => {
       posterUrl: t.posterUrl,
       thumbnailUrl: t.thumbnailUrl,
       trailerUrl: t.trailerUrl,
+      previewSpriteUrl: t.previewSpriteUrl,
+      previewVttUrl: t.previewVttUrl,
+      previewSpriteUrl: t.previewSpriteUrl,
+      previewVttUrl: t.previewVttUrl,
       archived: t.archived,
       pendingReview: t.pendingReview,
       createdAt: t.createdAt,
@@ -231,6 +235,8 @@ export const getTitleWithEpisodes = async (req: Request, res: Response) => {
       name: e.name,
       synopsis: e.synopsis,
       runtimeMinutes: e.runtimeMinutes,
+      previewSpriteUrl: e.previewSpriteUrl,
+      previewVttUrl: e.previewVttUrl,
       createdAt: e.createdAt,
       updatedAt: e.updatedAt,
       assetVersions: await Promise.all(
@@ -263,6 +269,8 @@ export const getTitleWithEpisodes = async (req: Request, res: Response) => {
       posterUrl: title.posterUrl,
       thumbnailUrl: title.thumbnailUrl,
       trailerUrl,
+      previewSpriteUrl: title.previewSpriteUrl,
+      previewVttUrl: title.previewVttUrl,
       archived: title.archived,
       createdAt: title.createdAt,
       updatedAt: title.updatedAt,
@@ -302,6 +310,8 @@ export const listEpisodesForTitle = async (req: Request, res: Response) => {
       name: e.name,
       synopsis: e.synopsis,
       runtimeMinutes: e.runtimeMinutes,
+      previewSpriteUrl: e.previewSpriteUrl,
+      previewVttUrl: e.previewVttUrl,
       pendingReview: e.pendingReview,
       assetVersions: (e as any).assetVersions?.map((a: any) => ({
         id: a.id.toString(),
@@ -325,6 +335,8 @@ export const createTitle = async (req: Request, res: Response) => {
     posterUrl,
     thumbnailUrl,
     trailerUrl,
+    previewSpriteUrl,
+    previewVttUrl,
     releaseYear,
     genres,
     cast,
@@ -342,6 +354,8 @@ export const createTitle = async (req: Request, res: Response) => {
     posterUrl?: string;
     thumbnailUrl?: string;
     trailerUrl?: string;
+    previewSpriteUrl?: string;
+    previewVttUrl?: string;
     releaseYear?: number | string;
     genres?: string[];
     cast?: string[];
@@ -368,6 +382,8 @@ export const createTitle = async (req: Request, res: Response) => {
       posterUrl,
       thumbnailUrl,
       trailerUrl,
+      previewSpriteUrl,
+      previewVttUrl,
       releaseDate: parsedReleaseDate,
       genres: Array.isArray(genres) ? genres.map(String) : [],
       cast: Array.isArray(cast) ? cast.map(String) : [],
@@ -400,6 +416,8 @@ export const updateTitle = async (req: Request, res: Response) => {
     posterUrl,
     thumbnailUrl,
     trailerUrl,
+    previewSpriteUrl,
+    previewVttUrl,
     archived,
     releaseYear,
     genres,
@@ -417,6 +435,8 @@ export const updateTitle = async (req: Request, res: Response) => {
     posterUrl?: string;
     thumbnailUrl?: string;
     trailerUrl?: string;
+    previewSpriteUrl?: string;
+    previewVttUrl?: string;
     archived?: boolean;
     releaseYear?: number | string;
     genres?: string[];
@@ -435,6 +455,8 @@ export const updateTitle = async (req: Request, res: Response) => {
   if (posterUrl !== undefined) data.posterUrl = posterUrl;
   if (thumbnailUrl !== undefined) data.thumbnailUrl = thumbnailUrl;
   if (trailerUrl !== undefined) data.trailerUrl = trailerUrl;
+  if (previewSpriteUrl !== undefined) data.previewSpriteUrl = previewSpriteUrl;
+  if (previewVttUrl !== undefined) data.previewVttUrl = previewVttUrl;
   if (archived !== undefined) data.archived = archived;
   if (releaseYear !== undefined && !Number.isNaN(Number(releaseYear))) {
     data.releaseDate = new Date(`${releaseYear}-01-01T00:00:00.000Z`);
@@ -493,12 +515,14 @@ export const publishTitle = async (req: Request, res: Response) => {
 export const createEpisode = async (req: Request, res: Response) => {
   const titleId = req.params.id ? BigInt(req.params.id) : null;
   if (!titleId) return res.status(400).json({ message: "Missing title id" });
-  const { seasonNumber, episodeNumber, name, synopsis, runtimeMinutes } = req.body as {
+  const { seasonNumber, episodeNumber, name, synopsis, runtimeMinutes, previewSpriteUrl, previewVttUrl } = req.body as {
     seasonNumber?: number;
     episodeNumber?: number;
     name?: string;
     synopsis?: string;
     runtimeMinutes?: number | string;
+    previewSpriteUrl?: string;
+    previewVttUrl?: string;
     pendingReview?: boolean;
   };
   if (!seasonNumber || !episodeNumber || !name) {
@@ -511,6 +535,8 @@ export const createEpisode = async (req: Request, res: Response) => {
       episodeNumber,
       name,
       synopsis,
+      previewSpriteUrl,
+      previewVttUrl,
       runtimeMinutes:
         runtimeMinutes !== undefined && !Number.isNaN(Number(runtimeMinutes))
           ? Number(runtimeMinutes)
@@ -526,6 +552,8 @@ export const createEpisode = async (req: Request, res: Response) => {
       episodeNumber: ep.episodeNumber,
       name: ep.name,
       synopsis: ep.synopsis,
+      previewSpriteUrl: ep.previewSpriteUrl,
+      previewVttUrl: ep.previewVttUrl,
       runtimeMinutes: ep.runtimeMinutes,
       pendingReview: ep.pendingReview,
     },
@@ -540,19 +568,32 @@ export const createEpisode = async (req: Request, res: Response) => {
 export const updateEpisode = async (req: Request, res: Response) => {
   const episodeId = req.params.episodeId ? BigInt(req.params.episodeId) : null;
   if (!episodeId) return res.status(400).json({ message: "Missing episode id" });
-  const { seasonNumber, episodeNumber, name, synopsis, runtimeMinutes, pendingReview } = req.body as {
+  const {
+    seasonNumber,
+    episodeNumber,
+    name,
+    synopsis,
+    runtimeMinutes,
+    pendingReview,
+    previewSpriteUrl,
+    previewVttUrl,
+  } = req.body as {
     seasonNumber?: number;
     episodeNumber?: number;
     name?: string;
     synopsis?: string;
     runtimeMinutes?: number | string;
     pendingReview?: boolean;
+    previewSpriteUrl?: string;
+    previewVttUrl?: string;
   };
   const data: any = {};
   if (seasonNumber !== undefined) data.seasonNumber = seasonNumber;
   if (episodeNumber !== undefined) data.episodeNumber = episodeNumber;
   if (name !== undefined) data.name = name;
   if (synopsis !== undefined) data.synopsis = synopsis;
+  if (previewSpriteUrl !== undefined) data.previewSpriteUrl = previewSpriteUrl;
+  if (previewVttUrl !== undefined) data.previewVttUrl = previewVttUrl;
   if (runtimeMinutes !== undefined && !Number.isNaN(Number(runtimeMinutes))) {
     data.runtimeMinutes = Number(runtimeMinutes);
   }
@@ -566,6 +607,8 @@ export const updateEpisode = async (req: Request, res: Response) => {
       episodeNumber: ep.episodeNumber,
       name: ep.name,
       synopsis: ep.synopsis,
+      previewSpriteUrl: ep.previewSpriteUrl,
+      previewVttUrl: ep.previewVttUrl,
       runtimeMinutes: ep.runtimeMinutes,
       pendingReview: ep.pendingReview,
     },
@@ -578,7 +621,10 @@ export const updateEpisode = async (req: Request, res: Response) => {
 };
 
 export const presignAsset = async (req: Request, res: Response) => {
-  const { contentType, kind } = req.body as { contentType?: string; kind?: "poster" | "thumbnail" | "trailer" };
+  const { contentType, kind } = req.body as {
+    contentType?: string;
+    kind?: "poster" | "thumbnail" | "trailer" | "previewSprite" | "previewVtt";
+  };
   const keyPrefix = kind ?? "asset";
   const key = `${keyPrefix}/${Date.now()}-${crypto.randomUUID()}`;
   try {

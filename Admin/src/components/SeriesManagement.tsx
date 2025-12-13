@@ -31,6 +31,8 @@ type Episode = {
   episodeNumber?: number;
   name?: string;
   synopsis?: string | null;
+  previewSpriteUrl?: string | null;
+  previewVttUrl?: string | null;
   createdAt?: string;
   pendingReview?: boolean;
 };
@@ -584,6 +586,8 @@ function AddEpisodeForm({
   const [episodeNumber, setEpisodeNumber] = useState(episode?.episodeNumber ?? 1);
   const [name, setName] = useState(episode?.name ?? "");
   const [synopsis, setSynopsis] = useState(episode?.synopsis ?? "");
+  const [previewSpriteFile, setPreviewSpriteFile] = useState<File | null>(null);
+  const [previewVttFile, setPreviewVttFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -592,7 +596,33 @@ function AddEpisodeForm({
     setEpisodeNumber(episode?.episodeNumber ?? 1);
     setName(episode?.name ?? "");
     setSynopsis(episode?.synopsis ?? "");
+    setPreviewSpriteFile(null);
+    setPreviewVttFile(null);
   }, [episode?.id]);
+
+  const uploadAsset = async (file: File, kind: "thumbnail" | "previewSprite" | "previewVtt") => {
+    const res = await fetch("/api/admin/assets/presign", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ contentType: file.type || "application/octet-stream", kind }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.url || !data.key) {
+      throw new Error(data?.message || "Failed to presign upload");
+    }
+    const putRes = await fetch(data.url, {
+      method: "PUT",
+      headers: { "Content-Type": file.type || "application/octet-stream" },
+      body: file,
+    });
+    if (!putRes.ok) {
+      throw new Error("Upload failed");
+    }
+    return (data.publicUrl as string) || (data.key as string);
+  };
 
   const handleSave = async () => {
     if (!titleId) {
@@ -618,6 +648,8 @@ function AddEpisodeForm({
             episodeNumber,
             name: name.trim(),
             synopsis,
+            previewSpriteUrl: previewSpriteFile ? await uploadAsset(previewSpriteFile, "previewSprite") : undefined,
+            previewVttUrl: previewVttFile ? await uploadAsset(previewVttFile, "previewVtt") : undefined,
           }),
         });
         const data = await res.json();
@@ -635,6 +667,8 @@ function AddEpisodeForm({
             episodeNumber,
             name: name.trim(),
             synopsis,
+            previewSpriteUrl: previewSpriteFile ? await uploadAsset(previewSpriteFile, "previewSprite") : undefined,
+            previewVttUrl: previewVttFile ? await uploadAsset(previewVttFile, "previewVtt") : undefined,
           }),
         });
         const data = await res.json();
@@ -691,6 +725,41 @@ function AddEpisodeForm({
           className="mt-1 bg-neutral-950 border-neutral-800 text-white"
           placeholder="Short summary"
         />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <Label className="text-neutral-300">Preview Sprite (for hover thumbnails)</Label>
+          <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              id="episode-preview-sprite-upload"
+              onChange={(e) => setPreviewSpriteFile(e.target.files?.[0] ?? null)}
+            />
+            <label htmlFor="episode-preview-sprite-upload" className="block text-neutral-400">
+              {previewSpriteFile ? `Selected: ${previewSpriteFile.name}` : "Upload sprite sheet (JPG/PNG)"}
+            </label>
+            <p className="text-xs text-neutral-500 mt-1">Evenly spaced frames used for seek previews.</p>
+          </div>
+        </div>
+        <div>
+          <Label className="text-neutral-300">Preview VTT (timestamp map)</Label>
+          <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
+            <input
+              type="file"
+              accept=".vtt,text/vtt"
+              className="hidden"
+              id="episode-preview-vtt-upload"
+              onChange={(e) => setPreviewVttFile(e.target.files?.[0] ?? null)}
+            />
+            <label htmlFor="episode-preview-vtt-upload" className="block text-neutral-400">
+              {previewVttFile ? `Selected: ${previewVttFile.name}` : "Upload WebVTT cue file"}
+            </label>
+            <p className="text-xs text-neutral-500 mt-1">WebVTT cues referencing the sprite coordinates.</p>
+          </div>
+        </div>
       </div>
 
       {error && <p className="text-red-400 text-sm">{error}</p>}

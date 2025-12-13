@@ -194,6 +194,8 @@ model Title {
   posterUrl   String?
   thumbnailUrl String?
   trailerUrl   String?
+  previewSpriteUrl String?
+  previewVttUrl String?
   archived    Boolean   @default(false)
   pendingReview Boolean @default(false)
   createdAt   DateTime  @default(now())
@@ -217,6 +219,8 @@ model Episode {
   name          String
   synopsis      String?
   runtimeMinutes Int?
+  previewSpriteUrl String?
+  previewVttUrl String?
   pendingReview Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

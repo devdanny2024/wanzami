@@ -30,6 +30,8 @@ export function AddEditSeriesForm({
   const [isOriginal, setIsOriginal] = useState<boolean>(!!series.isOriginal);
   const [posterFile, setPosterFile] = useState<File | null>(null);
   const [thumbFile, setThumbFile] = useState<File | null>(null);
+  const [previewSpriteFile, setPreviewSpriteFile] = useState<File | null>(null);
+  const [previewVttFile, setPreviewVttFile] = useState<File | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +47,7 @@ export function AddEditSeriesForm({
     setIsOriginal(!!series.isOriginal);
   }, [series.id]);
 
-  const uploadAsset = async (file: File, kind: "poster" | "thumbnail") => {
+  const uploadAsset = async (file: File, kind: "poster" | "thumbnail" | "previewSprite" | "previewVtt") => {
     const res = await fetch("/api/admin/assets/presign", {
       method: "POST",
       headers: {
@@ -111,6 +113,8 @@ export function AddEditSeriesForm({
       if (releaseYear) payload.releaseYear = Number(releaseYear);
       if (posterFile) payload.posterUrl = await uploadAsset(posterFile, "poster");
       if (thumbFile) payload.thumbnailUrl = await uploadAsset(thumbFile, "thumbnail");
+      if (previewSpriteFile) payload.previewSpriteUrl = await uploadAsset(previewSpriteFile, "previewSprite");
+      if (previewVttFile) payload.previewVttUrl = await uploadAsset(previewVttFile, "previewVtt");
       const res = await fetch(endpoint, {
         method,
         headers: {
@@ -280,6 +284,41 @@ export function AddEditSeriesForm({
               <label htmlFor="series-thumb-upload" className="block text-neutral-400">
                 {thumbFile ? `Selected: ${thumbFile.name}` : "Drop or click to upload thumbnail"}
               </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label className="text-neutral-300">Preview Sprite (for hover thumbnails)</Label>
+            <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                id="series-preview-sprite-upload"
+                onChange={(e) => setPreviewSpriteFile(e.target.files?.[0] ?? null)}
+              />
+              <label htmlFor="series-preview-sprite-upload" className="block text-neutral-400">
+                {previewSpriteFile ? `Selected: ${previewSpriteFile.name}` : "Upload sprite sheet (JPG/PNG)"}
+              </label>
+              <p className="text-xs text-neutral-500 mt-1">Use evenly spaced frames for seek previews.</p>
+            </div>
+          </div>
+          <div>
+            <Label className="text-neutral-300">Preview VTT (timestamp map)</Label>
+            <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
+              <input
+                type="file"
+                accept=".vtt,text/vtt"
+                className="hidden"
+                id="series-preview-vtt-upload"
+                onChange={(e) => setPreviewVttFile(e.target.files?.[0] ?? null)}
+              />
+              <label htmlFor="series-preview-vtt-upload" className="block text-neutral-400">
+                {previewVttFile ? `Selected: ${previewVttFile.name}` : "Upload WebVTT cue file"}
+              </label>
+              <p className="text-xs text-neutral-500 mt-1">References the sprite coordinates per timestamp.</p>
             </div>
           </div>
         </div>
