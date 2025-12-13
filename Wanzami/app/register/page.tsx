@@ -481,13 +481,28 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
       <TopLoader active={loading} />
 
-      <div className="flex flex-col lg:flex-row w-full min-h-screen">
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "row",
+          flexWrap: "nowrap",
+          width: "100vw",
+          height: "100vh",
+        }}
+      >
         {/* Left hero - matches login */}
         <div
-          className="relative overflow-hidden items-center justify-center flex w-full lg:w-1/2 min-h-[320px] lg:min-h-screen"
+          className="relative overflow-hidden items-center justify-center hidden lg:flex"
           style={{
+            width: "50vw",
+            minWidth: "50vw",
+            maxWidth: "50vw",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
             background:
               "radial-gradient(circle at 15% 20%, rgba(255,123,57,0.65), transparent 42%), radial-gradient(circle at 72% 10%, rgba(194,71,255,0.55), transparent 48%), radial-gradient(circle at 58% 72%, rgba(0,194,168,0.55), transparent 50%), linear-gradient(135deg, #ff7b39, #c247ff 45%, #00c2a8)",
+            minHeight: "100vh",
           }}
         >
           <div className="absolute inset-0 backdrop-blur-3xl bg-gradient-to-br from-[#ff7b39]/30 via-[#c247ff]/25 to-[#00c2a8]/25" />
@@ -549,7 +564,17 @@ export default function RegisterPage() {
         </div>
 
         {/* Right side - form */}
-        <div className="flex flex-wrap items-center justify-center px-6 py-16 bg-black w-full lg:w-1/2 lg:min-h-screen max-h-screen overflow-y-auto">
+        <div
+          className="flex flex-wrap items-center justify-center px-6 py-16 bg-black"
+          style={{
+            width: "100vw",
+            minWidth: "100vw",
+            maxWidth: "100vw",
+            minHeight: "100vh",
+            maxHeight: "100vh",
+            overflowY: "auto",
+          }}
+        >
           <div className="w-full max-w-5xl">
             <div className="flex items-center justify-between mb-10">
               <Image src={whiteLogo} alt="Wanzami" width={64} height={64} priority className="lg:hidden" />
