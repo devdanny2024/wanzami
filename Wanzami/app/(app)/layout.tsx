@@ -12,8 +12,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [canRenderShell, setCanRenderShell] = useState(() => {
     if (typeof window === "undefined") return false;
     const token = localStorage.getItem("accessToken");
+    const profileId = localStorage.getItem("activeProfileId");
     const isSplashRoute = pathname?.startsWith("/splash");
-    return !!token || isSplashRoute;
+    const isProfileRoute = pathname?.startsWith("/profiles");
+    const isAuthRoute =
+      pathname?.startsWith("/login") ||
+      pathname?.startsWith("/register") ||
+      pathname?.startsWith("/forgot-password") ||
+      pathname?.startsWith("/reset-password") ||
+      pathname?.startsWith("/verify-email") ||
+      pathname?.startsWith("/oauth/");
+
+    if (!token && !isSplashRoute && !isAuthRoute) return false;
+    if (token && !profileId && !isProfileRoute && !isAuthRoute) return false;
+    return true;
   });
 
   const currentPage = useMemo(() => {
@@ -41,7 +53,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       pathname?.startsWith("/register") ||
       pathname?.startsWith("/forgot-password") ||
       pathname?.startsWith("/reset-password") ||
-      pathname?.startsWith("/verify-email");
+      pathname?.startsWith("/verify-email") ||
+      pathname?.startsWith("/oauth/");
     const token = localStorage.getItem("accessToken");
     const isSplashRoute = pathname?.startsWith("/splash");
     const shouldBlockAppShell = !token && !isAuthRoute && !isSplashRoute;
@@ -53,13 +66,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    setCanRenderShell(true);
-
-    if (isAuthRoute || isProfileRoute) return;
     const profileId = localStorage.getItem("activeProfileId");
-    if (token && !profileId) {
+    if (token && !profileId && !isAuthRoute && !isProfileRoute) {
+      setCanRenderShell(false);
       router.replace("/profiles");
+      return;
     }
+
+    setCanRenderShell(true);
+    if (isAuthRoute || isProfileRoute) return;
   }, [pathname, router]);
 
   // Avoid rendering the home shell before redirecting unauthenticated users to splash
