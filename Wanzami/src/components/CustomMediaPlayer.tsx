@@ -34,6 +34,13 @@ type Episode = {
   streamUrl?: string | null;
   previewSpriteUrl?: string | null;
   previewVttUrl?: string | null;
+  assetVersions?: {
+    rendition: "R4K" | "R2K" | "R1080" | "R720" | "R360" | string;
+    url?: string | null;
+    sizeBytes?: number;
+    durationSec?: number;
+    status?: string;
+  }[];
 };
 
 type CustomMediaPlayerProps = {
@@ -76,13 +83,6 @@ export function CustomMediaPlayer({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const hasAppliedStart = useRef(false);
   const hideControlsTimer = useRef<NodeJS.Timeout | null>(null);
-  const hasSources = useMemo(() => {
-    return Boolean(
-      (sources && sources.length > 0) ||
-        episodes?.some((ep) => ep.streamUrl)
-    );
-  }, [sources, episodes]);
-
   const normalizedSources = useMemo(() => {
     if (!sources || !sources.length) return [];
     return sources.map((s, idx) => ({
@@ -108,9 +108,30 @@ export function CustomMediaPlayer({
     });
   }, [episodes]);
 
-  const [currentSrc, setCurrentSrc] = useState<MediaSource | undefined>(
-    pickInitialSource(normalizedSources) ?? normalizedSources[0]
-  );
+  const buildSourcesFromEpisode = useCallback((ep?: Episode | null): MediaSource[] => {
+    if (!ep?.assetVersions?.length) return [];
+    const rank: Record<string, number> = { R4K: 5, R2K: 4, R1080: 3, R720: 2, R360: 1 };
+    return ep.assetVersions
+      .filter((a) => a?.url)
+      .sort((a, b) => (rank[b.rendition] ?? 0) - (rank[a.rendition] ?? 0))
+      .map((a) => ({
+        src: a.url as string,
+        label:
+          a.rendition === "R4K"
+            ? "4K"
+            : a.rendition === "R2K"
+            ? "2K"
+            : a.rendition === "R1080"
+            ? "1080p"
+            : a.rendition === "R720"
+            ? "720p"
+            : a.rendition === "R360"
+            ? "360p"
+            : a.rendition ?? "Source",
+        type: "video/mp4",
+      }));
+  }, []);
+
   const [currentEpisode, setCurrentEpisode] = useState<Episode | null>(() => {
     if (!normalizedEpisodes.length) return null;
     if (currentEpisodeId) {
@@ -118,10 +139,45 @@ export function CustomMediaPlayer({
     }
     return normalizedEpisodes[0];
   });
-  const shouldAutoplay = useMemo(
-    () => Boolean((sources?.length ?? 0) > 0 || episodes?.some((ep) => ep.streamUrl)),
-    [episodes, sources]
+  const episodeSources = useMemo(
+    () => buildSourcesFromEpisode(currentEpisode),
+    [buildSourcesFromEpisode, currentEpisode]
   );
+  const activeSources = useMemo(
+    () => (episodeSources.length ? episodeSources : normalizedSources),
+    [episodeSources, normalizedSources]
+  );
+  const [currentSrc, setCurrentSrc] = useState<MediaSource | undefined>(
+    pickInitialSource(activeSources) ?? activeSources[0]
+  );
+  // sync selected episode if prop changes
+  useEffect(() => {
+    if (!currentEpisodeId) return;
+    const next = normalizedEpisodes.find((e) => e.id === currentEpisodeId);
+    if (next && next.id !== currentEpisode?.id) {
+      setCurrentEpisode(next);
+    }
+  }, [currentEpisode?.id, currentEpisodeId, normalizedEpisodes]);
+  // reset source when sources change (episode switch or prop change)
+  useEffect(() => {
+    if (!activeSources.length) return;
+    setCurrentSrc(pickInitialSource(activeSources) ?? activeSources[0]);
+  }, [activeSources]);
+
+  const shouldAutoplay = useMemo(
+    () =>
+      Boolean(
+        (activeSources?.length ?? 0) > 0 ||
+          episodes?.some((ep) => ep.streamUrl)
+      ),
+    [activeSources?.length, episodes]
+  );
+  const hasSources = useMemo(() => {
+    return Boolean(
+      (activeSources && activeSources.length > 0) ||
+        episodes?.some((ep) => ep.streamUrl)
+    );
+  }, [activeSources, episodes]);
   const [isPlaying, setIsPlaying] = useState<boolean>(shouldAutoplay);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -210,12 +266,12 @@ export function CustomMediaPlayer({
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !currentSrc?.src) return;
-    video.src = currentSrc.src;
+    video.src = currentEpisode?.streamUrl || currentSrc.src;
     video.load();
     if (shouldAutoplay) {
       void video.play().catch(() => undefined);
     }
-  }, [currentSrc?.src, shouldAutoplay]);
+  }, [currentSrc?.src, currentEpisode?.streamUrl, shouldAutoplay]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -259,9 +315,9 @@ export function CustomMediaPlayer({
       void emitEvent("PLAY_END", { reason: "ended" }, true);
     };
     const handleError = () => {
-      const idx = normalizedSources.findIndex((s) => s.src === currentSrc?.src);
+      const idx = activeSources.findIndex((s) => s.src === currentSrc?.src);
       const fallback =
-        normalizedSources[idx + 1] ?? normalizedSources.find((s) => s.src !== currentSrc?.src);
+        activeSources[idx + 1] ?? activeSources.find((s) => s.src !== currentSrc?.src);
       if (fallback) {
         setPlaybackError(null);
         setCurrentSrc(fallback);
@@ -302,7 +358,7 @@ export function CustomMediaPlayer({
       video.removeEventListener("waiting", handleWaiting);
       video.removeEventListener("playing", handlePlaying);
     };
-  }, [emitEvent, hasNext, startTimeSeconds, currentSrc, normalizedSources, sendPlayStart]);
+  }, [emitEvent, hasNext, startTimeSeconds, currentSrc, activeSources, sendPlayStart]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -414,6 +470,14 @@ export function CustomMediaPlayer({
     hasAppliedStart.current = false;
     if (videoRef.current) {
       videoRef.current.currentTime = 0;
+    }
+    const epSources = buildSourcesFromEpisode(ep);
+    if (ep.streamUrl) {
+      setCurrentSrc(epSources[0] ?? activeSources[0]);
+    } else if (epSources.length) {
+      setCurrentSrc(epSources[0]);
+    } else {
+      setCurrentSrc(activeSources[0]);
     }
     void emitEvent("PLAY_START", { reason: "switch_episode", episodeId: ep.id }, true);
   };
@@ -699,7 +763,7 @@ export function CustomMediaPlayer({
                   <List className="w-6 h-6" />
                 </button>
               ) : null}
-              {normalizedSources.length > 0 ? (
+              {activeSources.length > 0 ? (
                 <div className="relative">
                   <button
                     onClick={() => setShowQualityMenu((v) => !v)}
@@ -715,7 +779,7 @@ export function CustomMediaPlayer({
                       <div className="p-2 border-b border-gray-700">
                         <p className="text-white text-sm">Quality</p>
                       </div>
-                      {normalizedSources.map((quality) => (
+                      {activeSources.map((quality) => (
                         <button
                           key={quality.src}
                           onClick={() => handleQualityChange(quality)}
@@ -788,7 +852,7 @@ export function CustomMediaPlayer({
                 <List className="w-7 h-7" />
               </button>
             ) : null}
-            {normalizedSources.length > 0 ? (
+            {activeSources.length > 0 ? (
               <div className="relative">
                 <button
                   onClick={() => setShowQualityMenu((v) => !v)}
@@ -804,7 +868,7 @@ export function CustomMediaPlayer({
                     <div className="p-3 border-b border-gray-700">
                       <p className="text-white">Quality</p>
                     </div>
-                    {normalizedSources.map((quality) => (
+                    {activeSources.map((quality) => (
                       <button
                         key={quality.src}
                         onClick={() => handleQualityChange(quality)}

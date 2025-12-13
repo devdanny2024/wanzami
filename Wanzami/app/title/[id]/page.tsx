@@ -114,7 +114,11 @@ export default function TitlePage({ params }: { params: { id: string } }) {
       onClose={() => router.push('/')}
       onPlayClick={(movie) => {
         const targetId = movie?.backendId ?? movie?.id ?? id;
-        router.push(`/player/${targetId}`);
+        const episodeId =
+          movie?.currentEpisode?.id ??
+          (movie?.type === 'SERIES' && Array.isArray(movie?.episodes) ? movie.episodes[0]?.id : undefined);
+        const url = episodeId ? `/player/${targetId}?episodeId=${encodeURIComponent(episodeId)}` : `/player/${targetId}`;
+        router.push(url);
       }}
     />
   );

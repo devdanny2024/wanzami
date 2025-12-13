@@ -12,14 +12,12 @@ import {
 } from "@/lib/contentClient";
 import { MovieData } from "@/components/MovieCard";
 
-export default function HomeRoute() {
-  const [catalogMovies, setCatalogMovies] = useState<MovieData[]>([]);
-  const [catalogLoading, setCatalogLoading] = useState(false);
-  const [catalogError, setCatalogError] = useState<string | null>(null);
+export default function MoviesPage() {
+  const [movies, setMovies] = useState<MovieData[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [top10, setTop10] = useState<MovieData[]>([]);
-  const [top10Series, setTop10Series] = useState<MovieData[]>([]);
   const [trending, setTrending] = useState<MovieData[]>([]);
-  const [trendingSeries, setTrendingSeries] = useState<MovieData[]>([]);
   const [continueWatchingItems, setContinueWatchingItems] = useState<any[]>([]);
   const [becauseYouWatchedItems, setBecauseYouWatchedItems] = useState<any[]>([]);
   const [recsLoading, setRecsLoading] = useState(false);
@@ -29,13 +27,13 @@ export default function HomeRoute() {
     let isMounted = true;
     const loadTitles = async () => {
       try {
-        setCatalogLoading(true);
-        setCatalogError(null);
+        setLoading(true);
+        setError(null);
         const storedCountry = typeof window !== "undefined" ? localStorage.getItem("countryCode") : null;
         const titles = await fetchTitles(storedCountry ?? "NG");
         if (!isMounted) return;
         const mapped = titles
-          .filter((t) => !t.archived)
+          .filter((t) => !t.archived && t.type === "MOVIE")
           .map((title, idx) => {
             const numericId = Number(title.id);
             const safeId = Number.isNaN(numericId) ? Date.now() + idx : numericId;
@@ -59,14 +57,15 @@ export default function HomeRoute() {
               genre: primaryGenre,
               isOriginal: title.isOriginal ?? false,
               assetVersions: title.assetVersions,
+              createdAt: title.createdAt,
             } as MovieData;
           });
-        setCatalogMovies(mapped);
+        setMovies(mapped);
       } catch (err: any) {
-        const msg = err?.message ?? "Failed to load catalog";
-        setCatalogError(msg);
+        const msg = err?.message ?? "Failed to load movies";
+        setError(msg);
       } finally {
-        if (isMounted) setCatalogLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
     void loadTitles();
@@ -93,19 +92,16 @@ export default function HomeRoute() {
         const byw = await fetchBecauseYouWatched(accessToken, profileId ?? undefined);
         if (isMounted) setBecauseYouWatchedItems(byw.items ?? []);
 
-        const [top10Res, trendingRes, top10SeriesRes, trendingSeriesRes, forYouRes] =
-          await Promise.all([
-            fetchPopularity({ type: "MOVIE", window: "DAILY" }),
-            fetchPopularity({ type: "MOVIE", window: "TRENDING" }),
-            fetchPopularity({ type: "SERIES", window: "DAILY" }),
-            fetchPopularity({ type: "SERIES", window: "TRENDING" }),
-            fetchForYou(accessToken, profileId ?? undefined),
-          ]);
+        const [top10Res, trendingRes, forYouRes] = await Promise.all([
+          fetchPopularity({ type: "MOVIE", window: "DAILY" }),
+          fetchPopularity({ type: "MOVIE", window: "TRENDING" }),
+          fetchForYou(accessToken, profileId ?? undefined),
+        ]);
 
         const mapItems = (ids: { titleId: string }[]) => {
           const mapped: MovieData[] = [];
           ids.forEach((item, idx) => {
-            const match = catalogMovies.find((m) => m.backendId === item.titleId);
+            const match = movies.find((m) => m.backendId === item.titleId);
             if (match) {
               mapped.push(match);
             } else {
@@ -123,13 +119,11 @@ export default function HomeRoute() {
         if (isMounted) {
           setTop10(mapItems(top10Res.items ?? []));
           setTrending(mapItems(trendingRes.items ?? []));
-          setTop10Series(mapItems(top10SeriesRes.items ?? []));
-          setTrendingSeries(mapItems(trendingSeriesRes.items ?? []));
-          // Currently forYou not shown on home page; keep data for future use
           void forYouRes;
         }
       } catch (err: any) {
-        const message = err?.name === "AbortError" ? "Recommendations timed out" : err?.message ?? "Failed to load recommendations";
+        const message =
+          err?.name === "AbortError" ? "Recommendations timed out" : err?.message ?? "Failed to load recommendations";
         if (isMounted) setRecsError(message);
       } finally {
         if (isMounted) setRecsLoading(false);
@@ -140,19 +134,12 @@ export default function HomeRoute() {
     return () => {
       isMounted = false;
     };
-  }, [catalogMovies]);
+  }, [movies]);
 
-  const handleMovieClick = async (movie: any) => {
+  const handleMovieClick = (movie: any) => {
     const targetId = movie?.backendId ?? movie?.id;
     if (targetId) {
       window.location.href = `/title/${targetId}`;
-    }
-  };
-
-  const handlePlayClick = (movie: any) => {
-    const targetId = movie?.backendId ?? movie?.id;
-    if (targetId) {
-      window.location.href = `/player/${targetId}`;
     }
   };
 
@@ -165,23 +152,23 @@ export default function HomeRoute() {
 
   return (
     <div className="min-h-screen bg-black">
-      {catalogLoading ? (
+      {loading ? (
         <HomeSkeleton />
       ) : (
         <HomePage
           onMovieClick={handleMovieClick}
           onContinueClick={handleResumeClick}
-          movies={catalogMovies}
-          loading={catalogLoading}
-          error={catalogError}
+          movies={movies}
+          loading={loading}
+          error={error}
           top10={top10}
-          top10Series={top10Series}
           trending={trending}
-          trendingSeries={trendingSeries}
           continueWatching={continueWatchingItems}
           becauseYouWatched={becauseYouWatchedItems}
           recsLoading={recsLoading}
           recsError={recsError}
+          top10Series={[]}
+          trendingSeries={[]}
         />
       )}
     </div>

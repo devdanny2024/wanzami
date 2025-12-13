@@ -56,10 +56,17 @@ const labelForRendition = (r?: string) => {
   }
 };
 
-const buildSources = (movie?: Title | null) => {
-  if (!movie) return [];
+const buildSourcesFromAssets = (
+  assetsInput?: {
+    rendition: 'R4K' | 'R2K' | 'R1080' | 'R720' | 'R360' | string;
+    url?: string | null;
+    sizeBytes?: number;
+    durationSec?: number;
+    status?: string;
+  }[] | null
+) => {
   const assets =
-    movie.assetVersions
+    assetsInput
       ?.map((a) => ({ ...a, url: convertS3Url(a?.url) }))
       .filter((a) => a?.url) ?? [];
   const sorted = assets.sort(
@@ -138,7 +145,21 @@ export default function PlayerPage({ params }: { params: { id: string } }) {
     };
   }, [id]);
 
-  const sources = useMemo(() => buildSources(title), [title]);
+  const activeEpisode = useMemo(() => {
+    const list = title?.episodes ?? [];
+    if (!list?.length) return undefined;
+    if (episodeId) {
+      return list.find((ep) => ep.id === episodeId) ?? list[0];
+    }
+    return list[0];
+  }, [episodeId, title?.episodes]);
+
+  const sources = useMemo(() => {
+    if (activeEpisode?.assetVersions?.length) {
+      return buildSourcesFromAssets(activeEpisode.assetVersions);
+    }
+    return buildSourcesFromAssets(title?.assetVersions);
+  }, [activeEpisode?.assetVersions, title?.assetVersions]);
 
   const handleClose = () => {
     if (typeof window !== 'undefined' && window.history.length > 1) {
@@ -183,7 +204,7 @@ export default function PlayerPage({ params }: { params: { id: string } }) {
         previewVttUrl={title.previewVttUrl}
         sources={sources}
         episodes={title.episodes}
-        currentEpisodeId={episodeId}
+        currentEpisodeId={episodeId ?? activeEpisode?.id}
         startTimeSeconds={startTime}
         titleId={title.id}
         accessToken={authInfo.token}
