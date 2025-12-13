@@ -11,6 +11,7 @@ export type UploadTask = {
   speedMbps?: number;
   error?: string;
   jobId?: string;
+  rendition?: string;
 };
 
 interface UploadDockProps {
@@ -73,9 +74,10 @@ export function UploadDock({ tasks, onRemove, onClear }: UploadDockProps) {
                 <div className="flex-1">
                   <p className="text-white text-sm">{t.name}</p>
                   <p className="text-neutral-500 text-xs">
-                    {(t.size / (1024 * 1024)).toFixed(1)} MB - {t.status}
-                    {t.speedMbps ? ` - ${t.speedMbps.toFixed(1)} Mbps` : ""}
-                    {t.error ? ` - ${t.error}` : ""}
+                    {(t.size / (1024 * 1024)).toFixed(1)} MB
+                    {t.rendition ? ` • ${t.rendition}` : ""} • {t.status}
+                    {t.speedMbps ? ` • ${t.speedMbps.toFixed(1)} Mbps` : ""}
+                    {t.error ? ` • ${t.error}` : ""}
                   </p>
                   <Progress value={t.progress} className="h-2 mt-2" />
                 </div>

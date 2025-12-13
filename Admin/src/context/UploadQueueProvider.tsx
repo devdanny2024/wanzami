@@ -8,11 +8,12 @@ type QueueTask = UploadTask & {
   targetId?: number;
   kind: "MOVIE" | "EPISODE" | "SERIES";
   jobId?: string;
+  rendition?: string;
 };
 
 type UploadQueueContextValue = {
   tasks: QueueTask[];
-  startUpload: (kind: QueueTask["kind"], targetId: number, file: File) => void;
+  startUpload: (kind: QueueTask["kind"], targetId: number, file: File, rendition?: string) => void;
   removeTask: (id: string) => void;
   clearTasks: () => void;
 };
@@ -66,8 +67,9 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
       const init = await initUpload(
         {
           kind: task.kind,
-          titleId: task.kind === "MOVIE" ? task.targetId : undefined,
+          titleId: task.kind === "MOVIE" || task.kind === "SERIES" ? task.targetId : undefined,
           episodeId: task.kind === "EPISODE" ? task.targetId : undefined,
+          rendition: task.rendition,
           file: task.file,
         },
         token ?? undefined
@@ -96,7 +98,7 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
     }
   };
 
-  const startUpload = (kind: QueueTask["kind"], targetId: number, file: File) => {
+  const startUpload = (kind: QueueTask["kind"], targetId: number, file: File, rendition?: string) => {
     const task: QueueTask = {
       id: `${Date.now()}-${file.name}-${Math.random().toString(36).slice(2)}`,
       name: file.name,
@@ -106,6 +108,7 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
       file,
       targetId,
       kind,
+      rendition,
     };
     setTasks((prev) => [...prev, task]);
     setRunning(true);

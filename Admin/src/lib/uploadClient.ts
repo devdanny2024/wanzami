@@ -17,8 +17,8 @@ export type UploadParams = {
   episodeName?: string;
   seasonNumber?: number;
   episodeNumber?: number;
+  rendition?: string;
   file: File;
-  renditions?: string[];
 };
 
 export type UploadProgress = {

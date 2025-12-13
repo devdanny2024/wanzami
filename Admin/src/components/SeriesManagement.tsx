@@ -110,7 +110,7 @@ export function SeriesManagement() {
                   series={editingSeries}
                   onClose={() => setIsSeriesDialogOpen(false)}
                   onSaved={handleSeriesSaved}
-                  onQueueUpload={(id, file) => startUpload("SERIES", id, file)}
+                  onQueueUpload={(id, file, rendition) => startUpload("SERIES", id, file, rendition)}
                 />
               )}
             </DialogContent>
@@ -208,7 +208,10 @@ function AddEpisodesDialog({
     name: "",
     synopsis: "",
   });
-  const [weeklyVideo, setWeeklyVideo] = useState<File | null>(null);
+  const [weeklyVideo4k, setWeeklyVideo4k] = useState<File | null>(null);
+  const [weeklyVideo1080, setWeeklyVideo1080] = useState<File | null>(null);
+  const [weeklyVideo720, setWeeklyVideo720] = useState<File | null>(null);
+  const [weeklyVideo360, setWeeklyVideo360] = useState<File | null>(null);
   const [weeklyVtt, setWeeklyVtt] = useState<File | null>(null);
   const [weeklySaving, setWeeklySaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -265,6 +268,15 @@ function AddEpisodesDialog({
       });
   };
 
+  const detectRendition = (fileName: string) => {
+    const lower = fileName.toLowerCase();
+    if (lower.includes("2160") || lower.includes("4k")) return "4k";
+    if (lower.includes("1080")) return "1080p";
+    if (lower.includes("720")) return "720p";
+    if (lower.includes("480")) return "480p";
+    return "360p";
+  };
+
   const handleBulkSave = async () => {
     if (!series) return;
     const records = parseBulkLines();
@@ -315,7 +327,7 @@ function AddEpisodesDialog({
         if (!res.ok) throw new Error((res.data as any)?.message || "Failed to create episode");
         const epId = (res.data as any)?.episode?.id;
         if (bulkVideos && bulkVideos[i]) {
-          startUpload("EPISODE", Number(epId), bulkVideos[i]);
+          startUpload("EPISODE", Number(epId), bulkVideos[i], detectRendition(bulkVideos[i].name));
         }
       }
       onOpenChange(false);
@@ -360,8 +372,11 @@ function AddEpisodesDialog({
       });
       if (!res.ok) throw new Error((res.data as any)?.message || "Failed to create episode");
       const epId = (res.data as any)?.episode?.id;
-      if (weeklyVideo && epId) {
-        startUpload("EPISODE", Number(epId), weeklyVideo);
+      if (epId) {
+        if (weeklyVideo4k) startUpload("EPISODE", Number(epId), weeklyVideo4k, "4k");
+        if (weeklyVideo1080) startUpload("EPISODE", Number(epId), weeklyVideo1080, "1080p");
+        if (weeklyVideo720) startUpload("EPISODE", Number(epId), weeklyVideo720, "720p");
+        if (weeklyVideo360) startUpload("EPISODE", Number(epId), weeklyVideo360, "360p");
       }
       await loadEpisodes();
     } catch (err: any) {
@@ -543,18 +558,13 @@ function AddEpisodesDialog({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-neutral-300">Episode video</Label>
-                <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
-                  <input
-                    type="file"
-                    accept="video/*"
-                    className="hidden"
-                    id="weekly-episode-video"
-                    onChange={(e) => setWeeklyVideo(e.target.files?.[0] ?? null)}
-                  />
-                  <label htmlFor="weekly-episode-video" className="block text-neutral-400">
-                    {weeklyVideo ? `Selected: ${weeklyVideo.name}` : "Drop or click to upload video"}
-                  </label>
+                <Label className="text-neutral-300">Episode videos by quality (optional)</Label>
+                <p className="text-xs text-neutral-500 mb-2">Attach renditions; each queues with its quality tag.</p>
+                <div className="grid grid-cols-1 gap-2">
+                  <QualityInput label="4K / 2160p" id="weekly-ep-4k" file={weeklyVideo4k} onChange={setWeeklyVideo4k} />
+                  <QualityInput label="1080p" id="weekly-ep-1080" file={weeklyVideo1080} onChange={setWeeklyVideo1080} />
+                  <QualityInput label="720p" id="weekly-ep-720" file={weeklyVideo720} onChange={setWeeklyVideo720} />
+                  <QualityInput label="360p" id="weekly-ep-360" file={weeklyVideo360} onChange={setWeeklyVideo360} />
                 </div>
               </div>
               <div>
@@ -653,5 +663,32 @@ function AddEpisodesDialog({
         </Tabs>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function QualityInput({
+  label,
+  id,
+  file,
+  onChange,
+}: {
+  label: string;
+  id: string;
+  file: File | null;
+  onChange: (file: File | null) => void;
+}) {
+  return (
+    <div className="border border-dashed border-neutral-700 rounded-lg p-3 text-center cursor-pointer bg-neutral-950/50">
+      <input
+        type="file"
+        accept="video/*"
+        className="hidden"
+        id={id}
+        onChange={(e) => onChange(e.target.files?.[0] ?? null)}
+      />
+      <label htmlFor={id} className="block text-neutral-400">
+        {file ? `Selected: ${file.name}` : `Upload ${label}`}
+      </label>
+    </div>
   );
 }
