@@ -32,11 +32,15 @@ type Episode = {
   runtimeMinutes?: number | null;
   thumbnailUrl?: string | null;
   streamUrl?: string | null;
+  previewSpriteUrl?: string | null;
+  previewVttUrl?: string | null;
 };
 
 type CustomMediaPlayerProps = {
   title: string;
   poster?: string | null;
+  previewSpriteUrl?: string | null;
+  previewVttUrl?: string | null;
   sources: MediaSource[];
   onClose: () => void;
   titleId?: string;
@@ -133,6 +137,9 @@ export function CustomMediaPlayer({
   const [isBuffering, setIsBuffering] = useState(true);
   const [previewTime, setPreviewTime] = useState<number | null>(null);
   const [previewPos, setPreviewPos] = useState<number>(0);
+  const [previewCues, setPreviewCues] = useState<
+    { start: number; end: number; url: string; x?: number; y?: number; w?: number; h?: number }
+  >([]);
   const pendingResume = useRef(false);
   const lastProgressSent = useRef<number>(0);
   const hasSentStart = useRef(false);
@@ -448,6 +455,59 @@ export function CustomMediaPlayer({
     ? `S${currentEpisode.seasonNumber ?? "?"} E${currentEpisode.episodeNumber ?? "?"}`
     : null;
 
+  // Load VTT preview cues when available (episode > title fallback)
+  useEffect(() => {
+    const sourceVtt = currentEpisode?.previewVttUrl || previewVttUrl;
+    if (!sourceVtt) {
+      setPreviewCues([]);
+      return;
+    }
+    let cancelled = false;
+    const parseVtt = (text: string) => {
+      const lines = text.split(/\r?\n/);
+      const cues: { start: number; end: number; url: string; x?: number; y?: number; w?: number; h?: number }[] = [];
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        const timingMatch = line.match(/(\\d{2}:\\d{2}:\\d{2}\\.\\d{3}|\\d{2}:\\d{2}\\.\\d{3})\\s+-->\\s+(\\d{2}:\\d{2}:\\d{2}\\.\\d{3}|\\d{2}:\\d{2}\\.\\d{3})/);
+        if (timingMatch && lines[i + 1]) {
+          const toSeconds = (ts: string) => {
+            const parts = ts.split(":").map(Number);
+            if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+            if (parts.length === 2) return parts[0] * 60 + parts[1];
+            return 0;
+          };
+          const start = toSeconds(timingMatch[1]);
+          const end = toSeconds(timingMatch[2]);
+          const content = lines[i + 1].trim();
+          const [urlPart, xywh] = content.split("#xywh=");
+          const cue: any = { start, end, url: urlPart };
+          if (xywh) {
+            const [x, y, w, h] = xywh.split(",").map((v) => Number(v));
+            cue.x = x;
+            cue.y = y;
+            cue.w = w;
+            cue.h = h;
+          }
+          cues.push(cue);
+        }
+      }
+      return cues;
+    };
+    const load = async () => {
+      try {
+        const res = await fetch(sourceVtt, { cache: "force-cache" });
+        const text = await res.text();
+        if (!cancelled) setPreviewCues(parseVtt(text));
+      } catch {
+        if (!cancelled) setPreviewCues([]);
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentEpisode?.id, currentEpisode?.previewVttUrl, previewVttUrl]);
+
   return (
     <div
       ref={containerRef}
@@ -548,16 +608,36 @@ export function CustomMediaPlayer({
               className="absolute bg-black/90 text-white text-xs rounded-lg shadow-lg overflow-hidden border border-white/10 pointer-events-none"
               style={{ left: `${previewPos}%`, top: "-130px", transform: "translateX(-50%)", zIndex: 25 }}
             >
-              <div className="w-40 h-24 bg-black">
-                {poster || currentEpisode?.thumbnailUrl ? (
-                  <img
-                    src={currentEpisode?.thumbnailUrl ?? poster ?? ""}
-                    alt="Preview"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-white/70 text-xs">Preview</div>
-                )}
+              <div className="w-40 h-24 bg-black flex items-center justify-center">
+                {(() => {
+                  const cue = previewCues.find((c) => previewTime >= c.start && previewTime <= c.end);
+                  if (cue) {
+                    if (cue.x !== undefined && cue.y !== undefined && cue.w && cue.h) {
+                      return (
+                        <div
+                          style={{
+                            width: `${cue.w}px`,
+                            height: `${cue.h}px`,
+                            backgroundImage: `url(${cue.url})`,
+                            backgroundPosition: `-${cue.x}px -${cue.y}px`,
+                            backgroundRepeat: "no-repeat",
+                            backgroundSize: "auto",
+                          }}
+                        />
+                      );
+                    }
+                    return <img src={cue.url} alt="Preview" className="w-full h-full object-cover" />;
+                  }
+                  return poster || currentEpisode?.thumbnailUrl ? (
+                    <img
+                      src={currentEpisode?.thumbnailUrl ?? poster ?? ""}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-white/70 text-xs">Preview</div>
+                  );
+                })()}
               </div>
               <div className="px-2 py-1 text-center border-t border-white/10">{formatTime(previewTime)}</div>
             </div>

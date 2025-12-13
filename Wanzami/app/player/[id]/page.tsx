@@ -179,6 +179,8 @@ export default function PlayerPage({ params }: { params: { id: string } }) {
       <CustomMediaPlayer
         title={title.name ?? `Title ${id}`}
         poster={title.thumbnailUrl ?? title.posterUrl}
+        previewSpriteUrl={title.previewSpriteUrl}
+        previewVttUrl={title.previewVttUrl}
         sources={sources}
         episodes={title.episodes}
         currentEpisodeId={episodeId}

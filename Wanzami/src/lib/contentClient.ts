@@ -16,6 +16,8 @@ export type Title = {
   posterUrl?: string | null;
   thumbnailUrl?: string | null;
   trailerUrl?: string | null;
+  previewSpriteUrl?: string | null;
+  previewVttUrl?: string | null;
   releaseYear?: number;
   archived?: boolean;
   episodeCount?: number;
@@ -74,6 +76,8 @@ export async function fetchTitleWithEpisodes(id: string) {
       name: string;
       synopsis?: string | null;
       runtimeMinutes?: number | null;
+      previewSpriteUrl?: string | null;
+      previewVttUrl?: string | null;
       assetVersions?: {
         rendition: "R4K" | "R2K" | "R1080" | "R720" | "R360" | string;
         url?: string | null;
