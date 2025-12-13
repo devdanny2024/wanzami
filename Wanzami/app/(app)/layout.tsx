@@ -4,7 +4,7 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { TopLoader } from "@/components/TopLoader";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 function getExpiryMs(token: string | null) {
   if (!token) return null;
@@ -24,6 +24,34 @@ function getExpiryMs(token: string | null) {
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const isRefreshing = useRef(false);
+
+  const refreshSession = useCallback(async () => {
+    if (typeof window === "undefined") return false;
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (!refreshToken) return false;
+    if (isRefreshing.current) return true;
+    isRefreshing.current = true;
+    try {
+      const res = await fetch("/api/auth/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.accessToken) return false;
+
+      localStorage.setItem("accessToken", data.accessToken);
+      if (data.refreshToken) localStorage.setItem("refreshToken", data.refreshToken);
+      if (data.deviceId) localStorage.setItem("deviceId", data.deviceId);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      isRefreshing.current = false;
+    }
+  }, []);
+
   const logout = useCallback(() => {
     if (typeof window !== "undefined") {
       localStorage.removeItem("accessToken");
@@ -35,24 +63,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
     router.replace("/login");
   }, [router]);
-  const [canRenderShell, setCanRenderShell] = useState(() => {
-    if (typeof window === "undefined") return false;
-    const token = localStorage.getItem("accessToken");
-    const profileId = localStorage.getItem("activeProfileId");
-    const isSplashRoute = pathname?.startsWith("/splash");
-    const isProfileRoute = pathname?.startsWith("/profiles");
-    const isAuthRoute =
-      pathname?.startsWith("/login") ||
-      pathname?.startsWith("/register") ||
-      pathname?.startsWith("/forgot-password") ||
-      pathname?.startsWith("/reset-password") ||
-      pathname?.startsWith("/verify-email") ||
-      pathname?.startsWith("/oauth/");
-
-    if (!token && !isSplashRoute && !isAuthRoute) return false;
-    if (token && !profileId && !isProfileRoute && !isAuthRoute) return false;
-    return true;
-  });
+  const [canRenderShell, setCanRenderShell] = useState(false);
 
   const currentPage = useMemo(() => {
     if (!pathname) return "home";
@@ -70,54 +81,73 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [pathname]);
 
   useEffect(() => {
-    // Prompt user to pick a profile after login
+    // Prompt user to pick a profile after login, try refreshing if missing access token
     if (typeof window === "undefined") return;
-    const isProfileRoute = pathname?.startsWith("/profiles");
-    const isAuthRoute =
-      pathname?.startsWith("/login") ||
-      pathname?.startsWith("/register") ||
-      pathname?.startsWith("/forgot-password") ||
-      pathname?.startsWith("/reset-password") ||
-      pathname?.startsWith("/verify-email") ||
-      pathname?.startsWith("/oauth/");
-    const token = localStorage.getItem("accessToken");
-    const isSplashRoute = pathname?.startsWith("/splash");
-    const shouldBlockAppShell = !token && !isAuthRoute && !isSplashRoute;
+    const run = async () => {
+      const isProfileRoute = pathname?.startsWith("/profiles");
+      const isAuthRoute =
+        pathname?.startsWith("/login") ||
+        pathname?.startsWith("/register") ||
+        pathname?.startsWith("/forgot-password") ||
+        pathname?.startsWith("/reset-password") ||
+        pathname?.startsWith("/verify-email") ||
+        pathname?.startsWith("/oauth/");
+      const isSplashRoute = pathname?.startsWith("/splash");
+      let token = localStorage.getItem("accessToken");
 
-    // If logged out, send to splash instead of silently showing the app shell
-    if (shouldBlockAppShell) {
-      setCanRenderShell(false);
-      router.replace("/splash");
-      return;
-    }
+      if (!token && !isAuthRoute && !isSplashRoute) {
+        const refreshed = await refreshSession();
+        token = refreshed ? localStorage.getItem("accessToken") : null;
+        if (!token) {
+          setCanRenderShell(false);
+          router.replace("/splash");
+          return;
+        }
+      }
 
-    const profileId = localStorage.getItem("activeProfileId");
-    if (token && !profileId && !isAuthRoute && !isProfileRoute) {
-      setCanRenderShell(false);
-      router.replace("/profiles");
-      return;
-    }
+      const profileId = localStorage.getItem("activeProfileId");
+      if (token && !profileId && !isAuthRoute && !isProfileRoute) {
+        setCanRenderShell(false);
+        router.replace("/profiles");
+        return;
+      }
 
-    setCanRenderShell(true);
-    if (isAuthRoute || isProfileRoute) return;
-  }, [pathname, router]);
+      setCanRenderShell(true);
+    };
+    void run();
+  }, [pathname, refreshSession, router]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const checkExpiry = () => {
+    const checkExpiry = async () => {
       const token = localStorage.getItem("accessToken");
       const expMs = getExpiryMs(token);
+      const now = Date.now();
+      const threshold = 5 * 60 * 1000; // 5 minutes
+
+      // If no token but refresh exists, try to refresh
+      if (!token && localStorage.getItem("refreshToken")) {
+        const ok = await refreshSession();
+        if (!ok) logout();
+        return;
+      }
+
       if (!expMs) return;
-      if (expMs <= Date.now()) {
-        logout();
+      if (expMs <= now) {
+        const ok = await refreshSession();
+        if (!ok) logout();
+        return;
+      }
+      if (expMs - now < threshold) {
+        await refreshSession();
       }
     };
 
-    checkExpiry();
-    const interval = window.setInterval(checkExpiry, 15000);
+    void checkExpiry();
+    const interval = window.setInterval(() => void checkExpiry(), 15000);
     const onStorage = (e: StorageEvent) => {
       if (e.key === "accessToken") {
-        checkExpiry();
+        void checkExpiry();
       }
     };
     window.addEventListener("storage", onStorage);
