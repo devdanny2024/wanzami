@@ -4,7 +4,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Badge } from "./ui/badge";
 import { Plus, Edit, Search, Upload, Layers, Trash2 } from "lucide-react";
@@ -36,7 +36,7 @@ export function SeriesManagement() {
   const [series, setSeries] = useState<SeriesTitle[]>([]);
   const [search, setSearch] = useState("");
   const [editingSeries, setEditingSeries] = useState<SeriesTitle | null>(null);
-  const [isSeriesDialogOpen, setIsSeriesDialogOpen] = useState(false);
+  const [view, setView] = useState<"list" | "addEdit">("list");
   const [episodesTarget, setEpisodesTarget] = useState<SeriesTitle | null>(null);
   const token = useMemo(() => (typeof window !== "undefined" ? localStorage.getItem("accessToken") : null), []);
   const { startUpload } = useUploadQueue();
@@ -58,24 +58,77 @@ export function SeriesManagement() {
   }, [token]);
 
   const openAddSeries = () => {
-    setEditingSeries({
-      id: "",
-      name: "",
-      type: "SERIES",
-      description: "",
-      thumbnailUrl: "",
-      posterUrl: "",
-      archived: false,
-      createdAt: "",
-    } as SeriesTitle);
-    setIsSeriesDialogOpen(true);
+    setEditingSeries(null);
+    setView("addEdit");
   };
 
   const handleSeriesSaved = async () => {
-    setIsSeriesDialogOpen(false);
+    setView("list");
     setEditingSeries(null);
     await loadSeries();
   };
+
+  const currentSeries: SeriesTitle = editingSeries ?? {
+    id: "",
+    name: "",
+    type: "SERIES",
+    description: "",
+    thumbnailUrl: "",
+    posterUrl: "",
+    archived: false,
+    createdAt: "",
+    genres: [],
+    countryAvailability: [],
+    language: "en",
+  };
+
+  if (view === "addEdit") {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-neutral-400 uppercase tracking-wide">Series</p>
+            <h1 className="text-3xl text-white font-semibold">
+              {currentSeries.id ? "Edit series" : "Add new series"}
+            </h1>
+            <p className="text-neutral-400 mt-1">
+              Fill out the details and upload art/renditions. This replaces the modal flow.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setView("list");
+              setEditingSeries(null);
+            }}
+            className="border-neutral-700 text-neutral-200 hover:bg-neutral-800"
+          >
+            Back to list
+          </Button>
+        </div>
+
+        <Card className="bg-neutral-900 border-neutral-800">
+          <CardHeader>
+            <CardTitle className="text-white">
+              {currentSeries.id ? `Edit ${currentSeries.name || "series"}` : "Create a series"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <AddEditSeriesForm
+              token={token ?? undefined}
+              series={currentSeries}
+              onClose={() => {
+                setView("list");
+                setEditingSeries(null);
+              }}
+              onSaved={handleSeriesSaved}
+              onQueueUpload={(id, file, rendition) => startUpload("SERIES", id, file, rendition)}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -94,28 +147,10 @@ export function SeriesManagement() {
               className="pl-9 bg-neutral-900 border-neutral-800 text-white"
             />
           </div>
-          <Dialog open={isSeriesDialogOpen} onOpenChange={setIsSeriesDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={openAddSeries} className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Series
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="bg-neutral-900 border-neutral-800 text-white max-w-4xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle className="text-white">{editingSeries?.id ? "Edit Series" : "Add Series"}</DialogTitle>
-              </DialogHeader>
-              {editingSeries && (
-                <AddEditSeriesForm
-                  token={token ?? undefined}
-                  series={editingSeries}
-                  onClose={() => setIsSeriesDialogOpen(false)}
-                  onSaved={handleSeriesSaved}
-                  onQueueUpload={(id, file, rendition) => startUpload("SERIES", id, file, rendition)}
-                />
-              )}
-            </DialogContent>
-          </Dialog>
+          <Button onClick={openAddSeries} className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Series
+          </Button>
         </div>
       </div>
 
@@ -142,7 +177,7 @@ export function SeriesManagement() {
                     className="text-neutral-300 hover:text-white"
                     onClick={() => {
                       setEditingSeries(item);
-                      setIsSeriesDialogOpen(true);
+                      setView("addEdit");
                     }}
                   >
                     <Edit className="w-4 h-4" />

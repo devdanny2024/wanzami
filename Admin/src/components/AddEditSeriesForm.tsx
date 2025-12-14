@@ -15,19 +15,19 @@ export function AddEditSeriesForm({
   onQueueUpload,
 }: {
   token?: string;
-  series: MovieTitle;
+  series?: MovieTitle;
   onClose: () => void;
   onSaved: () => void;
   onQueueUpload: (id: number, file: File, rendition?: string) => void;
 }) {
-  const [title, setTitle] = useState(series.name ?? "");
-  const [description, setDescription] = useState(series.description ?? "");
+  const [title, setTitle] = useState(series?.name ?? "");
+  const [description, setDescription] = useState(series?.description ?? "");
   const [releaseYear, setReleaseYear] = useState("");
-  const [genres, setGenres] = useState<string[]>(series.genres ?? []);
-  const [language, setLanguage] = useState(series.language ?? "en");
-  const [maturityRating, setMaturityRating] = useState<string>(series.maturityRating ?? "");
-  const [countryAvailability, setCountryAvailability] = useState<string[]>(series.countryAvailability ?? []);
-  const [isOriginal, setIsOriginal] = useState<boolean>(!!series.isOriginal);
+  const [genres, setGenres] = useState<string[]>(series?.genres ?? []);
+  const [language, setLanguage] = useState(series?.language ?? "en");
+  const [maturityRating, setMaturityRating] = useState<string>(series?.maturityRating ?? "");
+  const [countryAvailability, setCountryAvailability] = useState<string[]>(series?.countryAvailability ?? []);
+  const [isOriginal, setIsOriginal] = useState<boolean>(!!series?.isOriginal);
   const [posterFile, setPosterFile] = useState<File | null>(null);
   const [thumbFile, setThumbFile] = useState<File | null>(null);
   const [previewVttFile, setPreviewVttFile] = useState<File | null>(null);
@@ -41,20 +41,20 @@ export function AddEditSeriesForm({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setTitle(series.name ?? "");
-    setDescription(series.description ?? "");
-    setReleaseYear(series.releaseDate ? new Date(series.releaseDate).getFullYear().toString() : "");
-    setGenres(series.genres ?? []);
-    setLanguage(series.language ?? "en");
-    setMaturityRating(series.maturityRating ?? "");
-    setCountryAvailability(series.countryAvailability ?? []);
-    setIsOriginal(!!series.isOriginal);
+    setTitle(series?.name ?? "");
+    setDescription(series?.description ?? "");
+    setReleaseYear(series?.releaseDate ? new Date(series.releaseDate).getFullYear().toString() : "");
+    setGenres(series?.genres ?? []);
+    setLanguage(series?.language ?? "en");
+    setMaturityRating(series?.maturityRating ?? "");
+    setCountryAvailability(series?.countryAvailability ?? []);
+    setIsOriginal(!!series?.isOriginal);
     setIntroStart((series as any)?.introStartSec ?? "");
     setIntroEnd((series as any)?.introEndSec ?? "");
     setPosterFile(null);
     setThumbFile(null);
     setPreviewVttFile(null);
-  }, [series.id]);
+  }, [series?.id]);
 
   const uploadAsset = async (file: File, kind: "poster" | "thumbnail" | "previewVtt") => {
     const res = await fetch("/api/admin/assets/presign", {
@@ -114,8 +114,8 @@ export function AddEditSeriesForm({
     try {
       setSaving(true);
       setError(null);
-      const isEdit = !!series.id;
-      const endpoint = isEdit ? `/api/admin/titles/${series.id}` : "/api/admin/titles";
+      const isEdit = !!series?.id;
+      const endpoint = isEdit ? `/api/admin/titles/${series?.id}` : "/api/admin/titles";
       const method = isEdit ? "PATCH" : "POST";
       const payload: any = {
         name: title.trim(),
@@ -147,7 +147,7 @@ export function AddEditSeriesForm({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.message || "Save failed");
-      const newId = Number(data?.title?.id ?? series.id);
+      const newId = Number(data?.title?.id ?? series?.id);
       if (newId) {
         if (video4kFile) onQueueUpload(newId, video4kFile, "4k");
         if (video1080File) onQueueUpload(newId, video1080File, "1080p");
@@ -307,8 +307,8 @@ export function AddEditSeriesForm({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label className="text-neutral-300">Poster</Label>
-            {series.posterUrl && !posterFile && (
-              <p className="text-xs text-neutral-500 mb-1">Current: {series.posterUrl}</p>
+            {series?.posterUrl && !posterFile && (
+              <p className="text-xs text-neutral-500 mb-1">Current: {series?.posterUrl}</p>
             )}
             <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
               <input
@@ -325,8 +325,8 @@ export function AddEditSeriesForm({
           </div>
           <div>
             <Label className="text-neutral-300">Thumbnail</Label>
-            {series.thumbnailUrl && !thumbFile && (
-              <p className="text-xs text-neutral-500 mb-1">Current: {series.thumbnailUrl}</p>
+            {series?.thumbnailUrl && !thumbFile && (
+              <p className="text-xs text-neutral-500 mb-1">Current: {series?.thumbnailUrl}</p>
             )}
             <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
               <input
@@ -344,8 +344,8 @@ export function AddEditSeriesForm({
         </div>
         <div>
           <Label className="text-neutral-300">Preview VTT (optional)</Label>
-          {series.previewVttUrl && !previewVttFile && (
-            <p className="text-xs text-neutral-500 mb-1">Current: {series.previewVttUrl}</p>
+          {series?.previewVttUrl && !previewVttFile && (
+            <p className="text-xs text-neutral-500 mb-1">Current: {series?.previewVttUrl}</p>
           )}
           <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
             <input
