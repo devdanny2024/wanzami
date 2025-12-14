@@ -606,27 +606,33 @@ function AddEpisodesDialog({
                         {loadingSeasons && <span className="text-xs text-neutral-500">…</span>}
                       </div>
                       <div className="flex items-center gap-2 text-xs">
-                        <button
-                          className="px-2 py-1 rounded border border-neutral-700 text-neutral-300 hover:text-white disabled:opacity-50"
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-neutral-700 text-neutral-200 hover:text-white hover:border-neutral-500"
                           onClick={() => handleSeasonStatus(seasonMeta?.id, "PUBLISHED")}
                           disabled={!seasonMeta?.id || seasonUpdatingId === seasonMeta?.id}
                         >
                           {seasonUpdatingId === seasonMeta?.id ? "…" : "Publish"}
-                        </button>
-                        <button
-                          className="px-2 py-1 rounded border border-neutral-700 text-neutral-300 hover:text-white disabled:opacity-50"
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-neutral-700 text-neutral-200 hover:text-white hover:border-neutral-500"
                           onClick={() => handleSeasonStatus(seasonMeta?.id, "ARCHIVED")}
                           disabled={!seasonMeta?.id || seasonUpdatingId === seasonMeta?.id}
                         >
                           Archive
-                        </button>
-                        <button
-                          className="px-2 py-1 rounded border border-red-700 text-red-400 hover:text-red-200 disabled:opacity-50"
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="bg-red-900/70 hover:bg-red-800 text-red-100"
                           onClick={() => handleDeleteSeason(seasonMeta?.id)}
                           disabled={!seasonMeta?.id || seasonUpdatingId === seasonMeta?.id}
                         >
                           Delete
-                        </button>
+                        </Button>
                       </div>
                     </div>
                     <div className="space-y-1">
@@ -641,37 +647,43 @@ function AddEpisodesDialog({
                             </span>
                             <span className="font-medium">{ep.name}</span>
                           </div>
-                          <div className="flex items-center gap-3 text-xs text-neutral-500">
+                          <div className="flex items-center gap-2 text-xs text-neutral-500">
                             {ep.introStartSec != null && ep.introEndSec != null && (
                               <span>
                                 Intro {ep.introStartSec}s–{ep.introEndSec}s
                               </span>
                             )}
                             {ep.previewVttUrl && <span className="text-[#fd7e14]">VTT</span>}
-                            <button
-                              className="text-xs text-neutral-400 hover:text-white p-1 rounded border border-neutral-700"
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-neutral-700 text-neutral-200 hover:text-white hover:border-neutral-500 px-2"
                               onClick={() => handlePublishEpisode(ep.id)}
                               disabled={publishingId === ep.id}
                               title="Publish"
                             >
                               {publishingId === ep.id ? "…" : "Publish"}
-                            </button>
-                            <button
-                              className="text-xs text-neutral-400 hover:text-white p-1 rounded border border-neutral-700"
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-neutral-700 text-neutral-200 hover:text-white hover:border-neutral-500 px-2"
                               onClick={() => handleArchiveEpisodeToggle(ep.id, true)}
                               disabled={archivingId === ep.id}
                               title="Archive"
                             >
                               {archivingId === ep.id ? "…" : "Archive"}
-                            </button>
-                            <button
-                              className="text-red-400 hover:text-red-300 p-1"
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              className="bg-red-900/70 hover:bg-red-800 text-red-100"
                               onClick={() => handleDeleteEpisode(ep.id)}
                               disabled={deletingId === ep.id}
                               title="Delete episode"
                             >
                               <Trash2 className="w-4 h-4" />
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       ))}
