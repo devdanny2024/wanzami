@@ -194,7 +194,7 @@ export function CustomMediaPlayer({
   const [previewTime, setPreviewTime] = useState<number | null>(null);
   const [previewPos, setPreviewPos] = useState<number>(0);
   const [previewCues, setPreviewCues] = useState<
-    { start: number; end: number; url: string; x?: number; y?: number; w?: number; h?: number }
+    { start: number; end: number; url: string; x?: number; y?: number; w?: number; h?: number }[]
   >([]);
   const pendingResume = useRef(false);
   const lastProgressSent = useRef<number>(0);
