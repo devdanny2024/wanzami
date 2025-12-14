@@ -1,6 +1,6 @@
-import { Hero } from './Hero';
-import { ContentRow } from './ContentRow';
-import { MovieData } from './MovieCard';
+import { Hero } from "./Hero";
+import { ContentRow } from "./ContentRow";
+import { MovieData } from "./MovieCard";
 
 interface HomePageProps {
   onMovieClick: (movie: any) => void;
@@ -56,6 +56,7 @@ export function HomePage({
     const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
     return bDate - aDate;
   });
+
   const featured = sortedMovies.slice(0, 3).map((m, idx) => ({
     id: typeof m.id === "number" ? m.id : idx,
     title: m.title,
@@ -90,7 +91,7 @@ export function HomePage({
       <Hero onPlayClick={onMovieClick} featured={featured} />
       <div className="relative -mt-32 z-10 pb-12 md:pb-16">
         {loading ? (
-          <div className="text-gray-400 px-4 md:px-12 lg:px-16">Loading catalog…</div>
+          <div className="text-gray-400 px-4 md:px-12 lg:px-16">Loading catalog...</div>
         ) : error ? (
           <div className="text-red-400 px-4 md:px-12 lg:px-16">Failed to load movies: {error}</div>
         ) : hasCatalog ? (
@@ -152,10 +153,10 @@ export function HomePage({
               </>
             ) : null}
           </>
-        )}
+        ) : null}
       </div>
       {recsLoading && (
-        <div className="text-gray-400 px-4 md:px-12 lg:px-16 mt-4">Loading personalized rows…</div>
+        <div className="text-gray-400 px-4 md:px-12 lg:px-16 mt-4">Loading personalized rows...</div>
       )}
       {recsError && (
         <div className="text-red-400 px-4 md:px-12 lg:px-16 mt-4">Personalized rows unavailable: {recsError}</div>
