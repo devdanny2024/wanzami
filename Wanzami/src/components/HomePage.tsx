@@ -21,7 +21,8 @@ interface HomePageProps {
 function buildGenreRows(items: MovieData[], labelSuffix: string, maxSections = 6, maxItems = 18) {
   const genreMap = new Map<string, MovieData[]>();
   items.forEach((item) => {
-    const g = item.genre || item.genres?.[0];
+    // support MovieData with optional genres array
+    const g = item.genre || (item as any)?.genres?.[0];
     const key = g || "Other";
     const list = genreMap.get(key) ?? [];
     if (list.length < maxItems) list.push(item);
