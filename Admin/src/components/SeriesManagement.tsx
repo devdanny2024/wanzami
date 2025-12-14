@@ -14,6 +14,7 @@ import { useUploadQueue } from "@/context/UploadQueueProvider";
 import { authFetch } from "@/lib/authClient";
 import { MovieTitle } from "./MoviesManagement"; // reuse shape for series titles
 import { Eye } from "lucide-react";
+import { toast } from "sonner";
 
 type SeriesTitle = MovieTitle & {
   episodeCount?: number;
@@ -81,6 +82,37 @@ export function SeriesManagement() {
     genres: [],
     countryAvailability: [],
     language: "en",
+  };
+
+  const publishSeries = async (id: string | number | undefined) => {
+    if (!id) return;
+    const res = await authFetch(`/admin/titles/${id}/publish`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) throw new Error((res.data as any)?.message || "Failed to publish series");
+  };
+
+  const updateArchive = async (id: string | number | undefined, archived: boolean) => {
+    if (!id) return;
+    const res = await authFetch(`/admin/titles/${id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ archived }),
+    });
+    if (!res.ok) throw new Error((res.data as any)?.message || "Failed to update archive state");
+  };
+
+  const deleteSeries = async (id: string | number | undefined) => {
+    if (!id) return;
+    const res = await authFetch(`/admin/titles/${id}`, {
+      method: "DELETE",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) throw new Error((res.data as any)?.message || "Failed to delete series");
   };
 
   if (view === "addEdit") {
@@ -201,13 +233,68 @@ export function SeriesManagement() {
                 <Layers className="w-4 h-4" />
                 <span>{item.episodeCount ?? 0} episodes</span>
               </div>
-              <Button
-                size="sm"
-                className="bg-[#fd7e14] hover:bg-[#ff9940] text-white"
-                onClick={() => setEpisodesTarget(item)}
-              >
-                Add Episodes
-              </Button>
+              <div className="flex flex-wrap items-center gap-2 justify-end">
+                {item.pendingReview && (
+                  <Badge className="bg-amber-600 text-white border-amber-700">Pending</Badge>
+                )}
+                {item.archived && <Badge className="bg-neutral-700 text-white border-neutral-600">Archived</Badge>}
+                <Button
+                  size="sm"
+                  className="bg-[#fd7e14] hover:bg-[#ff9940] text-white"
+                  onClick={() => setEpisodesTarget(item)}
+                >
+                  Add Episodes
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-neutral-700 text-neutral-200 hover:text-white"
+                  onClick={async () => {
+                    try {
+                      await publishSeries(item.id);
+                      await loadSeries();
+                      toast.success("Series published");
+                    } catch (err: any) {
+                      toast.error(err?.message || "Publish failed");
+                    }
+                  }}
+                >
+                  Publish
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-neutral-700 text-neutral-200 hover:text-white"
+                  onClick={async () => {
+                    try {
+                      await updateArchive(item.id, !item.archived);
+                      await loadSeries();
+                      toast.success(item.archived ? "Series unarchived" : "Series archived");
+                    } catch (err: any) {
+                      toast.error(err?.message || "Update failed");
+                    }
+                  }}
+                >
+                  {item.archived ? "Unarchive" : "Archive"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="bg-red-900/70 hover:bg-red-800 text-red-100"
+                  onClick={async () => {
+                    if (!confirm("Delete this series?")) return;
+                    try {
+                      await deleteSeries(item.id);
+                      await loadSeries();
+                      toast.success("Series deleted");
+                    } catch (err: any) {
+                      toast.error(err?.message || "Delete failed");
+                    }
+                  }}
+                >
+                  Delete
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ))}
