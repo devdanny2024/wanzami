@@ -7,6 +7,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { MovieTitle } from "./MoviesManagement"; // reuse shape
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
+const GENRE_OPTIONS = [
+  "Action",
+  "Comedy",
+  "Drama",
+  "Thriller",
+  "Horror",
+  "Romance",
+  "Sci-Fi",
+  "Documentary",
+  "Animation",
+  "Fantasy",
+  "Crime",
+  "Family",
+];
+
 export function AddEditSeriesForm({
   token,
   series,
@@ -30,11 +45,7 @@ export function AddEditSeriesForm({
   const [isOriginal, setIsOriginal] = useState<boolean>(!!series?.isOriginal);
   const [posterFile, setPosterFile] = useState<File | null>(null);
   const [thumbFile, setThumbFile] = useState<File | null>(null);
-  const [previewVttFile, setPreviewVttFile] = useState<File | null>(null);
-  const [video4kFile, setVideo4kFile] = useState<File | null>(null);
-  const [video1080File, setVideo1080File] = useState<File | null>(null);
-  const [video720File, setVideo720File] = useState<File | null>(null);
-  const [video360File, setVideo360File] = useState<File | null>(null);
+  const [trailerFile, setTrailerFile] = useState<File | null>(null);
   const [introStart, setIntroStart] = useState<number | "">("");
   const [introEnd, setIntroEnd] = useState<number | "">("");
   const [saving, setSaving] = useState(false);
@@ -53,10 +64,10 @@ export function AddEditSeriesForm({
     setIntroEnd((series as any)?.introEndSec ?? "");
     setPosterFile(null);
     setThumbFile(null);
-    setPreviewVttFile(null);
+    setTrailerFile(null);
   }, [series?.id]);
 
-  const uploadAsset = async (file: File, kind: "poster" | "thumbnail" | "previewVtt") => {
+  const uploadAsset = async (file: File, kind: "poster" | "thumbnail" | "trailer") => {
     const res = await fetch("/api/admin/assets/presign", {
       method: "POST",
       headers: {
@@ -136,7 +147,7 @@ export function AddEditSeriesForm({
       if (introEnd !== "") payload.introEndSec = Number(introEnd);
       if (posterFile) payload.posterUrl = await uploadAsset(posterFile, "poster");
       if (thumbFile) payload.thumbnailUrl = await uploadAsset(thumbFile, "thumbnail");
-      if (previewVttFile) payload.previewVttUrl = await uploadAsset(previewVttFile, "previewVtt");
+      if (trailerFile) payload.trailerUrl = await uploadAsset(trailerFile, "trailer");
       const res = await fetch(endpoint, {
         method,
         headers: {
@@ -147,13 +158,7 @@ export function AddEditSeriesForm({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.message || "Save failed");
-      const newId = Number(data?.title?.id ?? series?.id);
-      if (newId) {
-        if (video4kFile) onQueueUpload(newId, video4kFile, "4k");
-        if (video1080File) onQueueUpload(newId, video1080File, "1080p");
-        if (video720File) onQueueUpload(newId, video720File, "720p");
-        if (video360File) onQueueUpload(newId, video360File, "360p");
-      }
+      // No rendition uploads for series here; only artwork + trailer
       onSaved();
     } catch (err: any) {
       setError(err?.message || "Save failed");
@@ -229,12 +234,27 @@ export function AddEditSeriesForm({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label className="text-neutral-300">Genres</Label>
-            <Input
-              value={genres.join(",")}
-              onChange={(e) => setGenres(e.target.value.split(",").map((g) => g.trim()).filter(Boolean))}
-              className="mt-1 bg-neutral-950 border-neutral-800 text-white"
-              placeholder="Drama, Thriller"
-            />
+            <div className="mt-1 flex flex-wrap gap-2">
+              {GENRE_OPTIONS.map((g) => {
+                const active = genres.includes(g);
+                return (
+                  <button
+                    type="button"
+                    key={g}
+                    onClick={() =>
+                      setGenres((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]))
+                    }
+                    className={`px-3 py-1 rounded-full text-sm border ${
+                      active
+                        ? "bg-[#fd7e14]/20 border-[#fd7e14] text-[#fd7e14]"
+                        : "bg-neutral-900 border-neutral-700 text-neutral-300 hover:border-neutral-500"
+                    }`}
+                  >
+                    {g}
+                  </button>
+                );
+              })}
+            </div>
           </div>
           <div>
             <Label className="text-neutral-300">Language</Label>
@@ -343,34 +363,21 @@ export function AddEditSeriesForm({
           </div>
         </div>
         <div>
-          <Label className="text-neutral-300">Preview VTT (optional)</Label>
-          {series?.previewVttUrl && !previewVttFile && (
-            <p className="text-xs text-neutral-500 mb-1">Current: {series?.previewVttUrl}</p>
+          <Label className="text-neutral-300">Trailer</Label>
+          {series?.trailerUrl && !trailerFile && (
+            <p className="text-xs text-neutral-500 mb-1">Current: {series?.trailerUrl}</p>
           )}
           <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
             <input
               type="file"
-              accept=".vtt,text/vtt"
+              accept="video/*"
               className="hidden"
-              id="series-preview-vtt-upload"
-              onChange={(e) => setPreviewVttFile(e.target.files?.[0] ?? null)}
+              id="series-trailer-upload"
+              onChange={(e) => setTrailerFile(e.target.files?.[0] ?? null)}
             />
-            <label htmlFor="series-preview-vtt-upload" className="block text-neutral-400">
-              {previewVttFile ? `Selected: ${previewVttFile.name}` : "Upload WebVTT sprite map (optional)"}
+            <label htmlFor="series-trailer-upload" className="block text-neutral-400">
+              {trailerFile ? `Selected: ${trailerFile.name}` : "Drop or click to upload trailer"}
             </label>
-            <p className="text-xs text-neutral-500 mt-1">Optional cue file for hover thumbnails; sprite is generated.</p>
-          </div>
-        </div>
-
-        {/* Preview sprite is generated by the pipeline; no manual upload needed */}
-        <div>
-          <Label className="text-neutral-300">Series videos by quality (optional)</Label>
-          <p className="text-xs text-neutral-500 mb-2">Attach renditions; queue will tag by quality.</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <QualityInput label="4K / 2160p" id="series-video-4k" file={video4kFile} onChange={setVideo4kFile} />
-            <QualityInput label="1080p" id="series-video-1080" file={video1080File} onChange={setVideo1080File} />
-            <QualityInput label="720p" id="series-video-720" file={video720File} onChange={setVideo720File} />
-            <QualityInput label="360p" id="series-video-360" file={video360File} onChange={setVideo360File} />
           </div>
         </div>
         {error && <p className="text-red-400 text-sm">{error}</p>}
@@ -384,32 +391,5 @@ export function AddEditSeriesForm({
         </div>
       </TabsContent>
     </Tabs>
-  );
-}
-
-function QualityInput({
-  label,
-  id,
-  file,
-  onChange,
-}: {
-  label: string;
-  id: string;
-  file: File | null;
-  onChange: (file: File | null) => void;
-}) {
-  return (
-    <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
-      <input
-        type="file"
-        accept="video/*"
-        className="hidden"
-        id={id}
-        onChange={(e) => onChange(e.target.files?.[0] ?? null)}
-      />
-      <label htmlFor={id} className="block text-neutral-400">
-        {file ? `Selected: ${file.name}` : `Upload ${label}`}
-      </label>
-    </div>
   );
 }
