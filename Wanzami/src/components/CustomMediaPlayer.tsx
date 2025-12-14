@@ -70,6 +70,8 @@ export function CustomMediaPlayer({
   title,
   titleId,
   poster,
+  previewVttUrl,
+  previewSpriteUrl,
   sources,
   onClose,
   accessToken,
