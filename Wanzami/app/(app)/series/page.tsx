@@ -88,7 +88,6 @@ export default function SeriesPage() {
         if (isMounted) setContinueWatchingItems(cw.items ?? []);
 
         const byw = await fetchBecauseYouWatched(accessToken, profileId ?? undefined);
-        if (isMounted) setBecauseYouWatchedItems(byw.items ?? []);
 
         const [top10SeriesRes, trendingSeriesRes, forYouRes] = await Promise.all([
           fetchPopularity({ type: "SERIES", window: "DAILY" }),
@@ -115,6 +114,7 @@ export default function SeriesPage() {
         };
 
         if (isMounted) {
+          setBecauseYouWatchedItems(mapItems(byw.items ?? []));
           setTop10Series(mapItems(top10SeriesRes.items ?? []));
           setTrendingSeries(mapItems(trendingSeriesRes.items ?? []));
           void forYouRes;

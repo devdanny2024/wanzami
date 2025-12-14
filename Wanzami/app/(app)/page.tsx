@@ -22,6 +22,12 @@ export default function HomeRoute() {
   const [trendingSeries, setTrendingSeries] = useState<MovieData[]>([]);
   const [continueWatchingItems, setContinueWatchingItems] = useState<any[]>([]);
   const [becauseYouWatchedItems, setBecauseYouWatchedItems] = useState<any[]>([]);
+  const [forYouItems, setForYouItems] = useState<MovieData[]>([]);
+  const [originals, setOriginals] = useState<MovieData[]>([]);
+  const [newNoteworthy, setNewNoteworthy] = useState<MovieData[]>([]);
+  const [hiddenGems, setHiddenGems] = useState<MovieData[]>([]);
+  const [freshForYou, setFreshForYou] = useState<MovieData[]>([]);
+  const [similarToLikes, setSimilarToLikes] = useState<MovieData[]>([]);
   const [recsLoading, setRecsLoading] = useState(false);
   const [recsError, setRecsError] = useState<string | null>(null);
 
@@ -90,9 +96,6 @@ export default function HomeRoute() {
           setContinueWatchingItems(cw.items ?? []);
         }
 
-        const byw = await fetchBecauseYouWatched(accessToken, profileId ?? undefined);
-        if (isMounted) setBecauseYouWatchedItems(byw.items ?? []);
-
         const [top10Res, trendingRes, top10SeriesRes, trendingSeriesRes, forYouRes] =
           await Promise.all([
             fetchPopularity({ type: "MOVIE", window: "DAILY" }),
@@ -121,12 +124,42 @@ export default function HomeRoute() {
         };
 
         if (isMounted) {
+          const becauseMapped = mapItems((await fetchBecauseYouWatched(accessToken, profileId ?? undefined)).items ?? []);
+          setBecauseYouWatchedItems(becauseMapped);
+
           setTop10(mapItems(top10Res.items ?? []));
           setTrending(mapItems(trendingRes.items ?? []));
           setTop10Series(mapItems(top10SeriesRes.items ?? []));
           setTrendingSeries(mapItems(trendingSeriesRes.items ?? []));
-          // Currently forYou not shown on home page; keep data for future use
-          void forYouRes;
+          const fyItems = mapItems((forYouRes?.items as any[]) ?? []);
+          setForYouItems(fyItems);
+
+          const originalsList = catalogMovies.filter((m) => m.isOriginal).slice(0, 18);
+          setOriginals(originalsList);
+
+          const byRecency = [...catalogMovies]
+            .filter((m) => m.createdAt)
+            .sort((a, b) => (b.createdAt ? new Date(b.createdAt).getTime() : 0) - (a.createdAt ? new Date(a.createdAt).getTime() : 0));
+          setNewNoteworthy(byRecency.slice(0, 18));
+
+          // Hidden gems: not in top10/trending sets and take lower popularity slice
+          const popularityIds = new Set<string>([
+            ...((top10Res.items ?? []).map((i: any) => String(i.titleId))),
+            ...((trendingRes.items ?? []).map((i: any) => String(i.titleId))),
+            ...((top10SeriesRes.items ?? []).map((i: any) => String(i.titleId))),
+            ...((trendingSeriesRes.items ?? []).map((i: any) => String(i.titleId))),
+          ]);
+          const hidden = catalogMovies
+            .filter((m) => !popularityIds.has(String(m.backendId)))
+            .slice(0, 18);
+          setHiddenGems(hidden);
+
+          // Fresh for you: random shuffle of catalog minus seen ids
+          const shuffled = [...catalogMovies].sort(() => Math.random() - 0.5);
+          setFreshForYou(shuffled.slice(0, 18));
+
+          // Similar to likes: reuse because-you-watched anchors list
+          setSimilarToLikes(becauseMapped);
         }
       } catch (err: any) {
         const message = err?.name === "AbortError" ? "Recommendations timed out" : err?.message ?? "Failed to load recommendations";
@@ -180,8 +213,15 @@ export default function HomeRoute() {
           trendingSeries={trendingSeries}
           continueWatching={continueWatchingItems}
           becauseYouWatched={becauseYouWatchedItems}
+          forYouItems={forYouItems}
+          originals={originals}
+          newNoteworthy={newNoteworthy}
+          hiddenGems={hiddenGems}
+          freshForYou={freshForYou}
+          similarToLikes={similarToLikes}
           recsLoading={recsLoading}
           recsError={recsError}
+          showGenreRows={false}
         />
       )}
     </div>

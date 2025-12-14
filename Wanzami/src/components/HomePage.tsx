@@ -14,6 +14,12 @@ interface HomePageProps {
   trendingSeries?: MovieData[];
   continueWatching?: any[];
   becauseYouWatched?: any[];
+  forYouItems?: MovieData[];
+  originals?: MovieData[];
+  newNoteworthy?: MovieData[];
+  hiddenGems?: MovieData[];
+  freshForYou?: MovieData[];
+  similarToLikes?: MovieData[];
   recsLoading?: boolean;
   recsError?: string | null;
   showGenreRows?: boolean; // disable genre rows on home; can enable on dedicated pages
@@ -50,6 +56,12 @@ export function HomePage({
   trendingSeries: trendingSeriesProp = [],
   continueWatching = [],
   becauseYouWatched = [],
+  forYouItems = [],
+  originals = [],
+  newNoteworthy = [],
+  hiddenGems = [],
+  freshForYou = [],
+  similarToLikes = [],
   recsLoading,
   recsError,
   showGenreRows = false,
@@ -99,6 +111,9 @@ export function HomePage({
           <div className="text-red-400 px-4 md:px-12 lg:px-16">Failed to load movies: {error}</div>
         ) : hasCatalog ? (
           <>
+            {forYouItems.length > 0 && (
+              <ContentRow title="For You" movies={forYouItems} onMovieClick={onMovieClick} />
+            )}
             {continueWatching.length > 0 && (
               <ContentRow
                 title="Continue Watching"
@@ -109,6 +124,12 @@ export function HomePage({
             )}
             {becauseYouWatched.length > 0 && (
               <ContentRow title="Because You Watched" movies={becauseYouWatched as any} onMovieClick={onMovieClick} />
+            )}
+            {originals.length > 0 && (
+              <ContentRow title="Wanzami Originals" movies={originals} onMovieClick={onMovieClick} />
+            )}
+            {newNoteworthy.length > 0 && (
+              <ContentRow title="New & Noteworthy" movies={newNoteworthy} onMovieClick={onMovieClick} />
             )}
             {moviesOnly.length > 0 || top10Movies.length > 0 || trendingMovies.length > 0 ? (
               <>
@@ -155,6 +176,15 @@ export function HomePage({
                 )}
               </>
             ) : null}
+            {hiddenGems.length > 0 && (
+              <ContentRow title="Hidden Gems" movies={hiddenGems} onMovieClick={onMovieClick} />
+            )}
+            {freshForYou.length > 0 && (
+              <ContentRow title="Fresh for You" movies={freshForYou} onMovieClick={onMovieClick} />
+            )}
+            {similarToLikes.length > 0 && (
+              <ContentRow title="Similar to Your Likes" movies={similarToLikes} onMovieClick={onMovieClick} />
+            )}
           </>
         ) : null}
       </div>

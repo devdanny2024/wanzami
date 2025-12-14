@@ -1,8 +1,11 @@
+'use client';
+
 import { Play, Plus, Share2, ThumbsUp, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { MovieData } from './MovieCard';
+import { isInMyList, toggleMyList } from '@/lib/myList';
 
 interface MovieDetailPageProps {
   movie: any;
@@ -59,6 +62,12 @@ export function MovieDetailPage({ movie, onClose, onPlayClick }: MovieDetailPage
   const isSeries = movie?.type === "SERIES";
   const seriesEpisodes = Array.isArray(movie?.episodes) ? movie.episodes : [];
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
+  const [inList, setInList] = useState(false);
+
+  useEffect(() => {
+    const targetId = movie?.backendId ?? movie?.id;
+    setInList(isInMyList(targetId));
+  }, [movie]);
 
   const seasons = useMemo<number[]>(() => {
     const distinct: number[] = Array.from<number>(
@@ -183,9 +192,20 @@ export function MovieDetailPage({ movie, onClose, onPlayClick }: MovieDetailPage
                 <span className="text-sm md:text-base">Play</span>
               </button>
 
-              <button className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-6 md:px-8 py-3 md:py-4 rounded-xl backdrop-blur-md border border-white/20 transition-colors">
+              <button
+                onClick={() => {
+                  const targetId = movie?.backendId ?? movie?.id;
+                  const nextVal = toggleMyList(targetId);
+                  setInList(nextVal);
+                }}
+                className={`flex items-center gap-2 px-6 md:px-8 py-3 md:py-4 rounded-xl backdrop-blur-md border transition-colors ${
+                  inList
+                    ? 'bg-[#fd7e14] border-[#fd7e14] text-white hover:bg-[#e86f0f]'
+                    : 'bg-white/10 hover:bg-white/20 text-white border-white/20'
+                }`}
+              >
                 <Plus className="w-5 h-5 md:w-6 md:h-6" />
-                <span className="text-sm md:text-base">My List</span>
+                <span className="text-sm md:text-base">{inList ? 'Added' : 'My List'}</span>
               </button>
 
               <button className="flex items-center justify-center w-12 h-12 md:w-14 md:h-14 bg-white/10 hover:bg-white/20 text-white rounded-xl backdrop-blur-md border border-white/20 transition-colors">

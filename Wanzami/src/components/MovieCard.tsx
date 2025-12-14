@@ -11,6 +11,7 @@ export interface MovieData {
   rating?: string;
   duration?: string;
   genre?: string;
+  genres?: string[];
   description?: string | null;
   year?: string | number;
   trailerUrl?: string | null;
@@ -22,6 +23,9 @@ export interface MovieData {
   runtimeMinutes?: number | null;
   currentEpisodeId?: string;
   currentEpisodeLabel?: string;
+  isOriginal?: boolean;
+  assetVersions?: any;
+  maturityRating?: string | null;
 }
 
 interface MovieCardProps {

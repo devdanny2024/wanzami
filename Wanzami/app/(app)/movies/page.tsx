@@ -88,7 +88,6 @@ export default function MoviesPage() {
         if (isMounted) setContinueWatchingItems(cw.items ?? []);
 
         const byw = await fetchBecauseYouWatched(accessToken, profileId ?? undefined);
-        if (isMounted) setBecauseYouWatchedItems(byw.items ?? []);
 
         const [top10Res, trendingRes, forYouRes] = await Promise.all([
           fetchPopularity({ type: "MOVIE", window: "DAILY" }),
@@ -115,6 +114,7 @@ export default function MoviesPage() {
         };
 
         if (isMounted) {
+          setBecauseYouWatchedItems(mapItems(byw.items ?? []));
           setTop10(mapItems(top10Res.items ?? []));
           setTrending(mapItems(trendingRes.items ?? []));
           void forYouRes;

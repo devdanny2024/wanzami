@@ -18,6 +18,8 @@ export type Title = {
   trailerUrl?: string | null;
   previewSpriteUrl?: string | null;
   previewVttUrl?: string | null;
+  enableEndCardRating?: boolean;
+  endCreditsStart?: number;
   releaseYear?: number;
   archived?: boolean;
   episodeCount?: number;
@@ -78,6 +80,8 @@ export async function fetchTitleWithEpisodes(id: string) {
       runtimeMinutes?: number | null;
       previewSpriteUrl?: string | null;
       previewVttUrl?: string | null;
+       enableEndCardRating?: boolean;
+       endCreditsStart?: number;
       assetVersions?: {
         rendition: "R4K" | "R2K" | "R1080" | "R720" | "R360" | string;
         url?: string | null;
@@ -124,9 +128,15 @@ export async function fetchContinueWatching(accessToken: string, profileId?: str
   return data as { items: Array<any> };
 }
 
-export async function fetchBecauseYouWatched(accessToken: string, profileId?: string) {
+export async function fetchBecauseYouWatched(
+  accessToken: string,
+  profileId?: string,
+  opts?: { seed?: string; limit?: number }
+) {
   const query = new URLSearchParams();
   if (profileId) query.set("profileId", profileId);
+  if (opts?.seed) query.set("seed", opts.seed);
+  if (opts?.limit) query.set("limit", String(opts.limit));
   const res = await fetchWithTimeout(`${API_BASE}/recs/because-you-watched?${query.toString()}`, {
     cache: "no-store",
     headers: {

@@ -11,11 +11,15 @@ import {
   Settings,
   SkipBack,
   SkipForward,
+  ThumbsUp,
+  ThumbsDown,
+  Loader2,
   Volume2,
   VolumeX,
   PictureInPicture,
 } from "lucide-react";
-import { postEvents } from "@/lib/contentClient";
+import { fetchBecauseYouWatched, postEvents } from "@/lib/contentClient";
+import { hasRatedEndcard, markRatedEndcard } from "@/lib/endCardCache";
 
 type MediaSource = {
   src: string;
@@ -34,6 +38,8 @@ type Episode = {
   streamUrl?: string | null;
   previewSpriteUrl?: string | null;
   previewVttUrl?: string | null;
+  enableEndCardRating?: boolean;
+  endCreditsStart?: number;
   assetVersions?: {
     rendition: "R4K" | "R2K" | "R1080" | "R720" | "R360" | string;
     url?: string | null;
@@ -57,6 +63,8 @@ type CustomMediaPlayerProps = {
   episodes?: Episode[];
   currentEpisodeId?: string;
   startTimeSeconds?: number;
+  enableEndCardRating?: boolean;
+  endCreditsStart?: number;
 };
 
 const pickInitialSource = (sources: MediaSource[]) => {
@@ -202,6 +210,14 @@ export function CustomMediaPlayer({
   const lastProgressSent = useRef<number>(0);
   const hasSentStart = useRef(false);
   const unmounted = useRef(false);
+  const endCardShownRef = useRef(false);
+  const [showEndCard, setShowEndCard] = useState(false);
+  const [endCardSentiment, setEndCardSentiment] = useState<"UP" | "DOWN" | null>(null);
+  const [endCardLoading, setEndCardLoading] = useState(false);
+  const [endCardError, setEndCardError] = useState<string | null>(null);
+  const [endCardRecs, setEndCardRecs] = useState<
+    { id: string; backendId?: string; title: string; image: string }[]
+  >([]);
 
   const emitEvent = useCallback(
     async (eventType: "PLAY_START" | "PLAY_END" | "SCRUB", metadata?: Record<string, any>, force = false) => {
@@ -248,6 +264,37 @@ export function CustomMediaPlayer({
     ? normalizedEpisodes.findIndex((e) => e.id === currentEpisode.id) < normalizedEpisodes.length - 1
     : false;
 
+  // End-card helpers
+  const endCardEnabled = useMemo(() => {
+    const epiFlag = currentEpisode?.enableEndCardRating;
+    return epiFlag ?? enableEndCardRating ?? true;
+  }, [currentEpisode?.enableEndCardRating, enableEndCardRating]);
+
+  const endCardTriggerTime = useMemo(() => {
+    if (currentEpisode?.endCreditsStart != null) return currentEpisode.endCreditsStart;
+    if (endCreditsStart != null) return endCreditsStart;
+    if (duration > 0) return Math.max(duration - 30, 10);
+    return Number.POSITIVE_INFINITY;
+  }, [currentEpisode?.endCreditsStart, duration, endCreditsStart]);
+
+  const alreadyRated = useMemo(
+    () => hasRatedEndcard(titleId, currentEpisode?.id),
+    [currentEpisode?.id, titleId]
+  );
+
+  const maybeShowEndCard = useCallback(() => {
+    if (!endCardEnabled) return;
+    if (alreadyRated) return;
+    if (showEndCard || endCardShownRef.current) return;
+    if (duration > 0 && currentTime >= endCardTriggerTime) {
+      endCardShownRef.current = true;
+      setShowEndCard(true);
+      setEndCardSentiment(null);
+      setEndCardError(null);
+      setEndCardRecs([]);
+    }
+  }, [alreadyRated, currentTime, duration, endCardEnabled, endCardTriggerTime, showEndCard]);
+
   const sendPlayStart = useCallback(
     (reason: string) => {
       if (hasSentStart.current) return;
@@ -263,6 +310,11 @@ export function CustomMediaPlayer({
 
   useEffect(() => {
     hasSentStart.current = false;
+    endCardShownRef.current = false;
+    setShowEndCard(false);
+    setEndCardSentiment(null);
+    setEndCardRecs([]);
+    setEndCardError(null);
   }, [currentSrc?.src, currentEpisode?.id]);
 
   useEffect(() => {
@@ -299,6 +351,7 @@ export function CustomMediaPlayer({
     const handleTimeUpdate = () => {
       setCurrentTime(video.currentTime);
       void emitEvent("PLAY_END", { reason: "progress" }, false);
+      maybeShowEndCard();
     };
     const handleLoadedMetadata = () => {
       setDuration(video.duration);
@@ -310,6 +363,7 @@ export function CustomMediaPlayer({
     };
     const handleEnded = () => {
       setIsPlaying(false);
+      maybeShowEndCard();
       if (hasNext) {
         handleNext();
         return;
@@ -360,7 +414,7 @@ export function CustomMediaPlayer({
       video.removeEventListener("waiting", handleWaiting);
       video.removeEventListener("playing", handlePlaying);
     };
-  }, [emitEvent, hasNext, startTimeSeconds, currentSrc, activeSources, sendPlayStart]);
+  }, [emitEvent, hasNext, startTimeSeconds, currentSrc, activeSources, sendPlayStart, maybeShowEndCard]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -499,6 +553,73 @@ export function CustomMediaPlayer({
       switchEpisode(normalizedEpisodes[idx + 1]);
     }
   };
+
+  const fetchEndCardRecs = useCallback(async () => {
+    if (!accessToken || !titleId) {
+      setEndCardError("Sign in to see suggestions");
+      setEndCardRecs([]);
+      return;
+    }
+    try {
+      setEndCardLoading(true);
+      setEndCardError(null);
+      const recRes = await fetchBecauseYouWatched(accessToken, profileId, {
+        seed: String(titleId),
+        limit: 2,
+      });
+      const items = (recRes?.items ?? []).slice(0, 2).map((item: any, idx: number) => {
+        const fallbackImage = "https://placehold.co/600x900/111111/FD7E14?text=Wanzami";
+        return {
+          id: item?.id ?? item?.titleId ?? `${titleId}-rec-${idx}`,
+          backendId: item?.titleId ?? item?.id,
+          title: item?.name ?? item?.title ?? `Title ${item?.titleId ?? ""}`.trim(),
+          image: item?.thumbnailUrl || item?.posterUrl || fallbackImage,
+        };
+      });
+      setEndCardRecs(items);
+    } catch (err: any) {
+      setEndCardError(err?.message ?? "Could not load suggestions");
+      setEndCardRecs([]);
+    } finally {
+      setEndCardLoading(false);
+    }
+  }, [accessToken, profileId, titleId]);
+
+  const sendThumbFeedback = useCallback(
+    async (sentiment: "UP" | "DOWN") => {
+      setEndCardSentiment(sentiment);
+      markRatedEndcard(titleId, currentEpisode?.id);
+      if (accessToken && titleId) {
+        try {
+          await postEvents(
+            [
+              {
+                eventType: sentiment === "UP" ? "THUMBS_UP" : "THUMBS_DOWN",
+                titleId,
+                episodeId: currentEpisode?.id,
+                profileId,
+                deviceId,
+                metadata: {
+                  source: "endcard",
+                },
+              },
+            ],
+            accessToken
+          );
+        } catch {
+          // ignore send errors
+        }
+      }
+      void fetchEndCardRecs();
+    },
+    [accessToken, currentEpisode?.id, deviceId, fetchEndCardRecs, profileId, titleId]
+  );
+
+  const handleRecClick = useCallback((recId?: string, backendId?: string) => {
+    const target = backendId ?? recId;
+    if (!target) return;
+    window.location.href = `/title/${target}`;
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -890,6 +1011,84 @@ export function CustomMediaPlayer({
           </div>
         </div>
       </div>
+
+      {showEndCard && !alreadyRated && (
+        <div
+          className="absolute inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 md:p-8"
+          style={{ zIndex: 26 }}
+        >
+          <div className="w-full max-w-4xl bg-black/90 border border-white/10 rounded-2xl p-5 md:p-6 space-y-4 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-white text-xl font-semibold mb-1">Did you enjoy this?</p>
+                <p className="text-white/70 text-sm">Tell us so we can suggest what to watch next.</p>
+              </div>
+              <button
+                onClick={() => setShowEndCard(false)}
+                className="text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors"
+                aria-label="Dismiss end card"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => sendThumbFeedback("UP")}
+                disabled={endCardLoading}
+                className={`px-4 py-2 rounded-full flex items-center gap-2 border border-white/20 text-white hover:bg-white/10 transition-colors ${
+                  endCardSentiment === "UP" ? "bg-white/15 border-[#fd7e14]" : ""
+                } ${endCardLoading ? "opacity-70 cursor-not-allowed" : ""}`}
+              >
+                <ThumbsUp className="w-4 h-4" />
+                <span>Like</span>
+              </button>
+              <button
+                onClick={() => sendThumbFeedback("DOWN")}
+                disabled={endCardLoading}
+                className={`px-4 py-2 rounded-full flex items-center gap-2 border border-white/20 text-white hover:bg-white/10 transition-colors ${
+                  endCardSentiment === "DOWN" ? "bg-white/15 border-[#fd7e14]" : ""
+                } ${endCardLoading ? "opacity-70 cursor-not-allowed" : ""}`}
+              >
+                <ThumbsDown className="w-4 h-4" />
+                <span>Dislike</span>
+              </button>
+              {endCardLoading ? (
+                <div className="text-white/70 flex items-center gap-2 text-sm">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Updating suggestions...
+                </div>
+              ) : null}
+              {endCardError ? <div className="text-red-300 text-sm">{endCardError}</div> : null}
+            </div>
+
+            {endCardRecs.length > 0 && (
+              <div>
+                <p className="text-white text-sm mb-3">Because you watched:</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {endCardRecs.map((rec) => (
+                    <button
+                      key={rec.id}
+                      onClick={() => handleRecClick(rec.id, rec.backendId)}
+                      className="group w-full flex items-center gap-3 bg-white/5 hover:bg-white/10 rounded-xl p-3 text-left transition-colors"
+                    >
+                      <div className="w-20 h-28 rounded-lg overflow-hidden bg-black/30 flex-shrink-0">
+                        <img src={rec.image} alt={rec.title} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white font-semibold truncate group-hover:text-[#fd7e14] transition-colors">
+                          {rec.title}
+                        </p>
+                        <p className="text-white/60 text-xs">Play next</p>
+                      </div>
+                      <Play className="w-5 h-5 text-white/70 group-hover:text-white" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {showEpisodePanel && normalizedEpisodes.length > 0 && (
         <div className="fixed inset-0 bg-black/95 overflow-y-auto">

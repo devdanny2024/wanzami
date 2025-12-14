@@ -202,6 +202,8 @@ export default function PlayerPage({ params }: { params: { id: string } }) {
         poster={title.thumbnailUrl ?? title.posterUrl}
         previewSpriteUrl={title.previewSpriteUrl}
         previewVttUrl={title.previewVttUrl}
+        enableEndCardRating={title.enableEndCardRating ?? true}
+        endCreditsStart={title.endCreditsStart ?? undefined}
         sources={sources}
         episodes={title.episodes}
         currentEpisodeId={episodeId ?? activeEpisode?.id}
