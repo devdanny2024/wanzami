@@ -16,6 +16,7 @@ interface HomePageProps {
   becauseYouWatched?: any[];
   recsLoading?: boolean;
   recsError?: string | null;
+  showGenreRows?: boolean; // disable genre rows on home; can enable on dedicated pages
 }
 
 function buildGenreRows(items: MovieData[], labelSuffix: string, maxSections = 6, maxItems = 18) {
@@ -51,6 +52,7 @@ export function HomePage({
   becauseYouWatched = [],
   recsLoading,
   recsError,
+  showGenreRows = false,
 }: HomePageProps) {
   const sortedMovies = [...movies].sort((a, b) => {
     const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
@@ -82,8 +84,8 @@ export function HomePage({
   const trendingMovies = (trending ?? []).filter((t) => t.type === "MOVIE");
   const trendingSeries = (trendingSeriesProp ?? trending ?? []).filter((t) => t.type === "SERIES");
 
-  const movieGenreRows = buildGenreRows(moviesOnly, "Movies");
-  const seriesGenreRows = buildGenreRows(seriesOnly, "Series");
+  const movieGenreRows = showGenreRows ? buildGenreRows(moviesOnly, "Movies") : [];
+  const seriesGenreRows = showGenreRows ? buildGenreRows(seriesOnly, "Series") : [];
 
   const hasCatalog = movies.length > 0;
 
