@@ -231,7 +231,7 @@ export function AddEditSeriesForm({
             placeholder="Enter series description"
           />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div>
             <Label className="text-neutral-300">Genres</Label>
             <div className="mt-1 flex flex-wrap gap-2">
@@ -259,7 +259,7 @@ export function AddEditSeriesForm({
           <div>
             <Label className="text-neutral-300">Language</Label>
             <Select value={language} onValueChange={setLanguage}>
-              <SelectTrigger className="mt-1 bg-neutral-950 border-neutral-800 text-white">
+              <SelectTrigger className="mt-1 bg-neutral-950 border-neutral-800 text-white w-full min-w-0">
                 <SelectValue placeholder="Select language" />
               </SelectTrigger>
               <SelectContent className="bg-neutral-900 border-neutral-800">
