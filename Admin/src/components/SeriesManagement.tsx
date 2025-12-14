@@ -29,7 +29,8 @@ type Episode = {
   introStartSec?: number | null;
   introEndSec?: number | null;
   previewVttUrl?: string | null;
-  archived?: boolean;
+  pendingReview?: boolean;
+  seasonId?: string | number | null;
 };
 
 export function SeriesManagement() {
@@ -252,9 +253,13 @@ function AddEpisodesDialog({
   const [weeklySaving, setWeeklySaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
+  const [seasons, setSeasons] = useState<any[]>([]);
   const [loadingEpisodes, setLoadingEpisodes] = useState(false);
+  const [loadingSeasons, setLoadingSeasons] = useState(false);
   const [deletingId, setDeletingId] = useState<string | number | null>(null);
   const [archivingId, setArchivingId] = useState<string | number | null>(null);
+  const [publishingId, setPublishingId] = useState<string | number | null>(null);
+  const [seasonUpdatingId, setSeasonUpdatingId] = useState<string | number | null>(null);
 
   useEffect(() => {
     if (series) {
@@ -277,11 +282,28 @@ function AddEpisodesDialog({
     }
   };
 
+  const loadSeasons = async () => {
+    if (!series) return;
+    setLoadingSeasons(true);
+    try {
+      const res = await authFetch(`/admin/titles/${series.id}/seasons`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        setSeasons(((res.data as any)?.seasons ?? []) as any[]);
+      }
+    } finally {
+      setLoadingSeasons(false);
+    }
+  };
+
   useEffect(() => {
     if (open && series) {
       void loadEpisodes();
+      void loadSeasons();
     } else {
       setEpisodes([]);
+      setSeasons([]);
     }
   }, [open, series?.id]);
 
@@ -302,7 +324,32 @@ function AddEpisodesDialog({
     }
   };
 
-  const handleArchiveEpisode = async (epId: string | number | undefined, archive: boolean) => {
+  const handlePublishEpisode = async (epId: string | number | undefined) => {
+    if (!epId) return;
+    setPublishingId(epId);
+    try {
+      const res = await authFetch(`/admin/episodes/${epId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ pendingReview: false }),
+      });
+      if (!res.ok) throw new Error((res.data as any)?.message || "Failed to publish episode");
+      await loadEpisodes();
+    } catch (err: any) {
+      setError(err?.message || "Publish failed");
+    } finally {
+      setPublishingId(null);
+    }
+  };
+
+  const handleArchiveEpisode = async (epId: string | number | undefined) => {
+    await handleArchiveEpisodeToggle(epId, true);
+  };
+
+  const handleArchiveEpisodeToggle = async (epId: string | number | undefined, pending: boolean) => {
     if (!epId) return;
     setArchivingId(epId);
     try {
@@ -312,14 +359,54 @@ function AddEpisodesDialog({
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ archived: archive }),
+        body: JSON.stringify({ pendingReview: pending }),
       });
       if (!res.ok) throw new Error((res.data as any)?.message || "Failed to update episode");
       await loadEpisodes();
     } catch (err: any) {
-      setError(err?.message || "Archive failed");
+      setError(err?.message || "Update failed");
     } finally {
       setArchivingId(null);
+    }
+  };
+
+  const handleSeasonStatus = async (seasonId: string | number | undefined, status: string) => {
+    if (!seasonId) return;
+    setSeasonUpdatingId(seasonId);
+    try {
+      const res = await authFetch(`/admin/seasons/${seasonId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) throw new Error((res.data as any)?.message || "Failed to update season");
+      await loadSeasons();
+      await loadEpisodes();
+    } catch (err: any) {
+      setError(err?.message || "Season update failed");
+    } finally {
+      setSeasonUpdatingId(null);
+    }
+  };
+
+  const handleDeleteSeason = async (seasonId: string | number | undefined) => {
+    if (!seasonId) return;
+    setSeasonUpdatingId(seasonId);
+    try {
+      const res = await authFetch(`/admin/seasons/${seasonId}`, {
+        method: "DELETE",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error((res.data as any)?.message || "Failed to delete season");
+      await loadSeasons();
+      await loadEpisodes();
+    } catch (err: any) {
+      setError(err?.message || "Delete season failed");
+    } finally {
+      setSeasonUpdatingId(null);
     }
   };
 
@@ -507,11 +594,40 @@ function AddEpisodesDialog({
                 const seasonEps = episodes
                   .filter((e) => e.seasonNumber === season)
                   .sort((a, b) => (a.episodeNumber || 0) - (b.episodeNumber || 0));
+                const seasonMeta = seasons.find((s) => Number(s.seasonNumber) === Number(season));
                 return (
                   <div key={season} className="border border-neutral-800 rounded-lg p-3 bg-neutral-950/50">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-neutral-200 font-semibold">Season {season}</span>
-                      <span className="text-neutral-500 text-xs">{seasonEps.length} episodes</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-neutral-200 font-semibold">Season {season}</span>
+                        {seasonMeta?.status && (
+                          <span className="text-xs text-neutral-500">Status: {seasonMeta.status}</span>
+                        )}
+                        {loadingSeasons && <span className="text-xs text-neutral-500">…</span>}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs">
+                        <button
+                          className="px-2 py-1 rounded border border-neutral-700 text-neutral-300 hover:text-white disabled:opacity-50"
+                          onClick={() => handleSeasonStatus(seasonMeta?.id, "PUBLISHED")}
+                          disabled={!seasonMeta?.id || seasonUpdatingId === seasonMeta?.id}
+                        >
+                          {seasonUpdatingId === seasonMeta?.id ? "…" : "Publish"}
+                        </button>
+                        <button
+                          className="px-2 py-1 rounded border border-neutral-700 text-neutral-300 hover:text-white disabled:opacity-50"
+                          onClick={() => handleSeasonStatus(seasonMeta?.id, "ARCHIVED")}
+                          disabled={!seasonMeta?.id || seasonUpdatingId === seasonMeta?.id}
+                        >
+                          Archive
+                        </button>
+                        <button
+                          className="px-2 py-1 rounded border border-red-700 text-red-400 hover:text-red-200 disabled:opacity-50"
+                          onClick={() => handleDeleteSeason(seasonMeta?.id)}
+                          disabled={!seasonMeta?.id || seasonUpdatingId === seasonMeta?.id}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                     <div className="space-y-1">
                       {seasonEps.map((ep) => (
@@ -534,11 +650,19 @@ function AddEpisodesDialog({
                             {ep.previewVttUrl && <span className="text-[#fd7e14]">VTT</span>}
                             <button
                               className="text-xs text-neutral-400 hover:text-white p-1 rounded border border-neutral-700"
-                              onClick={() => handleArchiveEpisode(ep.id, !(ep.archived ?? false))}
-                              disabled={archivingId === ep.id}
-                              title={ep.archived ? "Unarchive" : "Archive"}
+                              onClick={() => handlePublishEpisode(ep.id)}
+                              disabled={publishingId === ep.id}
+                              title="Publish"
                             >
-                              {archivingId === ep.id ? "…" : ep.archived ? "Unarchive" : "Archive"}
+                              {publishingId === ep.id ? "…" : "Publish"}
+                            </button>
+                            <button
+                              className="text-xs text-neutral-400 hover:text-white p-1 rounded border border-neutral-700"
+                              onClick={() => handleArchiveEpisodeToggle(ep.id, true)}
+                              disabled={archivingId === ep.id}
+                              title="Archive"
+                            >
+                              {archivingId === ep.id ? "…" : "Archive"}
                             </button>
                             <button
                               className="text-red-400 hover:text-red-300 p-1"

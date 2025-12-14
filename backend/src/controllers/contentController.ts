@@ -757,6 +757,19 @@ export const updateEpisode = async (req: Request, res: Response) => {
   });
 };
 
+export const deleteEpisode = async (req: Request, res: Response) => {
+  const episodeId = req.params.episodeId ? BigInt(req.params.episodeId) : null;
+  if (!episodeId) return res.status(400).json({ message: "Missing episode id" });
+  await prisma.$transaction([
+    prisma.assetVersion.deleteMany({ where: { episodeId } }),
+    prisma.uploadJob.deleteMany({ where: { episodeId } }),
+    prisma.engagementEvent.deleteMany({ where: { episodeId } }),
+    prisma.episode.delete({ where: { id: episodeId } }),
+  ]);
+  void auditLog({ action: "EPISODE_DELETE", resource: episodeId.toString() });
+  return res.status(204).send();
+};
+
 export const listSeasonsForTitle = async (req: Request, res: Response) => {
   const titleId = req.params.id ? BigInt(req.params.id) : null;
   if (!titleId) return res.status(400).json({ message: "Missing title id" });
@@ -871,9 +884,9 @@ export const updateSeason = async (req: Request, res: Response) => {
       status?: string;
       posterUrl?: string;
       thumbnailUrl?: string;
-      previewSpriteUrl?: string;
-      previewVttUrl?: string;
-    };
+    previewSpriteUrl?: string;
+    previewVttUrl?: string;
+  };
   const data: any = {};
   if (seasonNumber !== undefined) data.seasonNumber = seasonNumber;
   if (name !== undefined) data.name = name;
@@ -907,6 +920,28 @@ export const updateSeason = async (req: Request, res: Response) => {
       updatedAt: season.updatedAt,
     },
   });
+};
+
+export const deleteSeason = async (req: Request, res: Response) => {
+  const seasonId = req.params.seasonId ? BigInt(req.params.seasonId) : null;
+  if (!seasonId) return res.status(400).json({ message: "Missing season id" });
+
+  const episodes = await prisma.episode.findMany({
+    where: { seasonId },
+    select: { id: true },
+  });
+  const episodeIds = episodes.map((e) => e.id);
+
+  await prisma.$transaction([
+    prisma.assetVersion.deleteMany({ where: { episodeId: { in: episodeIds } } }),
+    prisma.uploadJob.deleteMany({ where: { episodeId: { in: episodeIds } } }),
+    prisma.engagementEvent.deleteMany({ where: { episodeId: { in: episodeIds } } }),
+    prisma.episode.deleteMany({ where: { id: { in: episodeIds } } }),
+    prisma.season.delete({ where: { id: seasonId } }),
+  ]);
+
+  void auditLog({ action: "SEASON_DELETE", resource: seasonId.toString(), detail: { episodes: episodeIds.length } });
+  return res.status(204).send();
 };
 
 export const presignAsset = async (req: Request, res: Response) => {

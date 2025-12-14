@@ -13,9 +13,11 @@ import {
   deleteTitle,
   createEpisode,
   updateEpisode,
+  deleteEpisode,
   listSeasonsForTitle,
   upsertSeasonsForTitle,
   updateSeason,
+  deleteSeason,
 } from "../controllers/contentController.js";
 
 const router = Router();
@@ -34,8 +36,10 @@ router.post("/admin/titles/:id/publish", requireAuth, requireAdmin, publishTitle
 router.delete("/admin/titles/:id", requireAuth, requireAdmin, deleteTitle);
 router.post("/admin/titles/:id/episodes", requireAuth, requireAdmin, createEpisode);
 router.patch("/admin/episodes/:episodeId", requireAuth, requireAdmin, updateEpisode);
+router.delete("/admin/episodes/:episodeId", requireAuth, requireAdmin, deleteEpisode);
 router.post("/admin/titles/:id/seasons", requireAuth, requireAdmin, upsertSeasonsForTitle);
 router.patch("/admin/seasons/:seasonId", requireAuth, requireAdmin, updateSeason);
+router.delete("/admin/seasons/:seasonId", requireAuth, requireAdmin, deleteSeason);
 router.post("/admin/assets/presign", requireAuth, requireAdmin, presignAsset);
 router.post("/admin/assets/get-url", requireAuth, requireAdmin, presignAssetRead);
 
