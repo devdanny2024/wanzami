@@ -88,6 +88,8 @@ export function CustomMediaPlayer({
   episodes = [],
   currentEpisodeId,
   startTimeSeconds,
+  enableEndCardRating,
+  endCreditsStart,
 }: CustomMediaPlayerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
