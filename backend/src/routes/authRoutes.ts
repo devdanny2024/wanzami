@@ -6,6 +6,7 @@ import {
   me,
   refresh,
   signup,
+  completeOnboarding,
   googleAuthUrl,
   googleAuthCallback,
   verifyEmail,
@@ -51,6 +52,7 @@ router.post("/auth/resend-verification", resendVerification);
 router.post("/auth/device-label", requireAuth, updateDeviceLabel);
 router.post("/auth/forgot-password", forgotPassword);
 router.post("/auth/reset-password", resetPassword);
+router.post("/auth/complete-onboarding", requireAuth, completeOnboarding);
 router.get("/auth/me", requireAuth, me);
 router.get("/auth/google/url", googleAuthUrl);
 router.post("/auth/google/callback", googleAuthCallback);

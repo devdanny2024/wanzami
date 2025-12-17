@@ -139,15 +139,40 @@ export const googleAuthCallback = async (input: GoogleCallbackInput) => {
   }
 
   const emailLower = profile.email.toLowerCase();
-  const user = await prisma.user.findUnique({ where: { email: emailLower } });
+  let user = await prisma.user.findUnique({ where: { email: emailLower } });
+  let isNewUser = false;
 
   if (!user) {
-    const err: any = new Error("No account exists for this Google email. Please sign up first.");
-    err.code = "ACCOUNT_NOT_FOUND_FOR_GOOGLE";
-    throw err;
-  }
+    const randomPassword = crypto.randomUUID() + "_google";
+    const passwordHash = await hashPassword(randomPassword);
+    user = await prisma.user.create({
+      data: {
+        email: emailLower,
+        password: passwordHash,
+        name: profile.name || emailLower,
+        role: "USER",
+        emailVerified: true,
+      },
+    });
+    isNewUser = true;
 
-  if (!user.emailVerified) {
+    await prisma.profile.create({
+      data: {
+        userId: user.id,
+        name: profile.name || "Primary",
+      },
+    });
+
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: "Welcome to Wanzami",
+        html: welcomeEmailTemplate({ name: user.name || user.email }),
+      });
+    } catch {
+      // Best-effort welcome email – failures shouldn't block login
+    }
+  } else if (!user.emailVerified) {
     await prisma.user.update({
       where: { id: user.id },
       data: { emailVerified: true, name: user.name || profile.name || emailLower },
@@ -181,5 +206,8 @@ export const googleAuthCallback = async (input: GoogleCallbackInput) => {
     },
   });
 
-  return { accessToken, refreshToken, deviceId };
+  // For now we trigger onboarding only the first time a Google account is used
+  const needsOnboarding = isNewUser;
+
+  return { accessToken, refreshToken, deviceId, needsOnboarding };
 };

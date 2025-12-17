@@ -32,6 +32,12 @@ const registerSchema = z.object({
   birthYear: z.number().int().min(1900).max(new Date().getFullYear()).optional(),
 });
 
+const onboardingSchema = z.object({
+  preferredGenres: z.array(z.string()).min(1),
+  heardFrom: z.string().optional(),
+  birthYear: z.number().int().min(1900).max(new Date().getFullYear()).optional(),
+});
+
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
@@ -306,6 +312,51 @@ export const googleAuthCallback = async (req: Request, res: Response) => {
     }
     return res.status(400).json({ message: msg });
   }
+};
+
+export const completeOnboarding = async (req: AuthenticatedRequest, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const parsed = onboardingSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ errors: parsed.error.flatten() });
+  }
+
+  const { preferredGenres, heardFrom, birthYear } = parsed.data;
+  const userId = req.user.userId;
+
+  let profile = await prisma.profile.findFirst({
+    where: { userId },
+    orderBy: { createdAt: "asc" },
+  });
+
+  if (!profile) {
+    profile = await prisma.profile.create({
+      data: {
+        userId,
+        name: "Primary",
+      },
+    });
+  }
+
+  const existingPrefs: any = profile.preferences ?? {};
+  const newPrefs = {
+    ...existingPrefs,
+    preferredGenres,
+    heardFrom,
+  };
+
+  await prisma.profile.update({
+    where: { id: profile.id },
+    data: {
+      preferences: newPrefs,
+      birthYear: birthYear ?? profile.birthYear,
+    },
+  });
+
+  return res.json({ ok: true });
 };
 
 export const login = async (req: Request, res: Response) => {

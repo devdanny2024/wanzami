@@ -37,7 +37,7 @@ function CallbackContent() {
           const apiCode = data?.code as string | undefined;
           const msg =
             apiCode === "ACCOUNT_NOT_FOUND_FOR_GOOGLE"
-              ? "We couldn't find a Wanzami account for this Google email. Please sign up first, then use Google to sign in."
+              ? "We couldn't complete Google sign-in for this email. Please try signing up first, then use Google to sign in."
               : data?.message ?? "Unable to complete Google sign-in.";
           setStatus("error");
           setMessage(msg);
@@ -48,11 +48,20 @@ function CallbackContent() {
         if (data.refreshToken) localStorage.setItem("refreshToken", data.refreshToken);
         if (data.deviceId) localStorage.setItem("deviceId", data.deviceId);
         setStatus("success");
-        setMessage("Signed in with Google. Redirecting...");
-        setTimeout(() => {
-          router.replace("/");
-          window.location.href = "/";
-        }, 500);
+        const needsOnboarding = Boolean(data.needsOnboarding);
+        if (needsOnboarding) {
+          setMessage("Welcome to Wanzami. Let\u2019s personalize your experience.");
+          setTimeout(() => {
+            router.replace("/onboarding");
+            window.location.href = "/onboarding";
+          }, 500);
+        } else {
+          setMessage("Signed in with Google. Redirecting...");
+          setTimeout(() => {
+            router.replace("/");
+            window.location.href = "/";
+          }, 500);
+        }
        } catch (err) {
         setStatus("error");
         setMessage("Something went wrong while connecting Google. Please try again.");

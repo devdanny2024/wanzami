@@ -67,6 +67,7 @@ function StepOne({
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const validateAndProceed = () => {
     const newErrors: Record<string, string> = {};
@@ -82,6 +83,29 @@ function StepOne({
     else if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = "Passwords do not match";
     setErrors(newErrors);
     if (Object.keys(newErrors).length === 0) onNext();
+  };
+
+  const handleGoogleSignup = async () => {
+    setErrors((prev) => {
+      const { global, ...rest } = prev;
+      return rest;
+    });
+    setGoogleLoading(true);
+    try {
+      const redirectUri = `${window.location.origin}/oauth/google/callback`;
+      const res = await fetch(`/api/auth/google/url?redirectUri=${encodeURIComponent(redirectUri)}`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.url) {
+        const msg = data?.message ?? "Google sign-up unavailable right now.";
+        toast.error(msg);
+        return;
+      }
+      window.location.href = data.url as string;
+    } catch (err) {
+      toast.error("Unable to start Google sign-up. Please try again.");
+    } finally {
+      setGoogleLoading(false);
+    }
   };
 
   return (
@@ -104,8 +128,9 @@ function StepOne({
         </button>
         <button
           type="button"
-          onClick={() => toast.info("Google sign-up is coming soon.")}
-          className="w-full bg-white hover:bg-white/90 text-black py-3 rounded-lg transition-colors flex items-center justify-center gap-3"
+          onClick={handleGoogleSignup}
+          disabled={googleLoading}
+          className="w-full bg-white hover:bg-white/90 text-black py-3 rounded-lg transition-colors flex items-center justify-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden>
             <path
