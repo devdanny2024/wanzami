@@ -175,6 +175,9 @@ export default function HomeRoute() {
 
         // Helper that can handle both popularity snapshots ({ titleId })
         // and recommendation payloads ({ id, name, ... }).
+        // We only surface items that have a matching title in the
+        // current catalog so the UI never shows "ghost" titles that
+        // no longer exist in the backend.
         const mapItems = (
           items: Array<
             {
@@ -192,7 +195,6 @@ export default function HomeRoute() {
           > = [],
         ) => {
           const mapped: MovieData[] = [];
-          const fallbackImage = "https://placehold.co/600x900/111111/FD7E14?text=Wanzami";
 
           items.forEach((item, idx) => {
             const backendIdRaw = item.titleId ?? item.id;
@@ -202,18 +204,6 @@ export default function HomeRoute() {
             const match = catalogMovies.find((m) => m.backendId === backendId);
             if (match) {
               mapped.push(match);
-            } else {
-              mapped.push({
-                id: Number(backendId) || Date.now() + idx,
-                backendId,
-                title: item.name ?? `Title ${backendId}`,
-                image: item.thumbnailUrl || item.posterUrl || fallbackImage,
-                type: (item.type as any) ?? "MOVIE",
-                runtimeMinutes: item.runtimeMinutes ?? 0,
-                genres: item.genres,
-                maturityRating: item.maturityRating ?? "PG",
-                isOriginal: item.isOriginal ?? false,
-              } as MovieData);
             }
           });
           return mapped;
