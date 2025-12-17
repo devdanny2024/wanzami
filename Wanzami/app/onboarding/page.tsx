@@ -199,6 +199,32 @@ export default function OnboardingPage() {
     heardOther: "",
   });
 
+  const ensureAccessToken = async (): Promise<string | null> => {
+    if (typeof window === "undefined") return null;
+    let token = localStorage.getItem("accessToken");
+    if (token) return token;
+
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (!refreshToken) return null;
+
+    try {
+      const res = await fetch("/api/auth/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.accessToken) return null;
+
+      localStorage.setItem("accessToken", data.accessToken);
+      if (data.refreshToken) localStorage.setItem("refreshToken", data.refreshToken);
+      if (data.deviceId) localStorage.setItem("deviceId", data.deviceId);
+      return data.accessToken as string;
+    } catch {
+      return null;
+    }
+  };
+
   const handleSave = async () => {
     const preferredGenres = Object.keys(form.preferredGenres);
     if (!preferredGenres.length) {
@@ -212,7 +238,7 @@ export default function OnboardingPage() {
       return;
     }
 
-    const accessToken = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    const accessToken = await ensureAccessToken();
     if (!accessToken) {
       toast.error("Your session expired. Please sign in again.");
       router.replace("/login");
@@ -238,8 +264,8 @@ export default function OnboardingPage() {
         toast.error(msg);
         return;
       }
-      toast.success("Preferences saved. Enjoy Wanzami!");
-      router.replace("/");
+      toast.success("Preferences saved. Pick a profile to start watching.");
+      router.replace("/profiles");
     } catch {
       toast.error("Something went wrong while saving your preferences. Please try again.");
     } finally {
@@ -329,4 +355,3 @@ export default function OnboardingPage() {
     </div>
   );
 }
-
