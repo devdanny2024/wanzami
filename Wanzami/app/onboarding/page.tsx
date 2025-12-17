@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { Check, Instagram, Users, Search, Tv, Youtube, Radio, Facebook, Twitter } from "lucide-react";
 import { toast } from "sonner";
 import { TopLoader } from "@/components/TopLoader";
+import Image from "next/image";
+import whiteLogo from "../../src/assets/WhiteWanzmiiLogo.png";
 
 type Step = 1 | 2;
 
@@ -274,10 +276,14 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-black text-white flex flex-col">
       <TopLoader active={loading} />
-      <div className="max-w-6xl mx-auto px-6 py-10">
-        <div className="mb-10">
+      <div className="w-full flex justify-center pt-6">
+        <Image src={whiteLogo} alt="Wanzami" width={80} height={80} priority />
+      </div>
+
+      <div className="flex-1 max-w-6xl mx-auto px-6 py-10">
+        <div className="mb-10 text-center md:text-left">
           <h1 className="text-3xl md:text-4xl font-semibold mb-2">Let&apos;s personalize Wanzami for you</h1>
           <p className="text-white/70">
             Choose the genres you love and tell us how you discovered Wanzami. This helps power your For You
