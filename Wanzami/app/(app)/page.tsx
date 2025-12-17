@@ -119,8 +119,31 @@ export default function HomeRoute() {
                 ? item.percent_complete
                 : undefined;
 
+            // Try to find a resume position in seconds, falling back to
+            // completion percent + runtime minutes when available.
+            const runtimeMinutes =
+              (match?.runtimeMinutes as number | null | undefined) ??
+              (item.runtimeMinutes as number | null | undefined) ??
+              null;
+            let resumePositionSec: number | undefined;
+            if (typeof item.positionSec === "number") {
+              resumePositionSec = item.positionSec;
+            } else if (typeof item.resumePositionSec === "number") {
+              resumePositionSec = item.resumePositionSec;
+            } else if (typeof item.lastPositionSec === "number") {
+              resumePositionSec = item.lastPositionSec;
+            } else if (typeof item.metadata?.positionSec === "number") {
+              resumePositionSec = item.metadata.positionSec;
+            } else if (typeof completion === "number" && runtimeMinutes && runtimeMinutes > 0) {
+              resumePositionSec = completion * (runtimeMinutes * 60);
+            }
+
             if (match) {
-              cwMapped.push({ ...match, completionPercent: completion });
+              cwMapped.push({
+                ...match,
+                completionPercent: completion ?? match.completionPercent,
+                resumePositionSec: resumePositionSec ?? match.resumePositionSec,
+              });
             } else {
               cwMapped.push({
                 id: Number(backendId) || Date.now() + idx,
@@ -128,11 +151,12 @@ export default function HomeRoute() {
                 title: item.name ?? `Title ${backendId}`,
                 image: item.thumbnailUrl || item.posterUrl || fallbackImage,
                 type: (item.type as any) ?? "MOVIE",
-                runtimeMinutes: item.runtimeMinutes ?? 0,
+                runtimeMinutes,
                 genres: item.genres,
                 maturityRating: item.maturityRating ?? "PG",
                 isOriginal: item.isOriginal ?? false,
                 completionPercent: completion,
+                resumePositionSec,
               } as MovieData);
             }
           });
@@ -265,7 +289,13 @@ export default function HomeRoute() {
   const handleResumeClick = (movie: any) => {
     const targetId = movie?.backendId ?? movie?.id;
     if (targetId) {
-      window.location.href = `/player/${targetId}`;
+      const resume = (movie as any)?.resumePositionSec;
+      if (typeof resume === "number" && resume > 0) {
+        const safe = Math.max(0, Math.floor(resume));
+        window.location.href = `/player/${targetId}?startTime=${safe}`;
+      } else {
+        window.location.href = `/player/${targetId}`;
+      }
     }
   };
 

@@ -23,6 +23,7 @@ export interface MovieData {
   runtimeMinutes?: number | null;
   currentEpisodeId?: string;
   currentEpisodeLabel?: string;
+  resumePositionSec?: number;
   isOriginal?: boolean;
   assetVersions?: any;
   maturityRating?: string | null;
