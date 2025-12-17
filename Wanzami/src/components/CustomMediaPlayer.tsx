@@ -297,6 +297,30 @@ export function CustomMediaPlayer({
     }
   }, [alreadyRated, currentTime, duration, endCardEnabled, endCardTriggerTime, showEndCard]);
 
+  // Show end-card when the viewer seeks close to the trigger time
+  useEffect(() => {
+    if (!endCardEnabled) return;
+    if (alreadyRated) return;
+    if (showEndCard || endCardShownRef.current) return;
+    if (duration <= 0 || !Number.isFinite(endCardTriggerTime)) return;
+
+    const threshold = Math.max(endCardTriggerTime - 1, 0);
+    if (currentTime >= threshold) {
+      endCardShownRef.current = true;
+      setShowEndCard(true);
+      setEndCardSentiment(null);
+      setEndCardError(null);
+      setEndCardRecs([]);
+    }
+  }, [
+    alreadyRated,
+    currentTime,
+    duration,
+    endCardEnabled,
+    endCardTriggerTime,
+    showEndCard,
+  ]);
+
   const sendPlayStart = useCallback(
     (reason: string) => {
       if (hasSentStart.current) return;
@@ -622,6 +646,20 @@ export function CustomMediaPlayer({
     if (!target) return;
     window.location.href = `/title/${target}`;
   }, []);
+
+  const handleEndCardSkip = () => {
+    setShowEndCard(false);
+  };
+
+  const handleEndCardEnter = () => {
+    if (!endCardRecs.length) {
+      setShowEndCard(false);
+      return;
+    }
+    const first = endCardRecs[0];
+    setShowEndCard(false);
+    handleRecClick(first.id, first.backendId);
+  };
 
   useEffect(() => {
     return () => {
@@ -1088,6 +1126,24 @@ export function CustomMediaPlayer({
                 </div>
               </div>
             )}
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleEndCardSkip}
+                className="px-4 py-2 rounded-full border border-white/30 text-white/80 hover:bg-white/10 text-sm md:text-base"
+              >
+                Skip
+              </button>
+              <button
+                type="button"
+                onClick={handleEndCardEnter}
+                disabled={endCardRecs.length === 0}
+                className="px-4 py-2 rounded-full bg-[#fd7e14] hover:bg-[#ff8b2b] text-sm md:text-base text-white disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                Enter
+              </button>
+            </div>
           </div>
         </div>
       )}
