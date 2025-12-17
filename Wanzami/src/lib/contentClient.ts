@@ -34,7 +34,9 @@ export type Title = {
   }[];
 };
 
-const DEFAULT_TIMEOUT = 8000;
+// Give home-page catalog/recs enough time to return, especially right
+// after login when cold caches or slow networks can add latency.
+const DEFAULT_TIMEOUT = 30000;
 
 async function handleJsonResponse(res: Response) {
   const data = await res.json().catch(() => ({}));

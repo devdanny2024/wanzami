@@ -69,8 +69,14 @@ export default function HomeRoute() {
           });
         setCatalogMovies(mapped);
       } catch (err: any) {
+        // Ignore aborts from route changes / React re-renders so we don't
+        // show scary errors like "signal is aborted without reason".
+        if (err?.name === "AbortError") {
+          if (isMounted) setCatalogError(null);
+          return;
+        }
         const msg = err?.message ?? "Failed to load catalog";
-        setCatalogError(msg);
+        if (isMounted) setCatalogError(msg);
       } finally {
         if (isMounted) setCatalogLoading(false);
       }
