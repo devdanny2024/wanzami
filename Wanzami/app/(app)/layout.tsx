@@ -68,6 +68,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const currentPage = useMemo(() => {
     if (!pathname) return "home";
     if (pathname.startsWith("/search")) return "search";
+    if (pathname.startsWith("/onboarding")) return "home";
     if (pathname.startsWith("/dashboard")) return "dashboard";
     if (pathname.startsWith("/settings")) return "settings";
     if (pathname.startsWith("/payment")) return "payment";
@@ -85,6 +86,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (typeof window === "undefined") return;
     const run = async () => {
       const isProfileRoute = pathname?.startsWith("/profiles");
+      const isOnboardingRoute = pathname?.startsWith("/onboarding");
       const isAuthRoute =
         pathname?.startsWith("/login") ||
         pathname?.startsWith("/register") ||
@@ -92,10 +94,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         pathname?.startsWith("/reset-password") ||
         pathname?.startsWith("/verify-email") ||
         pathname?.startsWith("/oauth/");
+      const isAuthOrOnboardingRoute = isAuthRoute || isOnboardingRoute;
       const isSplashRoute = pathname?.startsWith("/splash");
       let token = localStorage.getItem("accessToken");
 
-      if (!token && !isAuthRoute && !isSplashRoute) {
+      if (!token && !isAuthOrOnboardingRoute && !isSplashRoute) {
         const refreshed = await refreshSession();
         token = refreshed ? localStorage.getItem("accessToken") : null;
         if (!token) {
@@ -106,7 +109,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       }
 
       const profileId = localStorage.getItem("activeProfileId");
-      if (token && !profileId && !isAuthRoute && !isProfileRoute) {
+      if (token && !profileId && !isAuthOrOnboardingRoute && !isProfileRoute) {
         setCanRenderShell(false);
         router.replace("/profiles");
         return;
