@@ -140,7 +140,6 @@ export const googleAuthCallback = async (input: GoogleCallbackInput) => {
 
   const emailLower = profile.email.toLowerCase();
   let user = await prisma.user.findUnique({ where: { email: emailLower } });
-  let isNewUser = false;
 
   if (!user) {
     const randomPassword = crypto.randomUUID() + "_google";
@@ -154,7 +153,6 @@ export const googleAuthCallback = async (input: GoogleCallbackInput) => {
         emailVerified: true,
       },
     });
-    isNewUser = true;
 
     await prisma.profile.create({
       data: {
@@ -178,6 +176,16 @@ export const googleAuthCallback = async (input: GoogleCallbackInput) => {
       data: { emailVerified: true, name: user.name || profile.name || emailLower },
     });
   }
+
+  // Ensure we have at least one profile and check whether onboarding has already been completed
+  const profiles = await ensureProfileExists(user.id, profile.name || user.name || emailLower);
+  const primaryProfile = profiles[0];
+  const rawPrefs = (primaryProfile.preferences ?? {}) as unknown as {
+    preferredGenres?: string[];
+    [key: string]: unknown;
+  };
+  const hasPreferredGenres =
+    Array.isArray(rawPrefs.preferredGenres) && rawPrefs.preferredGenres.length > 0;
 
   const deviceId = crypto.randomUUID();
   const permissions = getPermissionsForRole(user.role);
@@ -206,8 +214,8 @@ export const googleAuthCallback = async (input: GoogleCallbackInput) => {
     },
   });
 
-  // For now we trigger onboarding only the first time a Google account is used
-  const needsOnboarding = isNewUser;
+  // Trigger onboarding whenever the primary profile has no saved preferred genres yet
+  const needsOnboarding = !hasPreferredGenres;
 
   return { accessToken, refreshToken, deviceId, needsOnboarding };
 };
