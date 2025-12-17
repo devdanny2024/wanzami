@@ -90,9 +90,10 @@ export const continueWatching = async (req: AuthenticatedRequest, res: Response)
       }
     }
     if (!Number.isFinite(completion)) continue;
-    // Treat titles as "finished" only when >= 98% complete so that
-    // almost-finished plays still show up in Continue Watching.
-    if (completion >= 0.98) continue;
+    // Ignore zero/negative completion (no real progress), but do not
+    // filter out near‑finished titles here. This makes the surface
+    // more forgiving when metadata rounding pushes completion to 1.
+    if (completion <= 0) continue;
     seen.add(e.titleId);
     candidates.push({ titleId: e.titleId, completion });
   }
