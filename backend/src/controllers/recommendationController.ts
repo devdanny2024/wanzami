@@ -43,11 +43,25 @@ export const continueWatching = async (req: AuthenticatedRequest, res: Response)
   const country = profile.country || resolveCountry(req);
   const kidMode = profile.kidMode;
 
-  // Pull recent play_end events and pick those with incomplete completion percent
+  // Pull recent PLAY_END events and pick those with incomplete completion percent.
+  // Primary key is the profileId, but we also fall back to events that were
+  // recorded without a profileId but are tied to this user's session. This
+  // makes Continue Watching resilient if the player was emitting events
+  // before a profile was selected or if profileId was temporarily missing
+  // on the client.
   const events = await prisma.engagementEvent.findMany({
     where: {
-      profileId: profile.id,
       eventType: "PLAY_END",
+      titleId: { not: null },
+      OR: [
+        { profileId: profile.id },
+        {
+          profileId: null,
+          session: {
+            userId: profile.userId,
+          },
+        },
+      ],
     },
     orderBy: { occurredAt: "desc" },
     take: 50,
