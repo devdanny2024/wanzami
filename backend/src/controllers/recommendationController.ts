@@ -72,10 +72,27 @@ export const continueWatching = async (req: AuthenticatedRequest, res: Response)
   for (const e of events) {
     if (!e.titleId) continue;
     if (seen.has(e.titleId)) continue;
-    const completion = typeof e.metadata === "object" && e.metadata !== null
-      ? Number((e.metadata as any).completionPercent ?? (e.metadata as any).completion ?? 1)
-      : 1;
-    if (Number.isNaN(completion) || completion >= 0.9) continue;
+    const metadata =
+      typeof e.metadata === "object" && e.metadata !== null ? (e.metadata as any) : {};
+    let completion = Number(
+      typeof metadata.completionPercent === "number"
+        ? metadata.completionPercent
+        : typeof metadata.completion === "number"
+          ? metadata.completion
+          : NaN,
+    );
+    // Fallback: derive completion from position / duration when percent is missing.
+    if (Number.isNaN(completion)) {
+      const pos = Number(metadata.positionSec);
+      const dur = Number(metadata.durationSec);
+      if (Number.isFinite(pos) && Number.isFinite(dur) && dur > 0) {
+        completion = Math.max(0, Math.min(1, pos / dur));
+      }
+    }
+    if (!Number.isFinite(completion)) continue;
+    // Treat titles as "finished" only when >= 98% complete so that
+    // almost-finished plays still show up in Continue Watching.
+    if (completion >= 0.98) continue;
     seen.add(e.titleId);
     candidates.push({ titleId: e.titleId, completion });
   }
