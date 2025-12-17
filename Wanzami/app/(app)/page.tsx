@@ -99,7 +99,45 @@ export default function HomeRoute() {
 
         const cw = await fetchContinueWatching(accessToken, profileId ?? undefined);
         if (isMounted) {
-          setContinueWatchingItems(cw.items ?? []);
+          const rawItems = (cw.items ?? []) as any[];
+          const cwMapped: MovieData[] = [];
+          const fallbackImage = "https://placehold.co/600x900/111111/FD7E14?text=Wanzami";
+
+          rawItems.forEach((item, idx) => {
+            const backendIdRaw = item.titleId ?? item.id;
+            if (!backendIdRaw) return;
+            const backendId = String(backendIdRaw);
+
+            const match = catalogMovies.find((m) => m.backendId === backendId);
+
+            const completion =
+              typeof item.completionPercent === "number"
+                ? item.completionPercent
+                : typeof item.progressPercent === "number"
+                ? item.progressPercent
+                : typeof item.percent_complete === "number"
+                ? item.percent_complete
+                : undefined;
+
+            if (match) {
+              cwMapped.push({ ...match, completionPercent: completion });
+            } else {
+              cwMapped.push({
+                id: Number(backendId) || Date.now() + idx,
+                backendId,
+                title: item.name ?? `Title ${backendId}`,
+                image: item.thumbnailUrl || item.posterUrl || fallbackImage,
+                type: (item.type as any) ?? "MOVIE",
+                runtimeMinutes: item.runtimeMinutes ?? 0,
+                genres: item.genres,
+                maturityRating: item.maturityRating ?? "PG",
+                isOriginal: item.isOriginal ?? false,
+                completionPercent: completion,
+              } as MovieData);
+            }
+          });
+
+          setContinueWatchingItems(cwMapped);
         }
 
         const [top10Res, trendingRes, top10SeriesRes, trendingSeriesRes, forYouRes] =
