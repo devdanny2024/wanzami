@@ -299,7 +299,11 @@ export const googleAuthCallback = async (req: Request, res: Response) => {
     const issued = await googleAuthCallbackService({ code, state, redirectUri });
     return res.json(issued);
   } catch (err: any) {
+    const codeVal = err?.code as string | undefined;
     const msg = err?.message ?? "Google auth failed";
+    if (codeVal === "ACCOUNT_NOT_FOUND_FOR_GOOGLE") {
+      return res.status(404).json({ code: codeVal, message: msg });
+    }
     return res.status(400).json({ message: msg });
   }
 };

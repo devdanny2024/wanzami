@@ -114,6 +114,20 @@ export const becauseYouWatched = async (req: AuthenticatedRequest, res: Response
   const country = profile.country || resolveCountry(req);
   const kidMode = profile.kidMode;
 
+  // Do not surface "Because you watched" for profiles with no watch history
+  const historyCount = await prisma.engagementEvent.count({
+    where: {
+      profileId: profile.id,
+      eventType: "PLAY_END",
+    },
+  });
+
+  if (historyCount === 0) {
+    const payload = { items: [] as any[], anchors: [] as string[], hasHistory: false };
+    if (cacheKey && cacheTtl > 0) setCache(cacheKey, payload, cacheTtl);
+    return res.json(payload);
+  }
+
   // Pick recent positive interactions as anchors
   const anchors = await prisma.engagementEvent.findMany({
     where: {

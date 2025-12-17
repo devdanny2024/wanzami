@@ -139,24 +139,15 @@ export const googleAuthCallback = async (input: GoogleCallbackInput) => {
   }
 
   const emailLower = profile.email.toLowerCase();
-  let user = await prisma.user.findUnique({ where: { email: emailLower } });
-  let isNew = false;
+  const user = await prisma.user.findUnique({ where: { email: emailLower } });
 
   if (!user) {
-    const randomPassword = crypto.randomBytes(16).toString("hex");
-    const passwordHash = await hashPassword(randomPassword);
-    user = await prisma.user.create({
-      data: {
-        email: emailLower,
-        password: passwordHash,
-        name: profile.name || emailLower,
-        role: "USER",
-        emailVerified: profile.email_verified ?? true,
-      },
-    });
-    await ensureProfileExists(user.id, profile.name || "Primary");
-    isNew = true;
-  } else if (!user.emailVerified) {
+    const err: any = new Error("No account exists for this Google email. Please sign up first.");
+    err.code = "ACCOUNT_NOT_FOUND_FOR_GOOGLE";
+    throw err;
+  }
+
+  if (!user.emailVerified) {
     await prisma.user.update({
       where: { id: user.id },
       data: { emailVerified: true, name: user.name || profile.name || emailLower },
@@ -189,18 +180,6 @@ export const googleAuthCallback = async (input: GoogleCallbackInput) => {
       expiresAt: computeRefreshExpiry(),
     },
   });
-
-  if (isNew) {
-    try {
-      await sendEmail({
-        to: emailLower,
-        subject: "Welcome to Wanzami",
-        html: welcomeEmailTemplate({ name: user.name }),
-      });
-    } catch (err) {
-      console.error("Failed to send welcome email (Google)", err);
-    }
-  }
 
   return { accessToken, refreshToken, deviceId };
 };

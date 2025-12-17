@@ -20,6 +20,7 @@ export default function SeriesPage() {
   const [trendingSeries, setTrendingSeries] = useState<MovieData[]>([]);
   const [continueWatchingItems, setContinueWatchingItems] = useState<any[]>([]);
   const [becauseYouWatchedItems, setBecauseYouWatchedItems] = useState<any[]>([]);
+  const [forYouItems, setForYouItems] = useState<MovieData[]>([]);
   const [recsLoading, setRecsLoading] = useState(false);
   const [recsError, setRecsError] = useState<string | null>(null);
 
@@ -117,7 +118,8 @@ export default function SeriesPage() {
           setBecauseYouWatchedItems(mapItems(byw.items ?? []));
           setTop10Series(mapItems(top10SeriesRes.items ?? []));
           setTrendingSeries(mapItems(trendingSeriesRes.items ?? []));
-          void forYouRes;
+          const fyItems = mapItems((forYouRes?.items as any[]) ?? []);
+          setForYouItems(fyItems);
         }
       } catch (err: any) {
         const message =
@@ -165,6 +167,7 @@ export default function SeriesPage() {
           trending={[]}
           continueWatching={continueWatchingItems}
           becauseYouWatched={becauseYouWatchedItems}
+          forYouItems={forYouItems}
           recsLoading={recsLoading}
           recsError={recsError}
           showGenreRows={true}

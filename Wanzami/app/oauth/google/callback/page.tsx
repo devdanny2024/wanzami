@@ -13,6 +13,7 @@ function CallbackContent() {
   const state = search.get("state");
   const [status, setStatus] = useState<Status>("pending");
   const [message, setMessage] = useState("Connecting your Google account...");
+  const [errorCode, setErrorCode] = useState<string | null>(null);
 
   useEffect(() => {
     const handleExchange = async () => {
@@ -33,9 +34,14 @@ function CallbackContent() {
         });
         const data = await res.json();
         if (!res.ok) {
-          const msg = data?.message ?? "Unable to complete Google sign-in.";
+          const apiCode = data?.code as string | undefined;
+          const msg =
+            apiCode === "ACCOUNT_NOT_FOUND_FOR_GOOGLE"
+              ? "We couldn't find a Wanzami account for this Google email. Please sign up first, then use Google to sign in."
+              : data?.message ?? "Unable to complete Google sign-in.";
           setStatus("error");
           setMessage(msg);
+          setErrorCode(apiCode ?? null);
           return;
         }
         if (data.accessToken) localStorage.setItem("accessToken", data.accessToken);
@@ -47,9 +53,10 @@ function CallbackContent() {
           router.replace("/");
           window.location.href = "/";
         }, 500);
-      } catch (err) {
+       } catch (err) {
         setStatus("error");
         setMessage("Something went wrong while connecting Google. Please try again.");
+        setErrorCode(null);
       }
     };
     void handleExchange();
@@ -62,12 +69,22 @@ function CallbackContent() {
         <h1 className="text-2xl font-semibold mb-3">Google Sign-In</h1>
         <p className="text-gray-300 mb-6">{message}</p>
         {status === "error" && (
-          <a
-            href="/login"
-            className="inline-flex items-center justify-center px-6 py-3 bg-[#fd7e14] text-white rounded-xl font-semibold hover:bg-[#e86f0f] transition-colors"
-          >
-            Back to login
-          </a>
+          <div className="flex flex-col items-center gap-3">
+            <a
+              href="/login"
+              className="inline-flex items-center justify-center px-6 py-3 bg-[#fd7e14] text-white rounded-xl font-semibold hover:bg-[#e86f0f] transition-colors"
+            >
+              Back to login
+            </a>
+            {errorCode === "ACCOUNT_NOT_FOUND_FOR_GOOGLE" && (
+              <a
+                href="/register"
+                className="inline-flex items-center justify-center px-6 py-3 border border-white/40 text-white rounded-xl font-semibold hover:bg-white/10 transition-colors text-sm"
+              >
+                Go to sign up
+              </a>
+            )}
+          </div>
         )}
       </div>
     </div>

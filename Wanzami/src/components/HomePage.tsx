@@ -22,7 +22,12 @@ interface HomePageProps {
   similarToLikes?: MovieData[];
   recsLoading?: boolean;
   recsError?: string | null;
-  showGenreRows?: boolean; // disable genre rows on home; can enable on dedicated pages
+  /**
+   * Whether to render genre‑based browse rows.
+   * Home route keeps this false so it focuses on recommendations only.
+   * Movies / Series routes pass true so they get genre sections.
+   */
+  showGenreRows?: boolean;
 }
 
 function buildGenreRows(items: MovieData[], labelSuffix: string, maxSections = 6, maxItems = 18) {
