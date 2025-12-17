@@ -111,18 +111,46 @@ export default function HomeRoute() {
             fetchForYou(accessToken, profileId ?? undefined),
           ]);
 
-        const mapItems = (ids: { titleId: string }[]) => {
+        // Helper that can handle both popularity snapshots ({ titleId })
+        // and recommendation payloads ({ id, name, ... }).
+        const mapItems = (
+          items: Array<
+            {
+              titleId?: string;
+              id?: string;
+              name?: string;
+              posterUrl?: string | null;
+              thumbnailUrl?: string | null;
+              type?: string;
+              runtimeMinutes?: number | null;
+              genres?: string[];
+              maturityRating?: string | null;
+              isOriginal?: boolean | null;
+            }
+          > = [],
+        ) => {
           const mapped: MovieData[] = [];
-          ids.forEach((item, idx) => {
-            const match = catalogMovies.find((m) => m.backendId === item.titleId);
+          const fallbackImage = "https://placehold.co/600x900/111111/FD7E14?text=Wanzami";
+
+          items.forEach((item, idx) => {
+            const backendIdRaw = item.titleId ?? item.id;
+            if (!backendIdRaw) return;
+            const backendId = String(backendIdRaw);
+
+            const match = catalogMovies.find((m) => m.backendId === backendId);
             if (match) {
               mapped.push(match);
             } else {
               mapped.push({
-                id: Number(item.titleId) || Date.now() + idx,
-                backendId: item.titleId,
-                title: `Title ${item.titleId}`,
-                image: "https://placehold.co/600x900/111111/FD7E14?text=Wanzami",
+                id: Number(backendId) || Date.now() + idx,
+                backendId,
+                title: item.name ?? `Title ${backendId}`,
+                image: item.thumbnailUrl || item.posterUrl || fallbackImage,
+                type: (item.type as any) ?? "MOVIE",
+                runtimeMinutes: item.runtimeMinutes ?? 0,
+                genres: item.genres,
+                maturityRating: item.maturityRating ?? "PG",
+                isOriginal: item.isOriginal ?? false,
               } as MovieData);
             }
           });
@@ -130,7 +158,8 @@ export default function HomeRoute() {
         };
 
         if (isMounted) {
-          const becauseMapped = mapItems((await fetchBecauseYouWatched(accessToken, profileId ?? undefined)).items ?? []);
+          const becauseRaw = (await fetchBecauseYouWatched(accessToken, profileId ?? undefined)).items ?? [];
+          const becauseMapped = mapItems(becauseRaw as any[]);
           setBecauseYouWatchedItems(becauseMapped);
 
           setTop10(mapItems(top10Res.items ?? []));
