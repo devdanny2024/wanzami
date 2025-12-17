@@ -803,10 +803,13 @@ export function CustomMediaPlayer({
       </div>
 
       {!isPlaying && (
-        <div className="absolute inset-0 flex items-center justify-center" style={{ zIndex: 15 }}>
+        <div
+          className="absolute inset-0 flex items-center justify-center pointer-events-none"
+          style={{ zIndex: 15 }}
+        >
           <button
             onClick={togglePlay}
-            className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center hover:bg-white/30 transition-all hover:scale-110"
+            className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center hover:bg-white/30 transition-all hover:scale-110 pointer-events-auto"
           >
             <Play className="w-10 h-10 text-white ml-1" fill="white" />
           </button>
