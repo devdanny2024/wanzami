@@ -33,13 +33,6 @@ export const continueWatching = async (req: AuthenticatedRequest, res: Response)
   const profile = await ensureProfileForUser(req.user.userId, profileIdParam);
   if (!profile) return res.status(400).json({ message: "No profile found" });
 
-   const cacheTtl = Number(process.env.REC_CACHE_SEC ?? "120");
-   const cacheKey = profile.id ? `cw:${profile.id.toString()}` : null;
-   if (cacheKey) {
-     const cached = getCache<any>(cacheKey);
-     if (cached) return res.json(cached);
-   }
-
   const country = profile.country || resolveCountry(req);
   const kidMode = profile.kidMode;
 
@@ -124,9 +117,7 @@ export const continueWatching = async (req: AuthenticatedRequest, res: Response)
     })
     .filter(Boolean);
 
-  const payload = { items };
-  if (cacheKey && cacheTtl > 0) setCache(cacheKey, payload, cacheTtl);
-  return res.json(payload);
+  return res.json({ items });
 };
 
 export const becauseYouWatched = async (req: AuthenticatedRequest, res: Response) => {
