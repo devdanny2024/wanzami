@@ -96,20 +96,13 @@ export default function SeriesPage() {
           fetchForYou(accessToken, profileId ?? undefined),
         ]);
 
-        const mapItems = (ids: { titleId: string }[]) => {
+        const mapItems = (ids: { titleId?: string; id?: string }[]) => {
           const mapped: MovieData[] = [];
-          ids.forEach((item, idx) => {
-            const match = series.find((m) => m.backendId === item.titleId);
-            if (match) {
-              mapped.push(match);
-            } else {
-              mapped.push({
-                id: Number(item.titleId) || Date.now() + idx,
-                backendId: item.titleId,
-                title: `Title ${item.titleId}`,
-                image: "https://placehold.co/600x900/111111/FD7E14?text=Wanzami",
-              } as MovieData);
-            }
+          ids.forEach((item) => {
+            const backendId = String(item.titleId ?? item.id ?? "");
+            if (!backendId) return;
+            const match = series.find((m) => String(m.backendId) === backendId);
+            if (match) mapped.push(match);
           });
           return mapped;
         };
