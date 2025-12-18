@@ -22,7 +22,6 @@ interface UploadDockProps {
 
 export function UploadDock({ tasks, onRemove, onClear }: UploadDockProps) {
   const [collapsed, setCollapsed] = useState(false);
-  if (!tasks.length) return null;
 
   const active = tasks.filter((t) => t.status !== "completed");
   const overallProgress = useMemo(
@@ -32,6 +31,8 @@ export function UploadDock({ tasks, onRemove, onClear }: UploadDockProps) {
   const statusLabel = active.length
     ? `${active.length} active - ${tasks.length} total`
     : `${tasks.length} completed`;
+
+  if (!tasks.length) return null;
 
   return (
     <div

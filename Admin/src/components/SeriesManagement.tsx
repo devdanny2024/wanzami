@@ -684,6 +684,9 @@ function AddEpisodesDialog({
       <DialogContent className="bg-neutral-900 border-neutral-800 text-white max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-white">Add Episodes {series ? `for ${series.name}` : ""}</DialogTitle>
+          <p className="text-xs text-neutral-400">
+            Attach new episode videos, then fill in season, episode and title details.
+          </p>
         </DialogHeader>
 
         <div className="mb-4">
