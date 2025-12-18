@@ -340,7 +340,6 @@ function AddEpisodesDialog({
   token?: string;
 }) {
   const { startUpload } = useUploadQueue();
-  const [bulkVideos, setBulkVideos] = useState<FileList | null>(null);
   const [savingBulk, setSavingBulk] = useState(false);
   const [weeklyEp, setWeeklyEp] = useState<Episode>({
     titleId: series?.id ?? "",
@@ -419,7 +418,6 @@ function AddEpisodesDialog({
     } else {
       setEpisodes([]);
       setSeasons([]);
-      setBulkVideos(null);
       setBulkRows([]);
       setDragIndex(null);
     }
@@ -956,7 +954,6 @@ function AddEpisodesDialog({
                   id="bulk-episode-videos"
                   onChange={(e) => {
                     const files = e.target.files;
-                    setBulkVideos(files);
                     if (!files || files.length === 0) {
                       setBulkRows([]);
                       return;
@@ -988,8 +985,8 @@ function AddEpisodesDialog({
                   <Upload className="w-4 h-4" />
                   Attach episode videos (ordered)
                 </label>
-                {bulkVideos && (
-                  <p className="text-xs text-[#fd7e14] mt-1">{bulkVideos.length} file(s) selected</p>
+                {bulkRows.length > 0 && (
+                  <p className="text-xs text-[#fd7e14] mt-1">{bulkRows.length} file(s) selected</p>
                 )}
               </div>
             </div>
