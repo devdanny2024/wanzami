@@ -60,11 +60,9 @@ export const continueWatching = async (req: AuthenticatedRequest, res: Response)
     take: 50,
   });
 
-  const seen = new Set<bigint>();
-  const candidates: Array<{ titleId: bigint; completion: number }> = [];
+  const bestByTitle = new Map<bigint, number>();
   for (const e of events) {
     if (!e.titleId) continue;
-    if (seen.has(e.titleId)) continue;
     const metadata =
       typeof e.metadata === "object" && e.metadata !== null ? (e.metadata as any) : {};
     let completion = Number(
@@ -82,14 +80,18 @@ export const continueWatching = async (req: AuthenticatedRequest, res: Response)
         completion = Math.max(0, Math.min(1, pos / dur));
       }
     }
-    if (!Number.isFinite(completion)) continue;
-    // Ignore zero/negative completion (no real progress), but do not
-    // filter out near‑finished titles here. This makes the surface
-    // more forgiving when metadata rounding pushes completion to 1.
-    if (completion <= 0) continue;
-    seen.add(e.titleId);
-    candidates.push({ titleId: e.titleId, completion });
+    if (!Number.isFinite(completion) || completion <= 0) continue;
+
+    const existing = bestByTitle.get(e.titleId);
+    if (existing == null || completion > existing) {
+      bestByTitle.set(e.titleId, completion);
+    }
   }
+
+  const candidates = Array.from(bestByTitle.entries()).map(([titleId, completion]) => ({
+    titleId,
+    completion,
+  }));
 
   if (!candidates.length) return res.json({ items: [] });
 
