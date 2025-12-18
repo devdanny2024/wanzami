@@ -1,10 +1,10 @@
 import jwt from "jsonwebtoken";
 import { config } from "../config.js";
 const signJwt = (payload, secret, expiresIn) => jwt.sign(payload, secret, { expiresIn });
-export const signAccessToken = (payload) => signJwt({
+export const signAccessToken = (payload, ttl) => signJwt({
     ...payload,
     userId: payload.userId.toString(),
-}, config.accessSecret, config.accessTokenTtl);
+}, config.accessSecret, ttl ?? config.accessTokenTtl);
 export const signRefreshToken = (payload) => signJwt({
     ...payload,
     userId: payload.userId.toString(),

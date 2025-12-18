@@ -1205,7 +1205,7 @@ export function CustomMediaPlayer({
                 step={0.01}
                 value={isMuted ? 0 : volume}
                 onChange={handleVolumeChange}
-                className="w-16 group-hover/volume:w-32 transition-all duration-300 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"
+                className="w-28 group-hover/volume:w-40 transition-all duration-300 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"
                 style={{
                   background: `linear-gradient(to right, white 0%, white ${volume * 100}%, #4a5568 ${volume * 100}%, #4a5568 100%)`,
                 }}

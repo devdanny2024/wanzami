@@ -330,7 +330,7 @@ export const login = async (req, res) => {
         role: user.role,
         permissions,
         deviceId: resolvedDeviceId,
-    });
+    }, config.adminAccessTokenTtl);
     const refreshToken = signRefreshToken({
         userId: user.id,
         deviceId: resolvedDeviceId,
@@ -391,7 +391,7 @@ export const adminLogin = async (req, res) => {
         role: user.role,
         permissions,
         deviceId: resolvedDeviceId,
-    });
+    }, config.adminAccessTokenTtl);
     const refreshToken = signRefreshToken({
         userId: user.id,
         deviceId: resolvedDeviceId,

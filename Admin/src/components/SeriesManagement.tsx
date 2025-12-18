@@ -4,7 +4,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Badge } from "./ui/badge";
 import { Plus, Edit, Search, Upload, Layers, Trash2 } from "lucide-react";
@@ -684,9 +684,9 @@ function AddEpisodesDialog({
       <DialogContent className="bg-neutral-900 border-neutral-800 text-white max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-white">Add Episodes {series ? `for ${series.name}` : ""}</DialogTitle>
-          <p className="text-xs text-neutral-400">
+          <DialogDescription className="text-xs text-neutral-400">
             Attach new episode videos, then fill in season, episode and title details.
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
         <div className="mb-4">
