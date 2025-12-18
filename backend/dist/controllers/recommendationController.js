@@ -28,49 +28,86 @@ export const continueWatching = async (req, res) => {
     const profile = await ensureProfileForUser(req.user.userId, profileIdParam);
     if (!profile)
         return res.status(400).json({ message: "No profile found" });
-    const cacheTtl = Number(process.env.REC_CACHE_SEC ?? "120");
-    const cacheKey = profile.id ? `cw:${profile.id.toString()}` : null;
-    if (cacheKey) {
-        const cached = getCache(cacheKey);
-        if (cached)
-            return res.json(cached);
-    }
     const country = profile.country || resolveCountry(req);
     const kidMode = profile.kidMode;
-    // Pull recent play_end events and pick those with incomplete completion percent
+    // Pull recent engagement events that carry playback progress and pick the
+    // best completion per title. We look at both PLAY_END and SCRUB so that
+    // manual seeks are reflected in Continue Watching even if the viewer exits
+    // quickly afterwards.
+    // Primary key is the profileId, but we also fall back to events that were
+    // recorded without a profileId but are tied to this user's session. This
+    // makes Continue Watching resilient if the player was emitting events
+    // before a profile was selected or if profileId was temporarily missing
+    // on the client.
     const events = await prisma.engagementEvent.findMany({
         where: {
-            profileId: profile.id,
-            eventType: "PLAY_END",
+            eventType: { in: ["PLAY_END", "SCRUB"] },
+            titleId: { not: null },
+            OR: [
+                { profileId: profile.id },
+                {
+                    profileId: null,
+                    session: {
+                        userId: profile.userId,
+                    },
+                },
+            ],
         },
         orderBy: { occurredAt: "desc" },
-        take: 50,
+        // Look at a reasonably large window so older, higher‑completion
+        // events are not lost if there is a lot of recent activity.
+        take: 200,
     });
-    const seen = new Set();
-    const candidates = [];
+    const bestByTitle = new Map();
     for (const e of events) {
         if (!e.titleId)
             continue;
-        if (seen.has(e.titleId))
+        const metadata = typeof e.metadata === "object" && e.metadata !== null ? e.metadata : {};
+        let completion = Number(typeof metadata.completionPercent === "number"
+            ? metadata.completionPercent
+            : typeof metadata.completion === "number"
+                ? metadata.completion
+                : NaN);
+        // Fallback: derive completion from position / duration when percent is missing.
+        if (Number.isNaN(completion)) {
+            const pos = Number(metadata.positionSec);
+            const dur = Number(metadata.durationSec);
+            if (Number.isFinite(pos) && Number.isFinite(dur) && dur > 0) {
+                completion = Math.max(0, Math.min(1, pos / dur));
+            }
+        }
+        if (!Number.isFinite(completion) || completion <= 0)
             continue;
-        const completion = typeof e.metadata === "object" && e.metadata !== null
-            ? Number(e.metadata.completionPercent ?? e.metadata.completion ?? 1)
-            : 1;
-        if (Number.isNaN(completion) || completion >= 0.9)
-            continue;
-        seen.add(e.titleId);
-        candidates.push({ titleId: e.titleId, completion });
+        const existing = bestByTitle.get(e.titleId);
+        if (!existing) {
+            bestByTitle.set(e.titleId, { completion, lastAt: e.occurredAt });
+        }
+        else {
+            bestByTitle.set(e.titleId, {
+                completion: completion > existing.completion ? completion : existing.completion,
+                lastAt: e.occurredAt > existing.lastAt ? e.occurredAt : existing.lastAt,
+            });
+        }
     }
-    if (!candidates.length)
+    const candidates = Array.from(bestByTitle.entries()).map(([titleId, stats]) => ({
+        titleId,
+        completion: stats.completion,
+        lastAt: stats.lastAt.getTime(),
+    }));
+    if (!candidates.length) {
         return res.json({ items: [] });
+    }
+    // Order by most recently watched so the last title the viewer engaged
+    // with appears first in the Continue Watching row.
+    const sortedCandidates = candidates.sort((a, b) => b.lastAt - a.lastAt);
     const titles = await prisma.title.findMany({
         where: {
-            id: { in: candidates.map((c) => c.titleId) },
+            id: { in: sortedCandidates.map((c) => c.titleId) },
             archived: false,
             ...countryAndMaturityFilter(country, kidMode),
         },
     });
-    const items = candidates
+    const items = sortedCandidates
         .map((c) => {
         const t = titles.find((tt) => tt.id === c.titleId);
         if (!t)
@@ -86,10 +123,7 @@ export const continueWatching = async (req, res) => {
         };
     })
         .filter(Boolean);
-    const payload = { items };
-    if (cacheKey && cacheTtl > 0)
-        setCache(cacheKey, payload, cacheTtl);
-    return res.json(payload);
+    return res.json({ items });
 };
 export const becauseYouWatched = async (req, res) => {
     if (!req.user?.userId)
@@ -107,6 +141,19 @@ export const becauseYouWatched = async (req, res) => {
     }
     const country = profile.country || resolveCountry(req);
     const kidMode = profile.kidMode;
+    // Do not surface "Because you watched" for profiles with no watch history
+    const historyCount = await prisma.engagementEvent.count({
+        where: {
+            profileId: profile.id,
+            eventType: "PLAY_END",
+        },
+    });
+    if (historyCount === 0) {
+        const payload = { items: [], anchors: [], hasHistory: false };
+        if (cacheKey && cacheTtl > 0)
+            setCache(cacheKey, payload, cacheTtl);
+        return res.json(payload);
+    }
     // Pick recent positive interactions as anchors
     const anchors = await prisma.engagementEvent.findMany({
         where: {

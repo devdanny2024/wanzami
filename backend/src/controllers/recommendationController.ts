@@ -36,7 +36,10 @@ export const continueWatching = async (req: AuthenticatedRequest, res: Response)
   const country = profile.country || resolveCountry(req);
   const kidMode = profile.kidMode;
 
-  // Pull recent PLAY_END events and pick those with incomplete completion percent.
+  // Pull recent engagement events that carry playback progress and pick the
+  // best completion per title. We look at both PLAY_END and SCRUB so that
+  // manual seeks are reflected in Continue Watching even if the viewer exits
+  // quickly afterwards.
   // Primary key is the profileId, but we also fall back to events that were
   // recorded without a profileId but are tied to this user's session. This
   // makes Continue Watching resilient if the player was emitting events
@@ -44,7 +47,7 @@ export const continueWatching = async (req: AuthenticatedRequest, res: Response)
   // on the client.
   const events = await prisma.engagementEvent.findMany({
     where: {
-      eventType: "PLAY_END",
+      eventType: { in: ["PLAY_END", "SCRUB"] as any },
       titleId: { not: null },
       OR: [
         { profileId: profile.id },
@@ -57,10 +60,13 @@ export const continueWatching = async (req: AuthenticatedRequest, res: Response)
       ],
     },
     orderBy: { occurredAt: "desc" },
-    take: 50,
+    // Look at a reasonably large window so older, higher‑completion
+    // events are not lost if there is a lot of recent activity.
+    take: 200,
   });
 
-  const bestByTitle = new Map<bigint, number>();
+  type ProgressStats = { completion: number; lastAt: Date };
+  const bestByTitle = new Map<bigint, ProgressStats>();
   for (const e of events) {
     if (!e.titleId) continue;
     const metadata =
@@ -83,27 +89,39 @@ export const continueWatching = async (req: AuthenticatedRequest, res: Response)
     if (!Number.isFinite(completion) || completion <= 0) continue;
 
     const existing = bestByTitle.get(e.titleId);
-    if (existing == null || completion > existing) {
-      bestByTitle.set(e.titleId, completion);
+    if (!existing) {
+      bestByTitle.set(e.titleId, { completion, lastAt: e.occurredAt });
+    } else {
+      bestByTitle.set(e.titleId, {
+        completion: completion > existing.completion ? completion : existing.completion,
+        lastAt: e.occurredAt > existing.lastAt ? e.occurredAt : existing.lastAt,
+      });
     }
   }
 
-  const candidates = Array.from(bestByTitle.entries()).map(([titleId, completion]) => ({
+  const candidates = Array.from(bestByTitle.entries()).map(([titleId, stats]) => ({
     titleId,
-    completion,
+    completion: stats.completion,
+    lastAt: stats.lastAt.getTime(),
   }));
 
-  if (!candidates.length) return res.json({ items: [] });
+  if (!candidates.length) {
+    return res.json({ items: [] });
+  }
+
+  // Order by most recently watched so the last title the viewer engaged
+  // with appears first in the Continue Watching row.
+  const sortedCandidates = candidates.sort((a, b) => b.lastAt - a.lastAt);
 
   const titles = await prisma.title.findMany({
     where: {
-      id: { in: candidates.map((c) => c.titleId) },
+      id: { in: sortedCandidates.map((c) => c.titleId) },
       archived: false,
       ...countryAndMaturityFilter(country, kidMode),
     },
   });
 
-  const items = candidates
+  const items = sortedCandidates
     .map((c) => {
       const t = titles.find((tt) => tt.id === c.titleId);
       if (!t) return null;
