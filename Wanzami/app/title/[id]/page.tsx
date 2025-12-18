@@ -56,6 +56,14 @@ export default function TitlePage({ params }: { params: { id: string } }) {
   const [title, setTitle] = useState<Title | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [country, setCountry] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = window.localStorage.getItem('countryCode');
+      setCountry(stored ?? 'NG');
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -63,7 +71,7 @@ export default function TitlePage({ params }: { params: { id: string } }) {
       setLoading(true);
       setError(null);
       try {
-        const detail = await fetchTitleWithEpisodes(id);
+        const detail = await fetchTitleWithEpisodes(id, country ?? undefined);
         if (!cancelled) {
           setTitle(detail ?? null);
         }
@@ -76,11 +84,13 @@ export default function TitlePage({ params }: { params: { id: string } }) {
         if (!cancelled) setLoading(false);
       }
     };
-    void load();
+    if (country !== null) {
+      void load();
+    }
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, country]);
 
   const detailMovie = useMemo(() => mapToDetailMovie(title, id), [title, id]);
 

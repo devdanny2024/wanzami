@@ -67,8 +67,9 @@ export async function fetchTitles(country?: string): Promise<Title[]> {
   return (data?.titles as Title[]) ?? [];
 }
 
-export async function fetchTitleWithEpisodes(id: string) {
-  const res = await fetchWithTimeout(`${API_BASE}/titles/${id}`, {
+export async function fetchTitleWithEpisodes(id: string, country?: string) {
+  const query = country ? `?country=${encodeURIComponent(country)}` : "";
+  const res = await fetchWithTimeout(`${API_BASE}/titles/${id}${query}`, {
     cache: "no-store",
   });
   const data = await handleJsonResponse(res);

@@ -112,12 +112,15 @@ export default function PlayerPage({ params }: { params: { id: string } }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [authInfo, setAuthInfo] = useState<{ token?: string; profileId?: string; deviceId?: string }>({});
+  const [country, setCountry] = useState<string | null>(null);
 
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') ?? undefined : undefined;
     const profile = typeof window !== 'undefined' ? localStorage.getItem('activeProfileId') ?? undefined : undefined;
     const device = typeof window !== 'undefined' ? localStorage.getItem('deviceId') ?? undefined : undefined;
+    const storedCountry = typeof window !== 'undefined' ? localStorage.getItem('countryCode') ?? 'NG' : undefined;
     setAuthInfo({ token, profileId: profile, deviceId: device });
+    setCountry(storedCountry ?? null);
   }, []);
 
   useEffect(() => {
@@ -126,7 +129,7 @@ export default function PlayerPage({ params }: { params: { id: string } }) {
       setLoading(true);
       setError(null);
       try {
-        const detail = await fetchTitleWithEpisodes(id);
+        const detail = await fetchTitleWithEpisodes(id, country ?? undefined);
         if (!cancelled) {
           setTitle(detail ?? fallbackDemo(id));
         }
@@ -139,11 +142,13 @@ export default function PlayerPage({ params }: { params: { id: string } }) {
         if (!cancelled) setLoading(false);
       }
     };
-    void load();
+    if (country !== null) {
+      void load();
+    }
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, country]);
 
   const activeEpisode = useMemo(() => {
     const list = title?.episodes ?? [];
