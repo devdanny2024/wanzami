@@ -385,13 +385,15 @@ export const adminLogin = async (req, res) => {
     const resolvedDeviceId = deviceId ?? crypto.randomUUID();
     await upsertDevice(user.id, resolvedDeviceId);
     const permissions = getPermissionsForRole(user.role);
+    const adminTtlMs = durationToMs(config.adminAccessTokenTtl);
+    const adminTtlSeconds = adminTtlMs > 0 ? Math.floor(adminTtlMs / 1000) : Math.floor(durationToMs(config.accessTokenTtl) / 1000) || 60 * 60;
     const accessToken = signAccessToken({
         userId: user.id,
         email: user.email,
         role: user.role,
         permissions,
         deviceId: resolvedDeviceId,
-    }, config.adminAccessTokenTtl);
+    }, adminTtlSeconds);
     const refreshToken = signRefreshToken({
         userId: user.id,
         deviceId: resolvedDeviceId,

@@ -459,6 +459,9 @@ export const adminLogin = async (req: Request, res: Response) => {
   await upsertDevice(user.id, resolvedDeviceId);
 
   const permissions = getPermissionsForRole(user.role);
+  const adminTtlMs = durationToMs(config.adminAccessTokenTtl);
+  const adminTtlSeconds =
+    adminTtlMs > 0 ? Math.floor(adminTtlMs / 1000) : Math.floor(durationToMs(config.accessTokenTtl) / 1000) || 60 * 60;
   const accessToken = signAccessToken(
     {
       userId: user.id,
@@ -467,7 +470,7 @@ export const adminLogin = async (req: Request, res: Response) => {
       permissions,
       deviceId: resolvedDeviceId,
     },
-    config.adminAccessTokenTtl,
+    adminTtlSeconds,
   );
   const refreshToken = signRefreshToken({
     userId: user.id,
