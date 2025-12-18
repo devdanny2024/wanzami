@@ -21,6 +21,7 @@ const mapToDetailMovie = (title: Title | null, fallbackId: string) => {
       description: 'Content coming soon.',
       maturityRating: 'PG',
       episodes: [],
+      seasons: [],
     };
   }
   const durationMinutes = title.runtimeMinutes ?? 0;
@@ -40,6 +41,7 @@ const mapToDetailMovie = (title: Title | null, fallbackId: string) => {
     description: title.description,
     maturityRating: title.maturityRating,
     episodes: title.episodes ?? [],
+    seasons: (title as any).seasons ?? [],
     type: title.type,
     posterUrl: title.posterUrl,
     thumbnailUrl: title.thumbnailUrl,

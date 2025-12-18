@@ -82,8 +82,8 @@ export async function fetchTitleWithEpisodes(id: string) {
       runtimeMinutes?: number | null;
       previewSpriteUrl?: string | null;
       previewVttUrl?: string | null;
-       enableEndCardRating?: boolean;
-       endCreditsStart?: number;
+      enableEndCardRating?: boolean;
+      endCreditsStart?: number;
       assetVersions?: {
         rendition: "R4K" | "R2K" | "R1080" | "R720" | "R360" | string;
         url?: string | null;
@@ -91,6 +91,21 @@ export async function fetchTitleWithEpisodes(id: string) {
         durationSec?: number;
         status?: string;
       }[];
+    }>;
+    seasons?: Array<{
+      id: string;
+      titleId: string;
+      seasonNumber: number;
+      name?: string | null;
+      description?: string | null;
+      releaseDate?: string | null;
+      status?: string | null;
+      posterUrl?: string | null;
+      thumbnailUrl?: string | null;
+      previewSpriteUrl?: string | null;
+      previewVttUrl?: string | null;
+      createdAt?: string;
+      updatedAt?: string;
     }>;
   };
 }

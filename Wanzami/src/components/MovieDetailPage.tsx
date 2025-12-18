@@ -61,6 +61,7 @@ const relatedMovies: MovieData[] = [
 export function MovieDetailPage({ movie, onClose, onPlayClick }: MovieDetailPageProps) {
   const isSeries = movie?.type === "SERIES";
   const seriesEpisodes = Array.isArray(movie?.episodes) ? movie.episodes : [];
+  const seriesSeasons = Array.isArray((movie as any)?.seasons) ? (movie as any).seasons : [];
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
   const [inList, setInList] = useState(false);
 
@@ -69,32 +70,32 @@ export function MovieDetailPage({ movie, onClose, onPlayClick }: MovieDetailPage
     setInList(isInMyList(targetId));
   }, [movie]);
 
-  const seasons = useMemo<number[]>(() => {
-    const distinct: number[] = Array.from<number>(
-      new Set<number>(
-        seriesEpisodes.map((ep: any) => Number(ep?.seasonNumber ?? 1))
-      )
-    ).sort((a, b) => a - b);
+  const seasonNumbers = useMemo<number[]>(() => {
+    const fromSeasons = seriesSeasons.map((s: any) => Number(s?.seasonNumber ?? 1));
+    const source = fromSeasons.length
+      ? fromSeasons
+      : seriesEpisodes.map((ep: any) => Number(ep?.seasonNumber ?? 1));
+    const distinct: number[] = Array.from<number>(new Set<number>(source)).sort((a, b) => a - b);
     return distinct;
-  }, [seriesEpisodes]);
+  }, [seriesEpisodes, seriesSeasons]);
 
   useEffect(() => {
-    const firstSeason = seasons.length ? Number(seasons[0]) : null;
+    const firstSeason = seasonNumbers.length ? Number(seasonNumbers[0]) : null;
     if (firstSeason !== null && selectedSeason === null) {
       setSelectedSeason(firstSeason);
     }
-    if (firstSeason !== null && selectedSeason !== null && !seasons.includes(selectedSeason)) {
+    if (firstSeason !== null && selectedSeason !== null && !seasonNumbers.includes(selectedSeason)) {
       setSelectedSeason(firstSeason);
     }
-  }, [seasons, selectedSeason]);
+  }, [seasonNumbers, selectedSeason]);
 
   const visibleEpisodes = useMemo(() => {
     if (!isSeries) return [];
     return seriesEpisodes
       .filter((ep: any) => {
         const seasonVal = Number(ep?.seasonNumber ?? 1);
-        if (selectedSeason === null && seasons.length) {
-          return seasonVal === Number(seasons[0]);
+        if (selectedSeason === null && seasonNumbers.length) {
+          return seasonVal === Number(seasonNumbers[0]);
         }
         return selectedSeason === null ? true : seasonVal === selectedSeason;
       })
@@ -102,7 +103,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick }: MovieDetailPage
         (a: any, b: any) =>
           Number(a?.episodeNumber ?? 0) - Number(b?.episodeNumber ?? 0)
       );
-  }, [isSeries, seriesEpisodes, selectedSeason, seasons]);
+  }, [isSeries, seriesEpisodes, selectedSeason, seasonNumbers]);
 
   return (
     <motion.div
@@ -228,21 +229,28 @@ export function MovieDetailPage({ movie, onClose, onPlayClick }: MovieDetailPage
             <div className="mb-12 space-y-4 max-w-5xl">
               <div className="flex items-center gap-4 px-1">
                 <h2 className="text-white text-xl md:text-2xl">Episodes</h2>
-                {seasons.length > 0 && (
+                {seasonNumbers.length > 0 && (
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-400">Season</span>
                     <select
-                          className="bg-gray-900 border border-gray-700 text-white text-sm rounded-md px-3 py-2"
-                          value={String(selectedSeason ?? seasons[0] ?? '')}
-                          onChange={(e) => setSelectedSeason(Number(e.target.value))}
-                        >
-                      {seasons.map((s) => {
-                        const val = Number(s);
+                      className="bg-gray-900 border border-gray-700 text-white text-sm rounded-md px-3 py-2"
+                      value={String(selectedSeason ?? seasonNumbers[0] ?? "")}
+                      onChange={(e) => setSelectedSeason(Number(e.target.value))}
+                    >
+                      {seasonNumbers.map((num) => {
+                        const meta = seriesSeasons.find(
+                          (s: any) => Number(s?.seasonNumber ?? 1) === Number(num)
+                        );
+                        const label =
+                          meta?.name && String(meta.name).trim().length > 0
+                            ? `Season ${num}: ${meta.name}`
+                            : `Season ${num}`;
                         return (
-                        <option key={String(val)} value={String(val)}>
-                          Season {s}
-                        </option>
-                      )})}
+                          <option key={String(num)} value={String(num)}>
+                            {label}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
                 )}
