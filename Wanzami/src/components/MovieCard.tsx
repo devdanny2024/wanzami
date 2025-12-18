@@ -114,11 +114,19 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
         )}
 
         {/* Progress bar for continue watching */}
-        {typeof movie.completionPercent === 'number' && movie.completionPercent > 0 && (
+        {typeof movie.completionPercent === 'number' && movie.completionPercent >= 0 && (
           <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-white/20">
             <div
               className="h-full bg-[#fd7e14]"
-              style={{ width: `${Math.min(100, Math.max(0, movie.completionPercent * 100))}%` }}
+              style={{
+                // Clamp progress so that any tracked title shows at least
+                // a small visible bar, instead of disappearing when the
+                // completion value is very small.
+                width: `${Math.min(
+                  100,
+                  Math.max(4, movie.completionPercent * 100),
+                )}%`,
+              }}
             />
           </div>
         )}
