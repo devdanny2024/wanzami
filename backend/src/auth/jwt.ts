@@ -22,14 +22,17 @@ const signJwt = (
   expiresIn: string | number
 ) => jwt.sign(payload, secret, { expiresIn } as SignOptions);
 
-export const signAccessToken = (payload: AccessTokenPayload) =>
+export const signAccessToken = (
+  payload: AccessTokenPayload,
+  ttl?: string | number
+) =>
   signJwt(
     {
       ...payload,
       userId: payload.userId.toString(),
     },
     config.accessSecret as Secret,
-    config.accessTokenTtl
+    ttl ?? config.accessTokenTtl
   );
 
 export const signRefreshToken = (payload: RefreshTokenPayload) =>

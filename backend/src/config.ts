@@ -9,9 +9,11 @@ export const config = {
   port: numberOrDefault(process.env.PORT, 4000),
   accessSecret: process.env.JWT_ACCESS_SECRET ?? "access-secret",
   refreshSecret: process.env.JWT_REFRESH_SECRET ?? "refresh-secret",
-  // Default sessions: 2 hours, overridden by env or "remember me"
+  // Default sessions: 2 hours for regular users, unless overridden by env.
+  // Admin access tokens get their own longer TTL (see adminAccessTokenTtl).
   accessTokenTtl: process.env.ACCESS_TOKEN_EXPIRES_IN ?? "2h",
-  refreshTokenTtl: process.env.REFRESH_TOKEN_EXPIRES_IN ?? "2h",
+  adminAccessTokenTtl: process.env.ADMIN_ACCESS_TOKEN_EXPIRES_IN ?? "365d",
+  refreshTokenTtl: process.env.REFRESH_TOKEN_EXPIRES_IN ?? "365d",
   deviceLimit: numberOrDefault(process.env.DEVICE_LIMIT, 4),
   s3: {
     endpoint: process.env.S3_ENDPOINT,

@@ -387,13 +387,16 @@ export const login = async (req: Request, res: Response) => {
   await upsertDevice(user.id, resolvedDeviceId);
 
   const permissions = getPermissionsForRole(user.role);
-  const accessToken = signAccessToken({
-    userId: user.id,
-    email: user.email,
-    role: user.role,
-    permissions,
-    deviceId: resolvedDeviceId,
-  });
+  const accessToken = signAccessToken(
+    {
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      permissions,
+      deviceId: resolvedDeviceId,
+    },
+    config.adminAccessTokenTtl
+  );
   const refreshToken = signRefreshToken({
     userId: user.id,
     deviceId: resolvedDeviceId,
