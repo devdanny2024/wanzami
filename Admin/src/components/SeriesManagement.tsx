@@ -365,6 +365,16 @@ function AddEpisodesDialog({
   const [archivingId, setArchivingId] = useState<string | number | null>(null);
   const [publishingId, setPublishingId] = useState<string | number | null>(null);
   const [seasonUpdatingId, setSeasonUpdatingId] = useState<string | number | null>(null);
+  const [bulkRows, setBulkRows] = useState<
+    {
+      id: string;
+      seasonNumber: number;
+      episodeNumber: number;
+      name: string;
+      synopsis: string;
+      file?: File | null;
+    }[]
+  >([]);
 
   useEffect(() => {
     if (series) {
@@ -409,6 +419,9 @@ function AddEpisodesDialog({
     } else {
       setEpisodes([]);
       setSeasons([]);
+      setBulkText("");
+      setBulkVideos(null);
+      setBulkRows([]);
     }
   }, [open, series?.id]);
 
@@ -515,8 +528,8 @@ function AddEpisodesDialog({
     }
   };
 
-  const parseBulkLines = () => {
-    return bulkText
+  const parseBulkLines = (source: string) => {
+    return source
       .split("\n")
       .map((line) => line.trim())
       .filter(Boolean)
@@ -547,7 +560,25 @@ function AddEpisodesDialog({
 
   const handleBulkSave = async () => {
     if (!series) return;
-    const records = parseBulkLines();
+    const rows =
+      bulkRows.length > 0
+        ? bulkRows
+        : parseBulkLines(bulkText).map((rec, idx) => ({
+            id: `${idx}`,
+            seasonNumber: rec.seasonNumber,
+            episodeNumber: rec.episodeNumber,
+            name: rec.name,
+            synopsis: rec.synopsis ?? "",
+            file: bulkVideos?.[idx] ?? null,
+          }));
+    const records = rows.map((row, idx) => ({
+      line: idx + 1,
+      seasonNumber: row.seasonNumber,
+      episodeNumber: row.episodeNumber,
+      name: row.name,
+      synopsis: row.synopsis,
+      file: row.file ?? null,
+    }));
     if (!records.length) {
       setError("Provide at least one line: seasonNumber,episodeNumber,name[,synopsis]");
       return;
@@ -594,13 +625,15 @@ function AddEpisodesDialog({
         });
         if (!res.ok) throw new Error((res.data as any)?.message || "Failed to create episode");
         const epId = (res.data as any)?.episode?.id;
-        if (bulkVideos && bulkVideos[i]) {
-          startUpload("EPISODE", Number(epId), bulkVideos[i], detectRendition(bulkVideos[i].name));
+        const file = rec.file;
+        if (file) {
+          startUpload("EPISODE", Number(epId), file, detectRendition(file.name));
         }
       }
       onOpenChange(false);
       setBulkText("");
       setBulkVideos(null);
+      setBulkRows([]);
       await loadEpisodes();
     } catch (err: any) {
       setError(err?.message || "Bulk upload failed");
@@ -954,7 +987,39 @@ function AddEpisodesDialog({
                   multiple
                   className="hidden"
                   id="bulk-episode-videos"
-                  onChange={(e) => setBulkVideos(e.target.files)}
+                  onChange={(e) => {
+                    const files = e.target.files;
+                    setBulkVideos(files);
+                    if (!files || files.length === 0) {
+                      setBulkRows((prev) =>
+                        prev.map((row) => ({
+                          ...row,
+                          file: undefined,
+                        })),
+                      );
+                      return;
+                    }
+                    setBulkRows((prev) => {
+                      const next = [...prev];
+                      for (let i = 0; i < files.length; i++) {
+                        const file = files[i];
+                        if (next[i]) {
+                          next[i] = { ...next[i], file };
+                        } else {
+                          const baseName = file.name.replace(/\.[^/.]+$/, "");
+                          next.push({
+                            id: `${Date.now()}-${i}`,
+                            seasonNumber: 1,
+                            episodeNumber: i + 1,
+                            name: baseName,
+                            synopsis: "",
+                            file,
+                          });
+                        }
+                      }
+                      return next;
+                    });
+                  }}
                 />
                 <label htmlFor="bulk-episode-videos" className="flex items-center gap-2 text-neutral-300 cursor-pointer">
                   <Upload className="w-4 h-4" />
@@ -968,11 +1033,144 @@ function AddEpisodesDialog({
 
             <Textarea
               value={bulkText}
-              onChange={(e) => setBulkText(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                setBulkText(value);
+                const parsed = parseBulkLines(value);
+                setBulkRows((prev) => {
+                  const next: typeof bulkRows = [];
+                  for (let i = 0; i < parsed.length; i++) {
+                    const rec = parsed[i];
+                    const existing = prev[i];
+                    next.push({
+                      id: existing?.id ?? `${Date.now()}-${i}`,
+                      seasonNumber: rec.seasonNumber,
+                      episodeNumber: rec.episodeNumber,
+                      name: rec.name,
+                      synopsis: rec.synopsis ?? "",
+                      file: existing?.file,
+                    });
+                  }
+                  return next;
+                });
+              }}
               rows={10}
               className="bg-neutral-950 border-neutral-800 text-white"
               placeholder={`1,1,Pilot,Our first episode\n1,2,Next Chapter,The saga continues`}
             />
+
+            {bulkRows.length > 0 && (
+              <div className="space-y-2 border border-neutral-800 rounded-lg p-3 bg-neutral-950/70">
+                <p className="text-xs text-neutral-300 mb-1">
+                  Attached episodes (order here controls episode creation and video mapping):
+                </p>
+                <div className="space-y-2 max-h-56 overflow-auto pr-1">
+                  {bulkRows.map((row, index) => (
+                    <div
+                      key={row.id}
+                      className="flex items-start gap-3 text-xs bg-neutral-900/70 border border-neutral-800 rounded-md p-2"
+                    >
+                      <div className="flex flex-col gap-1 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-neutral-500 w-4 text-right">{index + 1}.</span>
+                          <Input
+                            type="number"
+                            min={1}
+                            value={row.seasonNumber}
+                            onChange={(e) => {
+                              const value = Number(e.target.value || 1);
+                              setBulkRows((prev) =>
+                                prev.map((r, i) => (i === index ? { ...r, seasonNumber: value } : r)),
+                              );
+                            }}
+                            className="w-16 bg-neutral-950 border-neutral-800 text-white"
+                            placeholder="Season"
+                          />
+                          <Input
+                            type="number"
+                            min={1}
+                            value={row.episodeNumber}
+                            onChange={(e) => {
+                              const value = Number(e.target.value || 1);
+                              setBulkRows((prev) =>
+                                prev.map((r, i) => (i === index ? { ...r, episodeNumber: value } : r)),
+                              );
+                            }}
+                            className="w-16 bg-neutral-950 border-neutral-800 text-white"
+                            placeholder="Ep"
+                          />
+                          <Input
+                            value={row.name}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setBulkRows((prev) =>
+                                prev.map((r, i) => (i === index ? { ...r, name: value } : r)),
+                              );
+                            }}
+                            className="flex-1 bg-neutral-950 border-neutral-800 text-white"
+                            placeholder="Episode name"
+                          />
+                        </div>
+                        <Input
+                          value={row.synopsis}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setBulkRows((prev) =>
+                              prev.map((r, i) => (i === index ? { ...r, synopsis: value } : r)),
+                            );
+                          }}
+                          className="bg-neutral-950 border-neutral-800 text-white"
+                          placeholder="Synopsis (optional)"
+                        />
+                      </div>
+                      <div className="flex flex-col items-end gap-2 w-40">
+                        <div className="text-[11px] text-neutral-400 truncate max-w-full">
+                          {row.file ? row.file.name : "No video attached"}
+                        </div>
+                        <div className="flex gap-1">
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="border-neutral-700 text-neutral-300 hover:text-white"
+                            disabled={index === 0}
+                            onClick={() =>
+                              setBulkRows((prev) => {
+                                if (index === 0) return prev;
+                                const next = [...prev];
+                                const [current] = next.splice(index, 1);
+                                next.splice(index - 1, 0, current);
+                                return next;
+                              })
+                            }
+                            title="Move up"
+                          >
+                            ↑
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="border-neutral-700 text-neutral-300 hover:text-white"
+                            disabled={index === bulkRows.length - 1}
+                            onClick={() =>
+                              setBulkRows((prev) => {
+                                if (index === prev.length - 1) return prev;
+                                const next = [...prev];
+                                const [current] = next.splice(index, 1);
+                                next.splice(index + 1, 0, current);
+                                return next;
+                              })
+                            }
+                            title="Move down"
+                          >
+                            ↓
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {error && <p className="text-red-400 text-sm">{error}</p>}
 
