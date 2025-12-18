@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { adminLogin, login, logout, me, refresh, signup, verifyEmail, resendVerification, updateDeviceLabel, inviteAdmin, listInvites, revokeInvite, acceptInvite, listAdminUsers, updateUserRole, deleteUser, listAllUsers, forgotPassword, resetPassword, } from "../controllers/authController.js";
+import { adminLogin, login, logout, me, refresh, signup, completeOnboarding, googleAuthUrl, googleAuthCallback, verifyEmail, resendVerification, updateDeviceLabel, inviteAdmin, listInvites, revokeInvite, acceptInvite, listAdminUsers, updateUserRole, deleteUser, listAllUsers, forgotPassword, resetPassword, } from "../controllers/authController.js";
 import { createProfile, deleteProfile, getBilling, listDevicesWithProfiles, listProfiles, setDeviceProfile, upsertBilling, updateProfile, } from "../controllers/profileController.js";
 import { requireAdmin, requireAuth, requirePermission, } from "../middleware/auth.js";
 import { Permission } from "../auth/permissions.js";
@@ -14,7 +14,10 @@ router.post("/auth/resend-verification", resendVerification);
 router.post("/auth/device-label", requireAuth, updateDeviceLabel);
 router.post("/auth/forgot-password", forgotPassword);
 router.post("/auth/reset-password", resetPassword);
+router.post("/auth/complete-onboarding", requireAuth, completeOnboarding);
 router.get("/auth/me", requireAuth, me);
+router.get("/auth/google/url", googleAuthUrl);
+router.post("/auth/google/callback", googleAuthCallback);
 // Admin auth (same service but locked down)
 router.post("/admin/login", adminLogin);
 router.get("/admin/me", requireAuth, requireAdmin, requirePermission(Permission.DASHBOARD_VIEW), me);

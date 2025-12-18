@@ -4,13 +4,23 @@ import { presignPutObject, presignGetObject } from "../upload/s3.js";
 import { config } from "../config.js";
 import { resolveCountry } from "../utils/country.js";
 import { auditLog } from "../utils/audit.js";
+import { AssetStatus } from "@prisma/client";
 const kidSafeRatings = ["G", "PG", "TV-Y", "TV-G", "TV-PG", "PG-13"];
 const teenSafeRatings = ["PG-13", "TV-14"];
+const parseOptionalNumber = (val) => {
+    if (val === null || val === undefined)
+        return undefined;
+    const num = Number(val);
+    return Number.isFinite(num) ? num : undefined;
+};
 export const listTitles = async (_req, res) => {
     const titles = await prisma.title.findMany({
         orderBy: { createdAt: "desc" },
         include: {
             episodes: {
+                select: { id: true },
+            },
+            seasons: {
                 select: { id: true },
             },
         },
@@ -32,10 +42,16 @@ export const listTitles = async (_req, res) => {
             posterUrl: t.posterUrl,
             thumbnailUrl: t.thumbnailUrl,
             trailerUrl: t.trailerUrl,
+            previewSpriteUrl: t.previewSpriteUrl,
+            previewVttUrl: t.previewVttUrl,
+            introStartSec: t.introStartSec,
+            introEndSec: t.introEndSec,
             archived: t.archived,
+            pendingReview: t.pendingReview,
             createdAt: t.createdAt,
             updatedAt: t.updatedAt,
             episodeCount: t.episodes.length,
+            seasonCount: t.seasons.length,
             releaseYear: t.releaseDate ? t.releaseDate.getUTCFullYear() : undefined,
         })),
     });
@@ -87,6 +103,23 @@ const maturityClause = (kidMode, age) => {
     }
     return undefined;
 };
+const resolvePlaybackUrl = async (url) => {
+    if (!url)
+        return url;
+    if (url.startsWith("s3://")) {
+        const withoutScheme = url.replace("s3://", "");
+        const [, ...rest] = withoutScheme.split("/");
+        const key = rest.join("/");
+        try {
+            return await presignGetObject(key, 3600);
+        }
+        catch (err) {
+            console.error("presign playback url failed", { key, err });
+            return null;
+        }
+    }
+    return url;
+};
 export const listPublicTitles = async (req, res) => {
     const countryOverride = req.query.country?.toUpperCase()?.trim();
     const country = countryOverride || resolveCountry(req);
@@ -95,6 +128,7 @@ export const listPublicTitles = async (req, res) => {
     const titles = await prisma.title.findMany({
         where: {
             archived: false,
+            pendingReview: false,
             OR: [
                 { countryAvailability: { has: country } },
                 { countryAvailability: { equals: [] } },
@@ -107,6 +141,9 @@ export const listPublicTitles = async (req, res) => {
         ],
         include: {
             episodes: {
+                select: { id: true },
+            },
+            seasons: {
                 select: { id: true },
             },
         },
@@ -128,10 +165,14 @@ export const listPublicTitles = async (req, res) => {
             posterUrl: t.posterUrl,
             thumbnailUrl: t.thumbnailUrl,
             trailerUrl: t.trailerUrl,
+            introStartSec: t.introStartSec,
+            introEndSec: t.introEndSec,
             archived: t.archived,
+            pendingReview: t.pendingReview,
             createdAt: t.createdAt,
             updatedAt: t.updatedAt,
             episodeCount: t.episodes.length,
+            seasonCount: t.seasons.length,
             releaseYear: t.releaseDate ? t.releaseDate.getUTCFullYear() : undefined,
         })),
     });
@@ -149,6 +190,7 @@ export const getTitleWithEpisodes = async (req, res) => {
         where: {
             id: titleId,
             archived: false,
+            pendingReview: false,
             OR: [
                 { countryAvailability: { has: country } },
                 { countryAvailability: { equals: [] } },
@@ -156,17 +198,62 @@ export const getTitleWithEpisodes = async (req, res) => {
             AND: maturityClause(kidMode, age),
         },
         include: {
+            seasons: {
+                orderBy: [{ seasonNumber: "asc" }],
+            },
             episodes: {
                 orderBy: [
                     { seasonNumber: "asc" },
                     { episodeNumber: "asc" },
                 ],
+                where: { pendingReview: false },
+                include: {
+                    assetVersions: {
+                        where: { status: AssetStatus.READY },
+                    },
+                },
+            },
+            assetVersions: {
+                where: { status: AssetStatus.READY },
             },
         },
     });
     if (!title) {
         return res.status(404).json({ message: "Title not found" });
     }
+    const trailerUrl = await resolvePlaybackUrl(title.trailerUrl);
+    const assetVersions = await Promise.all(title.assetVersions.map(async (a) => ({
+        id: a.id.toString(),
+        rendition: a.rendition,
+        url: await resolvePlaybackUrl(a.url),
+        sizeBytes: a.sizeBytes ? Number(a.sizeBytes) : undefined,
+        durationSec: a.durationSec ?? undefined,
+        status: a.status,
+    })));
+    const episodes = await Promise.all(title.episodes.map(async (e) => ({
+        id: e.id.toString(),
+        titleId: e.titleId.toString(),
+        seasonNumber: e.seasonNumber,
+        episodeNumber: e.episodeNumber,
+        name: e.name,
+        synopsis: e.synopsis,
+        runtimeMinutes: e.runtimeMinutes,
+        previewSpriteUrl: e.previewSpriteUrl,
+        previewVttUrl: e.previewVttUrl,
+        introStartSec: e.introStartSec,
+        introEndSec: e.introEndSec,
+        seasonId: e.seasonId ? e.seasonId.toString() : null,
+        createdAt: e.createdAt,
+        updatedAt: e.updatedAt,
+        assetVersions: await Promise.all(e.assetVersions?.map(async (a) => ({
+            id: a.id.toString(),
+            rendition: a.rendition,
+            url: await resolvePlaybackUrl(a.url),
+            sizeBytes: a.sizeBytes ? Number(a.sizeBytes) : undefined,
+            durationSec: a.durationSec ?? undefined,
+            status: a.status,
+        })) ?? []),
+    })));
     return res.json({
         title: {
             id: title.id.toString(),
@@ -183,22 +270,32 @@ export const getTitleWithEpisodes = async (req, res) => {
             isOriginal: title.isOriginal,
             posterUrl: title.posterUrl,
             thumbnailUrl: title.thumbnailUrl,
-            trailerUrl: title.trailerUrl,
+            trailerUrl,
+            introStartSec: title.introStartSec,
+            introEndSec: title.introEndSec,
+            previewSpriteUrl: title.previewSpriteUrl,
+            previewVttUrl: title.previewVttUrl,
             archived: title.archived,
             createdAt: title.createdAt,
             updatedAt: title.updatedAt,
             releaseYear: title.releaseDate ? title.releaseDate.getUTCFullYear() : undefined,
             episodeCount: title.episodes.length,
-            episodes: title.episodes.map((e) => ({
-                id: e.id.toString(),
-                titleId: e.titleId.toString(),
-                seasonNumber: e.seasonNumber,
-                episodeNumber: e.episodeNumber,
-                name: e.name,
-                synopsis: e.synopsis,
-                runtimeMinutes: e.runtimeMinutes,
-                createdAt: e.createdAt,
-                updatedAt: e.updatedAt,
+            assetVersions,
+            episodes,
+            seasons: title.seasons.map((s) => ({
+                id: s.id.toString(),
+                titleId: s.titleId.toString(),
+                seasonNumber: s.seasonNumber,
+                name: s.name,
+                description: s.description,
+                releaseDate: s.releaseDate,
+                status: s.status,
+                posterUrl: s.posterUrl,
+                thumbnailUrl: s.thumbnailUrl,
+                previewSpriteUrl: s.previewSpriteUrl,
+                previewVttUrl: s.previewVttUrl,
+                createdAt: s.createdAt,
+                updatedAt: s.updatedAt,
             })),
         },
     });
@@ -214,6 +311,11 @@ export const listEpisodesForTitle = async (req, res) => {
             { seasonNumber: "asc" },
             { episodeNumber: "asc" },
         ],
+        include: {
+            assetVersions: {
+                where: { status: AssetStatus.READY },
+            },
+        },
     });
     return res.json({
         episodes: episodes.map((e) => ({
@@ -224,13 +326,27 @@ export const listEpisodesForTitle = async (req, res) => {
             name: e.name,
             synopsis: e.synopsis,
             runtimeMinutes: e.runtimeMinutes,
+            previewSpriteUrl: e.previewSpriteUrl,
+            previewVttUrl: e.previewVttUrl,
+            introStartSec: e.introStartSec,
+            introEndSec: e.introEndSec,
+            seasonId: e.seasonId ? e.seasonId.toString() : null,
+            pendingReview: e.pendingReview,
+            assetVersions: e.assetVersions?.map((a) => ({
+                id: a.id.toString(),
+                rendition: a.rendition,
+                url: a.url,
+                sizeBytes: a.sizeBytes ? Number(a.sizeBytes) : undefined,
+                durationSec: a.durationSec ?? undefined,
+                status: a.status,
+            })),
             createdAt: e.createdAt,
             updatedAt: e.updatedAt,
         })),
     });
 };
 export const createTitle = async (req, res) => {
-    const { name, type, description, posterUrl, thumbnailUrl, trailerUrl, releaseYear, genres, cast, crew, language, maturityRating, runtimeMinutes, countryAvailability, isOriginal, } = req.body;
+    const { name, type, description, posterUrl, thumbnailUrl, trailerUrl, previewSpriteUrl, previewVttUrl, releaseYear, genres, cast, crew, language, maturityRating, runtimeMinutes, countryAvailability, isOriginal, pendingReview, introStartSec, introEndSec, seasons, } = req.body;
     if (!name || !type) {
         return res.status(400).json({ message: "name and type are required" });
     }
@@ -244,6 +360,10 @@ export const createTitle = async (req, res) => {
             posterUrl,
             thumbnailUrl,
             trailerUrl,
+            previewSpriteUrl,
+            previewVttUrl,
+            introStartSec: parseOptionalNumber(introStartSec),
+            introEndSec: parseOptionalNumber(introEndSec),
             releaseDate: parsedReleaseDate,
             genres: Array.isArray(genres) ? genres.map(String) : [],
             cast: Array.isArray(cast) ? cast.map(String) : [],
@@ -254,6 +374,22 @@ export const createTitle = async (req, res) => {
             countryAvailability: Array.isArray(countryAvailability) ? countryAvailability.map(String) : [],
             isOriginal: isOriginal ?? false,
             archived: false,
+            pendingReview: pendingReview ?? false,
+            seasons: type === "SERIES" && Array.isArray(seasons)
+                ? {
+                    create: seasons.map((s) => ({
+                        seasonNumber: Number(s.seasonNumber),
+                        name: s.name ?? undefined,
+                        description: s.description ?? undefined,
+                        releaseDate: s.releaseDate ? new Date(s.releaseDate) : undefined,
+                        status: s.status ?? undefined,
+                        posterUrl: s.posterUrl ?? undefined,
+                        thumbnailUrl: s.thumbnailUrl ?? undefined,
+                        previewSpriteUrl: s.previewSpriteUrl ?? undefined,
+                        previewVttUrl: s.previewVttUrl ?? undefined,
+                    })),
+                }
+                : undefined,
         },
     });
     void auditLog({
@@ -269,7 +405,7 @@ export const updateTitle = async (req, res) => {
     const id = req.params.id ? BigInt(req.params.id) : null;
     if (!id)
         return res.status(400).json({ message: "Missing title id" });
-    const { name, description, posterUrl, thumbnailUrl, trailerUrl, archived, releaseYear, genres, cast, crew, language, maturityRating, runtimeMinutes, countryAvailability, isOriginal, } = req.body;
+    const { name, description, posterUrl, thumbnailUrl, trailerUrl, previewSpriteUrl, previewVttUrl, archived, releaseYear, genres, cast, crew, language, maturityRating, runtimeMinutes, countryAvailability, isOriginal, pendingReview, introStartSec, introEndSec, } = req.body;
     const data = {};
     if (name !== undefined)
         data.name = name;
@@ -281,6 +417,14 @@ export const updateTitle = async (req, res) => {
         data.thumbnailUrl = thumbnailUrl;
     if (trailerUrl !== undefined)
         data.trailerUrl = trailerUrl;
+    if (previewSpriteUrl !== undefined)
+        data.previewSpriteUrl = previewSpriteUrl;
+    if (previewVttUrl !== undefined)
+        data.previewVttUrl = previewVttUrl;
+    if (introStartSec !== undefined)
+        data.introStartSec = parseOptionalNumber(introStartSec);
+    if (introEndSec !== undefined)
+        data.introEndSec = parseOptionalNumber(introEndSec);
     if (archived !== undefined)
         data.archived = archived;
     if (releaseYear !== undefined && !Number.isNaN(Number(releaseYear))) {
@@ -304,43 +448,83 @@ export const updateTitle = async (req, res) => {
     }
     if (isOriginal !== undefined)
         data.isOriginal = isOriginal;
-    const title = await prisma.title.update({ where: { id }, data });
-    void auditLog({
-        action: "TITLE_UPDATE",
-        resource: id.toString(),
-        detail: { fields: Object.keys(data) },
+    if (pendingReview !== undefined)
+        data.pendingReview = pendingReview;
+    try {
+        const title = await prisma.title.update({ where: { id }, data });
+        void auditLog({
+            action: "TITLE_UPDATE",
+            resource: id.toString(),
+            detail: { fields: Object.keys(data) },
+        });
+        return res.json({ title: { id: title.id.toString(), name: title.name, type: title.type } });
+    }
+    catch (err) {
+        if (err?.code === "P2025") {
+            return res.status(404).json({ message: "Title not found" });
+        }
+        throw err;
+    }
+};
+export const publishTitle = async (req, res) => {
+    const id = req.params.id ? BigInt(req.params.id) : null;
+    if (!id)
+        return res.status(400).json({ message: "Missing title id" });
+    const publishEpisodes = req.body?.publishEpisodes ?? true;
+    const title = await prisma.title.update({
+        where: { id },
+        data: { archived: false, pendingReview: false },
     });
-    return res.json({ title: { id: title.id.toString(), name: title.name, type: title.type } });
+    if (publishEpisodes && title.type === "SERIES") {
+        await prisma.episode.updateMany({
+            where: { titleId: id },
+            data: { pendingReview: false },
+        });
+    }
+    void auditLog({
+        action: "TITLE_PUBLISH",
+        resource: id.toString(),
+        detail: { publishEpisodes },
+    });
+    return res.json({ title: { id: title.id.toString(), name: title.name, type: title.type, pendingReview: title.pendingReview, archived: title.archived } });
 };
 export const createEpisode = async (req, res) => {
     const titleId = req.params.id ? BigInt(req.params.id) : null;
     if (!titleId)
         return res.status(400).json({ message: "Missing title id" });
-    const { seasonNumber, episodeNumber, name, synopsis, runtimeMinutes } = req.body;
+    const { seasonNumber, episodeNumber, name, synopsis, runtimeMinutes, previewSpriteUrl, previewVttUrl, introStartSec, introEndSec, } = req.body;
     if (!seasonNumber || !episodeNumber || !name) {
         return res.status(400).json({ message: "seasonNumber, episodeNumber, and name are required" });
     }
+    const season = await prisma.season.upsert({
+        where: {
+            titleId_seasonNumber: {
+                titleId,
+                seasonNumber,
+            },
+        },
+        update: {},
+        create: {
+            titleId,
+            seasonNumber,
+        },
+    });
     const ep = await prisma.episode.create({
         data: {
             titleId,
+            seasonId: season.id,
             seasonNumber,
             episodeNumber,
             name,
             synopsis,
+            previewSpriteUrl,
+            previewVttUrl,
+            introStartSec: parseOptionalNumber(introStartSec),
+            introEndSec: parseOptionalNumber(introEndSec),
             runtimeMinutes: runtimeMinutes !== undefined && !Number.isNaN(Number(runtimeMinutes))
                 ? Number(runtimeMinutes)
                 : undefined,
-        },
-    });
-    return res.status(201).json({
-        episode: {
-            id: ep.id.toString(),
-            titleId: ep.titleId.toString(),
-            seasonNumber: ep.seasonNumber,
-            episodeNumber: ep.episodeNumber,
-            name: ep.name,
-            synopsis: ep.synopsis,
-            runtimeMinutes: ep.runtimeMinutes,
+            pendingReview: req.body?.pendingReview ?? true,
         },
     });
     void auditLog({
@@ -348,25 +532,72 @@ export const createEpisode = async (req, res) => {
         resource: ep.id.toString(),
         detail: { titleId: ep.titleId.toString(), seasonNumber, episodeNumber },
     });
+    return res.status(201).json({
+        episode: {
+            id: ep.id.toString(),
+            titleId: ep.titleId.toString(),
+            seasonId: ep.seasonId ? ep.seasonId.toString() : null,
+            seasonNumber: ep.seasonNumber,
+            episodeNumber: ep.episodeNumber,
+            name: ep.name,
+            synopsis: ep.synopsis,
+            previewSpriteUrl: ep.previewSpriteUrl,
+            previewVttUrl: ep.previewVttUrl,
+            introStartSec: ep.introStartSec,
+            introEndSec: ep.introEndSec,
+            runtimeMinutes: ep.runtimeMinutes,
+            pendingReview: ep.pendingReview,
+        },
+    });
 };
 export const updateEpisode = async (req, res) => {
     const episodeId = req.params.episodeId ? BigInt(req.params.episodeId) : null;
     if (!episodeId)
         return res.status(400).json({ message: "Missing episode id" });
-    const { seasonNumber, episodeNumber, name, synopsis, runtimeMinutes } = req.body;
+    const { seasonNumber, episodeNumber, name, synopsis, runtimeMinutes, pendingReview, previewSpriteUrl, previewVttUrl, introStartSec, introEndSec, } = req.body;
+    const existing = await prisma.episode.findUnique({ where: { id: episodeId }, select: { titleId: true } });
+    if (!existing)
+        return res.status(404).json({ message: "Episode not found" });
     const data = {};
-    if (seasonNumber !== undefined)
+    if (seasonNumber !== undefined) {
+        const season = await prisma.season.upsert({
+            where: {
+                titleId_seasonNumber: {
+                    titleId: existing.titleId,
+                    seasonNumber,
+                },
+            },
+            update: {},
+            create: { titleId: existing.titleId, seasonNumber },
+        });
         data.seasonNumber = seasonNumber;
+        data.seasonId = season.id;
+    }
     if (episodeNumber !== undefined)
         data.episodeNumber = episodeNumber;
     if (name !== undefined)
         data.name = name;
     if (synopsis !== undefined)
         data.synopsis = synopsis;
+    if (previewSpriteUrl !== undefined)
+        data.previewSpriteUrl = previewSpriteUrl;
+    if (previewVttUrl !== undefined)
+        data.previewVttUrl = previewVttUrl;
+    if (introStartSec !== undefined)
+        data.introStartSec = parseOptionalNumber(introStartSec);
+    if (introEndSec !== undefined)
+        data.introEndSec = parseOptionalNumber(introEndSec);
     if (runtimeMinutes !== undefined && !Number.isNaN(Number(runtimeMinutes))) {
         data.runtimeMinutes = Number(runtimeMinutes);
     }
+    if (pendingReview !== undefined)
+        data.pendingReview = pendingReview;
     const ep = await prisma.episode.update({ where: { id: episodeId }, data });
+    void auditLog({
+        action: "EPISODE_UPDATE",
+        resource: ep.id.toString(),
+        detail: { fields: Object.keys(data) },
+    });
     return res.json({
         episode: {
             id: ep.id.toString(),
@@ -375,14 +606,188 @@ export const updateEpisode = async (req, res) => {
             episodeNumber: ep.episodeNumber,
             name: ep.name,
             synopsis: ep.synopsis,
+            previewSpriteUrl: ep.previewSpriteUrl,
+            previewVttUrl: ep.previewVttUrl,
+            introStartSec: ep.introStartSec,
+            introEndSec: ep.introEndSec,
+            seasonId: ep.seasonId ? ep.seasonId.toString() : null,
             runtimeMinutes: ep.runtimeMinutes,
+            pendingReview: ep.pendingReview,
         },
     });
+};
+export const deleteEpisode = async (req, res) => {
+    const episodeId = req.params.episodeId ? BigInt(req.params.episodeId) : null;
+    if (!episodeId)
+        return res.status(400).json({ message: "Missing episode id" });
+    await prisma.$transaction([
+        prisma.assetVersion.deleteMany({ where: { episodeId } }),
+        prisma.uploadJob.deleteMany({ where: { episodeId } }),
+        prisma.engagementEvent.deleteMany({ where: { episodeId } }),
+        prisma.episode.delete({ where: { id: episodeId } }),
+    ]);
+    void auditLog({ action: "EPISODE_DELETE", resource: episodeId.toString() });
+    return res.status(204).send();
+};
+export const listSeasonsForTitle = async (req, res) => {
+    const titleId = req.params.id ? BigInt(req.params.id) : null;
+    if (!titleId)
+        return res.status(400).json({ message: "Missing title id" });
+    const seasons = await prisma.season.findMany({
+        where: { titleId },
+        orderBy: [{ seasonNumber: "asc" }],
+    });
+    return res.json({
+        seasons: seasons.map((s) => ({
+            id: s.id.toString(),
+            titleId: s.titleId.toString(),
+            seasonNumber: s.seasonNumber,
+            name: s.name,
+            description: s.description,
+            releaseDate: s.releaseDate,
+            status: s.status,
+            posterUrl: s.posterUrl,
+            thumbnailUrl: s.thumbnailUrl,
+            previewSpriteUrl: s.previewSpriteUrl,
+            previewVttUrl: s.previewVttUrl,
+            createdAt: s.createdAt,
+            updatedAt: s.updatedAt,
+        })),
+    });
+};
+export const upsertSeasonsForTitle = async (req, res) => {
+    const titleId = req.params.id ? BigInt(req.params.id) : null;
+    if (!titleId)
+        return res.status(400).json({ message: "Missing title id" });
+    const seasons = (req.body?.seasons ?? []);
+    if (!Array.isArray(seasons) || !seasons.length) {
+        return res.status(400).json({ message: "seasons array is required" });
+    }
+    const result = [];
+    for (const s of seasons) {
+        if (!s.seasonNumber && s.seasonNumber !== 0)
+            continue;
+        const season = await prisma.season.upsert({
+            where: {
+                titleId_seasonNumber: {
+                    titleId,
+                    seasonNumber: Number(s.seasonNumber),
+                },
+            },
+            update: {
+                name: s.name ?? undefined,
+                description: s.description ?? undefined,
+                releaseDate: s.releaseDate ? new Date(s.releaseDate) : undefined,
+                status: s.status ?? undefined,
+                posterUrl: s.posterUrl ?? undefined,
+                thumbnailUrl: s.thumbnailUrl ?? undefined,
+                previewSpriteUrl: s.previewSpriteUrl ?? undefined,
+                previewVttUrl: s.previewVttUrl ?? undefined,
+            },
+            create: {
+                titleId,
+                seasonNumber: Number(s.seasonNumber),
+                name: s.name ?? undefined,
+                description: s.description ?? undefined,
+                releaseDate: s.releaseDate ? new Date(s.releaseDate) : undefined,
+                status: s.status ?? undefined,
+                posterUrl: s.posterUrl ?? undefined,
+                thumbnailUrl: s.thumbnailUrl ?? undefined,
+                previewSpriteUrl: s.previewSpriteUrl ?? undefined,
+                previewVttUrl: s.previewVttUrl ?? undefined,
+            },
+        });
+        result.push(season);
+    }
     void auditLog({
-        action: "EPISODE_UPDATE",
-        resource: ep.id.toString(),
+        action: "SEASON_UPSERT",
+        resource: titleId.toString(),
+        detail: { count: result.length },
+    });
+    return res.json({
+        seasons: result.map((s) => ({
+            id: s.id.toString(),
+            titleId: s.titleId.toString(),
+            seasonNumber: s.seasonNumber,
+            name: s.name,
+            description: s.description,
+            releaseDate: s.releaseDate,
+            status: s.status,
+            posterUrl: s.posterUrl,
+            thumbnailUrl: s.thumbnailUrl,
+            previewSpriteUrl: s.previewSpriteUrl,
+            previewVttUrl: s.previewVttUrl,
+            createdAt: s.createdAt,
+            updatedAt: s.updatedAt,
+        })),
+    });
+};
+export const updateSeason = async (req, res) => {
+    const seasonId = req.params.seasonId ? BigInt(req.params.seasonId) : null;
+    if (!seasonId)
+        return res.status(400).json({ message: "Missing season id" });
+    const { seasonNumber, name, description, releaseDate, status, posterUrl, thumbnailUrl, previewSpriteUrl, previewVttUrl } = req.body;
+    const data = {};
+    if (seasonNumber !== undefined)
+        data.seasonNumber = seasonNumber;
+    if (name !== undefined)
+        data.name = name;
+    if (description !== undefined)
+        data.description = description;
+    if (releaseDate !== undefined)
+        data.releaseDate = releaseDate ? new Date(releaseDate) : null;
+    if (status !== undefined)
+        data.status = status;
+    if (posterUrl !== undefined)
+        data.posterUrl = posterUrl;
+    if (thumbnailUrl !== undefined)
+        data.thumbnailUrl = thumbnailUrl;
+    if (previewSpriteUrl !== undefined)
+        data.previewSpriteUrl = previewSpriteUrl;
+    if (previewVttUrl !== undefined)
+        data.previewVttUrl = previewVttUrl;
+    const season = await prisma.season.update({ where: { id: seasonId }, data });
+    void auditLog({
+        action: "SEASON_UPDATE",
+        resource: seasonId.toString(),
         detail: { fields: Object.keys(data) },
     });
+    return res.json({
+        season: {
+            id: season.id.toString(),
+            titleId: season.titleId.toString(),
+            seasonNumber: season.seasonNumber,
+            name: season.name,
+            description: season.description,
+            releaseDate: season.releaseDate,
+            status: season.status,
+            posterUrl: season.posterUrl,
+            thumbnailUrl: season.thumbnailUrl,
+            previewSpriteUrl: season.previewSpriteUrl,
+            previewVttUrl: season.previewVttUrl,
+            createdAt: season.createdAt,
+            updatedAt: season.updatedAt,
+        },
+    });
+};
+export const deleteSeason = async (req, res) => {
+    const seasonId = req.params.seasonId ? BigInt(req.params.seasonId) : null;
+    if (!seasonId)
+        return res.status(400).json({ message: "Missing season id" });
+    const episodes = await prisma.episode.findMany({
+        where: { seasonId },
+        select: { id: true },
+    });
+    const episodeIds = episodes.map((e) => e.id);
+    await prisma.$transaction([
+        prisma.assetVersion.deleteMany({ where: { episodeId: { in: episodeIds } } }),
+        prisma.uploadJob.deleteMany({ where: { episodeId: { in: episodeIds } } }),
+        prisma.engagementEvent.deleteMany({ where: { episodeId: { in: episodeIds } } }),
+        prisma.episode.deleteMany({ where: { id: { in: episodeIds } } }),
+        prisma.season.delete({ where: { id: seasonId } }),
+    ]);
+    void auditLog({ action: "SEASON_DELETE", resource: seasonId.toString(), detail: { episodes: episodeIds.length } });
+    return res.status(204).send();
 };
 export const presignAsset = async (req, res) => {
     const { contentType, kind } = req.body;

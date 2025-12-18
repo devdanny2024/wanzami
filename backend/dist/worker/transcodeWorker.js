@@ -12,7 +12,10 @@ import os from "os";
 if (ffmpegStatic) {
     ffmpeg.setFfmpegPath(ffmpegStatic);
 }
-const connection = new IORedis(config.redisUrl);
+const connection = new IORedis(config.redisUrl, {
+    maxRetriesPerRequest: null,
+    enableReadyCheck: false,
+});
 const renditionToHeight = (r) => {
     switch (r) {
         case "R4K":
@@ -46,12 +49,22 @@ async function transcodeToHeight(src, dest, height) {
 }
 const worker = new Worker("transcode", async (job) => {
     const data = job.data;
+    const uploadJobId = BigInt(data.uploadJobId);
+    const titleId = data.titleId != null ? BigInt(data.titleId) : null;
+    const episodeId = data.episodeId != null ? BigInt(data.episodeId) : null;
     const tmpDir = await mkdtemp(path.join(os.tmpdir(), "wanzami-"));
     const srcPath = path.join(tmpDir, "source");
     try {
         await downloadToFile(data.key, srcPath);
-        const probe = await new Promise((resolve, reject) => ffmpeg.ffprobe(srcPath, (err, meta) => (err ? reject(err) : resolve(meta))));
-        const durationSec = Math.round(probe.format?.duration ?? 0);
+        let durationSec = 0;
+        try {
+            const probe = await new Promise((resolve, reject) => ffmpeg.ffprobe(srcPath, (err, meta) => (err ? reject(err) : resolve(meta))));
+            durationSec = Math.round(probe.format?.duration ?? 0);
+        }
+        catch {
+            // If ffprobe is unavailable, continue without duration to avoid failing the whole job.
+            durationSec = 0;
+        }
         for (const rendition of data.renditions) {
             const outPath = path.join(tmpDir, `${rendition}.mp4`);
             const height = renditionToHeight(rendition);
@@ -61,8 +74,8 @@ const worker = new Worker("transcode", async (job) => {
             const size = uploaded.size ?? (await stat(outPath)).size;
             await prisma.assetVersion.updateMany({
                 where: {
-                    titleId: data.titleId,
-                    episodeId: data.episodeId,
+                    titleId,
+                    episodeId,
                     rendition,
                 },
                 data: {
@@ -74,13 +87,13 @@ const worker = new Worker("transcode", async (job) => {
             });
         }
         await prisma.uploadJob.update({
-            where: { id: data.uploadJobId },
+            where: { id: uploadJobId },
             data: { status: UploadStatus.COMPLETED },
         });
     }
     catch (err) {
         await prisma.uploadJob.update({
-            where: { id: data.uploadJobId },
+            where: { id: uploadJobId },
             data: { status: UploadStatus.FAILED, error: err?.message ?? "Transcode failed" },
         });
         throw err;
@@ -88,13 +101,16 @@ const worker = new Worker("transcode", async (job) => {
     finally {
         await rm(tmpDir, { recursive: true, force: true });
     }
-}, { connection });
+}, {
+    connection,
+    concurrency: 1,
+});
 worker.on("failed", async (job, err) => {
     if (!job?.data)
         return;
     const data = job.data;
     await prisma.uploadJob.update({
-        where: { id: data.uploadJobId },
+        where: { id: BigInt(data.uploadJobId) },
         data: { status: UploadStatus.FAILED, error: err?.message ?? "Transcode failed" },
     });
 });

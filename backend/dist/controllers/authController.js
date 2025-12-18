@@ -11,12 +11,19 @@ import { sendEmail } from "../utils/mailer.js";
 import { resolveCountry } from "../utils/country.js";
 import { verifyEmailTemplate } from "../templates/verifyEmailTemplate.js";
 import { isPasswordStrong } from "../utils/passwordStrength.js";
+import { googleAuthUrl as googleAuthUrlService, googleAuthCallback as googleAuthCallbackService, } from "../services/googleAuth.js";
+import { welcomeEmailTemplate } from "../templates/welcomeEmailTemplate.js";
 const registerSchema = z.object({
     email: z.string().email(),
     password: z.string().min(8),
     name: z.string().min(2),
     deviceId: z.string().optional(),
     preferredGenres: z.array(z.string()).optional(),
+    birthYear: z.number().int().min(1900).max(new Date().getFullYear()).optional(),
+});
+const onboardingSchema = z.object({
+    preferredGenres: z.array(z.string()).min(1),
+    heardFrom: z.string().optional(),
     birthYear: z.number().int().min(1900).max(new Date().getFullYear()).optional(),
 });
 const loginSchema = z.object({
@@ -78,7 +85,7 @@ const computeRefreshExpiry = () => {
     expiresAt.setTime(expiresAt.getTime() + (ms || 7 * 24 * 60 * 60 * 1000));
     return expiresAt;
 };
-const farFutureDate = () => new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000);
+const farFutureDate = () => new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 1 year for "remember me"
 const isIndefinite = (d) => d.getFullYear() > 2099;
 const formatProfile = (p) => ({
     id: p.id.toString(),
@@ -204,6 +211,18 @@ export const signup = async (req, res) => {
             birthYear,
         },
     });
+    // Welcome email
+    try {
+        await sendEmail({
+            to: emailLower,
+            subject: "Welcome to Wanzami",
+            html: welcomeEmailTemplate({ name }),
+        });
+    }
+    catch (err) {
+        console.error("Failed to send welcome email", err);
+        // non-blocking
+    }
     return res.status(201).json({
         user: {
             id: user.id.toString(),
@@ -215,6 +234,72 @@ export const signup = async (req, res) => {
         profiles: await getProfilesForUser(user.id),
         message: "Account created. Check your email to verify your account.",
     });
+};
+// Google OAuth: return auth URL
+export const googleAuthUrl = async (req, res) => {
+    const redirectUri = req.query.redirectUri || process.env.GOOGLE_REDIRECT_URI;
+    try {
+        const url = await googleAuthUrlService(redirectUri);
+        return res.json({ url });
+    }
+    catch (err) {
+        return res.status(500).json({ message: err?.message ?? "Failed to build Google URL" });
+    }
+};
+// Google OAuth: handle callback, issue app tokens
+export const googleAuthCallback = async (req, res) => {
+    const { code, state, redirectUri } = req.body;
+    if (!code)
+        return res.status(400).json({ message: "Missing code" });
+    try {
+        const issued = await googleAuthCallbackService({ code, state, redirectUri });
+        return res.json(issued);
+    }
+    catch (err) {
+        const codeVal = err?.code;
+        const msg = err?.message ?? "Google auth failed";
+        if (codeVal === "ACCOUNT_NOT_FOUND_FOR_GOOGLE") {
+            return res.status(404).json({ code: codeVal, message: msg });
+        }
+        return res.status(400).json({ message: msg });
+    }
+};
+export const completeOnboarding = async (req, res) => {
+    if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+    }
+    const parsed = onboardingSchema.safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(400).json({ errors: parsed.error.flatten() });
+    }
+    const { preferredGenres, heardFrom, birthYear } = parsed.data;
+    const userId = req.user.userId;
+    let profile = await prisma.profile.findFirst({
+        where: { userId },
+        orderBy: { createdAt: "asc" },
+    });
+    if (!profile) {
+        profile = await prisma.profile.create({
+            data: {
+                userId,
+                name: "Primary",
+            },
+        });
+    }
+    const existingPrefs = profile.preferences ?? {};
+    const newPrefs = {
+        ...existingPrefs,
+        preferredGenres,
+        heardFrom,
+    };
+    await prisma.profile.update({
+        where: { id: profile.id },
+        data: {
+            preferences: newPrefs,
+            birthYear: birthYear ?? profile.birthYear,
+        },
+    });
+    return res.json({ ok: true });
 };
 export const login = async (req, res) => {
     const parsed = loginSchema.safeParse(req.body);
