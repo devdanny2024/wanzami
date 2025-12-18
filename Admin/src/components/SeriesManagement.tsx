@@ -224,6 +224,24 @@ export function SeriesManagement() {
                   >
                     <Eye className="w-4 h-4" />
                   </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="text-red-300 hover:text-red-500"
+                    title="Delete series"
+                    onClick={async () => {
+                      if (!confirm(`Delete series "${item.name}" and all its episodes?`)) return;
+                      try {
+                        await deleteSeries(item.id);
+                        await loadSeries();
+                        toast.success("Series deleted");
+                      } catch (err: any) {
+                        toast.error(err?.message || "Delete failed");
+                      }
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
                 </div>
               </CardTitle>
               <p className="text-sm text-neutral-500 line-clamp-2">{item.description}</p>
