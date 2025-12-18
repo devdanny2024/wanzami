@@ -210,6 +210,7 @@ export function CustomMediaPlayer({
   >([]);
   const pendingResume = useRef(false);
   const lastProgressSent = useRef<number>(0);
+  const lastKnownTime = useRef<number>(0);
   const hasSentStart = useRef(false);
   const unmounted = useRef(false);
   const endCardShownRef = useRef(false);
@@ -229,7 +230,8 @@ export function CustomMediaPlayer({
         return;
       }
       lastProgressSent.current = now;
-      const time = videoRef.current?.currentTime ?? 0;
+      const currentFromVideo = videoRef.current?.currentTime ?? 0;
+      const time = lastKnownTime.current || currentFromVideo || 0;
       const dur = videoRef.current?.duration ?? duration ?? 0;
       const completionPercent = dur > 0 ? Math.max(0, Math.min(1, time / dur)) : 0;
       try {
@@ -376,6 +378,7 @@ export function CustomMediaPlayer({
 
     const handleTimeUpdate = () => {
       setCurrentTime(video.currentTime);
+      lastKnownTime.current = video.currentTime;
       void emitEvent("PLAY_END", { reason: "progress" }, false);
       maybeShowEndCard();
     };
@@ -484,6 +487,7 @@ export function CustomMediaPlayer({
     if (!video) return;
     video.currentTime = time;
     setCurrentTime(time);
+    lastKnownTime.current = time;
     void emitEvent("SCRUB", { reason: "seek", positionSec: time }, true);
   };
 
