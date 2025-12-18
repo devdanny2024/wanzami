@@ -340,7 +340,6 @@ function AddEpisodesDialog({
   token?: string;
 }) {
   const { startUpload } = useUploadQueue();
-  const [bulkText, setBulkText] = useState("");
   const [bulkVideos, setBulkVideos] = useState<FileList | null>(null);
   const [savingBulk, setSavingBulk] = useState(false);
   const [weeklyEp, setWeeklyEp] = useState<Episode>({
@@ -375,6 +374,7 @@ function AddEpisodesDialog({
       file?: File | null;
     }[]
   >([]);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (series) {
@@ -419,9 +419,9 @@ function AddEpisodesDialog({
     } else {
       setEpisodes([]);
       setSeasons([]);
-      setBulkText("");
       setBulkVideos(null);
       setBulkRows([]);
+      setDragIndex(null);
     }
   }, [open, series?.id]);
 
@@ -528,27 +528,6 @@ function AddEpisodesDialog({
     }
   };
 
-  const parseBulkLines = (source: string) => {
-    return source
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line, idx) => {
-        const parts = line.split(",").map((p) => p.trim());
-        const seasonNumber = Number(parts[0] || 1);
-        const episodeNumber = Number(parts[1] || 1);
-        const name = parts[2] || "";
-        return {
-          line: idx + 1,
-          raw: line,
-          seasonNumber,
-          episodeNumber,
-          name,
-          synopsis: parts.slice(3).join(","),
-        };
-      });
-  };
-
   const detectRendition = (fileName: string) => {
     const lower = fileName.toLowerCase();
     if (lower.includes("2160") || lower.includes("4k")) return "4k";
@@ -560,17 +539,7 @@ function AddEpisodesDialog({
 
   const handleBulkSave = async () => {
     if (!series) return;
-    const rows =
-      bulkRows.length > 0
-        ? bulkRows
-        : parseBulkLines(bulkText).map((rec, idx) => ({
-            id: `${idx}`,
-            seasonNumber: rec.seasonNumber,
-            episodeNumber: rec.episodeNumber,
-            name: rec.name,
-            synopsis: rec.synopsis ?? "",
-            file: bulkVideos?.[idx] ?? null,
-          }));
+    const rows = bulkRows;
     const records = rows.map((row, idx) => ({
       line: idx + 1,
       seasonNumber: row.seasonNumber,
@@ -580,7 +549,7 @@ function AddEpisodesDialog({
       file: row.file ?? null,
     }));
     if (!records.length) {
-      setError("Provide at least one line: seasonNumber,episodeNumber,name[,synopsis]");
+      setError("Attach at least one episode video.");
       return;
     }
     // validation: positive numbers, name required, duplicates
@@ -631,9 +600,9 @@ function AddEpisodesDialog({
         }
       }
       onOpenChange(false);
-      setBulkText("");
       setBulkVideos(null);
       setBulkRows([]);
+      setDragIndex(null);
       await loadEpisodes();
     } catch (err: any) {
       setError(err?.message || "Bulk upload failed");
@@ -973,11 +942,9 @@ function AddEpisodesDialog({
           <TabsContent value="bulk" className="space-y-4 mt-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-neutral-300 text-sm">
-                  Paste CSV lines: <code>seasonNumber,episodeNumber,name[,synopsis]</code>
-                </p>
+                <p className="text-neutral-300 text-sm">Attach episode videos to create multiple episodes.</p>
                 <p className="text-neutral-500 text-xs mt-1">
-                  Videos (optional) will map in order of the rows.
+                  For each file, fill in Season, Episode, Title and Synopsis. Drag rows to fix ordering.
                 </p>
               </div>
               <div className="border border-dashed border-neutral-700 rounded-lg p-3 bg-neutral-950/50">
@@ -991,34 +958,30 @@ function AddEpisodesDialog({
                     const files = e.target.files;
                     setBulkVideos(files);
                     if (!files || files.length === 0) {
-                      setBulkRows((prev) =>
-                        prev.map((row) => ({
-                          ...row,
-                          file: undefined,
-                        })),
-                      );
+                      setBulkRows([]);
                       return;
                     }
-                    setBulkRows((prev) => {
-                      const next = [...prev];
-                      for (let i = 0; i < files.length; i++) {
-                        const file = files[i];
-                        if (next[i]) {
-                          next[i] = { ...next[i], file };
-                        } else {
-                          const baseName = file.name.replace(/\.[^/.]+$/, "");
-                          next.push({
-                            id: `${Date.now()}-${i}`,
-                            seasonNumber: 1,
-                            episodeNumber: i + 1,
-                            name: baseName,
-                            synopsis: "",
-                            file,
-                          });
-                        }
-                      }
-                      return next;
-                    });
+                    const next: {
+                      id: string;
+                      seasonNumber: number;
+                      episodeNumber: number;
+                      name: string;
+                      synopsis: string;
+                      file?: File | null;
+                    }[] = [];
+                    for (let i = 0; i < files.length; i++) {
+                      const file = files[i];
+                      const baseName = file.name.replace(/\.[^/.]+$/, "");
+                      next.push({
+                        id: `${Date.now()}-${i}`,
+                        seasonNumber: 1,
+                        episodeNumber: i + 1,
+                        name: baseName,
+                        synopsis: "",
+                        file,
+                      });
+                    }
+                    setBulkRows(next);
                   }}
                 />
                 <label htmlFor="bulk-episode-videos" className="flex items-center gap-2 text-neutral-300 cursor-pointer">
@@ -1031,34 +994,6 @@ function AddEpisodesDialog({
               </div>
             </div>
 
-            <Textarea
-              value={bulkText}
-              onChange={(e) => {
-                const value = e.target.value;
-                setBulkText(value);
-                const parsed = parseBulkLines(value);
-                setBulkRows((prev) => {
-                  const next: typeof bulkRows = [];
-                  for (let i = 0; i < parsed.length; i++) {
-                    const rec = parsed[i];
-                    const existing = prev[i];
-                    next.push({
-                      id: existing?.id ?? `${Date.now()}-${i}`,
-                      seasonNumber: rec.seasonNumber,
-                      episodeNumber: rec.episodeNumber,
-                      name: rec.name,
-                      synopsis: rec.synopsis ?? "",
-                      file: existing?.file,
-                    });
-                  }
-                  return next;
-                });
-              }}
-              rows={10}
-              className="bg-neutral-950 border-neutral-800 text-white"
-              placeholder={`1,1,Pilot,Our first episode\n1,2,Next Chapter,The saga continues`}
-            />
-
             {bulkRows.length > 0 && (
               <div className="space-y-2 border border-neutral-800 rounded-lg p-3 bg-neutral-950/70">
                 <p className="text-xs text-neutral-300 mb-1">
@@ -1069,6 +1004,20 @@ function AddEpisodesDialog({
                     <div
                       key={row.id}
                       className="flex items-start gap-3 text-xs bg-neutral-900/70 border border-neutral-800 rounded-md p-2"
+                      draggable
+                      onDragStart={() => setDragIndex(index)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => {
+                        if (dragIndex === null || dragIndex === index) return;
+                        setBulkRows((prev) => {
+                          const next = [...prev];
+                          const [moved] = next.splice(dragIndex, 1);
+                          next.splice(index, 0, moved);
+                          return next;
+                        });
+                        setDragIndex(null);
+                      }}
+                      onDragEnd={() => setDragIndex(null)}
                     >
                       <div className="flex flex-col gap-1 flex-1">
                         <div className="flex items-center gap-2">
