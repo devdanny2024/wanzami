@@ -33,25 +33,56 @@ function AppContent() {
 
   useEffect(() => {
     const verify = async () => {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+      if (typeof window === 'undefined') {
+        setCheckingSession(false);
+        return;
+      }
+
+      const token = localStorage.getItem('accessToken');
+
+      // If there are active uploads in the queue, avoid forcing a logout
+      // when the access token has expired. This keeps the admin shell and
+      // upload dock visible so in-flight uploads can finish.
+      let hasActiveUploads = false;
+      try {
+        const raw = window.localStorage.getItem('wanzami-upload-queue');
+        if (raw) {
+          const saved = JSON.parse(raw) as Array<{ status?: string }>;
+          hasActiveUploads = saved.some(
+            (t) =>
+              t.status === 'pending' ||
+              t.status === 'uploading' ||
+              t.status === 'processing',
+          );
+        }
+      } catch {
+        // ignore queue parsing errors
+      }
+
       if (!token) {
         setCheckingSession(false);
         return;
       }
+
       const res = await fetch('/api/admin/me', {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
         setIsLoggedIn(true);
       } else {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('deviceId');
-        setIsLoggedIn(false);
+        if (!hasActiveUploads) {
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+          localStorage.removeItem('deviceId');
+          setIsLoggedIn(false);
+        } else {
+          // Keep the shell active; uploads may still be running.
+          setIsLoggedIn(true);
+        }
       }
       setCheckingSession(false);
     };
-    verify();
+    void verify();
   }, []);
 
   const handleLogin = () => {
