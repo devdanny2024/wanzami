@@ -95,6 +95,8 @@ export function CustomMediaPlayer({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const hasAppliedStart = useRef(false);
   const hideControlsTimer = useRef<NodeJS.Timeout | null>(null);
+  const lastTapRef = useRef<number | null>(null);
+  const lastTapXRef = useRef<number | null>(null);
   const normalizedSources = useMemo(() => {
     if (!sources || !sources.length) return [];
     return sources.map((s, idx) => ({
@@ -550,6 +552,16 @@ export function CustomMediaPlayer({
     }
   };
 
+  const seekRelative = (deltaSec: number, reason: string = "key_seek") => {
+    const video = videoRef.current;
+    if (!video || !Number.isFinite(video.duration)) return;
+    const target = Math.max(0, Math.min(video.duration || 0, (video.currentTime || 0) + deltaSec));
+    video.currentTime = target;
+    setCurrentTime(target);
+    lastKnownTime.current = target;
+    void emitEvent("SCRUB", { reason, positionSec: target }, true);
+  };
+
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const time = parseFloat(e.target.value);
     const video = videoRef.current;
@@ -558,6 +570,16 @@ export function CustomMediaPlayer({
     setCurrentTime(time);
     lastKnownTime.current = time;
     void emitEvent("SCRUB", { reason: "seek", positionSec: time }, true);
+  };
+
+  const adjustVolume = (delta: number) => {
+    const video = videoRef.current;
+    if (!video) return;
+    const base = isMuted ? volume : video.volume;
+    const next = Math.min(1, Math.max(0, base + delta));
+    video.volume = next;
+    setVolume(next);
+    setIsMuted(next === 0);
   };
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -595,6 +617,68 @@ export function CustomMediaPlayer({
       // ignore
     }
   };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only react when focus is inside the player to avoid
+      // hijacking global shortcuts elsewhere on the page.
+      const container = containerRef.current;
+      if (!container) return;
+      const active = document.activeElement;
+      if (active && !container.contains(active)) return;
+
+      switch (e.key) {
+        case " ":
+        case "Spacebar":
+        case "k":
+        case "K":
+          e.preventDefault();
+          togglePlay();
+          break;
+        case "ArrowLeft":
+          e.preventDefault();
+          seekRelative(-10);
+          break;
+        case "ArrowRight":
+          e.preventDefault();
+          seekRelative(10);
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          adjustVolume(0.05);
+          break;
+        case "ArrowDown":
+          e.preventDefault();
+          adjustVolume(-0.05);
+          break;
+        case "m":
+        case "M":
+          e.preventDefault();
+          toggleMute();
+          break;
+        case "f":
+        case "F":
+          e.preventDefault();
+          toggleFullscreen();
+          break;
+        case "Escape":
+          e.preventDefault();
+          if (document.fullscreenElement) {
+            document.exitFullscreen().catch(() => undefined);
+          } else {
+            onClose();
+          }
+          break;
+        default:
+          return;
+      }
+
+      setIsHovering(true);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [adjustVolume, onClose, seekRelative, toggleFullscreen, toggleMute, togglePlay]);
 
   const handleQualityChange = (source: MediaSource) => {
     const video = videoRef.current;
@@ -810,13 +894,51 @@ export function CustomMediaPlayer({
     };
   }, [currentEpisode?.id, currentEpisode?.previewVttUrl, previewVttUrl]);
 
+  const handleContainerTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    setIsHovering(true);
+    const touch = e.touches[0];
+    const container = containerRef.current;
+    if (!touch || !container) return;
+
+    const rect = container.getBoundingClientRect();
+    const x = touch.clientX - rect.left;
+    const width = rect.width || 1;
+
+    const now = Date.now();
+    const last = lastTapRef.current ?? 0;
+    const lastX = lastTapXRef.current;
+    const isDoubleTap =
+      now - last < 300 && lastX != null && Math.abs(lastX - x) < width * 0.25;
+
+    if (isDoubleTap) {
+      const side = x < width / 2 ? "left" : "right";
+      const delta = side === "left" ? -10 : 10;
+      seekRelative(delta, "tap_skip");
+      lastTapRef.current = null;
+      lastTapXRef.current = null;
+    } else {
+      lastTapRef.current = now;
+      lastTapXRef.current = x;
+    }
+  };
+
+  const handleContainerTouchEnd = () => {
+    // Allow a brief period with controls visible after tap.
+    window.setTimeout(() => setIsHovering(false), 2500);
+  };
+
   return (
     <div
       ref={containerRef}
       className="fixed inset-0 bg-black group overflow-visible"
+      tabIndex={0}
+      role="region"
+      aria-label={`${title} player`}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
       onMouseMove={() => setIsHovering(true)}
+      onTouchStart={handleContainerTouchStart}
+      onTouchEnd={handleContainerTouchEnd}
     >
       <video
         ref={videoRef}
@@ -1047,7 +1169,11 @@ export function CustomMediaPlayer({
 
         <div className="hidden md:flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button onClick={togglePlay} className="text-white hover:scale-110 transition-transform">
+            <button
+              onClick={togglePlay}
+              className="text-white hover:scale-110 transition-transform"
+              aria-label={isPlaying ? "Pause" : "Play"}
+            >
               {isPlaying ? <Pause className="w-8 h-8" fill="white" /> : <Play className="w-8 h-8" fill="white" />}
             </button>
             <button
@@ -1065,7 +1191,11 @@ export function CustomMediaPlayer({
               <SkipForward className="w-7 h-7" fill="white" />
             </button>
             <div className="flex items-center gap-2 group/volume">
-              <button onClick={toggleMute} className="text-white hover:scale-110 transition-transform">
+              <button
+                onClick={toggleMute}
+                className="text-white hover:scale-110 transition-transform"
+                aria-label={isMuted || volume === 0 ? "Unmute" : "Mute"}
+              >
                 {isMuted || volume === 0 ? <VolumeX className="w-7 h-7" /> : <Volume2 className="w-7 h-7" />}
               </button>
               <input
@@ -1075,7 +1205,7 @@ export function CustomMediaPlayer({
                 step={0.01}
                 value={isMuted ? 0 : volume}
                 onChange={handleVolumeChange}
-                className="w-0 group-hover/volume:w-24 transition-all duration-300 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"
+                className="w-16 group-hover/volume:w-32 transition-all duration-300 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"
                 style={{
                   background: `linear-gradient(to right, white 0%, white ${volume * 100}%, #4a5568 ${volume * 100}%, #4a5568 100%)`,
                 }}
@@ -1096,6 +1226,7 @@ export function CustomMediaPlayer({
                 <button
                   onClick={() => setShowQualityMenu((v) => !v)}
                   className="text-white hover:scale-110 transition-transform"
+                  aria-label="Change quality"
                 >
                   <Settings className="w-7 h-7" />
                 </button>
@@ -1121,7 +1252,11 @@ export function CustomMediaPlayer({
                 )}
               </div>
             ) : null}
-            <button onClick={toggleFullscreen} className="text-white hover:scale-110 transition-transform">
+            <button
+              onClick={toggleFullscreen}
+              className="text-white hover:scale-110 transition-transform"
+              aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            >
               {isFullscreen ? <Minimize className="w-7 h-7" /> : <Maximize className="w-7 h-7" />}
             </button>
           </div>
