@@ -223,12 +223,20 @@ export function CustomMediaPlayer({
   >([]);
 
   const updateLocalContinueWatching = useCallback(
-    (completionPercent: number | undefined) => {
+    (payload: { completionPercent?: number; positionSec?: number; durationSec?: number }) => {
       if (typeof window === "undefined") return;
       if (!titleId) return;
-      if (typeof completionPercent !== "number" || !Number.isFinite(completionPercent) || completionPercent <= 0) {
-        return;
-      }
+
+      const { completionPercent, positionSec, durationSec } = payload;
+      const hasCompletion =
+        typeof completionPercent === "number" &&
+        Number.isFinite(completionPercent) &&
+        completionPercent > 0;
+      const hasPosition =
+        typeof positionSec === "number" && Number.isFinite(positionSec) && positionSec > 0;
+
+      if (!hasCompletion && !hasPosition) return;
+
       try {
         const key = "wanzami:cw-progress";
         const raw = window.localStorage.getItem(key);
@@ -238,21 +246,34 @@ export function CustomMediaPlayer({
                 string,
                 {
                   completionPercent?: number;
+                  positionSec?: number;
+                  durationSec?: number;
                   updatedAt?: number;
                 }
               >)
             : {};
         const idKey = String(titleId);
         const prev = parsed[idKey];
-        const nextCompletion =
-          typeof prev?.completionPercent === "number"
-            ? Math.max(
-                0,
-                Math.min(1, Math.max(prev.completionPercent, completionPercent)),
-              )
-            : Math.max(0, Math.min(1, completionPercent));
+
+        const nextCompletion = (() => {
+          if (!hasCompletion) return prev?.completionPercent;
+          const incoming = Math.max(0, Math.min(1, completionPercent as number));
+          if (typeof prev?.completionPercent === "number") {
+            return Math.max(prev.completionPercent, incoming);
+          }
+          return incoming;
+        })();
+
+        const nextPosition = hasPosition ? positionSec : prev?.positionSec;
+        const nextDuration =
+          typeof durationSec === "number" && Number.isFinite(durationSec) && durationSec > 0
+            ? durationSec
+            : prev?.durationSec;
+
         parsed[idKey] = {
           completionPercent: nextCompletion,
+          positionSec: nextPosition,
+          durationSec: nextDuration,
           updatedAt: Date.now(),
         };
         window.localStorage.setItem(key, JSON.stringify(parsed));
@@ -277,7 +298,11 @@ export function CustomMediaPlayer({
       const completionPercent = dur > 0 ? Math.max(0, Math.min(1, time / dur)) : 0;
       try {
         if (eventType === "PLAY_END" || eventType === "SCRUB") {
-          updateLocalContinueWatching(completionPercent);
+          updateLocalContinueWatching({
+            completionPercent,
+            positionSec: time,
+            durationSec: dur,
+          });
         }
         await postEvents(
           [

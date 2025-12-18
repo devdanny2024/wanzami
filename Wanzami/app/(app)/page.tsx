@@ -106,6 +106,8 @@ export default function HomeRoute() {
             string,
             {
               completionPercent?: number;
+              positionSec?: number;
+              durationSec?: number;
               updatedAt?: number;
             }
           > = {};
@@ -148,8 +150,18 @@ export default function HomeRoute() {
                 ? Math.max(0, Math.min(1, completion))
                 : localCompletion;
 
-            // Try to find a resume position in seconds, falling back to
-            // completion percent + runtime minutes when available.
+            const localPosition =
+              typeof local?.positionSec === "number" && Number.isFinite(local.positionSec) && local.positionSec > 0
+                ? local.positionSec
+                : undefined;
+            const localDuration =
+              typeof local?.durationSec === "number" && Number.isFinite(local.durationSec) && local.durationSec > 0
+                ? local.durationSec
+                : undefined;
+
+            // Try to find a resume position in seconds, preferring an explicit
+            // position from the backend, then local last-known position, then
+            // falling back to completion percent + duration when available.
             const runtimeMinutes =
               (match?.runtimeMinutes as number | null | undefined) ??
               (item.runtimeMinutes as number | null | undefined) ??
@@ -163,8 +175,12 @@ export default function HomeRoute() {
               resumePositionSec = item.lastPositionSec;
             } else if (typeof item.metadata?.positionSec === "number") {
               resumePositionSec = item.metadata.positionSec;
-            } else if (typeof completion === "number" && runtimeMinutes && runtimeMinutes > 0) {
-              resumePositionSec = (mergedCompletion ?? completion) * (runtimeMinutes * 60);
+            } else if (typeof localPosition === "number") {
+              resumePositionSec = localPosition;
+            } else if (typeof mergedCompletion === "number" && runtimeMinutes && runtimeMinutes > 0) {
+              resumePositionSec = mergedCompletion * (runtimeMinutes * 60);
+            } else if (typeof mergedCompletion === "number" && typeof localDuration === "number") {
+              resumePositionSec = mergedCompletion * localDuration;
             }
 
             if (match) {
