@@ -256,9 +256,32 @@ export default function HomeRoute() {
       }
     };
 
+    // Initial load
     void loadRecs();
+
+    // Re-load recs (including Continue Watching) whenever the window/tab
+    // becomes active again so that when a user returns from the player via
+    // Back, the home page immediately reflects the latest progress.
+    const handleVisibility = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        void loadRecs();
+      }
+    };
+    const handleFocus = () => {
+      void loadRecs();
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("focus", handleFocus);
+      document.addEventListener("visibilitychange", handleVisibility);
+    }
+
     return () => {
       isMounted = false;
+      if (typeof window !== "undefined") {
+        window.removeEventListener("focus", handleFocus);
+        document.removeEventListener("visibilitychange", handleVisibility);
+      }
     };
   }, [catalogMovies]);
 
