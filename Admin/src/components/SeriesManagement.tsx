@@ -598,7 +598,6 @@ function AddEpisodesDialog({
         }
       }
       onOpenChange(false);
-      setBulkVideos(null);
       setBulkRows([]);
       setDragIndex(null);
       await loadEpisodes();
