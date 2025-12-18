@@ -222,6 +222,47 @@ export function CustomMediaPlayer({
     { id: string; backendId?: string; title: string; image: string }[]
   >([]);
 
+  const updateLocalContinueWatching = useCallback(
+    (completionPercent: number | undefined) => {
+      if (typeof window === "undefined") return;
+      if (!titleId) return;
+      if (typeof completionPercent !== "number" || !Number.isFinite(completionPercent) || completionPercent <= 0) {
+        return;
+      }
+      try {
+        const key = "wanzami:cw-progress";
+        const raw = window.localStorage.getItem(key);
+        const parsed =
+          raw && typeof raw === "string"
+            ? (JSON.parse(raw) as Record<
+                string,
+                {
+                  completionPercent?: number;
+                  updatedAt?: number;
+                }
+              >)
+            : {};
+        const idKey = String(titleId);
+        const prev = parsed[idKey];
+        const nextCompletion =
+          typeof prev?.completionPercent === "number"
+            ? Math.max(
+                0,
+                Math.min(1, Math.max(prev.completionPercent, completionPercent)),
+              )
+            : Math.max(0, Math.min(1, completionPercent));
+        parsed[idKey] = {
+          completionPercent: nextCompletion,
+          updatedAt: Date.now(),
+        };
+        window.localStorage.setItem(key, JSON.stringify(parsed));
+      } catch {
+        // ignore local persistence errors
+      }
+    },
+    [titleId],
+  );
+
   const emitEvent = useCallback(
     async (eventType: "PLAY_START" | "PLAY_END" | "SCRUB", metadata?: Record<string, any>, force = false) => {
       if (!accessToken || !titleId) return;
@@ -235,6 +276,9 @@ export function CustomMediaPlayer({
       const dur = videoRef.current?.duration ?? duration ?? 0;
       const completionPercent = dur > 0 ? Math.max(0, Math.min(1, time / dur)) : 0;
       try {
+        if (eventType === "PLAY_END" || eventType === "SCRUB") {
+          updateLocalContinueWatching(completionPercent);
+        }
         await postEvents(
           [
             {
@@ -258,7 +302,7 @@ export function CustomMediaPlayer({
         // ignore logging errors
       }
     },
-    [accessToken, currentEpisode?.id, currentSrc?.label, deviceId, duration, profileId, titleId]
+    [accessToken, currentEpisode?.id, currentSrc?.label, deviceId, duration, profileId, titleId, updateLocalContinueWatching]
   );
 
   const hasPrev = currentEpisode

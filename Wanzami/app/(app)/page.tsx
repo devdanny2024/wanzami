@@ -102,6 +102,24 @@ export default function HomeRoute() {
           const rawItems = (cw.items ?? []) as any[];
           const cwMapped: MovieData[] = [];
           const fallbackImage = "https://placehold.co/600x900/111111/FD7E14?text=Wanzami";
+          let localProgress: Record<
+            string,
+            {
+              completionPercent?: number;
+              updatedAt?: number;
+            }
+          > = {};
+
+          if (typeof window !== "undefined") {
+            try {
+              const raw = window.localStorage.getItem("wanzami:cw-progress");
+              if (raw && typeof raw === "string") {
+                localProgress = JSON.parse(raw) as typeof localProgress;
+              }
+            } catch {
+              localProgress = {};
+            }
+          }
 
           rawItems.forEach((item, idx) => {
             const backendIdRaw = item.titleId ?? item.id;
@@ -118,6 +136,17 @@ export default function HomeRoute() {
                 : typeof item.percent_complete === "number"
                 ? item.percent_complete
                 : undefined;
+            const local = localProgress[String(backendId)];
+            const localCompletion =
+              typeof local?.completionPercent === "number"
+                ? Math.max(0, Math.min(1, local.completionPercent))
+                : undefined;
+            const mergedCompletion =
+              typeof completion === "number" && typeof localCompletion === "number"
+                ? Math.max(0, Math.min(1, Math.max(completion, localCompletion)))
+                : typeof completion === "number"
+                ? Math.max(0, Math.min(1, completion))
+                : localCompletion;
 
             // Try to find a resume position in seconds, falling back to
             // completion percent + runtime minutes when available.
@@ -135,13 +164,16 @@ export default function HomeRoute() {
             } else if (typeof item.metadata?.positionSec === "number") {
               resumePositionSec = item.metadata.positionSec;
             } else if (typeof completion === "number" && runtimeMinutes && runtimeMinutes > 0) {
-              resumePositionSec = completion * (runtimeMinutes * 60);
+              resumePositionSec = (mergedCompletion ?? completion) * (runtimeMinutes * 60);
             }
 
             if (match) {
               cwMapped.push({
                 ...match,
-                completionPercent: completion ?? match.completionPercent,
+                completionPercent: mergedCompletion ?? completion ?? match.completionPercent,
+                // used only for client-side sorting; stripped after
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                ...(local?.updatedAt ? ({ __localUpdatedAt: local.updatedAt } as any) : {}),
                 resumePositionSec: resumePositionSec ?? match.resumePositionSec,
               });
             } else {
@@ -155,13 +187,32 @@ export default function HomeRoute() {
                 genres: item.genres,
                 maturityRating: item.maturityRating ?? "PG",
                 isOriginal: item.isOriginal ?? false,
-                completionPercent: completion,
+                completionPercent: mergedCompletion ?? completion,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                ...(local?.updatedAt ? ({ __localUpdatedAt: local.updatedAt } as any) : {}),
                 resumePositionSec,
               } as MovieData);
             }
           });
 
-          setContinueWatchingItems(cwMapped);
+          const sortedCw = cwMapped
+            .slice()
+            // sort by local updatedAt when available so the last
+            // watched title appears first even if the backend
+            // snapshot lags briefly.
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .sort((a: any, b: any) => {
+              const aTs = typeof a.__localUpdatedAt === "number" ? a.__localUpdatedAt : 0;
+              const bTs = typeof b.__localUpdatedAt === "number" ? b.__localUpdatedAt : 0;
+              return bTs - aTs;
+            })
+            // strip helper field before storing
+            .map((item: any) => {
+              const { __localUpdatedAt, ...rest } = item;
+              return rest;
+            });
+
+          setContinueWatchingItems(sortedCw);
         }
 
         const [top10Res, trendingRes, top10SeriesRes, trendingSeriesRes, forYouRes] =
