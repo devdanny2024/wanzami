@@ -2,4 +2,5 @@
 !.gitignore
 !scaling.md
 !ppv_paystack_ppv_plan.md
-
+!backend_ecs_fargate_plan.md
+!backend_ecs_fargate_step_by_step.md
