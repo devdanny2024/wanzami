@@ -27,11 +27,7 @@ Thumbs.db
 # Prisma
 prisma/generated/
 
-# Tasks artifacts
-Tasks and Documents/
-
-# Local UI change log folder
+# Local UI-only artifacts
 UI Changes & Additions/
-Tasks and Documents/
 /Custom Media Player/
 Admin Series Management Design/
