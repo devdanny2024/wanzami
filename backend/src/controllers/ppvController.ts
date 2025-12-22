@@ -128,10 +128,12 @@ export const getAccess = async (req: AuthenticatedRequest, res: Response) => {
     }
 
     // Record violation
-    let updatedStrikes = user.ppvStrikeCount;
-    let banned = user.ppvBanned;
+    let updatedStrikes: number = user.ppvStrikeCount;
+    let banned: boolean = !!user.ppvBanned;
 
     if (recordViolation) {
+      const newStrikes = updatedStrikes + 1;
+      const willBan = newStrikes >= 3;
       await prisma.$transaction([
         prisma.ppvViolation.create({
           data: {
@@ -145,14 +147,14 @@ export const getAccess = async (req: AuthenticatedRequest, res: Response) => {
         prisma.user.update({
           where: { id: userId },
           data: {
-            ppvStrikeCount: { increment: 1 },
+            ppvStrikeCount: newStrikes,
             ppvLastStrikeAt: now(),
-            ppvBanned: user.ppvStrikeCount + 1 >= 3,
+            ppvBanned: willBan,
           },
         }),
       ]);
-      updatedStrikes = user.ppvStrikeCount + 1;
-      banned = updatedStrikes >= 3;
+      updatedStrikes = newStrikes;
+      banned = willBan;
     }
 
     return res.status(403).json({
