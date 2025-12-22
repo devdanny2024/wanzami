@@ -289,12 +289,56 @@ If you want, you can move the Elastic IP to the ALB instead later, but that’s 
 
 After the main API is stable:
 
-1. Create another task definition for workers based on `wanzami-backend-task`, but override the container command:
-   - Transcode worker: `node dist/worker/transcodeWorker.js`
-   - Cron worker: `node dist/worker/cron.js`
-2. For each, create an ECS service:
-   - No load balancer.
-   - Tasks run in private subnets.
-   - Security group that can reach Redis, DB, S3.
-3. Stop the PM2 worker processes on the old EC2 once ECS workers are confirmed working.
+Workers:
+- Transcode worker: processes upload/transcode jobs, writes AssetVersions, updates statuses.
+- Cron worker: runs scheduled jobs (popularity snapshots, guardrails, exports, embeddings/similarities, etc.).
+
+Environment variables (same as API; use real endpoints/secrets):
+```
+PORT=4000
+DATABASE_URL=...
+JWT_ACCESS_SECRET=...
+JWT_REFRESH_SECRET=...
+ACCESS_TOKEN_EXPIRES_IN=15m
+REFRESH_TOKEN_EXPIRES_IN=7d
+DEVICE_LIMIT=4
+SMTP_HOST=...
+SMTP_PORT=...
+SMTP_USER=...
+SMTP_PASS=...
+SMTP_FROM=...
+APP_ORIGIN=...
+ADMIN_APP_ORIGIN=...
+S3_REGION=eu-north-1
+S3_BUCKET=...
+S3_ENDPOINT=
+S3_ACCESS_KEY=...
+S3_SECRET_KEY=...
+REDIS_URL=rediss://wanzami-cache-dbt2pq.serverless.use2.cache.amazonaws.com:6379
+UPLOAD_MAX_CONCURRENCY=10
+DOWNLOAD_MAX_CONCURRENCY=10
+AWS_REGION=eu-north-1
+AWS_DEFAULT_REGION=eu-north-1
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GOOGLE_REDIRECT_URI=...
+```
+
+A) Task definitions
+- Clone `wanzami-backend-task` into two task defs:
+  - `wanzami-worker-transcode`: same env, same image, override command `["node","dist/worker/transcodeWorker.js"]`.
+  - `wanzami-worker-cron`: same env, same image, override command `["node","dist/worker/cron.js"]`.
+- CPU/Memory: start 1 vCPU / 2–4 GB for transcode; 0.5 vCPU / 1–2 GB for cron (adjust as needed).
+- Logging: CloudWatch log group `/ecs/wanzami-backend-workers`, stream prefix `worker`.
+
+B) Services (one per worker)
+- Launch type: Fargate; service names `wanzami-worker-transcode-svc`, `wanzami-worker-cron-svc`; desired count = 1.
+- No load balancer.
+- Networking: VPC `vpc-03582baa8f18a032b`; use private subnets (or public + public IP only if no NAT).
+- Security group: allow outbound all; ensure Redis SG allows inbound 6379 from this SG; DB SG allows this SG on 5432; S3 is via public endpoint.
+- Optional: set health check grace period to ~60s if startup is slow.
+
+C) After validation
+- Verify tasks stay healthy and logs are clean.
+- Stop/remove PM2 workers on the old EC2 once these services are stable.
 

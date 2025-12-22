@@ -5,12 +5,14 @@ WORKDIR /app
 # Install build dependencies
 COPY package.json package-lock.json tsconfig.json ./
 COPY prisma ./prisma
+COPY .env .env
 
 RUN npm ci
+RUN npx prisma generate
 
 # Copy source and build
 COPY src ./src
-COPY exports ./exports
+RUN mkdir -p exports
 
 RUN npm run build
 

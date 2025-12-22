@@ -1,0 +1,81 @@
+name: Deploy backend
+
+on:
+  push:
+    branches: [main]
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  ECR_REPO: ${{ vars.ECR_REPO }}
+  CLUSTER: ${{ vars.CLUSTER }}
+  SERVICE_API: ${{ vars.SERVICE_API }}
+  SERVICE_TRANSCODE: ${{ vars.SERVICE_TRANSCODE }}
+  SERVICE_CRON: ${{ vars.SERVICE_CRON }}
+  TASKDEF_API: ${{ vars.TASKDEF_API || 'wanzami-backend-task' }}
+  TASKDEF_TRANSCODE: ${{ vars.TASKDEF_TRANSCODE || 'wanzami-worker-transcode' }}
+  TASKDEF_CRON: ${{ vars.TASKDEF_CRON || 'wanzami-worker-cron' }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image
+        env:
+          DOCKER_BUILDKIT: 1
+        run: |
+          IMAGE_TAG=${GITHUB_SHA}
+          docker build -t $ECR_REPO:latest -t $ECR_REPO:$IMAGE_TAG ./backend
+          docker push $ECR_REPO:latest
+          docker push $ECR_REPO:$IMAGE_TAG
+
+      - name: Update API task definition and service
+        run: |
+          IMAGE="$ECR_REPO:${GITHUB_SHA}"
+          TD=$(aws ecs describe-task-definition --task-definition $TASKDEF_API)
+          UPDATED=$(echo "$TD" | jq --arg IMG "$IMAGE" '
+            .taskDefinition
+            | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
+            | .containerDefinitions[0].image = $IMG
+          ')
+          REV_ARN=$(echo "$UPDATED" | aws ecs register-task-definition --cli-input-json file:///dev/stdin --query 'taskDefinition.taskDefinitionArn' --output text)
+          aws ecs update-service --cluster $CLUSTER --service $SERVICE_API --task-definition "$REV_ARN" --force-new-deployment
+
+      - name: Update Transcode worker
+        run: |
+          IMAGE="$ECR_REPO:${GITHUB_SHA}"
+          TD=$(aws ecs describe-task-definition --task-definition $TASKDEF_TRANSCODE)
+          UPDATED=$(echo "$TD" | jq --arg IMG "$IMAGE" '
+            .taskDefinition
+            | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
+            | .containerDefinitions[0].image = $IMG
+          ')
+          REV_ARN=$(echo "$UPDATED" | aws ecs register-task-definition --cli-input-json file:///dev/stdin --query 'taskDefinition.taskDefinitionArn' --output text)
+          aws ecs update-service --cluster $CLUSTER --service $SERVICE_TRANSCODE --task-definition "$REV_ARN" --force-new-deployment
+
+      - name: Update Cron worker
+        run: |
+          IMAGE="$ECR_REPO:${GITHUB_SHA}"
+          TD=$(aws ecs describe-task-definition --task-definition $TASKDEF_CRON)
+          UPDATED=$(echo "$TD" | jq --arg IMG "$IMAGE" '
+            .taskDefinition
+            | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
+            | .containerDefinitions[0].image = $IMG
+          ')
+          REV_ARN=$(echo "$UPDATED" | aws ecs register-task-definition --cli-input-json file:///dev/stdin --query 'taskDefinition.taskDefinitionArn' --output text)
+          aws ecs update-service --cluster $CLUSTER --service $SERVICE_CRON --task-definition "$REV_ARN" --force-new-deployment
