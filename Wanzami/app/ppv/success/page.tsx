@@ -7,12 +7,15 @@ function SuccessContent() {
   const search = useSearchParams();
   const router = useRouter();
 
-  const { status, reference, trxref } = useMemo(() => {
+  const { status, reference, trxref, titleId } = useMemo(() => {
     const statusParam = search?.get('status') ?? '';
+    const ref = search?.get('reference') ?? search?.get('ref') ?? search?.get('trxref') ?? '';
+    const match = ref.match(/PPV-(\d+)-/);
     return {
       status: statusParam.toLowerCase(),
       reference: search?.get('reference') ?? search?.get('ref') ?? '',
       trxref: search?.get('trxref') ?? '',
+      titleId: match?.[1] ?? '',
     };
   }, [search]);
 
@@ -47,12 +50,21 @@ function SuccessContent() {
           </div>
         )}
         <div className="flex gap-3 justify-center pt-4">
-          <button
-            className="px-4 py-2 rounded-lg bg-[#fd7e14] hover:bg-[#e86f0f] text-white"
-            onClick={() => router.push('/mymovies')}
-          >
-            Go to My Movies
-          </button>
+          {titleId ? (
+            <button
+              className="px-4 py-2 rounded-lg bg-[#fd7e14] hover:bg-[#e86f0f] text-white"
+              onClick={() => router.push(`/title/${titleId}`)}
+            >
+              Watch now
+            </button>
+          ) : (
+            <button
+              className="px-4 py-2 rounded-lg bg-[#fd7e14] hover:bg-[#e86f0f] text-white"
+              onClick={() => router.push('/mymovies')}
+            >
+              Go to My Movies
+            </button>
+          )}
           <button
             className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white"
             onClick={() => router.push('/')}
