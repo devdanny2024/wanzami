@@ -215,6 +215,7 @@ export const initiatePurchase = async (req: AuthenticatedRequest, res: Response)
     const currency = gateway === "PAYSTACK" ? "NGN" : "USD";
 
     let authorizationUrl = "";
+    let refToStore = reference;
 
     if (gateway === "PAYSTACK") {
       const initPayload = {
@@ -241,6 +242,7 @@ export const initiatePurchase = async (req: AuthenticatedRequest, res: Response)
     } else {
       const usdAmount = computeUsdFromNaira(amountNaira);
       const txRef = `PPV-FLW-${titleId}-${Date.now()}`;
+      refToStore = txRef;
       const initPayload = {
         tx_ref: txRef,
         amount: usdAmount,
@@ -271,7 +273,7 @@ export const initiatePurchase = async (req: AuthenticatedRequest, res: Response)
         amountNaira,
         currency,
         gateway,
-        paystackRef: reference,
+        paystackRef: refToStore,
         status: "PENDING",
       },
     });
@@ -322,6 +324,48 @@ export const paystackWebhook = async (req: Request, res: Response) => {
     return res.json({ received: true });
   } catch (err) {
     console.error("paystack webhook error", err);
+    return res.status(500).json({ message: "Webhook processing failed" });
+  }
+};
+
+export const flutterwaveWebhook = async (req: Request, res: Response) => {
+  try {
+    const signature = req.headers["verif-hash"] as string;
+    const secret = config.flutterwave.webhookSecret;
+    if (!secret || signature !== secret) {
+      return res.status(401).json({ message: "Invalid signature" });
+    }
+
+    const data = (req.body as any)?.data;
+    const txRef = data?.tx_ref as string | undefined;
+    const metaRef = (data?.meta as any)?.reference as string | undefined;
+    const refToFind = txRef || metaRef;
+    if (!refToFind) return res.status(400).json({ message: "Missing tx_ref" });
+
+    const purchase = await prisma.ppvPurchase.findUnique({ where: { paystackRef: refToFind } });
+    if (!purchase) return res.status(404).json({ message: "Purchase not found" });
+
+    if (data?.status === "successful") {
+      const expiresAt = new Date(Date.now() + ppvAccessDays * 24 * 60 * 60 * 1000);
+      await prisma.ppvPurchase.update({
+        where: { paystackRef: refToFind },
+        data: {
+          status: "SUCCESS",
+          paystackTrxId: String(data.id ?? ""),
+          rawPayload: req.body,
+          accessExpiresAt: expiresAt,
+        },
+      });
+    } else {
+      await prisma.ppvPurchase.update({
+        where: { paystackRef: refToFind },
+        data: { status: "FAILED", rawPayload: req.body },
+      });
+    }
+
+    return res.json({ received: true });
+  } catch (err) {
+    console.error("flutterwave webhook error", err);
     return res.status(500).json({ message: "Webhook processing failed" });
   }
 };
