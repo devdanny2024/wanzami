@@ -26,8 +26,11 @@ function CallbackContent() {
         const apiBase =
           process.env.NEXT_PUBLIC_API_BASE ||
           process.env.AUTH_SERVICE_URL ||
-          "https://wanzami-backend-alb-1018329891.us-east-2.elb.amazonaws.com";
-        const redirectUri = `${apiBase.replace(/\/+$/, "")}/auth/google/callback`;
+          "https://api.carlylehub.org/api";
+        const redirectUri =
+          typeof window !== "undefined"
+            ? `${window.location.origin}/oauth/google/callback`
+            : undefined;
         const res = await fetch(`${apiBase.replace(/\/+$/, "")}/auth/google/callback`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
