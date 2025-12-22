@@ -18,6 +18,7 @@ const app = express();
 const allowedOrigins = [
   "https://wanzami.vercel.app",
   "https://wanzami-admin.vercel.app",
+  "https://api.carlylehub.org",
   "https://wanzami.duckdns.org",
   "http://localhost:3000",
   "http://localhost:3001",
@@ -33,6 +34,9 @@ app.use(
       return callback(null, true);
     },
     credentials: false,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    optionsSuccessStatus: 204,
   })
 );
 app.use(express.json());
