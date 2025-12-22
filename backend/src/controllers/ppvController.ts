@@ -3,6 +3,8 @@ import crypto from "crypto";
 import { prisma } from "../prisma.js";
 import { config } from "../config.js";
 import type { AuthenticatedRequest } from "../middleware/auth.js";
+import { sendEmail } from "../utils/mailer.js";
+import { buildPpvThankYouEmail } from "../templates/ppvThankYouTemplate.js";
 
 const now = () => new Date();
 
@@ -179,6 +181,38 @@ const computeUsdFromNaira = (naira: number) => {
   return Math.round(usd * 100) / 100;
 };
 
+const frontendBase =
+  process.env.APP_ORIGIN || process.env.FRONTEND_URL || "https://wanzami.vercel.app";
+
+const sendPpvThankYou = async (opts: {
+  userEmail?: string | null;
+  userName?: string | null;
+  titleId?: bigint;
+  titleName?: string | null;
+}) => {
+  if (!opts.userEmail || !opts.titleId || !opts.titleName) return;
+  const recs = await prisma.title.findMany({
+    where: { isPpv: true, id: { not: opts.titleId } },
+    orderBy: { createdAt: "desc" },
+    take: 3,
+    select: { id: true, name: true, ppvPriceNaira: true },
+  });
+  const email = buildPpvThankYouEmail({
+    userName: opts.userName ?? undefined,
+    purchasedTitle: opts.titleName,
+    recs: recs.map((r) => ({
+      title: r.name,
+      priceNaira: r.ppvPriceNaira,
+      url: `${frontendBase}/title/${r.id}`,
+    })),
+  });
+  await sendEmail({
+    to: opts.userEmail,
+    subject: email.subject,
+    html: email.html,
+  });
+};
+
 export const initiatePurchase = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { titleId } = req.body as { titleId?: number };
@@ -302,7 +336,10 @@ export const paystackWebhook = async (req: Request, res: Response) => {
     const reference = data?.reference as string | undefined;
     if (!reference) return res.status(400).json({ message: "Missing reference" });
 
-    const purchase = await prisma.ppvPurchase.findUnique({ where: { paystackRef: reference } });
+    const purchase = await prisma.ppvPurchase.findUnique({
+      where: { paystackRef: reference },
+      include: { user: true, title: true },
+    });
     if (!purchase) return res.status(404).json({ message: "Purchase not found" });
 
     if (event.event === "charge.success" || data?.status === "success") {
@@ -316,6 +353,14 @@ export const paystackWebhook = async (req: Request, res: Response) => {
           accessExpiresAt: expiresAt,
         },
       });
+      if (purchase.status !== "SUCCESS") {
+        await sendPpvThankYou({
+          userEmail: purchase.user?.email,
+          userName: purchase.user?.name,
+          titleId: purchase.titleId,
+          titleName: purchase.title?.name,
+        });
+      }
     } else {
       await prisma.ppvPurchase.update({
         where: { paystackRef: reference },
@@ -344,7 +389,10 @@ export const flutterwaveWebhook = async (req: Request, res: Response) => {
     const refToFind = txRef || metaRef;
     if (!refToFind) return res.status(400).json({ message: "Missing tx_ref" });
 
-    const purchase = await prisma.ppvPurchase.findUnique({ where: { paystackRef: refToFind } });
+    const purchase = await prisma.ppvPurchase.findUnique({
+      where: { paystackRef: refToFind },
+      include: { user: true, title: true },
+    });
     if (!purchase) return res.status(404).json({ message: "Purchase not found" });
 
     if (data?.status === "successful") {
@@ -358,6 +406,14 @@ export const flutterwaveWebhook = async (req: Request, res: Response) => {
           accessExpiresAt: expiresAt,
         },
       });
+      if (purchase.status !== "SUCCESS") {
+        await sendPpvThankYou({
+          userEmail: purchase.user?.email,
+          userName: purchase.user?.name,
+          titleId: purchase.titleId,
+          titleName: purchase.title?.name,
+        });
+      }
     } else {
       await prisma.ppvPurchase.update({
         where: { paystackRef: refToFind },
