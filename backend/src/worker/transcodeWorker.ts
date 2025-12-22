@@ -1,7 +1,7 @@
 import { Worker, Job } from "bullmq";
 import IORedis from "ioredis";
 import ffmpeg from "fluent-ffmpeg";
-import ffmpegStatic from "ffmpeg-static";
+import { createRequire } from "module";
 import { prisma } from "../prisma.js";
 import { config } from "../config.js";
 import { AssetStatus, UploadStatus, Rendition } from "@prisma/client";
@@ -10,8 +10,20 @@ import { mkdtemp, rm, stat } from "fs/promises";
 import path from "path";
 import os from "os";
 
-if (ffmpegStatic) {
-  ffmpeg.setFfmpegPath(ffmpegStatic);
+const require = createRequire(import.meta.url);
+let ffmpegStaticPath: string | null = null;
+try {
+  // ffmpeg-static is optional; if it failed to install, skip.
+  const mod = require("ffmpeg-static") as string | undefined;
+  ffmpegStaticPath = mod ?? null;
+} catch (err) {
+  ffmpegStaticPath = null;
+}
+
+if (config.ffmpegPath) {
+  ffmpeg.setFfmpegPath(config.ffmpegPath);
+} else if (ffmpegStaticPath) {
+  ffmpeg.setFfmpegPath(ffmpegStaticPath);
 }
 
 type TranscodeJob = {
