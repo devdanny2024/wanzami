@@ -92,8 +92,12 @@ function StepOne({
     });
     setGoogleLoading(true);
     try {
-      const redirectUri = `${window.location.origin}/oauth/google/callback`;
-      const res = await fetch(`/api/auth/google/url?redirectUri=${encodeURIComponent(redirectUri)}`);
+      const apiBase =
+        process.env.NEXT_PUBLIC_API_BASE ||
+        process.env.AUTH_SERVICE_URL ||
+        "https://wanzami-backend-alb-1018329891.us-east-2.elb.amazonaws.com";
+      const redirectUri = `${apiBase.replace(/\/+$/, "")}/auth/google/callback`;
+      const res = await fetch(`${apiBase.replace(/\/+$/, "")}/auth/google/url?redirectUri=${encodeURIComponent(redirectUri)}`);
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.url) {
         const msg = data?.message ?? "Google sign-up unavailable right now.";

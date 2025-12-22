@@ -23,11 +23,12 @@ function CallbackContent() {
         return;
       }
       try {
-        const redirectUri =
-          typeof window !== "undefined"
-            ? `${window.location.origin}/oauth/google/callback`
-            : undefined;
-        const res = await fetch("/api/auth/google/callback", {
+        const apiBase =
+          process.env.NEXT_PUBLIC_API_BASE ||
+          process.env.AUTH_SERVICE_URL ||
+          "https://wanzami-backend-alb-1018329891.us-east-2.elb.amazonaws.com";
+        const redirectUri = `${apiBase.replace(/\/+$/, "")}/auth/google/callback`;
+        const res = await fetch(`${apiBase.replace(/\/+$/, "")}/auth/google/callback`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ code, state, redirectUri }),
