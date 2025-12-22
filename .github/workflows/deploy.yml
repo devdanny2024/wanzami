@@ -3,6 +3,7 @@ name: Deploy backend
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION }}
@@ -11,9 +12,10 @@ env:
   SERVICE_API: ${{ vars.SERVICE_API }}
   SERVICE_TRANSCODE: ${{ vars.SERVICE_TRANSCODE }}
   SERVICE_CRON: ${{ vars.SERVICE_CRON }}
-  TASKDEF_API: ${{ vars.TASKDEF_API || 'wanzami-backend-task' }}
-  TASKDEF_TRANSCODE: ${{ vars.TASKDEF_TRANSCODE || 'wanzami-worker-transcode' }}
-  TASKDEF_CRON: ${{ vars.TASKDEF_CRON || 'wanzami-worker-cron' }}
+  TASKDEF_API: ${{ vars.TASKDEF_API }}
+  TASKDEF_TRANSCODE: ${{ vars.TASKDEF_TRANSCODE }}
+  TASKDEF_CRON: ${{ vars.TASKDEF_CRON }}
+  DATABASE_URL: ${{ secrets.DATABASE_URL || '' }}
 
 jobs:
   build-and-deploy:
@@ -27,20 +29,18 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Node (for Prisma)
-        if: ${{ secrets.DATABASE_URL != '' }}
+        if: ${{ env.DATABASE_URL != '' }}
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
       - name: Install deps (backend)
-        if: ${{ secrets.DATABASE_URL != '' }}
+        if: ${{ env.DATABASE_URL != '' }}
         working-directory: ./backend
         run: npm ci
 
       - name: Run Prisma migrate + generate
-        if: ${{ secrets.DATABASE_URL != '' }}
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        if: ${{ env.DATABASE_URL != '' }}
         working-directory: ./backend
         run: |
           npx prisma migrate deploy
@@ -67,7 +67,8 @@ jobs:
       - name: Update API task definition and service
         run: |
           IMAGE="$ECR_REPO:${GITHUB_SHA}"
-          TD=$(aws ecs describe-task-definition --task-definition $TASKDEF_API)
+          TASKDEF_API_USE=${TASKDEF_API:-wanzami-backend-task}
+          TD=$(aws ecs describe-task-definition --task-definition $TASKDEF_API_USE)
           UPDATED=$(echo "$TD" | jq --arg IMG "$IMAGE" '
             .taskDefinition
             | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
@@ -80,7 +81,8 @@ jobs:
       - name: Update Transcode worker
         run: |
           IMAGE="$ECR_REPO:${GITHUB_SHA}"
-          TD=$(aws ecs describe-task-definition --task-definition $TASKDEF_TRANSCODE)
+          TASKDEF_TRANSCODE_USE=${TASKDEF_TRANSCODE:-wanzami-worker-transcode}
+          TD=$(aws ecs describe-task-definition --task-definition $TASKDEF_TRANSCODE_USE)
           UPDATED=$(echo "$TD" | jq --arg IMG "$IMAGE" '
             .taskDefinition
             | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
@@ -93,7 +95,8 @@ jobs:
       - name: Update Cron worker
         run: |
           IMAGE="$ECR_REPO:${GITHUB_SHA}"
-          TD=$(aws ecs describe-task-definition --task-definition $TASKDEF_CRON)
+          TASKDEF_CRON_USE=${TASKDEF_CRON:-wanzami-worker-cron}
+          TD=$(aws ecs describe-task-definition --task-definition $TASKDEF_CRON_USE)
           UPDATED=$(echo "$TD" | jq --arg IMG "$IMAGE" '
             .taskDefinition
             | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
