@@ -26,6 +26,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node (for Prisma)
+        if: ${{ secrets.DATABASE_URL != '' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install deps (backend)
+        if: ${{ secrets.DATABASE_URL != '' }}
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Run Prisma migrate + generate
+        if: ${{ secrets.DATABASE_URL != '' }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        working-directory: ./backend
+        run: |
+          npx prisma migrate deploy
+          npx prisma generate
+
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
