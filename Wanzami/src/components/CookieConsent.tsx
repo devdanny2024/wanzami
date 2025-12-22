@@ -24,11 +24,6 @@ export function CookieConsent() {
   );
 
   useEffect(() => {
-    const hasToken = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-    if (!hasToken) {
-      setConsent("accepted"); // hide when not logged in
-      return;
-    }
     const storedConsent = typeof window !== "undefined" ? localStorage.getItem("cookieConsent") : null;
     if (storedConsent === "accepted" || storedConsent === "rejected") {
       setConsent(storedConsent as Consent);
