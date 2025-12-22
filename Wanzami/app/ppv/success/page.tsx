@@ -1,9 +1,9 @@
 'use client';
 
+import { Suspense, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useMemo } from 'react';
 
-export default function PpvSuccessPage() {
+function SuccessContent() {
   const search = useSearchParams();
   const router = useRouter();
 
@@ -62,5 +62,13 @@ export default function PpvSuccessPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PpvSuccessPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-black text-white flex items-center justify-center px-6">Loading…</div>}>
+      <SuccessContent />
+    </Suspense>
   );
 }
