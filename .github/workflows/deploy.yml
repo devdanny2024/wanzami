@@ -53,7 +53,8 @@ jobs:
             | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
             | .containerDefinitions[0].image = $IMG
           ')
-          REV_ARN=$(echo "$UPDATED" | aws ecs register-task-definition --cli-input-json file:///dev/stdin --query 'taskDefinition.taskDefinitionArn' --output text)
+          echo "$UPDATED" > /tmp/td-api.json
+          REV_ARN=$(aws ecs register-task-definition --cli-input-json file:///tmp/td-api.json --query 'taskDefinition.taskDefinitionArn' --output text)
           aws ecs update-service --cluster $CLUSTER --service $SERVICE_API --task-definition "$REV_ARN" --force-new-deployment
 
       - name: Update Transcode worker
@@ -65,7 +66,8 @@ jobs:
             | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
             | .containerDefinitions[0].image = $IMG
           ')
-          REV_ARN=$(echo "$UPDATED" | aws ecs register-task-definition --cli-input-json file:///dev/stdin --query 'taskDefinition.taskDefinitionArn' --output text)
+          echo "$UPDATED" > /tmp/td-transcode.json
+          REV_ARN=$(aws ecs register-task-definition --cli-input-json file:///tmp/td-transcode.json --query 'taskDefinition.taskDefinitionArn' --output text)
           aws ecs update-service --cluster $CLUSTER --service $SERVICE_TRANSCODE --task-definition "$REV_ARN" --force-new-deployment
 
       - name: Update Cron worker
@@ -77,5 +79,6 @@ jobs:
             | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
             | .containerDefinitions[0].image = $IMG
           ')
-          REV_ARN=$(echo "$UPDATED" | aws ecs register-task-definition --cli-input-json file:///dev/stdin --query 'taskDefinition.taskDefinitionArn' --output text)
+          echo "$UPDATED" > /tmp/td-cron.json
+          REV_ARN=$(aws ecs register-task-definition --cli-input-json file:///tmp/td-cron.json --query 'taskDefinition.taskDefinitionArn' --output text)
           aws ecs update-service --cluster $CLUSTER --service $SERVICE_CRON --task-definition "$REV_ARN" --force-new-deployment
