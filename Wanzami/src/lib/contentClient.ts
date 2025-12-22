@@ -137,6 +137,7 @@ export async function fetchPpvAccess(params: {
   const query = new URLSearchParams();
   if (params.profileId) query.set("profileId", params.profileId);
   if (params.country) query.set("country", params.country);
+  query.set("record", "false");
   const res = await fetchWithTimeout(`${API_BASE}/ppv/access/${params.titleId}?${query.toString()}`, {
     cache: "no-store",
     headers: params.accessToken

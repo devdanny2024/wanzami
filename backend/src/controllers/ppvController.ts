@@ -71,6 +71,7 @@ export const getAccess = async (req: AuthenticatedRequest, res: Response) => {
     if (!titleId) {
       return res.status(400).json({ message: "Missing title id" });
     }
+    const recordViolation = (req.query.record as string | undefined)?.toLowerCase() !== "false";
     const userId = req.user?.userId;
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
@@ -127,28 +128,32 @@ export const getAccess = async (req: AuthenticatedRequest, res: Response) => {
     }
 
     // Record violation
-    await prisma.$transaction([
-      prisma.ppvViolation.create({
-        data: {
-          userId,
-          titleId,
-          path: req.originalUrl,
-          ipAddress: (req.headers["x-forwarded-for"] as string) ?? req.ip,
-          userAgent: req.headers["user-agent"],
-        },
-      }),
-      prisma.user.update({
-        where: { id: userId },
-        data: {
-          ppvStrikeCount: { increment: 1 },
-          ppvLastStrikeAt: now(),
-          ppvBanned: user.ppvStrikeCount + 1 >= 3,
-        },
-      }),
-    ]);
+    let updatedStrikes = user.ppvStrikeCount;
+    let banned = user.ppvBanned;
 
-    const updatedStrikes = user.ppvStrikeCount + 1;
-    const banned = updatedStrikes >= 3;
+    if (recordViolation) {
+      await prisma.$transaction([
+        prisma.ppvViolation.create({
+          data: {
+            userId,
+            titleId,
+            path: req.originalUrl,
+            ipAddress: (req.headers["x-forwarded-for"] as string) ?? req.ip,
+            userAgent: req.headers["user-agent"],
+          },
+        }),
+        prisma.user.update({
+          where: { id: userId },
+          data: {
+            ppvStrikeCount: { increment: 1 },
+            ppvLastStrikeAt: now(),
+            ppvBanned: user.ppvStrikeCount + 1 >= 3,
+          },
+        }),
+      ]);
+      updatedStrikes = user.ppvStrikeCount + 1;
+      banned = updatedStrikes >= 3;
+    }
 
     return res.status(403).json({
       isPpv: true,
