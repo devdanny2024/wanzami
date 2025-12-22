@@ -8,6 +8,10 @@ router.post("/ppv/initiate", requireAuth, initiatePurchase);
 router.get("/ppv/access/:titleId", requireAuth, getAccess);
 router.get("/ppv/my-titles", requireAuth, myTitles);
 router.post("/ppv/paystack/webhook", paystackWebhook);
+// Optional GET handler so user-facing redirects don't 404; webhook remains POST-only.
+router.get("/ppv/paystack/webhook", (_req, res) =>
+  res.json({ message: "Paystack webhook endpoint is POST-only. Payment received, please wait for confirmation." })
+);
 router.post("/ppv/flutterwave/webhook", flutterwaveWebhook);
 
 export default router;
