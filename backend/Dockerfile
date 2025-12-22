@@ -5,7 +5,6 @@ WORKDIR /app
 # Install build dependencies
 COPY package.json package-lock.json tsconfig.json ./
 COPY prisma ./prisma
-COPY .env .env
 
 RUN npm ci
 RUN npx prisma generate

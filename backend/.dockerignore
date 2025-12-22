@@ -7,5 +7,7 @@ Dockerfile.*
 npm-debug.log
 *.log
 coverage
+.env
+.env.*
 scripts
 
