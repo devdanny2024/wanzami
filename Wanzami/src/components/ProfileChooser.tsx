@@ -39,10 +39,31 @@ export function ProfileChooser({ onSelected, onLogout }: ProfileChooserProps) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [barVisible, setBarVisible] = useState(false);
+  const [barProgress, setBarProgress] = useState(0);
+  const progressTimer = useRef<NodeJS.Timeout | null>(null);
   const [name, setName] = useState("");
   const [kidMode, setKidMode] = useState(false);
   const [selectedAvatar, setSelectedAvatar] = useState(AVATAR_OPTIONS[0]);
   const [showModal, setShowModal] = useState(false);
+
+  const startBar = () => {
+    if (progressTimer.current) clearInterval(progressTimer.current);
+    setBarVisible(true);
+    setBarProgress(10);
+    progressTimer.current = setInterval(() => {
+      setBarProgress((p) => (p < 90 ? p + 8 : p));
+    }, 250);
+  };
+
+  const finishBar = () => {
+    if (progressTimer.current) clearInterval(progressTimer.current);
+    setBarProgress(100);
+    setTimeout(() => {
+      setBarVisible(false);
+      setBarProgress(0);
+    }, 300);
+  };
 
   const fetcher = async (path: string, init?: RequestInit) => {
     const res = await fetch(path, {
@@ -62,6 +83,7 @@ export function ProfileChooser({ onSelected, onLogout }: ProfileChooserProps) {
 
   const loadProfiles = async () => {
     setLoading(true);
+    startBar();
     try {
       const data = await fetcher("/api/user/profiles");
       setProfiles(data.profiles ?? []);
@@ -69,6 +91,7 @@ export function ProfileChooser({ onSelected, onLogout }: ProfileChooserProps) {
       toast.error(err.message ?? "Unable to load profiles");
     } finally {
       setLoading(false);
+      finishBar();
     }
   };
 
@@ -94,6 +117,7 @@ export function ProfileChooser({ onSelected, onLogout }: ProfileChooserProps) {
       return;
     }
     try {
+      startBar();
       await fetcher(`/api/user/devices/${deviceId}/profile`, {
         method: "POST",
         body: JSON.stringify({ profileId: profile.id }),
@@ -108,6 +132,8 @@ export function ProfileChooser({ onSelected, onLogout }: ProfileChooserProps) {
       onSelected(profile);
     } catch (err: any) {
       toast.error(err.message ?? "Unable to select profile");
+    } finally {
+      finishBar();
     }
   };
 
@@ -117,6 +143,7 @@ export function ProfileChooser({ onSelected, onLogout }: ProfileChooserProps) {
       return;
     }
     setCreating(true);
+    startBar();
     try {
       const data = await fetcher("/api/user/profiles", {
         method: "POST",
@@ -136,11 +163,21 @@ export function ProfileChooser({ onSelected, onLogout }: ProfileChooserProps) {
       toast.error(err.message ?? "Unable to create profile");
     } finally {
       setCreating(false);
+      finishBar();
     }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
+      <div
+        className="fixed top-0 left-0 right-0 h-1 bg-white/10"
+        style={{ opacity: barVisible ? 1 : 0, transition: "opacity 0.2s ease" }}
+      >
+        <div
+          className="h-full bg-[#fd7e14]"
+          style={{ width: `${barProgress}%`, transition: "width 0.2s ease" }}
+        />
+      </div>
       <div className="max-w-5xl w-full px-6">
         <div className="text-center mb-10">
           <h1 className="text-3xl md:text-4xl font-semibold text-white">Who&apos;s watching?</h1>
