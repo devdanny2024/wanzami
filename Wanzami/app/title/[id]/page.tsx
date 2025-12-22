@@ -167,13 +167,7 @@ export default function TitlePage({ params }: { params: { id: string } }) {
           return;
         }
         try {
-          const res = await fetchPpvAccess({
-            titleId: id,
-            accessToken,
-            profileId,
-            country,
-          });
-          if (res?.hasAccess) {
+          if (ppvAccess?.hasAccess) {
             // Already purchased; just play
             const url = `/player/${id}`;
             router.push(url);
