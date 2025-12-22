@@ -324,11 +324,13 @@ export const initiatePurchase = async (req: AuthenticatedRequest, res: Response)
 export const paystackWebhook = async (req: Request, res: Response) => {
   try {
     const signature = req.headers["x-paystack-signature"] as string;
-    const secret = config.paystack.webhookSecret;
+    const secret = config.paystack.webhookSecret || config.paystack.secretKey;
     const raw = JSON.stringify(req.body);
-    const expected = crypto.createHmac("sha512", secret).update(raw).digest("hex");
-    if (signature !== expected) {
-      return res.status(401).json({ message: "Invalid signature" });
+    if (secret) {
+      const expected = crypto.createHmac("sha512", secret).update(raw).digest("hex");
+      if (signature !== expected) {
+        return res.status(401).json({ message: "Invalid signature" });
+      }
     }
 
     const event = req.body;
