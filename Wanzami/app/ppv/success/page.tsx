@@ -8,11 +8,11 @@ function SuccessContent() {
   const router = useRouter();
 
   const { status, reference, trxref, titleId } = useMemo(() => {
-    const statusParam = search?.get('status') ?? '';
+    const statusParam = (search?.get('status') ?? '').toLowerCase();
     const ref = search?.get('reference') ?? search?.get('ref') ?? search?.get('trxref') ?? '';
     const match = ref.match(/PPV-(\d+)-/);
     return {
-      status: statusParam.toLowerCase(),
+      status: statusParam || (ref ? 'success' : ''),
       reference: search?.get('reference') ?? search?.get('ref') ?? '',
       trxref: search?.get('trxref') ?? '',
       titleId: match?.[1] ?? '',
