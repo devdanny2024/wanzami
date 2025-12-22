@@ -33,7 +33,7 @@ export function Navbar({
     { label: 'Home', page: 'home', href: '/' },
     { label: 'Movies', page: 'movies', href: '/movies' },
     { label: 'Series', page: 'series', href: '/series' },
-    { label: 'Blog', page: 'blog', href: '/blog' },
+    { label: 'My Movies', page: 'mymovies', href: '/mymovies' },
     { label: 'Kids', page: 'kids', href: '/kids' },
     { label: 'My List', page: 'mylist', href: '/mylist' },
   ];

@@ -1,9 +1,16 @@
-const API_BASE = process.env.AUTH_SERVICE_URL ?? "https://wanzami.duckdns.org/api";
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE ??
+  process.env.AUTH_SERVICE_URL ??
+  "https://wanzami-backend-alb-1018329891.us-east-2.elb.amazonaws.com/api";
 
 export type Title = {
   id: string;
   name: string;
   type: "MOVIE" | "SERIES";
+  isPpv?: boolean;
+  ppvPriceNaira?: number | null;
+  ppvCurrency?: string | null;
+  ppvDescription?: string | null;
   description?: string | null;
   genres?: string[];
   cast?: string[];
@@ -32,6 +39,16 @@ export type Title = {
     durationSec?: number;
     status?: string;
   }[];
+};
+
+export type PpvAccess = {
+  isPpv: boolean;
+  hasAccess: boolean;
+  priceNaira?: number | null;
+  currency?: string | null;
+  userPpvBanned?: boolean;
+  ppvStrikeCount?: number;
+  accessExpiresAt?: string | null;
 };
 
 // Give home-page catalog/recs enough time to return, especially right
@@ -108,6 +125,77 @@ export async function fetchTitleWithEpisodes(id: string, country?: string) {
       createdAt?: string;
       updatedAt?: string;
     }>;
+  };
+}
+
+export async function fetchPpvAccess(params: {
+  titleId: string;
+  accessToken?: string | null;
+  profileId?: string | null;
+  country?: string | null;
+}): Promise<PpvAccess> {
+  const query = new URLSearchParams();
+  if (params.profileId) query.set("profileId", params.profileId);
+  if (params.country) query.set("country", params.country);
+  const res = await fetchWithTimeout(`${API_BASE}/ppv/access/${params.titleId}?${query.toString()}`, {
+    cache: "no-store",
+    headers: params.accessToken
+      ? {
+          Authorization: `Bearer ${params.accessToken}`,
+        }
+      : undefined,
+  });
+  const data = await handleJsonResponse(res);
+  return data as PpvAccess;
+}
+
+export async function initiatePpvPurchase(params: {
+  titleId: string;
+  accessToken: string;
+  profileId?: string | null;
+}): Promise<{ authorizationUrl?: string; reference?: string }> {
+  const res = await fetchWithTimeout(`${API_BASE}/ppv/initiate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${params.accessToken}`,
+    },
+    body: JSON.stringify({
+      titleId: params.titleId,
+      profileId: params.profileId ?? undefined,
+    }),
+  });
+  const data = await handleJsonResponse(res);
+  return data as { authorizationUrl?: string; reference?: string };
+}
+
+export async function fetchMyPpvTitles(params: {
+  accessToken: string;
+  profileId?: string | null;
+}): Promise<{
+  activePurchases: Array<{
+    title: Title;
+    accessExpiresAt?: string | null;
+    status?: string;
+  }>;
+  expiredPurchases?: Array<{
+    title: Title;
+    accessExpiresAt?: string | null;
+    status?: string;
+  }>;
+}> {
+  const query = new URLSearchParams();
+  if (params.profileId) query.set("profileId", params.profileId);
+  const res = await fetchWithTimeout(`${API_BASE}/ppv/my-titles?${query.toString()}`, {
+    cache: "no-store",
+    headers: {
+      Authorization: `Bearer ${params.accessToken}`,
+    },
+  });
+  const data = await handleJsonResponse(res);
+  return {
+    activePurchases: data?.activePurchases ?? [],
+    expiredPurchases: data?.expiredPurchases ?? [],
   };
 }
 

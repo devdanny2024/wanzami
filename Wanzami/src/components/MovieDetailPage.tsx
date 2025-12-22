@@ -11,6 +11,14 @@ interface MovieDetailPageProps {
   movie: any;
   onClose: () => void;
   onPlayClick: (movie: any) => void;
+  onBuyClick?: () => void;
+  ppvInfo?: {
+    isPpv: boolean;
+    hasAccess: boolean;
+    priceNaira?: number | null;
+    currency?: string | null;
+    userPpvBanned?: boolean;
+  };
 }
 
 const relatedMovies: MovieData[] = [
@@ -58,7 +66,7 @@ const relatedMovies: MovieData[] = [
   }
 ];
 
-export function MovieDetailPage({ movie, onClose, onPlayClick }: MovieDetailPageProps) {
+export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvInfo }: MovieDetailPageProps) {
   const isSeries = movie?.type === "SERIES";
   const seriesEpisodes = Array.isArray(movie?.episodes) ? movie.episodes : [];
   const seriesSeasons = Array.isArray((movie as any)?.seasons) ? (movie as any).seasons : [];
@@ -185,13 +193,29 @@ export function MovieDetailPage({ movie, onClose, onPlayClick }: MovieDetailPage
               transition={{ delay: 0.6 }}
               className="flex flex-wrap gap-3 pt-2"
             >
-              <button
-                onClick={() => onPlayClick(movie)}
-                className="flex items-center gap-2 bg-[#fd7e14] hover:bg-[#e86f0f] text-white px-6 md:px-8 py-3 md:py-4 rounded-xl transition-all duration-200 hover:scale-105"
-              >
-                <Play className="w-5 h-5 md:w-6 md:h-6 fill-current" />
-                <span className="text-sm md:text-base">Play</span>
-              </button>
+              {ppvInfo?.userPpvBanned ? (
+                <div className="text-sm md:text-base text-red-300 bg-red-900/40 border border-red-500/40 px-4 py-3 rounded-xl">
+                  Your account has been restricted from PPV access. Please contact support.
+                </div>
+              ) : ppvInfo?.isPpv && !ppvInfo?.hasAccess ? (
+                <button
+                  onClick={() => onBuyClick?.()}
+                  className="flex items-center gap-2 bg-[#fd7e14] hover:bg-[#e86f0f] text-white px-6 md:px-8 py-3 md:py-4 rounded-xl transition-all duration-200 hover:scale-105"
+                >
+                  <Play className="w-5 h-5 md:w-6 md:h-6 fill-current" />
+                  <span className="text-sm md:text-base">
+                    Buy now {ppvInfo?.priceNaira ? `₦${ppvInfo.priceNaira}` : ""} {ppvInfo?.currency ?? "NGN"}
+                  </span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => onPlayClick(movie)}
+                  className="flex items-center gap-2 bg-[#fd7e14] hover:bg-[#e86f0f] text-white px-6 md:px-8 py-3 md:py-4 rounded-xl transition-all duration-200 hover:scale-105"
+                >
+                  <Play className="w-5 h-5 md:w-6 md:h-6 fill-current" />
+                  <span className="text-sm md:text-base">Play</span>
+                </button>
+              )}
 
               <button
                 onClick={() => {

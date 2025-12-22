@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CustomMediaPlayer } from '@/components/CustomMediaPlayer';
-import { fetchTitleWithEpisodes } from '@/lib/contentClient';
+import { fetchPpvAccess, fetchTitleWithEpisodes } from '@/lib/contentClient';
 
 type Title = Awaited<ReturnType<typeof fetchTitleWithEpisodes>>;
 
@@ -113,6 +113,7 @@ export default function PlayerPage({ params }: { params: { id: string } }) {
   const [error, setError] = useState<string | null>(null);
   const [authInfo, setAuthInfo] = useState<{ token?: string; profileId?: string; deviceId?: string }>({});
   const [country, setCountry] = useState<string | null>(null);
+  const [ppvDenied, setPpvDenied] = useState(false);
 
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') ?? undefined : undefined;
@@ -132,6 +133,21 @@ export default function PlayerPage({ params }: { params: { id: string } }) {
         const detail = await fetchTitleWithEpisodes(id, country ?? undefined);
         if (!cancelled) {
           setTitle(detail ?? fallbackDemo(id));
+          try {
+            const access = await fetchPpvAccess({
+              titleId: id,
+              accessToken: authInfo.token,
+              profileId: authInfo.profileId,
+              country,
+            });
+            if (!cancelled && access?.isPpv && !access?.hasAccess) {
+              setPpvDenied(true);
+            } else {
+              setPpvDenied(false);
+            }
+          } catch (err: any) {
+            console.warn('PPV access check failed', err?.message ?? err);
+          }
         }
       } catch (err: any) {
         if (!cancelled) {
@@ -148,7 +164,7 @@ export default function PlayerPage({ params }: { params: { id: string } }) {
     return () => {
       cancelled = true;
     };
-  }, [id, country]);
+  }, [id, country, authInfo.token, authInfo.profileId]);
 
   const activeEpisode = useMemo(() => {
     const list = title?.episodes ?? [];
@@ -185,10 +201,12 @@ export default function PlayerPage({ params }: { params: { id: string } }) {
     );
   }
 
-  if (!title) {
+  if (!title || ppvDenied) {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center px-6">
-        <p className="text-lg font-semibold mb-2">Oops, we couldn't load that title.</p>
+        <p className="text-lg font-semibold mb-2">
+          {ppvDenied ? "You haven't purchased this title yet." : "Oops, we couldn't load that title."}
+        </p>
         {error ? <p className="text-sm text-gray-400 mb-4">{error}</p> : null}
         <button
           className="px-4 py-2 rounded-lg bg-[#fd7e14] hover:bg-[#e86f0f] text-white"
