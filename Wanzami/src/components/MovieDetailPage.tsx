@@ -376,7 +376,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
                   <div className="p-3 space-y-1">
                     <p className="text-white font-semibold text-sm line-clamp-1">{item.title}</p>
                     <p className="text-xs text-gray-400 line-clamp-2">
-                      {(item as any).genre || (item as any).genres?.[0] || "Movie"} ·{" "}
+                      {(item as any).genre || (item as any).genres?.[0] || "Movie"} . 
                       {item.runtimeMinutes ? `${Math.round(Number(item.runtimeMinutes))}m` : "90m"}
                     </p>
                   </div>
@@ -389,3 +389,5 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
     </motion.div>
   );
 }
+
+
