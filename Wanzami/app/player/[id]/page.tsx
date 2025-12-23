@@ -133,7 +133,7 @@ export default function PlayerPage({ params }: { params: { id: string } }) {
       try {
         const detail = await fetchTitleWithEpisodes(id, country ?? undefined);
         if (!cancelled) {
-          setTitle(detail ?? fallbackDemo(id));
+          setTitle(detail ?? null);
           try {
             const access = await fetchPpvAccess({
               titleId: id,
@@ -153,6 +153,9 @@ export default function PlayerPage({ params }: { params: { id: string } }) {
               }
               setPpvDenied(true);
               setBlocked(true);
+              setError('Purchase required to access this title.');
+              setTitle(null);
+              return;
             } else {
               setPpvDenied(false);
               setBlocked(false);
@@ -164,7 +167,7 @@ export default function PlayerPage({ params }: { params: { id: string } }) {
       } catch (err: any) {
         if (!cancelled) {
           setError(err?.message ?? 'Unable to load title');
-          setTitle(fallbackDemo(id));
+          setTitle(null);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -202,6 +205,30 @@ export default function PlayerPage({ params }: { params: { id: string } }) {
     }
   };
 
+  useEffect(() => {
+    if (blocked) {
+      const timer = setTimeout(() => {
+        router.replace('/');
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [blocked, router]);
+
+  if (blocked || ppvDenied) {
+    return (
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center px-6 text-center">
+        <p className="text-lg font-semibold mb-2">Purchase required to access this title.</p>
+        <p className="text-sm text-gray-400 mb-4">Please buy the title to continue. This attempt has been logged.</p>
+        <button
+          className="px-4 py-2 rounded-lg bg-[#fd7e14] hover:bg-[#e86f0f] text-white"
+          onClick={() => router.push('/')}
+        >
+          Go Home
+        </button>
+      </div>
+    );
+  }
+
   if (loading && !title) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
@@ -213,28 +240,11 @@ export default function PlayerPage({ params }: { params: { id: string } }) {
     );
   }
 
-  useEffect(() => {
-    if (blocked) {
-      const timer = setTimeout(() => {
-        router.push('/');
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, [blocked, router]);
-
-  if (!title || ppvDenied || blocked) {
+  if (!title) {
     return (
       <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center px-6 text-center">
-        <p className="text-lg font-semibold mb-2">
-          {ppvDenied || blocked
-            ? "Purchase required to access this title."
-            : "Oops, we couldn't load that title."}
-        </p>
-        <p className="text-sm text-gray-400 mb-4">
-          {ppvDenied || blocked
-            ? "Please buy the title to continue. This attempt has been logged."
-            : error ?? ""}
-        </p>
+        <p className="text-lg font-semibold mb-2">Oops, we couldn't load that title.</p>
+        {error ? <p className="text-sm text-gray-400 mb-4">{error}</p> : null}
         <button
           className="px-4 py-2 rounded-lg bg-[#fd7e14] hover:bg-[#e86f0f] text-white"
           onClick={() => router.push('/')}
