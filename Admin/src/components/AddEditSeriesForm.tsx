@@ -43,6 +43,9 @@ export function AddEditSeriesForm({
   const [maturityRating, setMaturityRating] = useState<string>(series?.maturityRating ?? "");
   const [countryAvailability, setCountryAvailability] = useState<string[]>(series?.countryAvailability ?? []);
   const [isOriginal, setIsOriginal] = useState<boolean>(!!series?.isOriginal);
+  const [ppvEnabled, setPpvEnabled] = useState<boolean>(!!(series as any)?.isPpv);
+  const [ppvPrice, setPpvPrice] = useState<string>((series as any)?.ppvPriceNaira ? String((series as any).ppvPriceNaira) : "");
+  const [ppvCurrency, setPpvCurrency] = useState<string>((series as any)?.ppvCurrency ?? "NGN");
   const [posterFile, setPosterFile] = useState<File | null>(null);
   const [thumbFile, setThumbFile] = useState<File | null>(null);
   const [trailerFile, setTrailerFile] = useState<File | null>(null);
@@ -62,6 +65,9 @@ export function AddEditSeriesForm({
     setIsOriginal(!!series?.isOriginal);
     setIntroStart((series as any)?.introStartSec ?? "");
     setIntroEnd((series as any)?.introEndSec ?? "");
+    setPpvEnabled(!!(series as any)?.isPpv);
+    setPpvPrice((series as any)?.ppvPriceNaira ? String((series as any).ppvPriceNaira) : "");
+    setPpvCurrency((series as any)?.ppvCurrency ?? "NGN");
     setPosterFile(null);
     setThumbFile(null);
     setTrailerFile(null);
@@ -110,6 +116,10 @@ export function AddEditSeriesForm({
       setError("At least one country code is required.");
       return;
     }
+    if (ppvEnabled && (!ppvPrice || Number(ppvPrice) <= 0)) {
+      setError("PPV price is required and must be greater than 0.");
+      return;
+    }
     if (introStart !== "" && Number(introStart) < 0) {
       setError("Intro start must be zero or positive seconds.");
       return;
@@ -145,6 +155,15 @@ export function AddEditSeriesForm({
       if (releaseYear) payload.releaseYear = Number(releaseYear);
       if (introStart !== "") payload.introStartSec = Number(introStart);
       if (introEnd !== "") payload.introEndSec = Number(introEnd);
+      if (ppvEnabled) {
+        payload.isPpv = true;
+        payload.ppvPriceNaira = ppvPrice ? Number(ppvPrice) : undefined;
+        payload.ppvCurrency = ppvCurrency || "NGN";
+      } else {
+        payload.isPpv = false;
+        payload.ppvPriceNaira = null;
+        payload.ppvCurrency = null;
+      }
       if (posterFile) payload.posterUrl = await uploadAsset(posterFile, "poster");
       if (thumbFile) payload.thumbnailUrl = await uploadAsset(thumbFile, "thumbnail");
       if (trailerFile) payload.trailerUrl = await uploadAsset(trailerFile, "trailer");
@@ -388,6 +407,43 @@ export function AddEditSeriesForm({
           <Button disabled={saving} onClick={handleSave} className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
             {saving ? "Saving..." : "Save Series"}
           </Button>
+        </div>
+
+        <div className="border-t border-neutral-800 pt-4 mt-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={ppvEnabled}
+              onCheckedChange={setPpvEnabled}
+              className="data-[state=checked]:bg-[#fd7e14]"
+            />
+            <Label className="text-neutral-300">Enable PPV (Buy, 30-day access)</Label>
+          </div>
+          {ppvEnabled && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-neutral-300">PPV Price</Label>
+                <Input
+                  type="number"
+                  value={ppvPrice}
+                  onChange={(e) => setPpvPrice(e.target.value)}
+                  className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+                  placeholder="1500"
+                />
+              </div>
+              <div>
+                <Label className="text-neutral-300">Currency</Label>
+                <Select value={ppvCurrency} onValueChange={setPpvCurrency}>
+                  <SelectTrigger className="mt-1 bg-neutral-950 border-neutral-800 text-white">
+                    <SelectValue placeholder="Currency" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-neutral-900 border-neutral-800">
+                    <SelectItem value="NGN">NGN</SelectItem>
+                    <SelectItem value="USD">USD</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
         </div>
       </TabsContent>
     </Tabs>

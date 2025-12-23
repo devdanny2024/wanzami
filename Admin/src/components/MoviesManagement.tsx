@@ -19,6 +19,9 @@ export type MovieTitle = {
   id: string;
   name: string;
   type: string;
+  isPpv?: boolean;
+  ppvPriceNaira?: number | null;
+  ppvCurrency?: string | null;
   pendingReview?: boolean;
   thumbnailUrl?: string | null;
   posterUrl?: string | null;
@@ -355,10 +358,11 @@ function AddEditMovieForm({
   const [trailerFile, setTrailerFile] = useState<File | null>(null);
   const [trailerUrlText, setTrailerUrlText] = useState(movie?.trailerUrl ?? "");
   const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [ppvEnabled, setPpvEnabled] = useState(false);
-  const [price, setPrice] = useState("");
-  const [buyPrice, setBuyPrice] = useState("");
-  const [rentalPeriod, setRentalPeriod] = useState("");
+  const [ppvEnabled, setPpvEnabled] = useState<boolean>(!!(movie as any)?.isPpv);
+  const [ppvPrice, setPpvPrice] = useState<string>(
+    (movie as any)?.ppvPriceNaira ? String((movie as any).ppvPriceNaira) : ""
+  );
+  const [ppvCurrency, setPpvCurrency] = useState<string>((movie as any)?.ppvCurrency ?? "NGN");
   const [metaTitle, setMetaTitle] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
   const [metaKeywords, setMetaKeywords] = useState("");
@@ -378,6 +382,9 @@ function AddEditMovieForm({
     setCountryAvailability(((movie as any)?.countryAvailability ?? []) as string[]);
     setIsOriginal(!!(movie as any)?.isOriginal);
     setGenres(((movie as any)?.genres ?? []) as string[]);
+    setPpvEnabled(!!(movie as any)?.isPpv);
+    setPpvPrice((movie as any)?.ppvPriceNaira ? String((movie as any).ppvPriceNaira) : "");
+    setPpvCurrency((movie as any)?.ppvCurrency ?? "NGN");
   }, [movie?.id]);
 
   const uploadAsset = async (
@@ -444,15 +451,13 @@ function AddEditMovieForm({
       if (rating) payload.rating = rating;
       if (contentWarnings) payload.contentWarnings = contentWarnings;
       if (ppvEnabled) {
-        payload.ppvEnabled = true;
-        if (price) payload.price = Number(price);
-        if (buyPrice) payload.buyPrice = Number(buyPrice);
-        if (rentalPeriod) payload.rentalPeriod = rentalPeriod;
+        payload.isPpv = true;
+        payload.ppvPriceNaira = ppvPrice ? Number(ppvPrice) : undefined;
+        payload.ppvCurrency = ppvCurrency || "NGN";
       } else {
-        payload.ppvEnabled = false;
-        payload.price = undefined;
-        payload.buyPrice = undefined;
-        payload.rentalPeriod = undefined;
+        payload.isPpv = false;
+        payload.ppvPriceNaira = null;
+        payload.ppvCurrency = null;
       }
 
       if (!movie?.id) {
@@ -504,6 +509,11 @@ function AddEditMovieForm({
       }
       if (!trailerFile && !trailerUrlText && !movie?.trailerUrl) {
         setError("Trailer file or URL is required.");
+        setSaving(false);
+        return;
+      }
+      if (ppvEnabled && (!ppvPrice || Number(ppvPrice) <= 0)) {
+        setError("PPV price is required and must be greater than 0.");
         setSaving(false);
         return;
       }
@@ -690,52 +700,35 @@ function AddEditMovieForm({
           </div>
 
           {ppvEnabled && (
-            <>
-              <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-neutral-300">Rent Price (NGN)</Label>
+                  <Label className="text-neutral-300">PPV Price (NGN)</Label>
                   <Input
                     type="number"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
+                    value={ppvPrice}
+                    onChange={(e) => setPpvPrice(e.target.value)}
                     className="mt-1 bg-neutral-950 border-neutral-800 text-white"
                     placeholder="1500"
                   />
                 </div>
-
                 <div>
-                  <Label className="text-neutral-300">Rent Duration</Label>
-                  <Select value={rentalPeriod} onValueChange={setRentalPeriod}>
+                  <Label className="text-neutral-300">Currency</Label>
+                  <Select value={ppvCurrency} onValueChange={setPpvCurrency}>
                     <SelectTrigger className="mt-1 bg-neutral-950 border-neutral-800 text-white">
-                      <SelectValue placeholder="Select period" />
+                      <SelectValue placeholder="Select currency" />
                     </SelectTrigger>
                     <SelectContent className="bg-neutral-900 border-neutral-800">
-                      <SelectItem value="24h">24 hours</SelectItem>
-                      <SelectItem value="48h">48 hours</SelectItem>
-                      <SelectItem value="72h">72 hours</SelectItem>
+                      <SelectItem value="NGN">NGN</SelectItem>
+                      <SelectItem value="USD">USD</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-2">
-                <div>
-                  <Label className="text-neutral-300">Buy Price (NGN)</Label>
-                  <Input
-                    type="number"
-                    value={buyPrice}
-                    onChange={(e) => setBuyPrice(e.target.value)}
-                    className="mt-1 bg-neutral-950 border-neutral-800 text-white"
-                    placeholder="3000"
-                  />
-                  <p className="text-xs text-neutral-500 mt-1">Buy unlocks indefinitely (no duration).</p>
-                </div>
-              </div>
-
               <p className="text-xs text-neutral-500">
-                Rent includes a duration (countdown to be implemented later). Buy has no expiry.
+                Buy-only PPV. Access duration uses the backend default (e.g., 30 days).
               </p>
-            </>
+            </div>
           )}
         </div>
       </TabsContent>
