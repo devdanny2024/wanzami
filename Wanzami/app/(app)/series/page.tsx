@@ -86,7 +86,20 @@ export default function SeriesPage() {
         setRecsError(null);
 
         const cw = await fetchContinueWatching(accessToken, profileId ?? undefined);
-        if (isMounted) setContinueWatchingItems(cw.items ?? []);
+        if (isMounted) {
+          const mappedCw = (cw.items ?? [])
+            .filter((i: any) => i.type === "SERIES")
+            .map((i, idx) => ({
+              id: Number(i.titleId ?? i.id ?? idx) || Date.now() + idx,
+              backendId: i.titleId ?? i.id ?? String(idx),
+              title: i.name ?? i.title ?? `Series ${i.titleId ?? i.id ?? idx}`,
+              image: i.thumbnailUrl || i.posterUrl || "https://placehold.co/640x360/111111/FD7E14?text=Wanzami",
+              type: i.type ?? "SERIES",
+              completionPercent: typeof i.completionPercent === "number" ? i.completionPercent : undefined,
+              runtimeMinutes: i.runtimeMinutes ?? 0,
+            }));
+          setContinueWatchingItems(mappedCw);
+        }
 
         const byw = await fetchBecauseYouWatched(accessToken, profileId ?? undefined);
 

@@ -105,7 +105,13 @@ export default function MoviesPage() {
         setRecsError(null);
 
         const cw = await fetchContinueWatching(accessToken, profileId ?? undefined);
-        if (isMounted) setContinueWatchingItems(mapContentItems(cw.items ?? []));
+        if (isMounted) {
+          const mappedCw = mapContentItems(cw.items ?? []).map((i) => ({
+            ...i,
+            completionPercent: typeof (i as any).completionPercent === "number" ? (i as any).completionPercent : undefined,
+          }));
+          setContinueWatchingItems(mappedCw);
+        }
 
         const byw = await fetchBecauseYouWatched(accessToken, profileId ?? undefined);
 
