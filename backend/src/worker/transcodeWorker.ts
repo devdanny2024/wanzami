@@ -39,6 +39,9 @@ const connection = new IORedis(config.redisUrl, {
   enableReadyCheck: false,
 });
 
+// Use a hashtagged prefix so BullMQ keys hash to the same slot in Redis Cluster/Valkey.
+const prefix = "{bullmq}";
+
 const renditionToHeight = (r: Rendition) => {
   switch (r) {
     case "R4K":
@@ -134,6 +137,7 @@ const worker = new Worker<TranscodeJob>(
   {
     connection,
     concurrency: 1,
+    prefix,
   }
 );
 

@@ -404,6 +404,9 @@ export const createTitle = async (req: Request, res: Response) => {
   pendingReview,
   introStartSec,
   introEndSec,
+  isPpv,
+  ppvPriceNaira,
+  ppvCurrency,
   seasons,
 } = req.body as {
   name?: string;
@@ -426,6 +429,9 @@ export const createTitle = async (req: Request, res: Response) => {
   pendingReview?: boolean;
   introStartSec?: number;
   introEndSec?: number;
+  isPpv?: boolean;
+  ppvPriceNaira?: number | string | null;
+  ppvCurrency?: string | null;
   seasons?: Array<{
     seasonNumber: number;
     name?: string;
@@ -468,6 +474,12 @@ export const createTitle = async (req: Request, res: Response) => {
       isOriginal: isOriginal ?? false,
       archived: false,
       pendingReview: pendingReview ?? false,
+      isPpv: isPpv ?? false,
+      ppvPriceNaira:
+        ppvPriceNaira !== undefined && ppvPriceNaira !== null && !Number.isNaN(Number(ppvPriceNaira))
+          ? Number(ppvPriceNaira)
+          : null,
+      ppvCurrency: ppvCurrency ?? null,
       seasons:
         type === "SERIES" && Array.isArray(seasons)
           ? {
@@ -520,6 +532,9 @@ export const updateTitle = async (req: Request, res: Response) => {
   pendingReview,
   introStartSec,
   introEndSec,
+  isPpv,
+  ppvPriceNaira,
+  ppvCurrency,
 } = req.body as {
   name?: string;
   description?: string;
@@ -541,6 +556,9 @@ export const updateTitle = async (req: Request, res: Response) => {
   pendingReview?: boolean;
   introStartSec?: number;
   introEndSec?: number;
+  isPpv?: boolean;
+  ppvPriceNaira?: number | string | null;
+  ppvCurrency?: string | null;
 };
   const data: any = {};
   if (name !== undefined) data.name = name;
@@ -569,6 +587,12 @@ export const updateTitle = async (req: Request, res: Response) => {
   }
   if (isOriginal !== undefined) data.isOriginal = isOriginal;
   if (pendingReview !== undefined) data.pendingReview = pendingReview;
+  if (isPpv !== undefined) data.isPpv = isPpv;
+  if (ppvPriceNaira !== undefined) {
+    data.ppvPriceNaira =
+      ppvPriceNaira !== null && !Number.isNaN(Number(ppvPriceNaira)) ? Number(ppvPriceNaira) : null;
+  }
+  if (ppvCurrency !== undefined) data.ppvCurrency = ppvCurrency;
   try {
     const title = await prisma.title.update({ where: { id }, data });
     void auditLog({
