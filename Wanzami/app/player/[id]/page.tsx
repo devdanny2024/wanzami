@@ -191,11 +191,29 @@ export default function PlayerPage({ params }: { params: { id: string } }) {
   }, [episodeId, title?.episodes]);
 
   const sources = useMemo(() => {
+    // 1) Episode-specific sources
     if (activeEpisode?.assetVersions?.length) {
-      return buildSourcesFromAssets(activeEpisode.assetVersions);
+      const epSources = buildSourcesFromAssets(activeEpisode.assetVersions);
+      if (epSources.length) return epSources;
     }
-    return buildSourcesFromAssets(title?.assetVersions);
-  }, [activeEpisode?.assetVersions, title?.assetVersions]);
+    // 2) Title-level sources
+    const titleSources = buildSourcesFromAssets(title?.assetVersions);
+    if (titleSources.length) return titleSources;
+    // 3) Trailer fallback if present
+    if (title?.trailerUrl) {
+      const trailerUrl = convertS3Url(title.trailerUrl);
+      if (trailerUrl) {
+        return [
+          {
+            src: trailerUrl,
+            label: 'Trailer',
+            type: 'video/mp4',
+          },
+        ];
+      }
+    }
+    return [];
+  }, [activeEpisode?.assetVersions, title?.assetVersions, title?.trailerUrl]);
 
   const handleClose = () => {
     if (typeof window !== 'undefined' && window.history.length > 1) {
