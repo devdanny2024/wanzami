@@ -324,7 +324,12 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
                       className="group cursor-pointer rounded-xl overflow-hidden border border-gray-800 bg-white/5 hover:border-[#fd7e14]/60 transition-all relative h-full flex flex-col"
                       style={{ aspectRatio: '16 / 9' }}
                       whileHover={{ scale: 1.01 }}
-                      onClick={() => onPlayClick(item)}
+                      onClick={() => {
+                        const targetId = (item as any).backendId || (item as any).id || itemId;
+                        if (typeof window !== 'undefined' && targetId) {
+                          window.location.href = `/title/${targetId}`;
+                        }
+                      }}
                     >
                       <div className="relative w-full h-full">
                         <ImageWithFallback src={thumb} alt={title} className="w-full h-full object-cover" />
