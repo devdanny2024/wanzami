@@ -75,6 +75,25 @@ export default function MoviesPage() {
     };
   }, []);
 
+  const mapContentItems = (items: any[]) => {
+    return (items ?? []).map((item, idx) => {
+      const backendId = item.titleId ?? item.id ?? item.contentId ?? `item-${idx}`;
+      const fallbackImage = "https://placehold.co/600x900/111111/FD7E14?text=Wanzami";
+      return {
+        id: Number(backendId) || Date.now() + idx,
+        backendId,
+        title: item.name ?? item.title ?? `Title ${backendId}`,
+        image: item.thumbnailUrl || item.posterUrl || fallbackImage,
+        posterUrl: item.posterUrl,
+        thumbnailUrl: item.thumbnailUrl,
+        type: item.type ?? "MOVIE",
+        genres: item.genres,
+        maturityRating: item.maturityRating,
+        runtimeMinutes: item.runtimeMinutes ?? 0,
+      } as MovieData;
+    });
+  };
+
   useEffect(() => {
     let isMounted = true;
     const loadRecs = async () => {
@@ -86,7 +105,7 @@ export default function MoviesPage() {
         setRecsError(null);
 
         const cw = await fetchContinueWatching(accessToken, profileId ?? undefined);
-        if (isMounted) setContinueWatchingItems(cw.items ?? []);
+        if (isMounted) setContinueWatchingItems(mapContentItems(cw.items ?? []));
 
         const byw = await fetchBecauseYouWatched(accessToken, profileId ?? undefined);
 
@@ -96,18 +115,22 @@ export default function MoviesPage() {
           fetchForYou(accessToken, profileId ?? undefined),
         ]);
 
-        const mapItems = (ids: { titleId: string }[]) => {
+        const mapItems = (ids: any[]) => {
           const mapped: MovieData[] = [];
           ids.forEach((item, idx) => {
-            const match = movies.find((m) => m.backendId === item.titleId);
+            const backendId = item.titleId ?? item.id ?? item.contentId;
+            const match = backendId ? movies.find((m) => m.backendId === backendId) : undefined;
             if (match) {
               mapped.push(match);
             } else {
               mapped.push({
-                id: Number(item.titleId) || Date.now() + idx,
-                backendId: item.titleId,
-                title: `Title ${item.titleId}`,
-                image: "https://placehold.co/600x900/111111/FD7E14?text=Wanzami",
+                id: backendId ? Number(backendId) || Date.now() + idx : Date.now() + idx,
+                backendId: backendId ?? `item-${idx}`,
+                title: item.name ?? `Title ${backendId ?? idx}`,
+                image:
+                  item.thumbnailUrl ||
+                  item.posterUrl ||
+                  "https://placehold.co/600x900/111111/FD7E14?text=Wanzami",
               } as MovieData);
             }
           });
