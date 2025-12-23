@@ -307,7 +307,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
           {relatedItems.length > 0 && (
             <div>
               <h2 className="text-white mb-6 text-xl md:text-2xl">More Like This</h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4 auto-rows-fr">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4 auto-rows-fr">
                 {relatedItems.map((item, idx) => {
                   const itemId = (item as any).backendId || item.id || idx;
                   const title = (item as any).title || (item as any).name || 'Title';
@@ -350,4 +350,3 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
     </motion.div>
   );
 }
-
