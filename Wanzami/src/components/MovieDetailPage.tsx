@@ -1,6 +1,6 @@
 'use client';
 
-import { Play, Plus, Share2, ThumbsUp, X } from 'lucide-react';
+import { Play, Plus, Share2, ThumbsUp, X, Lock } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
@@ -280,29 +280,36 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
                 )}
               </div>
               <div className="space-y-3">
-                {visibleEpisodes.map((episode: any, idx: number) => (
-                  <motion.div
-                    key={episode.id ?? idx}
-                    className="group rounded-xl border border-gray-800 bg-gray-900/70 hover:border-[#fd7e14]/60 transition-all overflow-hidden"
-                    whileHover={{ scale: 1.005 }}
-                  >
-                    <div className="flex gap-3 p-4 md:p-5 max-w-5xl mx-auto items-start">
-                      <div className="relative w-20 h-20 md:w-24 md:h-24 overflow-hidden rounded-md shrink-0">
-                        <ImageWithFallback
-                          src={episode.thumbnailUrl || episode.posterUrl || movie.image}
-                          alt={episode.name || episode.title || "Episode"}
-                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                        <button
-                          onClick={() => onPlayClick({ ...movie, currentEpisode: episode })}
-                          className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <div className="w-12 h-12 rounded-full bg-[#fd7e14] shadow-lg shadow-[#fd7e14]/40 flex items-center justify-center">
-                            <Play className="w-6 h-6 fill-current text-white" />
-                          </div>
-                        </button>
-                      </div>
+                {visibleEpisodes.map((episode: any, idx: number) => {
+                  const locked = ppvInfo?.isPpv && !ppvInfo?.hasAccess;
+                  return (
+                    <motion.div
+                      key={episode.id ?? idx}
+                      className="group rounded-xl border border-gray-800 bg-gray-900/70 hover:border-[#fd7e14]/60 transition-all overflow-hidden"
+                      whileHover={{ scale: 1.005 }}
+                    >
+                      <div className="flex gap-3 p-4 md:p-5 max-w-5xl mx-auto items-start">
+                        <div className="relative w-20 h-20 md:w-24 md:h-24 overflow-hidden rounded-md shrink-0">
+                          <ImageWithFallback
+                            src={episode.thumbnailUrl || episode.posterUrl || movie.image}
+                            alt={episode.name || episode.title || "Episode"}
+                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                          <button
+                            onClick={() => {
+                              if (locked) return;
+                              onPlayClick({ ...movie, currentEpisode: episode });
+                            }}
+                            className={`absolute inset-0 flex items-center justify-center transition-opacity ${
+                              locked ? "opacity-100 bg-black/40" : "opacity-0 group-hover:opacity-100"
+                            }`}
+                          >
+                            <div className="w-12 h-12 rounded-full bg-[#fd7e14] shadow-lg shadow-[#fd7e14]/40 flex items-center justify-center">
+                              {locked ? <Lock className="w-6 h-6 text-white" /> : <Play className="w-6 h-6 fill-current text-white" />}
+                            </div>
+                          </button>
+                        </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-4">
                           <h3 className="text-white text-base md:text-lg font-semibold leading-tight">
