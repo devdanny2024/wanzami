@@ -307,11 +307,8 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
           {relatedItems.length > 0 && (
             <div>
               <h2 className="text-white mb-6 text-xl md:text-2xl">More Like This</h2>
-            <div
-              className="grid gap-3 md:gap-4 auto-rows-fr"
-              style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}
-            >
-                {relatedItems.map((item, idx) => {
+              <div className="flex flex-wrap justify-center gap-3 md:gap-4 max-w-5xl mx-auto">
+                {relatedItems.slice(0, 5).map((item, idx) => {
                   const itemId = (item as any).backendId || item.id || idx;
                   const title = (item as any).title || (item as any).name || 'Title';
                   const runtime = (item as any).runtimeMinutes;
@@ -324,11 +321,12 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
                   return (
                     <motion.div
                       key={itemId}
-                      className="group cursor-pointer rounded-xl overflow-hidden border border-gray-800 bg-white/5 hover:border-[#fd7e14]/60 transition-all relative h-full flex flex-col"
-                      whileHover={{ scale: 1.03 }}
+                      className="group cursor-pointer rounded-xl overflow-hidden border border-gray-800 bg-white/5 hover:border-[#fd7e14]/60 transition-all relative h-full flex flex-col w-52 md:w-64"
+                      style={{ aspectRatio: '16 / 9' }}
+                      whileHover={{ scale: 1.02 }}
                       onClick={() => onPlayClick(item)}
                     >
-                      <div className="relative w-full" style={{ aspectRatio: '2 / 3' }}>
+                      <div className="relative w-full h-full">
                         <ImageWithFallback src={thumb} alt={title} className="w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                         <button className="absolute bottom-3 left-3 bg-[#fd7e14] hover:bg-[#e86f0f] text-white px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
