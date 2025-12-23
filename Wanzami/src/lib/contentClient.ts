@@ -195,8 +195,8 @@ export async function fetchMyPpvTitles(params: {
   });
   const data = await handleJsonResponse(res);
   return {
-    activePurchases: data?.activePurchases ?? [],
-    expiredPurchases: data?.expiredPurchases ?? [],
+    activePurchases: data?.active ?? data?.activePurchases ?? [],
+    expiredPurchases: data?.expired ?? data?.expiredPurchases ?? [],
   };
 }
 
