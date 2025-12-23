@@ -56,7 +56,10 @@ export default function MyMoviesPage() {
     };
   }, []);
 
-  const empty = useMemo(() => !loading && !active.length && !expired.length, [loading, active.length, expired.length]);
+  const empty = useMemo(
+    () => !loading && !error && active.length === 0 && expired.length === 0,
+    [loading, error, active.length, expired.length]
+  );
 
   const handleOpen = (titleId: string) => {
     if (titleId) {
