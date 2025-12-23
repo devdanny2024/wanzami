@@ -114,6 +114,7 @@ export default function PlayerPage({ params }: { params: { id: string } }) {
   const [authInfo, setAuthInfo] = useState<{ token?: string; profileId?: string; deviceId?: string }>({});
   const [country, setCountry] = useState<string | null>(null);
   const [ppvDenied, setPpvDenied] = useState(false);
+  const [blocked, setBlocked] = useState(false);
 
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') ?? undefined : undefined;
@@ -151,8 +152,10 @@ export default function PlayerPage({ params }: { params: { id: string } }) {
                 ).catch(() => {});
               }
               setPpvDenied(true);
+              setBlocked(true);
             } else {
               setPpvDenied(false);
+              setBlocked(false);
             }
           } catch (err: any) {
             console.warn('PPV access check failed', err?.message ?? err);
@@ -210,13 +213,28 @@ export default function PlayerPage({ params }: { params: { id: string } }) {
     );
   }
 
-  if (!title || ppvDenied) {
+  useEffect(() => {
+    if (blocked) {
+      const timer = setTimeout(() => {
+        router.push('/');
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [blocked, router]);
+
+  if (!title || ppvDenied || blocked) {
     return (
-      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center px-6">
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center px-6 text-center">
         <p className="text-lg font-semibold mb-2">
-          {ppvDenied ? "You haven't purchased this title yet." : "Oops, we couldn't load that title."}
+          {ppvDenied || blocked
+            ? "Purchase required to access this title."
+            : "Oops, we couldn't load that title."}
         </p>
-        {error ? <p className="text-sm text-gray-400 mb-4">{error}</p> : null}
+        <p className="text-sm text-gray-400 mb-4">
+          {ppvDenied || blocked
+            ? "Please buy the title to continue. This attempt has been logged."
+            : error ?? ""}
+        </p>
         <button
           className="px-4 py-2 rounded-lg bg-[#fd7e14] hover:bg-[#e86f0f] text-white"
           onClick={() => router.push('/')}
