@@ -319,15 +319,15 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
           {/* More Like This */}
           <div>
             <h2 className="text-white mb-6 text-xl md:text-2xl">More Like This</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4 auto-rows-fr">
               {relatedMovies.map((item, idx) => (
                 <motion.div
                   key={(item as any).backendId || item.id || idx}
-                  className="group cursor-pointer rounded-xl overflow-hidden border border-gray-800 bg-white/5 hover:border-[#fd7e14]/60 transition-all relative"
+                  className="group cursor-pointer rounded-xl overflow-hidden border border-gray-800 bg-white/5 hover:border-[#fd7e14]/60 transition-all relative h-full flex flex-col"
                   whileHover={{ scale: 1.03 }}
                   onClick={() => onPlayClick(item)}
                 >
-                  <div className="relative aspect-[2/3]">
+                  <div className="relative w-full" style={{ aspectRatio: '2 / 3' }}>
                     <ImageWithFallback
                       src={
                         (item as any).thumbnailUrl ||
@@ -344,7 +344,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
                       Play
                     </button>
                   </div>
-                  <div className="p-3 space-y-1">
+                  <div className="p-3 space-y-1 flex-1">
                     <p className="text-white font-semibold text-sm line-clamp-1">{(item as any).title}</p>
                     <p className="text-xs text-gray-400 line-clamp-2">
                       {(item as any).genre || (item as any).genres?.[0] || 'Movie'} ·{' '}
@@ -360,4 +360,3 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
     </motion.div>
   );
 }
-
