@@ -6,6 +6,7 @@ import { motion } from 'motion/react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { MovieData } from './MovieCard';
 import { isInMyList, toggleMyList } from '@/lib/myList';
+import { fetchTitles, type Title } from '@/lib/contentClient';
 
 interface MovieDetailPageProps {
   movie: any;
@@ -21,56 +22,7 @@ interface MovieDetailPageProps {
   };
 }
 
-const relatedMovies: MovieData[] = [
-  {
-    id: 101,
-    title: 'Urban Tales',
-    image:
-      'https://images.unsplash.com/photo-1677435013662-ef31e32ff9f8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsYWdvcyUyMGNpdHklMjBuaWdodHxlbnwxfHx8fDE3NjM3OTI2NjJ8MA&ixlib=rb-4.1.0&q=80&w=1080',
-    rating: '16+',
-    duration: '1h 55m',
-  },
-  {
-    id: 102,
-    title: 'Cultural Roots',
-    image:
-      'https://images.unsplash.com/photo-1657356217561-6ed26b47e116?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwY3VsdHVyZSUyMHRyYWRpdGlvbmFsfGVufDF8fHx8MTc2Mzc5MjY2M3ww&ixlib=rb-4.1.0&q=80&w=1080',
-    rating: 'PG',
-    duration: '2h 10m',
-  },
-  {
-    id: 103,
-    title: 'The Journey',
-    image:
-      'https://images.unsplash.com/photo-1618051438543-9f85cab01c60?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxuaWdlcmlhbiUyMG1hbiUyMHBvcnRyYWl0fGVufDF8fHx8MTc2Mzc5MjY2NHww&ixlib=rb-4.1.0&q=80&w=1080',
-    rating: '13+',
-    duration: '1h 45m',
-  },
-  {
-    id: 104,
-    title: 'Dance Revolution',
-    image:
-      'https://images.unsplash.com/photo-1758875913518-7869eb5e1e91?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwZGFuY2UlMjBjZWxlYnJhdGlvbnxlbnwxfHx8fDE3NjM3OTI2NjR8MA&ixlib=rb-4.1.0&q=80&w=1080',
-    rating: 'PG',
-    duration: '1h 52m',
-  },
-  {
-    id: 105,
-    title: 'Power Struggle',
-    image:
-      'https://images.unsplash.com/photo-1713845784782-51b36d805391?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwd29tYW4lMjBwb3J0cmFpdCUyMGNpbmVtYXRpY3xlbnwxfHx8fDE3NjM3OTI2NjJ8MA&ixlib=rb-4.1.0&q=80&w=1080',
-    rating: '18+',
-    duration: '2h 20m',
-  },
-  {
-    id: 106,
-    title: 'Family Reunion',
-    image:
-      'https://images.unsplash.com/photo-1577897113176-6888367369bf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwZmFtaWx5JTIwaGFwcHl8ZW58MXx8fHwxNzYzNzkyNjYzfDA&ixlib=rb-4.1.0&q=80&w=1080',
-    rating: 'PG',
-    duration: '1h 38m',
-  },
-];
+type RelatedItem = Title | MovieData | any;
 
 export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvInfo }: MovieDetailPageProps) {
   const isSeries = movie?.type === 'SERIES';
@@ -78,6 +30,35 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
   const seriesSeasons = Array.isArray((movie as any)?.seasons) ? (movie as any).seasons : [];
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
   const [inList, setInList] = useState(false);
+  const [country, setCountry] = useState<string | null>(null);
+  const [related, setRelated] = useState<RelatedItem[]>([]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = window.localStorage.getItem('countryCode');
+      setCountry(stored ?? 'NG');
+    }
+  }, []);
+
+  useEffect(() => {
+    const loadRelated = async () => {
+      try {
+        const titles = await fetchTitles(country ?? undefined);
+        const primaryGenre = movie?.genre || movie?.genres?.[0];
+        const filtered = titles
+          .filter((t) => t.id !== (movie?.backendId ?? movie?.id))
+          .filter((t) => {
+            if (!primaryGenre) return true;
+            return (t.genres ?? []).includes(primaryGenre);
+          })
+          .slice(0, 10);
+        setRelated(filtered);
+      } catch (err) {
+        setRelated([]);
+      }
+    };
+    void loadRelated();
+  }, [country, movie]);
 
   useEffect(() => {
     const targetId = movie?.backendId ?? movie?.id;
@@ -113,6 +94,12 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
       })
       .sort((a: any, b: any) => Number(a?.episodeNumber ?? 0) - Number(b?.episodeNumber ?? 0));
   }, [isSeries, seriesEpisodes, selectedSeason, seasonNumbers]);
+
+  const relatedItems: RelatedItem[] = useMemo(() => {
+    if (Array.isArray(related) && related.length > 0) return related;
+    if (Array.isArray((movie as any)?.related) && (movie as any).related.length) return (movie as any).related;
+    return [];
+  }, [related, movie]);
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black overflow-y-auto">
@@ -317,46 +304,50 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
           )}
 
           {/* More Like This */}
-          <div>
-            <h2 className="text-white mb-6 text-xl md:text-2xl">More Like This</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4 auto-rows-fr">
-              {relatedMovies.map((item, idx) => (
-                <motion.div
-                  key={(item as any).backendId || item.id || idx}
-                  className="group cursor-pointer rounded-xl overflow-hidden border border-gray-800 bg-white/5 hover:border-[#fd7e14]/60 transition-all relative h-full flex flex-col"
-                  whileHover={{ scale: 1.03 }}
-                  onClick={() => onPlayClick(item)}
-                >
-                  <div className="relative w-full" style={{ aspectRatio: '2 / 3' }}>
-                    <ImageWithFallback
-                      src={
-                        (item as any).thumbnailUrl ||
-                        (item as any).posterUrl ||
-                        (item as any).image ||
-                        'https://placehold.co/600x900/111111/FD7E14?text=Wanzami'
-                      }
-                      alt={(item as any).title || 'Title'}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <button className="absolute bottom-3 left-3 bg-[#fd7e14] hover:bg-[#e86f0f] text-white px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Play className="w-4 h-4 fill-current" />
-                      Play
-                    </button>
-                  </div>
-                  <div className="p-3 space-y-1 flex-1">
-                    <p className="text-white font-semibold text-sm line-clamp-1">{(item as any).title}</p>
-                    <p className="text-xs text-gray-400 line-clamp-2">
-                      {(item as any).genre || (item as any).genres?.[0] || 'Movie'} ·{' '}
-                      {item.runtimeMinutes ? `${Math.round(Number(item.runtimeMinutes))}m` : '90m'}
-                    </p>
-                  </div>
-                </motion.div>
-              ))}
+          {relatedItems.length > 0 && (
+            <div>
+              <h2 className="text-white mb-6 text-xl md:text-2xl">More Like This</h2>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4 auto-rows-fr">
+                {relatedItems.map((item, idx) => {
+                  const itemId = (item as any).backendId || item.id || idx;
+                  const title = (item as any).title || (item as any).name || 'Title';
+                  const runtime = (item as any).runtimeMinutes;
+                  const genre = (item as any).genre || (item as any).genres?.[0] || 'Movie';
+                  const thumb =
+                    (item as any).thumbnailUrl ||
+                    (item as any).posterUrl ||
+                    (item as any).image ||
+                    'https://placehold.co/600x900/111111/FD7E14?text=Wanzami';
+                  return (
+                    <motion.div
+                      key={itemId}
+                      className="group cursor-pointer rounded-xl overflow-hidden border border-gray-800 bg-white/5 hover:border-[#fd7e14]/60 transition-all relative h-full flex flex-col"
+                      whileHover={{ scale: 1.03 }}
+                      onClick={() => onPlayClick(item)}
+                    >
+                      <div className="relative w-full" style={{ aspectRatio: '2 / 3' }}>
+                        <ImageWithFallback src={thumb} alt={title} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <button className="absolute bottom-3 left-3 bg-[#fd7e14] hover:bg-[#e86f0f] text-white px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Play className="w-4 h-4 fill-current" />
+                          Play
+                        </button>
+                      </div>
+                      <div className="p-3 space-y-1 flex-1">
+                        <p className="text-white font-semibold text-sm line-clamp-1">{title}</p>
+                        <p className="text-xs text-gray-400 line-clamp-2">
+                          {genre} · {runtime ? `${Math.round(Number(runtime))}m` : '90m'}
+                        </p>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </motion.div>
   );
 }
+
