@@ -27,3 +27,4 @@ Thumbs.db
 # Prisma
 prisma/generated/
 exports/
+dist/
