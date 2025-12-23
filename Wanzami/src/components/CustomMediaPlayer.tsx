@@ -1120,9 +1120,14 @@ export function CustomMediaPlayer({
             </div>
             <div className="flex items-center gap-3">
               {normalizedEpisodes.length ? (
-                <button onClick={() => setShowEpisodePanel(true)} className="text-white hover:scale-110 transition-transform">
-                  <List className="w-6 h-6" />
-                </button>
+              <button
+                type="button"
+                onClick={() => setShowEpisodePanel(true)}
+                className="text-white hover:scale-110 transition-transform"
+                aria-label="Show episodes"
+              >
+                <List className="w-6 h-6" />
+              </button>
               ) : null}
               {activeSources.length > 0 ? (
                 <div className="relative">
@@ -1217,7 +1222,12 @@ export function CustomMediaPlayer({
           </div>
           <div className="flex items-center gap-4">
             {normalizedEpisodes.length ? (
-              <button onClick={() => setShowEpisodePanel(true)} className="text-white hover:scale-110 transition-transform">
+              <button
+                type="button"
+                onClick={() => setShowEpisodePanel(true)}
+                className="text-white hover:scale-110 transition-transform"
+                aria-label="Show episodes"
+              >
                 <List className="w-7 h-7" />
               </button>
             ) : null}
@@ -1360,7 +1370,7 @@ export function CustomMediaPlayer({
       )}
 
       {showEpisodePanel && normalizedEpisodes.length > 0 && (
-        <div className="fixed inset-0 bg-black/95 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/95 overflow-y-auto" style={{ zIndex: 60 }}>
           <div className="max-w-6xl mx-auto p-4 md:p-8">
             <div className="flex items-center justify-between mb-6 md:mb-8">
               <div className="text-white">
