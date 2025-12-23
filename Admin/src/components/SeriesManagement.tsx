@@ -171,6 +171,25 @@ export function SeriesManagement() {
           <p className="text-neutral-400 mt-1">Manage episodic content with bulk or weekly uploads.</p>
         </div>
         <div className="flex items-center gap-3">
+          <Button
+            variant="destructive"
+            className="bg-red-600 hover:bg-red-500 text-white"
+            onClick={async () => {
+              if (!confirm("This will delete ALL titles, episodes, and assets. Continue?")) return;
+              const res = await authFetch("/admin/titles/purge", {
+                method: "POST",
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+              });
+              if (res.ok) {
+                toast.success("All titles purged");
+                await loadSeries();
+              } else {
+                toast.error((res.data as any)?.message || "Purge failed");
+              }
+            }}
+          >
+            Delete All
+          </Button>
           <div className="relative">
             <Search className="w-4 h-4 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2" />
             <Input

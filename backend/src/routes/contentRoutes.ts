@@ -18,6 +18,7 @@ import {
   upsertSeasonsForTitle,
   updateSeason,
   deleteSeason,
+  purgeAllTitles,
 } from "../controllers/contentController.js";
 
 const router = Router();
@@ -34,6 +35,7 @@ router.post("/admin/titles", requireAuth, requireAdmin, createTitle);
 router.patch("/admin/titles/:id", requireAuth, requireAdmin, updateTitle);
 router.post("/admin/titles/:id/publish", requireAuth, requireAdmin, publishTitle);
 router.delete("/admin/titles/:id", requireAuth, requireAdmin, deleteTitle);
+router.post("/admin/titles/purge", requireAuth, requireAdmin, purgeAllTitles);
 router.post("/admin/titles/:id/episodes", requireAuth, requireAdmin, createEpisode);
 router.patch("/admin/episodes/:episodeId", requireAuth, requireAdmin, updateEpisode);
 router.delete("/admin/episodes/:episodeId", requireAuth, requireAdmin, deleteEpisode);

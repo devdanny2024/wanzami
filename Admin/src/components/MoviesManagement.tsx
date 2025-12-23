@@ -108,11 +108,31 @@ export function MoviesManagement() {
           <h1 className="text-3xl text-white">Movies Management</h1>
           <p className="text-neutral-400 mt-1">Manage all content on the platform</p>
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Movie
+        <div className="flex items-center gap-3">
+          <Button
+            variant="destructive"
+            className="bg-red-600 hover:bg-red-500 text-white"
+            onClick={async () => {
+              if (!confirm("This will delete ALL titles, episodes, and assets. Continue?")) return;
+              const res = await authFetch("/admin/titles/purge", {
+                method: "POST",
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+              });
+              if (res.ok) {
+                toast.success("All titles purged");
+                void reloadMovies();
+              } else {
+                toast.error((res.data as any)?.message || "Purge failed");
+              }
+            }}
+          >
+            Delete All
+          </Button>
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Movie
             </Button>
           </DialogTrigger>
           <DialogContent className="bg-neutral-900 border-neutral-800 text-white max-w-4xl max-h-[90vh] overflow-y-auto">
