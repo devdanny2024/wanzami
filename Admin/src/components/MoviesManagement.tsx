@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -113,7 +113,7 @@ export function MoviesManagement() {
             variant="destructive"
             className="bg-red-600 hover:bg-red-500 text-white"
             onClick={async () => {
-              if (!confirm("This will delete ALL titles, episodes, and assets. Continue?")) return;
+              if (!confirm("This will delete ALL titles, episodes, episodes, assets. Continue?")) return;
               const res = await authFetch("/admin/titles/purge", {
                 method: "POST",
                 headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -133,25 +133,26 @@ export function MoviesManagement() {
               <Button className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Movie
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="bg-neutral-900 border-neutral-800 text-white max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-white">Add/Edit Movie</DialogTitle>
-            </DialogHeader>
-            <AddEditMovieForm
-              token={token ?? undefined}
-              onClose={() => setIsAddDialogOpen(false)}
-              onSaved={() => {
-                void reloadMovies();
-                setIsAddDialogOpen(false);
-                setEditingMovie(null);
-              }}
-              movie={editingMovie ?? undefined}
-              onQueueUpload={(id, file) => startUploadForMovie(id, file)}
-            />
-          </DialogContent>
-        </Dialog>
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-neutral-900 border-neutral-800 text-white max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-white">Add/Edit Movie</DialogTitle>
+              </DialogHeader>
+              <AddEditMovieForm
+                token={token ?? undefined}
+                onClose={() => setIsAddDialogOpen(false)}
+                onSaved={() => {
+                  void reloadMovies();
+                  setIsAddDialogOpen(false);
+                  setEditingMovie(null);
+                }}
+                movie={editingMovie ?? undefined}
+                onQueueUpload={(id, file) => startUploadForMovie(id, file)}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Search */}
@@ -768,7 +769,7 @@ function AddEditMovieForm({
             {videoFile && <p className="text-xs text-[#fd7e14] mt-2">Selected: {videoFile.name}</p>}
           </label>
           <p className="text-xs text-neutral-500 mt-1">
-            Video uploads queue after you save. You can also use the table “Upload video” action per row.
+            Video uploads queue after you save. You can also use the table ΓÇ£Upload videoΓÇ¥ action per row.
           </p>
         </div>
 
