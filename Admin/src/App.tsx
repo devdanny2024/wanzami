@@ -121,6 +121,8 @@ function AppContent() {
         return <UserManagement />;
       case 'payments':
         return <Payments />;
+      case 'invoices':
+        return <Payments invoicesOnly />;
       case 'moderation':
         return <Moderation />;
       case 'analytics':

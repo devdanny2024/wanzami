@@ -472,3 +472,74 @@ export const myTitles = async (req: AuthenticatedRequest, res: Response) => {
     return res.status(500).json({ message: "Failed to load purchases" });
   }
 };
+
+export const adminListPurchases = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    // Admin-only in routes
+    const limit = Math.min(Number(req.query.limit ?? 200), 500);
+    const offset = Number(req.query.offset ?? 0);
+    const status = (req.query.status as string | undefined)?.toUpperCase();
+    const gateway = (req.query.gateway as string | undefined)?.toUpperCase();
+    const where: any = {};
+    if (status) where.status = status;
+    if (gateway) where.gateway = gateway;
+
+    const [rows, totalCount, totalSuccess] = await Promise.all([
+      prisma.ppvPurchase.findMany({
+        where,
+        include: {
+          user: { select: { id: true, email: true, name: true } },
+          title: { select: { id: true, name: true, type: true, ppvPriceNaira: true, ppvCurrency: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        skip: offset,
+      }),
+      prisma.ppvPurchase.count({ where }),
+      prisma.ppvPurchase.aggregate({
+        _sum: { amountNaira: true },
+        where: { ...where, status: "SUCCESS" },
+      }),
+    ]);
+
+    const items = rows.map((p) => ({
+      id: p.id?.toString?.() ?? String(p.id),
+      userId: p.userId?.toString?.() ?? String(p.userId),
+      titleId: p.titleId?.toString?.() ?? String(p.titleId),
+      amountNaira: p.amountNaira,
+      currency: p.currency,
+      gateway: p.gateway,
+      paystackRef: p.paystackRef,
+      paystackTrxId: p.paystackTrxId,
+      status: p.status,
+      accessExpiresAt: p.accessExpiresAt,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+      user: p.user
+        ? {
+            id: p.user.id?.toString?.() ?? String(p.user.id),
+            email: p.user.email,
+            name: p.user.name,
+          }
+        : null,
+      title: p.title
+        ? {
+            id: p.title.id?.toString?.() ?? String(p.title.id),
+            name: p.title.name,
+            type: p.title.type,
+            ppvPriceNaira: p.title.ppvPriceNaira,
+            ppvCurrency: p.title.ppvCurrency,
+          }
+        : null,
+    }));
+
+    return res.json({
+      totalCount,
+      totalSuccessAmountNaira: totalSuccess._sum.amountNaira ?? 0,
+      items,
+    });
+  } catch (err) {
+    console.error("admin purchases error", err);
+    return res.status(500).json({ message: "Failed to load PPV purchases" });
+  }
+};
