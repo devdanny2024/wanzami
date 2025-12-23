@@ -341,32 +341,37 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
           {/* More Like This */}
           <div>
             <h2 className="text-white mb-6 text-xl md:text-2xl">More Like This</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
-              {relatedMovies.map((relatedMovie) => (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
+              {relatedMovies.map((item, idx) => (
                 <motion.div
-                  key={relatedMovie.id}
-                  className="group cursor-pointer"
-                  whileHover={{ scale: 1.05 }}
-                  onClick={() => onPlayClick(relatedMovie)}
+                  key={item.backendId || item.id || idx}
+                  className="group cursor-pointer rounded-xl overflow-hidden border border-gray-800 bg-white/5 hover:border-[#fd7e14]/60 transition-all relative"
+                  whileHover={{ scale: 1.03 }}
+                  onClick={() => onPlayClick(item)}
                 >
-                  <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-900 mb-2">
+                  <div className="relative aspect-[2/3]">
                     <ImageWithFallback
-                      src={relatedMovie.image}
-                      alt={relatedMovie.title}
+                      src={
+                        (item as any).thumbnailUrl ||
+                        (item as any).posterUrl ||
+                        item.image ||
+                        "https://placehold.co/600x900/111111/FD7E14?text=Wanzami"
+                      }
+                      alt={item.title}
                       className="w-full h-full object-cover"
                     />
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <div className="w-12 h-12 rounded-full bg-[#fd7e14] flex items-center justify-center">
-                        <Play className="w-6 h-6 fill-current text-white" />
-                      </div>
-                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <button className="absolute bottom-3 left-3 bg-[#fd7e14] hover:bg-[#e86f0f] text-white px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Play className="w-4 h-4 fill-current" />
+                      Play
+                    </button>
                   </div>
-                  <h3 className="text-white text-sm mb-1 line-clamp-1">{relatedMovie.title}</h3>
-                  <div className="flex items-center gap-2 text-xs text-gray-400">
-                    <span className="text-[#fd7e14] border border-[#fd7e14] px-1.5 py-0.5 rounded">
-                      {relatedMovie.rating}
-                    </span>
-                    <span>{relatedMovie.duration}</span>
+                  <div className="p-3 space-y-1">
+                    <p className="text-white font-semibold text-sm line-clamp-1">{item.title}</p>
+                    <p className="text-xs text-gray-400 line-clamp-2">
+                      {(item as any).genre || (item as any).genres?.[0] || "Movie"} ·{" "}
+                      {item.runtimeMinutes ? `${Math.round(Number(item.runtimeMinutes))}m` : "90m"}
+                    </p>
                   </div>
                 </motion.div>
               ))}
