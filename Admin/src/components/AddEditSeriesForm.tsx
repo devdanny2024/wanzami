@@ -4,6 +4,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { Switch } from "./ui/switch";
 import { MovieTitle } from "./MoviesManagement"; // reuse shape
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
