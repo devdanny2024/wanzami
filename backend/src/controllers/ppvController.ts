@@ -439,8 +439,33 @@ export const myTitles = async (req: AuthenticatedRequest, res: Response) => {
       orderBy: { updatedAt: "desc" },
     });
     const nowDate = now();
-    const active = purchases.filter((p) => p.accessExpiresAt && p.accessExpiresAt > nowDate);
-    const expired = purchases.filter((p) => !p.accessExpiresAt || p.accessExpiresAt <= nowDate);
+    const activeRaw = purchases.filter((p) => p.accessExpiresAt && p.accessExpiresAt > nowDate);
+    const expiredRaw = purchases.filter((p) => !p.accessExpiresAt || p.accessExpiresAt <= nowDate);
+
+    const serializePurchase = (p: typeof purchases[number]) => ({
+      id: p.id.toString(),
+      userId: p.userId.toString(),
+      titleId: p.titleId.toString(),
+      amountNaira: p.amountNaira,
+      currency: p.currency,
+      gateway: p.gateway,
+      paystackRef: p.paystackRef,
+      paystackTrxId: p.paystackTrxId,
+      status: p.status,
+      accessExpiresAt: p.accessExpiresAt,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+      title: p.title
+        ? {
+            ...p.title,
+            id: p.title.id.toString(),
+          }
+        : null,
+    });
+
+    const active = activeRaw.map(serializePurchase);
+    const expired = expiredRaw.map(serializePurchase);
+
     return res.json({ active, expired });
   } catch (err) {
     console.error("my titles error", err);
