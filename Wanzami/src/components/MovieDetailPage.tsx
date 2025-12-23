@@ -307,7 +307,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
           {relatedItems.length > 0 && (
             <div>
               <h2 className="text-white mb-6 text-xl md:text-2xl">More Like This</h2>
-              <div className="flex flex-wrap justify-center gap-3 md:gap-4 max-w-5xl mx-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4 max-w-6xl mx-auto">
                 {relatedItems.slice(0, 5).map((item, idx) => {
                   const itemId = (item as any).backendId || item.id || idx;
                   const title = (item as any).title || (item as any).name || 'Title';
@@ -321,9 +321,9 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
                   return (
                     <motion.div
                       key={itemId}
-                      className="group cursor-pointer rounded-xl overflow-hidden border border-gray-800 bg-white/5 hover:border-[#fd7e14]/60 transition-all relative h-full flex flex-col w-52 md:w-64"
+                      className="group cursor-pointer rounded-xl overflow-hidden border border-gray-800 bg-white/5 hover:border-[#fd7e14]/60 transition-all relative h-full flex flex-col"
                       style={{ aspectRatio: '16 / 9' }}
-                      whileHover={{ scale: 1.02 }}
+                      whileHover={{ scale: 1.01 }}
                       onClick={() => onPlayClick(item)}
                     >
                       <div className="relative w-full h-full">
