@@ -443,9 +443,9 @@ export const myTitles = async (req: AuthenticatedRequest, res: Response) => {
     const expiredRaw = purchases.filter((p) => !p.accessExpiresAt || p.accessExpiresAt <= nowDate);
 
     const serializePurchase = (p: typeof purchases[number]) => ({
-      id: p.id.toString(),
-      userId: p.userId.toString(),
-      titleId: p.titleId.toString(),
+      id: p.id?.toString?.() ?? String(p.id),
+      userId: p.userId?.toString?.() ?? String(p.userId),
+      titleId: p.titleId?.toString?.() ?? String(p.titleId),
       amountNaira: p.amountNaira,
       currency: p.currency,
       gateway: p.gateway,
@@ -458,7 +458,7 @@ export const myTitles = async (req: AuthenticatedRequest, res: Response) => {
       title: p.title
         ? {
             ...p.title,
-            id: p.title.id.toString(),
+            id: p.title.id?.toString?.() ?? String(p.title.id),
           }
         : null,
     });
