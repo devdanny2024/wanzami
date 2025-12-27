@@ -63,6 +63,15 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
           </div>
         )}
 
+        {/* Hover border glow */}
+        {isHovered && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="absolute inset-0 rounded-xl border-2 border-[#fd7e14] pointer-events-none"
+          />
+        )}
+
         {/* Progress bar for continue watching */}
         {typeof movie.completionPercent === 'number' && movie.completionPercent >= 0 && (
           <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-white/20">
@@ -82,29 +91,28 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
         )}
       </div>
 
-      {/* Title and meta below card */}
-      <div className="mt-3 text-white text-sm line-clamp-1">
-        {movie.title}
-      </div>
-      {(movie.rating || movie.genre) && (
-        <div className="flex items-center gap-2 text-xs text-gray-400 mt-1">
-          {movie.rating && (
-            <span className="text-[#fd7e14] border border-[#fd7e14] px-1.5 py-0.5 rounded">
-              {movie.rating}
-            </span>
+      {/* Title, meta, and CTA */}
+      <div className="mt-3 flex items-center gap-3 justify-between">
+        <div className="flex-1 min-w-0">
+          <div className="text-white text-sm line-clamp-1">{movie.title}</div>
+          {(movie.rating || movie.genre) && (
+            <div className="flex items-center gap-2 text-xs text-gray-400 mt-1">
+              {movie.rating && (
+                <span className="text-[#fd7e14] border border-[#fd7e14] px-1.5 py-0.5 rounded">
+                  {movie.rating}
+                </span>
+              )}
+              {movie.genre && <span className="line-clamp-1">{movie.genre}</span>}
+            </div>
           )}
-          {movie.genre && <span className="line-clamp-1">{movie.genre}</span>}
         </div>
-      )}
-
-      {/* External CTA below the card */}
-      <div className="mt-3 flex justify-end">
+        {/* External CTA */}
         <button
           onClick={(e) => {
             e.stopPropagation();
             onClick(movie);
           }}
-          className="inline-flex items-center justify-center gap-2 bg-[#fd7e14] hover:bg-[#e86f0f] text-white px-4 py-2.5 rounded-lg text-sm transition-colors"
+          className="inline-flex items-center justify-center gap-2 bg-[#fd7e14] hover:bg-[#e86f0f] text-white px-4 py-2 rounded-lg text-sm transition-colors"
         >
           {owned ? <Play className="w-4 h-4 fill-current" /> : <Info className="w-4 h-4" />}
           <span>{owned ? "Play" : "Buy"}</span>

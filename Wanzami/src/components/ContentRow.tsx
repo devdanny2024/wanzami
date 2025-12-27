@@ -66,7 +66,7 @@ export function ContentRow({ title, movies, onMovieClick, maxVisible }: ContentR
   }, [displayMovies.length]);
 
   return (
-    <div className="group/row relative mb-8 md:mb-12">
+    <div className="group/row relative mb-8 md:mb-12 px-2 md:px-4">
       <h2 className="text-white mb-4 px-4 md:px-12 lg:px-16 tracking-tight text-xl md:text-2xl">
         {title}
       </h2>
