@@ -18,7 +18,7 @@ export function StartupSound() {
         const audio = audioRef.current;
         if (!audio) return;
 
-        // Allow autoplay by starting muted, then unmuting on gesture.
+        // Allow autoplay by starting muted; we'll unmute on gesture.
         audio.muted = true;
         audio.volume = 0.6;
         audio.load();
@@ -38,8 +38,9 @@ export function StartupSound() {
         audio.currentTime = 0;
         await audio.play();
         hasPlayed.current = true;
+        cleanup();
       } catch {
-        // If still blocked, user may need another gesture; keep listeners.
+        // If still blocked, keep listeners for another try.
       }
     };
 
@@ -58,9 +59,9 @@ export function StartupSound() {
     void playSound();
 
     // Fallback: listen for the first user gesture to trigger playback.
-    document.addEventListener('click', onUserGesture, { once: true });
-    document.addEventListener('keydown', onUserGesture, { once: true });
-    document.addEventListener('touchstart', onUserGesture, { once: true });
+    document.addEventListener('click', onUserGesture);
+    document.addEventListener('keydown', onUserGesture);
+    document.addEventListener('touchstart', onUserGesture);
     document.addEventListener('pointermove', onPointerMove, { once: true });
 
     return cleanup;
@@ -71,6 +72,7 @@ export function StartupSound() {
       ref={audioRef}
       src="/wanzami-surround.wav"
       preload="auto"
+      autoPlay
       aria-hidden="true"
       className="hidden"
     />
