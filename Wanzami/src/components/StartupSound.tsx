@@ -13,6 +13,8 @@ export function StartupSound() {
   useEffect(() => {
     const playSound = async () => {
       try {
+        // Kick off load before play to reduce startup delay.
+        audioRef.current?.load();
         await audioRef.current?.play();
         cleanup();
       } catch {

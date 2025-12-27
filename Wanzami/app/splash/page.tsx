@@ -126,7 +126,7 @@ function Hero({ onStart, onSignIn }: { onStart: () => void; onSignIn: () => void
 
 function Features() {
   return (
-    <div className="bg-black py-20 px-6">
+    <div className="bg-black py-20 px-6 mt-12">
       <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {features.map((feature, index) => {
