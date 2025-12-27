@@ -40,7 +40,7 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
 
   return (
     <motion.div
-      className="relative group cursor-pointer flex-shrink-0 rounded-2xl border border-white/10 bg-white/5 p-3"
+      className="relative group cursor-pointer flex-shrink-0 rounded-2xl border border-white/10 bg-white/5 p-4"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={() => onClick(movie)}
