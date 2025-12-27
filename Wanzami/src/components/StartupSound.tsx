@@ -26,10 +26,15 @@ export function StartupSound() {
       void playSound();
     };
 
+    const onPointerMove = () => {
+      void playSound();
+    };
+
     const cleanup = () => {
       document.removeEventListener('click', onUserGesture);
       document.removeEventListener('keydown', onUserGesture);
       document.removeEventListener('touchstart', onUserGesture);
+      document.removeEventListener('pointermove', onPointerMove);
     };
 
     // Try autoplay immediately.
@@ -39,6 +44,7 @@ export function StartupSound() {
     document.addEventListener('click', onUserGesture, { once: true });
     document.addEventListener('keydown', onUserGesture, { once: true });
     document.addEventListener('touchstart', onUserGesture, { once: true });
+    document.addEventListener('pointermove', onPointerMove, { once: true });
 
     return cleanup;
   }, []);
