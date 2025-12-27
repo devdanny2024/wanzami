@@ -39,7 +39,7 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
 
   return (
     <motion.div
-      className="relative group cursor-pointer flex-shrink-0"
+      className="relative group cursor-pointer flex-shrink-0 rounded-2xl border border-white/10 bg-white/5 p-2"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={() => onClick(movie)}
@@ -135,10 +135,25 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
         )}
       </div>
 
-      {/* Title below card for mobile */}
-      <div className="md:hidden mt-2 text-white text-sm line-clamp-1">
+      {/* Title and meta below card */}
+      <div className="mt-3 text-white text-sm line-clamp-1">
         {movie.title}
       </div>
+      {(movie.rating || movie.genre) && (
+        <div className="flex items-center gap-2 text-xs text-gray-400 mt-1">
+          {movie.rating && (
+            <span className="text-[#fd7e14] border border-[#fd7e14] px-1.5 py-0.5 rounded">
+              {movie.rating}
+            </span>
+          )}
+          {movie.genre && <span className="line-clamp-1">{movie.genre}</span>}
+        </div>
+      )}
+      {movie.description && (
+        <p className="hidden md:block text-xs text-gray-500 line-clamp-2 mt-2">
+          {movie.description}
+        </p>
+      )}
     </motion.div>
   );
 }
