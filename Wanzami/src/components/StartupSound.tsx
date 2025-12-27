@@ -9,21 +9,38 @@ import { useEffect, useRef } from 'react';
  */
 export function StartupSound() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const hasPlayed = useRef(false);
 
   useEffect(() => {
     const playSound = async () => {
+      if (hasPlayed.current) return;
       try {
-        // Kick off load before play to reduce startup delay.
-        audioRef.current?.load();
-        await audioRef.current?.play();
-        cleanup();
+        const audio = audioRef.current;
+        if (!audio) return;
+
+        // Allow autoplay by starting muted, then unmuting on gesture.
+        audio.muted = true;
+        audio.volume = 0.6;
+        audio.load();
+        await audio.play();
+        hasPlayed.current = true;
       } catch {
         // Likely blocked; wait for user interaction.
       }
     };
 
-    const onUserGesture = () => {
-      void playSound();
+    const onUserGesture = async () => {
+      if (hasPlayed.current) return;
+      const audio = audioRef.current;
+      if (!audio) return;
+      try {
+        audio.muted = false;
+        audio.currentTime = 0;
+        await audio.play();
+        hasPlayed.current = true;
+      } catch {
+        // If still blocked, user may need another gesture; keep listeners.
+      }
     };
 
     const onPointerMove = () => {
