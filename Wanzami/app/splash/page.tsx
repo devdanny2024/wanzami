@@ -153,16 +153,18 @@ export default function SplashPage() {
   const [soundReady, setSoundReady] = useState(false);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setSoundReady(true), 5500);
+    const timer = window.setTimeout(() => setSoundReady(true), 2500);
     return () => window.clearTimeout(timer);
   }, []);
 
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden">
       {!soundReady && (
-        <div className="absolute inset-0 z-[70] bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center gap-4">
-          <div className="w-14 h-14 border-4 border-[#fd7e14] border-t-transparent rounded-full animate-spin" />
-          <p className="text-white/80 text-sm">Loading your experienceƒ?İ</p>
+        <div className="absolute inset-0 z-[70] pointer-events-none flex items-start justify-center">
+          <div className="mt-6 px-4 py-3 bg-black/75 border border-white/10 rounded-2xl shadow-lg flex items-center gap-3">
+            <div className="w-6 h-6 border-3 border-[#fd7e14] border-t-transparent rounded-full animate-spin" />
+            <p className="text-white/80 text-sm">Loading your experience…</p>
+          </div>
         </div>
       )}
       <StartupSound onReady={() => setSoundReady(true)} />
