@@ -16,10 +16,11 @@ interface HeroContent {
 
 interface HeroProps {
   onPlayClick: (content: HeroContent) => void;
+  onMoreInfoClick?: (content: HeroContent) => void;
   featured?: HeroContent[];
 }
 
-export function Hero({ onPlayClick, featured }: HeroProps) {
+export function Hero({ onPlayClick, onMoreInfoClick, featured }: HeroProps) {
   const slides = featured && featured.length > 0 ? featured : [];
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -142,10 +143,13 @@ export function Hero({ onPlayClick, featured }: HeroProps) {
                   className="flex items-center justify-center gap-2 bg-[#fd7e14] hover:bg-[#e86f0f] text-white px-6 md:px-8 py-3 md:py-4 rounded-xl transition-all duration-200 hover:scale-105"
                 >
                   <Play className="w-5 h-5 md:w-6 md:h-6 fill-current" />
-                  <span className="text-sm md:text-base">Play Now</span>
+                  <span className="text-sm md:text-base">Buy Now</span>
                 </button>
 
-                <button className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white px-6 md:px-8 py-3 md:py-4 rounded-xl backdrop-blur-md border border-white/20 transition-all duration-200">
+                <button
+                  onClick={() => (onMoreInfoClick ?? onPlayClick)(current)}
+                  className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white px-6 md:px-8 py-3 md:py-4 rounded-xl backdrop-blur-md border border-white/20 transition-all duration-200"
+                >
                   <Info className="w-5 h-5 md:w-6 md:h-6" />
                   <span className="text-sm md:text-base">More Info</span>
                 </button>

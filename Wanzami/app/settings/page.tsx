@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader } from "@/components/ui/loader";
 
@@ -12,34 +13,6 @@ type Profile = {
   language?: string;
   autoplay?: boolean;
 };
-
-type Device = {
-  id: string;
-  deviceId: string;
-  label?: string | null;
-  createdAt?: string;
-  lastSeen?: string;
-  profile?: {
-    id: string;
-    name: string;
-    avatarUrl?: string | null;
-    kidMode?: boolean;
-  } | null;
-};
-
-type Billing = {
-  id: string;
-  provider: "PAYSTACK" | "FLUTTERWAVE";
-  providerCustomerId?: string | null;
-  planCode?: string | null;
-  status?: string | null;
-  billingEmail?: string | null;
-  paymentMethodBrand?: string | null;
-  paymentMethodLast4?: string | null;
-  country?: string | null;
-  postalCode?: string | null;
-  nextPaymentAt?: string | null;
-} | null;
 
 const AVATAR_OPTIONS = [
   "/avatars/avatar1.svg",
@@ -60,26 +33,13 @@ const authHeaders = () => {
 };
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [devices, setDevices] = useState<Device[]>([]);
-  const [billing, setBilling] = useState<Billing>(null);
   const [profileName, setProfileName] = useState("");
   const [kidMode, setKidMode] = useState(false);
   const [selectedAvatar, setSelectedAvatar] = useState("/avatars/avatar1.svg");
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [billingForm, setBillingForm] = useState({
-    provider: "PAYSTACK",
-    providerCustomerId: "",
-    planCode: "",
-    status: "active",
-    billingEmail: "",
-    paymentMethodBrand: "",
-    paymentMethodLast4: "",
-    country: "",
-    postalCode: "",
-    nextPaymentAt: "",
-  });
 
   const hasAuth = useMemo(() => {
     if (typeof window === "undefined") return false;
@@ -108,29 +68,8 @@ export default function SettingsPage() {
       return;
     }
     try {
-      const [p, d, b] = await Promise.all([
-        fetcher("/api/user/profiles"),
-        fetcher("/api/user/devices"),
-        fetcher("/api/user/billing"),
-      ]);
+      const p = await fetcher("/api/user/profiles");
       setProfiles(p.profiles ?? []);
-      setDevices(d.devices ?? []);
-      setBilling(b.billing ?? null);
-      if (b.billing) {
-        setBillingForm((prev) => ({
-          ...prev,
-          provider: b.billing.provider ?? prev.provider,
-          providerCustomerId: b.billing.providerCustomerId ?? "",
-          planCode: b.billing.planCode ?? "",
-          status: b.billing.status ?? "active",
-          billingEmail: b.billing.billingEmail ?? "",
-          paymentMethodBrand: b.billing.paymentMethodBrand ?? "",
-          paymentMethodLast4: b.billing.paymentMethodLast4 ?? "",
-          country: b.billing.country ?? "",
-          postalCode: b.billing.postalCode ?? "",
-          nextPaymentAt: b.billing.nextPaymentAt ?? "",
-        }));
-      }
     } catch (err: any) {
       toast.error(err.message ?? "Unable to load settings");
     } finally {
@@ -188,47 +127,13 @@ export default function SettingsPage() {
     }
   };
 
-  const assignProfileToDevice = async (deviceId: string, profileId: string) => {
-    try {
-      const data = await fetcher(`/api/user/devices/${deviceId}/profile`, {
-        method: "POST",
-        body: JSON.stringify({ profileId }),
-      });
-      setDevices((prev) =>
-        prev.map((d) =>
-          d.deviceId === deviceId ? { ...d, profile: data.device.profile } : d
-        )
-      );
-      toast.success("Device profile updated");
-    } catch (err: any) {
-      toast.error(err.message ?? "Unable to update device");
-    }
-  };
-
-  const saveBilling = async () => {
-    try {
-      const payload = {
-        ...billingForm,
-        nextPaymentAt: billingForm.nextPaymentAt || undefined,
-      };
-      const data = await fetcher("/api/user/billing", {
-        method: "PUT",
-        body: JSON.stringify(payload),
-      });
-      setBilling(data.billing ?? null);
-      toast.success("Billing saved");
-    } catch (err: any) {
-      toast.error(err.message ?? "Unable to save billing");
-    }
-  };
-
   if (!hasAuth) {
     return (
       <main className="min-h-screen flex items-center justify-center bg-[#0b0b0c] text-white px-6">
         <div className="text-center space-y-3 max-w-xl">
           <h1 className="text-3xl font-semibold">Sign in to manage your account</h1>
           <p className="text-gray-400">
-            Profiles, devices, and billing are available after you log in.
+            Profiles are available after you log in.
           </p>
         </div>
       </main>
@@ -239,9 +144,17 @@ export default function SettingsPage() {
     <main className="min-h-screen bg-[#0b0b0c] text-white px-6 py-10">
       <div className="max-w-6xl mx-auto space-y-10">
         <div className="flex flex-col gap-2">
-          <h1 className="text-4xl font-semibold">Account Settings</h1>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => router.back()}
+              className="px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-sm text-white/80"
+            >
+              Back
+            </button>
+            <h1 className="text-4xl font-semibold">Account Settings</h1>
+          </div>
           <p className="text-gray-400">
-            Manage profiles, devices, and billing (Paystack / Flutterwave).
+            Manage your Wanzami profiles. Billing and wallet will return with the next design update.
           </p>
         </div>
 
@@ -309,201 +222,6 @@ export default function SettingsPage() {
               </div>
             </section>
 
-            {/* Devices */}
-            <section className="bg-[#141414] border border-gray-800 rounded-xl p-6 space-y-6">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-2xl font-semibold">Devices</h2>
-                  <p className="text-gray-400 text-sm">
-                    See connected devices and pick which profile each uses.
-                  </p>
-                </div>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                {devices.length === 0 && (
-                  <div className="text-gray-400 text-sm">No devices yet.</div>
-                )}
-                {devices.map((d) => (
-                  <div
-                    key={d.id}
-                    className="border border-gray-800 rounded-lg p-4 bg-[#0f0f10] space-y-3"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-lg font-semibold">
-                          {d.label || "Unnamed device"}
-                        </div>
-                        <div className="text-xs text-gray-500 break-all">
-                          {d.deviceId}
-                        </div>
-                      </div>
-                      <span className="text-xs text-gray-400">
-                        {d.lastSeen ? new Date(d.lastSeen).toLocaleString() : ""}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-sm text-gray-300">Profile:</span>
-                      {profiles.map((p) => (
-                        <button
-                          key={p.id}
-                          onClick={() => assignProfileToDevice(d.deviceId, p.id)}
-                          className={`px-3 py-1 rounded-full text-sm border ${
-                            d.profile?.id === p.id
-                              ? "border-[#fd7e14] text-[#fd7e14] bg-[#fd7e14]/10"
-                              : "border-gray-700 text-gray-300 hover:border-[#fd7e14]"
-                          }`}
-                        >
-                          {p.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            {/* Billing */}
-            <section className="bg-[#141414] border border-gray-800 rounded-xl p-6 space-y-6">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-2xl font-semibold">Billing</h2>
-                  <p className="text-gray-400 text-sm">
-                    Store Paystack / Flutterwave customer details and plan code. No cards are kept here.
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="text-sm text-gray-300">Provider</label>
-                  <select
-                    className="w-full mt-1 rounded-lg bg-[#0f0f10] border border-gray-700 px-3 py-2"
-                    value={billingForm.provider}
-                    onChange={(e) =>
-                      setBillingForm((prev) => ({ ...prev, provider: e.target.value }))
-                    }
-                  >
-                    <option value="PAYSTACK">Paystack</option>
-                    <option value="FLUTTERWAVE">Flutterwave</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-sm text-gray-300">Customer ID</label>
-                  <input
-                    className="w-full mt-1 rounded-lg bg-[#0f0f10] border border-gray-700 px-3 py-2"
-                    value={billingForm.providerCustomerId}
-                    onChange={(e) =>
-                      setBillingForm((prev) => ({ ...prev, providerCustomerId: e.target.value }))
-                    }
-                    placeholder="From Paystack/Flutterwave"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm text-gray-300">Plan code</label>
-                  <input
-                    className="w-full mt-1 rounded-lg bg-[#0f0f10] border border-gray-700 px-3 py-2"
-                    value={billingForm.planCode}
-                    onChange={(e) =>
-                      setBillingForm((prev) => ({ ...prev, planCode: e.target.value }))
-                    }
-                    placeholder="Subscription plan code"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm text-gray-300">Status</label>
-                  <input
-                    className="w-full mt-1 rounded-lg bg-[#0f0f10] border border-gray-700 px-3 py-2"
-                    value={billingForm.status}
-                    onChange={(e) =>
-                      setBillingForm((prev) => ({ ...prev, status: e.target.value }))
-                    }
-                    placeholder="active | past_due | canceled"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm text-gray-300">Billing email</label>
-                  <input
-                    className="w-full mt-1 rounded-lg bg-[#0f0f10] border border-gray-700 px-3 py-2"
-                    value={billingForm.billingEmail}
-                    onChange={(e) =>
-                      setBillingForm((prev) => ({ ...prev, billingEmail: e.target.value }))
-                    }
-                    placeholder="billing email"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-sm text-gray-300">Brand</label>
-                    <input
-                      className="w-full mt-1 rounded-lg bg-[#0f0f10] border border-gray-700 px-3 py-2"
-                      value={billingForm.paymentMethodBrand}
-                      onChange={(e) =>
-                        setBillingForm((prev) => ({ ...prev, paymentMethodBrand: e.target.value }))
-                      }
-                      placeholder="Visa"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm text-gray-300">Last4</label>
-                    <input
-                      className="w-full mt-1 rounded-lg bg-[#0f0f10] border border-gray-700 px-3 py-2"
-                      value={billingForm.paymentMethodLast4}
-                      onChange={(e) =>
-                        setBillingForm((prev) => ({ ...prev, paymentMethodLast4: e.target.value }))
-                      }
-                      maxLength={4}
-                      placeholder="1234"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-sm text-gray-300">Country</label>
-                    <input
-                      className="w-full mt-1 rounded-lg bg-[#0f0f10] border border-gray-700 px-3 py-2"
-                      value={billingForm.country}
-                      onChange={(e) =>
-                        setBillingForm((prev) => ({ ...prev, country: e.target.value }))
-                      }
-                      placeholder="NG"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm text-gray-300">Postal code</label>
-                    <input
-                      className="w-full mt-1 rounded-lg bg-[#0f0f10] border border-gray-700 px-3 py-2"
-                      value={billingForm.postalCode}
-                      onChange={(e) =>
-                        setBillingForm((prev) => ({ ...prev, postalCode: e.target.value }))
-                      }
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm text-gray-300">Next payment at (ISO date)</label>
-                  <input
-                    className="w-full mt-1 rounded-lg bg-[#0f0f10] border border-gray-700 px-3 py-2"
-                    value={billingForm.nextPaymentAt}
-                    onChange={(e) =>
-                      setBillingForm((prev) => ({ ...prev, nextPaymentAt: e.target.value }))
-                    }
-                    placeholder="2025-12-01T00:00:00Z"
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="text-xs text-gray-400">
-                  Portal links should come from your Paystack/Flutterwave checkout session.
-                </div>
-                <button
-                  onClick={saveBilling}
-                  className="bg-[#fd7e14] hover:bg-[#ff9f4d] text-black font-semibold px-4 py-2 rounded-lg"
-                >
-                  Save billing
-                </button>
-              </div>
-            </section>
           </div>
         )}
       </div>

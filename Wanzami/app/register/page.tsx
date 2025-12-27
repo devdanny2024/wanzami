@@ -500,7 +500,14 @@ export default function RegisterPage() {
       });
 
       toast.success("Account created. Please verify your email.");
-      router.replace(`/verify-email?email=${encodeURIComponent(form.email)}`);
+      const verifyUrl = `/verify-email?email=${encodeURIComponent(form.email)}`;
+      router.replace(verifyUrl);
+      // Fallback in case router timing is delayed
+      setTimeout(() => {
+        if (typeof window !== "undefined") {
+          window.location.href = verifyUrl;
+        }
+      }, 300);
     } catch (err) {
       toast.error("Unable to register right now. Please try again.");
     } finally {

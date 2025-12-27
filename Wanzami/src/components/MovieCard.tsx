@@ -67,14 +67,14 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.2 }}
-            className="absolute inset-0 flex flex-col justify-end p-4"
+            className="absolute inset-0 flex flex-col justify-end p-3"
           >
-            <h3 className="text-white mb-2 line-clamp-1">
+            <h3 className="text-white mb-1 line-clamp-1 text-sm">
               {movie.title}
             </h3>
             
             {movie.rating && (
-              <div className="flex items-center gap-2 text-xs text-gray-300 mb-3">
+              <div className="flex items-center gap-2 text-[11px] text-gray-300 mb-2">
                 <span className="text-[#fd7e14] border border-[#fd7e14] px-1.5 py-0.5 rounded">
                   {movie.rating}
                 </span>
@@ -91,14 +91,17 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
                 className="flex-1 flex items-center justify-center gap-1 bg-[#fd7e14] hover:bg-[#e86f0f] text-white px-3 py-2 rounded-lg text-xs transition-colors"
               >
                 <Play className="w-3 h-3 fill-current" />
-                <span>Play</span>
+                <span>Buy / Watch</span>
               </button>
               
               <button
-                onClick={(e) => e.stopPropagation()}
-                className="flex items-center justify-center bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg backdrop-blur-sm border border-white/20 transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClick(movie);
+                }}
+                className="flex items-center justify-center bg-white/10 hover:bg-white/20 text-white px-2 py-2 rounded-lg backdrop-blur-sm border border-white/20 transition-colors text-xs"
               >
-                <Plus className="w-4 h-4" />
+                <Info className="w-4 h-4" />
               </button>
             </div>
           </motion.div>

@@ -193,7 +193,7 @@ export function Navbar({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
-            className="fixed top-24 left-4 right-4 z-40 lg:hidden"
+            className="fixed top-[88px] left-4 right-4 z-[60] lg:hidden"
           >
             <div className="bg-[#0b0b0c]/98 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
               <div className="p-4 space-y-1">

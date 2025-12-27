@@ -1,0 +1,53 @@
+'use client';
+
+import { useEffect, useRef } from 'react';
+
+/**
+ * Plays a short Wanzami brand sound on app load with a graceful fallback:
+ * - Attempts autoplay on mount.
+ * - If blocked by the browser, waits for the first user interaction to play once.
+ */
+export function StartupSound() {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    const playSound = async () => {
+      try {
+        await audioRef.current?.play();
+        cleanup();
+      } catch {
+        // Likely blocked; wait for user interaction.
+      }
+    };
+
+    const onUserGesture = () => {
+      void playSound();
+    };
+
+    const cleanup = () => {
+      document.removeEventListener('click', onUserGesture);
+      document.removeEventListener('keydown', onUserGesture);
+      document.removeEventListener('touchstart', onUserGesture);
+    };
+
+    // Try autoplay immediately.
+    void playSound();
+
+    // Fallback: listen for the first user gesture to trigger playback.
+    document.addEventListener('click', onUserGesture, { once: true });
+    document.addEventListener('keydown', onUserGesture, { once: true });
+    document.addEventListener('touchstart', onUserGesture, { once: true });
+
+    return cleanup;
+  }, []);
+
+  return (
+    <audio
+      ref={audioRef}
+      src="/wanzami-surround.wav"
+      preload="auto"
+      aria-hidden="true"
+      className="hidden"
+    />
+  );
+}

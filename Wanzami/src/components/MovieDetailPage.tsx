@@ -32,6 +32,8 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
   const [inList, setInList] = useState(false);
   const [country, setCountry] = useState<string | null>(null);
   const [related, setRelated] = useState<RelatedItem[]>([]);
+  const [liked, setLiked] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -63,6 +65,14 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
   useEffect(() => {
     const targetId = movie?.backendId ?? movie?.id;
     setInList(isInMyList(targetId));
+    if (typeof window !== 'undefined' && targetId) {
+      try {
+        const likedMap = JSON.parse(window.localStorage.getItem('wanzami:likes') ?? '{}') as Record<string, boolean>;
+        setLiked(Boolean(likedMap[targetId]));
+      } catch {
+        setLiked(false);
+      }
+    }
   }, [movie]);
 
   const seasonNumbers = useMemo<number[]>(() => {
@@ -101,6 +111,50 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
     return [];
   }, [related, movie]);
 
+  const qualityBadges = useMemo(() => {
+    const badges: string[] = [];
+    const versions = (movie as any)?.assetVersions ?? [];
+    const versionText = Array.isArray(versions) ? versions.join(',').toLowerCase() : String(versions ?? '').toLowerCase();
+    if (versionText.includes('4k') || versionText.includes('uhd')) badges.push('4K');
+    if (versionText.includes('1080') || versionText.includes('full')) badges.push('Full HD');
+    if (versionText.includes('hdr')) badges.push('HDR');
+    if (versionText.includes('atmos') || versionText.includes('dolby')) badges.push('Dolby Atmos');
+    if (badges.length === 0) {
+      badges.push('4K', 'Full HD', 'Dolby Atmos');
+    }
+    return badges;
+  }, [movie]);
+
+  const handleShare = async () => {
+    setShareError(null);
+    const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+    const title = movie?.title ?? 'Wanzami title';
+    try {
+      if (navigator.share) {
+        await navigator.share({ title, url: shareUrl });
+      } else if (navigator.clipboard && shareUrl) {
+        await navigator.clipboard.writeText(shareUrl);
+      }
+    } catch (err: any) {
+      setShareError(err?.message ?? 'Unable to share right now.');
+    }
+  };
+
+  const handleLikeToggle = () => {
+    const targetId = movie?.backendId ?? movie?.id;
+    if (!targetId || typeof window === 'undefined') return;
+    let likedMap: Record<string, boolean> = {};
+    try {
+      likedMap = JSON.parse(window.localStorage.getItem('wanzami:likes') ?? '{}') as Record<string, boolean>;
+    } catch {
+      likedMap = {};
+    }
+    const nextLiked = !liked;
+    likedMap[targetId] = nextLiked;
+    window.localStorage.setItem('wanzami:likes', JSON.stringify(likedMap));
+    setLiked(nextLiked);
+  };
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black overflow-y-auto">
       {/* Close button */}
@@ -113,7 +167,19 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
 
       {/* Hero banner */}
       <div className="relative h-[70vh] md:h-[85vh]">
-        <ImageWithFallback src={movie.image} alt={movie.title} className="w-full h-full object-cover" />
+        {movie.trailerUrl ? (
+          <video
+            className="w-full h-full object-cover"
+            src={movie.trailerUrl}
+            autoPlay
+            muted
+            loop
+            playsInline
+            poster={movie.image}
+          />
+        ) : (
+          <ImageWithFallback src={movie.image} alt={movie.title} className="w-full h-full object-cover" />
+        )}
 
         {/* Gradients */}
         <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-transparent" />
@@ -141,7 +207,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="flex items-center gap-4 text-sm md:text-base"
+              className="flex items-center gap-4 text-sm md:text-base flex-wrap"
             >
               <span className="text-[#fd7e14] border border-[#fd7e14] px-2 py-0.5 rounded text-xs">{movie.rating || '16+'}</span>
               <span className="text-gray-300">{movie.year || '2024'}</span>
@@ -149,6 +215,13 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
               <span className="text-gray-300">{movie.duration || '2h 15m'}</span>
               <span className="text-gray-500">·</span>
               <span className="text-gray-300">{movie.genre || 'Drama'}</span>
+              <div className="flex items-center gap-2">
+                {qualityBadges.map((badge) => (
+                  <span key={badge} className="text-[11px] uppercase tracking-wide text-white bg-white/10 border border-white/20 px-2 py-1 rounded-md">
+                    {badge}
+                  </span>
+                ))}
+              </div>
             </motion.div>
 
             <motion.p
@@ -205,14 +278,23 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
                 <span className="text-sm md:text-base">{inList ? 'Added' : 'My List'}</span>
               </button>
 
-              <button className="flex items-center justify-center w-12 h-12 md:w-14 md:h-14 bg-white/10 hover:bg-white/20 text-white rounded-xl backdrop-blur-md border border-white/20 transition-colors">
+              <button
+                onClick={handleLikeToggle}
+                className={`flex items-center justify-center w-12 h-12 md:w-14 md:h-14 rounded-xl backdrop-blur-md border transition-colors ${
+                  liked ? 'bg-[#fd7e14]/20 border-[#fd7e14] text-white' : 'bg-white/10 hover:bg-white/20 text-white border-white/20'
+                }`}
+              >
                 <ThumbsUp className="w-5 h-5" />
               </button>
 
-              <button className="flex items-center justify-center w-12 h-12 md:w-14 md:h-14 bg-white/10 hover:bg-white/20 text-white rounded-xl backdrop-blur-md border border-white/20 transition-colors">
+              <button
+                onClick={handleShare}
+                className="flex items-center justify-center w-12 h-12 md:w-14 md:h-14 bg-white/10 hover:bg-white/20 text-white rounded-xl backdrop-blur-md border border-white/20 transition-colors"
+              >
                 <Share2 className="w-5 h-5" />
               </button>
             </motion.div>
+            {shareError && <p className="text-xs text-red-300">{shareError}</p>}
           </div>
         </div>
       </div>

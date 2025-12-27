@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { Play, Download, Users, MonitorPlay, Tv } from "lucide-react";
 import logo from "@/assets/logo.png";
+import { Footer } from "@/components/Footer";
+import { StartupSound } from "@/components/StartupSound";
 
 const features = [
   {
@@ -69,11 +71,12 @@ function Hero({ onStart, onSignIn }: { onStart: () => void; onSignIn: () => void
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
       <div className="absolute inset-0 z-0">
         <ImageWithFallback
-          src="https://images.unsplash.com/photo-1761044591339-d958277e7858?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzdHJlYW1pbmclMjBlbnRlcnRhaW5tZW50JTIwbW92aWVzfGVufDF8fHx8MTc2NTQ3NTA1MHww&ixlib=rb-4.1.0&q=80&w=1080"
-          alt="Streaming entertainment"
+          src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1600&q=80"
+          alt="Streaming worlds collide"
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black via-black/70 to-black/90" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(253,126,20,0.12),transparent_40%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.08),transparent_30%)]" />
       </div>
 
       <div className="relative z-10 max-w-4xl mx-auto px-6 text-center space-y-6">
@@ -149,11 +152,13 @@ export default function SplashPage() {
 
   return (
     <div className="min-h-screen bg-black text-white">
+      <StartupSound />
       <Header onLogin={() => router.push("/login")} onRegister={() => router.push("/register")} />
-      <main>
+      <main className="pb-20">
         <Hero onStart={() => router.push("/register")} onSignIn={() => router.push("/login")} />
         <Features />
       </main>
+      <Footer />
     </div>
   );
 }
