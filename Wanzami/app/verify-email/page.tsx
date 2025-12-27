@@ -26,9 +26,15 @@ function VerifyEmailContent() {
 
   useEffect(() => {
     const verify = async () => {
-      if (!token || !email) {
+      if (!token) {
+        // User likely arrived from signup with only email param; prompt them to use the emailed link.
+        setStatus("pending");
+        setMessage(email ? "Check your inbox and click the verification link. You can also resend below." : "Use the link we emailed to verify your account.");
+        return;
+      }
+      if (!email) {
         setStatus("error");
-        setMessage("Missing verification token.");
+        setMessage("Missing email address for verification.");
         return;
       }
       const res = await fetch("/api/auth/verify-email", {
@@ -45,7 +51,7 @@ function VerifyEmailContent() {
       setStatus("success");
       setMessage("Email verified. You can now log in.");
     };
-    verify();
+    void verify();
   }, [token, email]);
 
   const handleResend = async () => {
