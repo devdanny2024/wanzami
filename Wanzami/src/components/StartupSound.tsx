@@ -7,10 +7,21 @@ import { useEffect, useRef } from 'react';
  * - Attempts autoplay on mount.
  * - If blocked by the browser, waits for the first user interaction to play once.
  */
-export function StartupSound() {
+type StartupSoundProps = {
+  onReady?: () => void;
+};
+
+export function StartupSound({ onReady }: StartupSoundProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const attemptedAuto = useRef(false);
   const playedAudible = useRef(false);
+  const readyCalled = useRef(false);
+
+  const signalReady = () => {
+    if (readyCalled.current) return;
+    readyCalled.current = true;
+    onReady?.();
+  };
 
   useEffect(() => {
     const playSound = async () => {
@@ -26,6 +37,7 @@ export function StartupSound() {
         audio.volume = 0.6;
         audio.load();
         await audio.play();
+        // Autoplay may stay muted; don't mark as fully played yet.
       } catch {
         // Likely blocked; wait for user interaction.
       }
@@ -41,6 +53,7 @@ export function StartupSound() {
         await audio.play();
         playedAudible.current = true;
         cleanup();
+        signalReady();
       } catch {
         // If still blocked, keep listeners for another try.
       }
@@ -66,7 +79,13 @@ export function StartupSound() {
     document.addEventListener('touchstart', onUserGesture);
     document.addEventListener('pointermove', onPointerMove, { once: true });
 
-    return cleanup;
+    // Safety timeout: don't block UI if audio never plays
+    const fallback = window.setTimeout(() => signalReady(), 5000);
+
+    return () => {
+      cleanup();
+      window.clearTimeout(fallback);
+    };
   }, []);
 
   return (

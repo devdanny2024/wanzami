@@ -6,6 +6,7 @@ import { Play, Download, Users, MonitorPlay, Tv } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { Footer } from "@/components/Footer";
 import { StartupSound } from "@/components/StartupSound";
+import { useEffect, useState } from "react";
 
 const features = [
   {
@@ -149,10 +150,22 @@ function Features() {
 
 export default function SplashPage() {
   const router = useRouter();
+  const [soundReady, setSoundReady] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSoundReady(true), 5500);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <StartupSound />
+    <div className="min-h-screen bg-black text-white relative overflow-hidden">
+      {!soundReady && (
+        <div className="absolute inset-0 z-[70] bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center gap-4">
+          <div className="w-14 h-14 border-4 border-[#fd7e14] border-t-transparent rounded-full animate-spin" />
+          <p className="text-white/80 text-sm">Loading your experienceƒ?İ</p>
+        </div>
+      )}
+      <StartupSound onReady={() => setSoundReady(true)} />
       <Header onLogin={() => router.push("/login")} onRegister={() => router.push("/register")} />
       <main className="pb-20">
         <Hero onStart={() => router.push("/register")} onSignIn={() => router.push("/login")} />
