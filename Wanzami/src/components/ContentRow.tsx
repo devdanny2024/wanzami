@@ -17,7 +17,7 @@ export function ContentRow({ title, movies, onMovieClick, maxVisible }: ContentR
   const [showRightArrow, setShowRightArrow] = useState(true);
   const [cardWidth, setCardWidth] = useState(220);
 
-  const ITEMS_PER_VIEW = 6;
+  const ITEMS_PER_VIEW = 3.5;
   const GAP_PX = 16; // matches gap-4 at desktop
 
   const handleScroll = (direction: 'left' | 'right') => {
@@ -54,7 +54,7 @@ export function ContentRow({ title, movies, onMovieClick, maxVisible }: ContentR
     const recalc = () => {
       const available = container.clientWidth - GAP_PX * (ITEMS_PER_VIEW - 1);
       const target = available / ITEMS_PER_VIEW;
-      const clamped = Math.max(180, Math.min(240, target));
+      const clamped = Math.max(300, Math.min(420, target));
       setCardWidth(clamped);
       setShowLeftArrow(container.scrollLeft > 0);
       setShowRightArrow(container.scrollLeft < container.scrollWidth - container.clientWidth - 10);
@@ -95,7 +95,7 @@ export function ContentRow({ title, movies, onMovieClick, maxVisible }: ContentR
           {displayMovies.map((movie) => (
             <div
               key={movie.id}
-              className="flex-none"
+              className="flex-none p-2"
               style={{
                 width: `${cardWidth}px`,
                 minWidth: `${cardWidth}px`,

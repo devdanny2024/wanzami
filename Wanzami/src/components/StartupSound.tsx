@@ -9,11 +9,14 @@ import { useEffect, useRef } from 'react';
  */
 export function StartupSound() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const hasPlayed = useRef(false);
+  const attemptedAuto = useRef(false);
+  const playedAudible = useRef(false);
 
   useEffect(() => {
     const playSound = async () => {
-      if (hasPlayed.current) return;
+      // Try a muted autoplay to warm up; don't mark as played yet.
+      if (attemptedAuto.current) return;
+      attemptedAuto.current = true;
       try {
         const audio = audioRef.current;
         if (!audio) return;
@@ -23,21 +26,20 @@ export function StartupSound() {
         audio.volume = 0.6;
         audio.load();
         await audio.play();
-        hasPlayed.current = true;
       } catch {
         // Likely blocked; wait for user interaction.
       }
     };
 
     const onUserGesture = async () => {
-      if (hasPlayed.current) return;
+      if (playedAudible.current) return;
       const audio = audioRef.current;
       if (!audio) return;
       try {
         audio.muted = false;
         audio.currentTime = 0;
         await audio.play();
-        hasPlayed.current = true;
+        playedAudible.current = true;
         cleanup();
       } catch {
         // If still blocked, keep listeners for another try.
