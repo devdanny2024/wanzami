@@ -98,13 +98,13 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
       )}
 
       {/* External CTA below the card */}
-      <div className="mt-3">
+      <div className="mt-3 flex justify-end">
         <button
           onClick={(e) => {
             e.stopPropagation();
             onClick(movie);
           }}
-          className="w-full flex items-center justify-center gap-2 bg-[#fd7e14] hover:bg-[#e86f0f] text-white px-4 py-2.5 rounded-lg text-sm transition-colors"
+          className="inline-flex items-center justify-center gap-2 bg-[#fd7e14] hover:bg-[#e86f0f] text-white px-4 py-2.5 rounded-lg text-sm transition-colors"
         >
           {owned ? <Play className="w-4 h-4 fill-current" /> : <Info className="w-4 h-4" />}
           <span>{owned ? "Play" : "Buy"}</span>
