@@ -84,7 +84,7 @@ export function SearchPage({ onMovieClick, movies, loading, error }: SearchPageP
     : allMovies;
 
   return (
-    <div className="min-h-screen bg-black pt-28 md:pt-40 lg:pt-44 px-4 md:px-12 lg:px-16 pb-16">
+    <div className="min-h-screen bg-black pt-36 md:pt-48 lg:pt-52 px-4 md:px-12 lg:px-16 pb-16">
       <div className="max-w-7xl mx-auto">
         {/* Search bar */}
         <motion.div
