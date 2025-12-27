@@ -98,7 +98,29 @@ export default function SeriesPage() {
               completionPercent: typeof i.completionPercent === "number" ? i.completionPercent : undefined,
               runtimeMinutes: i.runtimeMinutes ?? 0,
             }));
-          setContinueWatchingItems(mappedCw);
+          const buildLocalFallback = () => {
+            if (typeof window === "undefined") return [];
+            try {
+              const raw = window.localStorage.getItem("wanzami:cw-progress");
+              if (!raw) return [];
+              const local = JSON.parse(raw) as Record<string, { completionPercent?: number }>;
+              return Object.entries(local).flatMap(([backendId, progress]) => {
+                const match = series.find((m) => String(m.backendId) === String(backendId));
+                if (!match) return [];
+                return [
+                  {
+                    ...match,
+                    completionPercent:
+                      typeof progress.completionPercent === "number" ? progress.completionPercent : 0.1,
+                  },
+                ];
+              });
+            } catch {
+              return [];
+            }
+          };
+          const finalCw = mappedCw.length > 0 ? mappedCw : buildLocalFallback();
+          setContinueWatchingItems(finalCw);
         }
 
         const byw = await fetchBecauseYouWatched(accessToken, profileId ?? undefined);

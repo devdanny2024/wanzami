@@ -110,7 +110,34 @@ export default function MoviesPage() {
             ...i,
             completionPercent: typeof (i as any).completionPercent === "number" ? (i as any).completionPercent : undefined,
           }));
-          setContinueWatchingItems(mappedCw);
+
+          const buildLocalFallback = () => {
+            if (typeof window === "undefined") return [];
+            try {
+              const raw = window.localStorage.getItem("wanzami:cw-progress");
+              if (!raw) return [];
+              const local = JSON.parse(raw) as Record<
+                string,
+                { completionPercent?: number; positionSec?: number; durationSec?: number }
+              >;
+              return Object.entries(local).flatMap(([backendId, progress]) => {
+                const match = movies.find((m) => String(m.backendId) === String(backendId));
+                if (!match) return [];
+                return [
+                  {
+                    ...match,
+                    completionPercent:
+                      typeof progress.completionPercent === "number" ? progress.completionPercent : 0.1,
+                  },
+                ];
+              });
+            } catch {
+              return [];
+            }
+          };
+
+          const finalCw = mappedCw.length > 0 ? mappedCw : buildLocalFallback();
+          setContinueWatchingItems(finalCw);
         }
 
         const byw = await fetchBecauseYouWatched(accessToken, profileId ?? undefined);

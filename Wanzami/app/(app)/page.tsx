@@ -97,138 +97,155 @@ export default function HomeRoute() {
         setRecsLoading(true);
         setRecsError(null);
 
-        const cw = await fetchContinueWatching(accessToken, profileId ?? undefined);
-        if (isMounted) {
-          const rawItems = (cw.items ?? []) as any[];
-          const cwMapped: MovieData[] = [];
-          const fallbackImage = "https://placehold.co/600x900/111111/FD7E14?text=Wanzami";
-          let localProgress: Record<
-            string,
-            {
-              completionPercent?: number;
-              positionSec?: number;
-              durationSec?: number;
-              updatedAt?: number;
-            }
-          > = {};
-
-          if (typeof window !== "undefined") {
-            try {
-              const raw = window.localStorage.getItem("wanzami:cw-progress");
-              if (raw && typeof raw === "string") {
-                localProgress = JSON.parse(raw) as typeof localProgress;
+          const cw = await fetchContinueWatching(accessToken, profileId ?? undefined);
+          if (isMounted) {
+            const rawItems = (cw.items ?? []) as any[];
+            const cwMapped: MovieData[] = [];
+            const fallbackImage = "https://placehold.co/600x900/111111/FD7E14?text=Wanzami";
+            let localProgress: Record<
+              string,
+              {
+                completionPercent?: number;
+                positionSec?: number;
+                durationSec?: number;
+                updatedAt?: number;
               }
-            } catch {
-              localProgress = {};
-            }
-          }
+            > = {};
 
-          rawItems.forEach((item, idx) => {
-            const backendIdRaw = item.titleId ?? item.id;
-            if (!backendIdRaw) return;
-            const backendId = String(backendIdRaw);
-
-            const match = catalogMovies.find((m) => m.backendId === backendId);
-
-            const completion =
-              typeof item.completionPercent === "number"
-                ? item.completionPercent
-                : typeof item.progressPercent === "number"
-                ? item.progressPercent
-                : typeof item.percent_complete === "number"
-                ? item.percent_complete
-                : undefined;
-            const local = localProgress[String(backendId)];
-            const localCompletion =
-              typeof local?.completionPercent === "number"
-                ? Math.max(0, Math.min(1, local.completionPercent))
-                : undefined;
-            const mergedCompletion =
-              typeof completion === "number" && typeof localCompletion === "number"
-                ? Math.max(0, Math.min(1, Math.max(completion, localCompletion)))
-                : typeof completion === "number"
-                ? Math.max(0, Math.min(1, completion))
-                : localCompletion;
-
-            const localPosition =
-              typeof local?.positionSec === "number" && Number.isFinite(local.positionSec) && local.positionSec > 0
-                ? local.positionSec
-                : undefined;
-            const localDuration =
-              typeof local?.durationSec === "number" && Number.isFinite(local.durationSec) && local.durationSec > 0
-                ? local.durationSec
-                : undefined;
-
-            // Try to find a resume position in seconds, preferring an explicit
-            // position from the backend, then local last-known position, then
-            // falling back to completion percent + duration when available.
-            const runtimeMinutes =
-              (match?.runtimeMinutes as number | null | undefined) ??
-              (item.runtimeMinutes as number | null | undefined) ??
-              null;
-            let resumePositionSec: number | undefined;
-            if (typeof item.positionSec === "number") {
-              resumePositionSec = item.positionSec;
-            } else if (typeof item.resumePositionSec === "number") {
-              resumePositionSec = item.resumePositionSec;
-            } else if (typeof item.lastPositionSec === "number") {
-              resumePositionSec = item.lastPositionSec;
-            } else if (typeof item.metadata?.positionSec === "number") {
-              resumePositionSec = item.metadata.positionSec;
-            } else if (typeof localPosition === "number") {
-              resumePositionSec = localPosition;
-            } else if (typeof mergedCompletion === "number" && runtimeMinutes && runtimeMinutes > 0) {
-              resumePositionSec = mergedCompletion * (runtimeMinutes * 60);
-            } else if (typeof mergedCompletion === "number" && typeof localDuration === "number") {
-              resumePositionSec = mergedCompletion * localDuration;
+            if (typeof window !== "undefined") {
+              try {
+                const raw = window.localStorage.getItem("wanzami:cw-progress");
+                if (raw && typeof raw === "string") {
+                  localProgress = JSON.parse(raw) as typeof localProgress;
+                }
+              } catch {
+                localProgress = {};
+              }
             }
 
-            if (match) {
-              cwMapped.push({
-                ...match,
-                completionPercent: mergedCompletion ?? completion ?? match.completionPercent,
-                // used only for client-side sorting; stripped after
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                ...(local?.updatedAt ? ({ __localUpdatedAt: local.updatedAt } as any) : {}),
-                resumePositionSec: resumePositionSec ?? match.resumePositionSec,
+            const buildLocalFallback = () => {
+              return Object.entries(localProgress).flatMap(([backendId, progress]) => {
+                const match = catalogMovies.find((m) => String(m.backendId) === String(backendId));
+                if (!match) return [];
+                const completion = typeof progress.completionPercent === "number" ? progress.completionPercent : 0.1;
+                return [
+                  {
+                    ...match,
+                    completionPercent: completion,
+                    resumePositionSec:
+                      typeof progress.positionSec === "number" ? progress.positionSec : match.resumePositionSec,
+                  },
+                ];
               });
-            } else {
-              cwMapped.push({
-                id: Number(backendId) || Date.now() + idx,
-                backendId,
-                title: item.name ?? `Title ${backendId}`,
-                image: item.thumbnailUrl || item.posterUrl || fallbackImage,
-                type: (item.type as any) ?? "MOVIE",
-                runtimeMinutes,
-                genres: item.genres,
-                maturityRating: item.maturityRating ?? "PG",
-                isOriginal: item.isOriginal ?? false,
-                completionPercent: mergedCompletion ?? completion,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                ...(local?.updatedAt ? ({ __localUpdatedAt: local.updatedAt } as any) : {}),
-                resumePositionSec,
-              } as MovieData);
-            }
-          });
+            };
 
-          const sortedCw = cwMapped
-            .slice()
-            // sort by local updatedAt when available so the last
-            // watched title appears first even if the backend
-            // snapshot lags briefly.
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            .sort((a: any, b: any) => {
-              const aTs = typeof a.__localUpdatedAt === "number" ? a.__localUpdatedAt : 0;
-              const bTs = typeof b.__localUpdatedAt === "number" ? b.__localUpdatedAt : 0;
-              return bTs - aTs;
-            })
-            // strip helper field before storing
-            .map((item: any) => {
-              const { __localUpdatedAt, ...rest } = item;
-              return rest;
+            rawItems.forEach((item, idx) => {
+              const backendIdRaw = item.titleId ?? item.id;
+              if (!backendIdRaw) return;
+              const backendId = String(backendIdRaw);
+
+              const match = catalogMovies.find((m) => m.backendId === backendId);
+
+              const completion =
+                typeof item.completionPercent === "number"
+                  ? item.completionPercent
+                  : typeof item.progressPercent === "number"
+                  ? item.progressPercent
+                  : typeof item.percent_complete === "number"
+                  ? item.percent_complete
+                  : undefined;
+              const local = localProgress[String(backendId)];
+              const localCompletion =
+                typeof local?.completionPercent === "number"
+                  ? Math.max(0, Math.min(1, local.completionPercent))
+                  : undefined;
+              const mergedCompletion =
+                typeof completion === "number" && typeof localCompletion === "number"
+                  ? Math.max(0, Math.min(1, Math.max(completion, localCompletion)))
+                  : typeof completion === "number"
+                  ? Math.max(0, Math.min(1, completion))
+                  : localCompletion;
+
+              const localPosition =
+                typeof local?.positionSec === "number" && Number.isFinite(local.positionSec) && local.positionSec > 0
+                  ? local.positionSec
+                  : undefined;
+              const localDuration =
+                typeof local?.durationSec === "number" && Number.isFinite(local.durationSec) && local.durationSec > 0
+                  ? local.durationSec
+                  : undefined;
+
+              // Try to find a resume position in seconds, preferring an explicit
+              // position from the backend, then local last-known position, then
+              // falling back to completion percent + duration when available.
+              const runtimeMinutes =
+                (match?.runtimeMinutes as number | null | undefined) ??
+                (item.runtimeMinutes as number | null | undefined) ??
+                null;
+              let resumePositionSec: number | undefined;
+              if (typeof item.positionSec === "number") {
+                resumePositionSec = item.positionSec;
+              } else if (typeof item.resumePositionSec === "number") {
+                resumePositionSec = item.resumePositionSec;
+              } else if (typeof item.lastPositionSec === "number") {
+                resumePositionSec = item.lastPositionSec;
+              } else if (typeof item.metadata?.positionSec === "number") {
+                resumePositionSec = item.metadata.positionSec;
+              } else if (typeof localPosition === "number") {
+                resumePositionSec = localPosition;
+              } else if (typeof mergedCompletion === "number" && runtimeMinutes && runtimeMinutes > 0) {
+                resumePositionSec = mergedCompletion * (runtimeMinutes * 60);
+              } else if (typeof mergedCompletion === "number" && typeof localDuration === "number") {
+                resumePositionSec = mergedCompletion * localDuration;
+              }
+
+              if (match) {
+                cwMapped.push({
+                  ...match,
+                  completionPercent: mergedCompletion ?? completion ?? match.completionPercent,
+                  // used only for client-side sorting; stripped after
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  ...(local?.updatedAt ? ({ __localUpdatedAt: local.updatedAt } as any) : {}),
+                  resumePositionSec: resumePositionSec ?? match.resumePositionSec,
+                });
+              } else {
+                cwMapped.push({
+                  id: Number(backendId) || Date.now() + idx,
+                  backendId,
+                  title: item.name ?? `Title ${backendId}`,
+                  image: item.thumbnailUrl || item.posterUrl || fallbackImage,
+                  type: (item.type as any) ?? "MOVIE",
+                  runtimeMinutes,
+                  genres: item.genres,
+                  maturityRating: item.maturityRating ?? "PG",
+                  isOriginal: item.isOriginal ?? false,
+                  completionPercent: mergedCompletion ?? completion,
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  ...(local?.updatedAt ? ({ __localUpdatedAt: local.updatedAt } as any) : {}),
+                  resumePositionSec,
+                } as MovieData);
+              }
             });
 
-          setContinueWatchingItems(sortedCw);
+            const sortedCw = cwMapped
+              .slice()
+              // sort by local updatedAt when available so the last
+              // watched title appears first even if the backend
+              // snapshot lags briefly.
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              .sort((a: any, b: any) => {
+                const aTs = typeof a.__localUpdatedAt === "number" ? a.__localUpdatedAt : 0;
+                const bTs = typeof b.__localUpdatedAt === "number" ? b.__localUpdatedAt : 0;
+                return bTs - aTs;
+              })
+              // strip helper field before storing
+              .map((item: any) => {
+                const { __localUpdatedAt, ...rest } = item;
+                return rest;
+              });
+
+            const localFallback = sortedCw.length === 0 ? buildLocalFallback() : [];
+            setContinueWatchingItems(sortedCw.length > 0 ? sortedCw : localFallback);
         }
 
         const [top10Res, trendingRes, top10SeriesRes, trendingSeriesRes, forYouRes] =
