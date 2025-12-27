@@ -36,7 +36,16 @@ interface MovieCardProps {
 
 export function MovieCard({ movie, onClick }: MovieCardProps) {
   const [isHovered, setIsHovered] = useState(false);
-  const owned = (movie as any)?.isOwned || (movie as any)?.hasAccess || typeof movie.completionPercent === 'number';
+  const owned =
+    Boolean(
+      (movie as any)?.isOwned ||
+      (movie as any)?.owned ||
+      (movie as any)?.hasAccess ||
+      (movie as any)?.isPurchased ||
+      (movie as any)?.purchaseStatus === 'OWNED' ||
+      (movie as any)?.purchaseStatus === 'ACTIVE' ||
+      typeof movie.completionPercent === 'number',
+    );
 
   return (
     <motion.div
