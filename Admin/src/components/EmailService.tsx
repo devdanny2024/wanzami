@@ -29,6 +29,7 @@ const sanitizeEmail = (val?: string | null) =>
     .replace(/[\u200b\uFEFF]/g, "")
     .trim()
     .replace(/[;,.:]+$/g, "")
+    .replace(/\.@/g, "@")
     .toLowerCase();
 const isValidEmail = (val?: string | null) => {
   const s = sanitizeEmail(val);
