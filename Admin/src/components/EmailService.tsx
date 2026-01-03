@@ -381,6 +381,8 @@ export function EmailService() {
           subject: templateSubject,
           html: templateBody,
           recipients: slice,
+          startIndex,
+          batchSize,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -397,14 +399,15 @@ export function EmailService() {
         return;
       }
       const timestamp = new Date().toLocaleString();
-      const queued = data?.queued ?? slice.length;
+      const queued = data?.queued ?? data?.queuedCount ?? slice.length;
       const failed = data?.failed ?? 0;
+      const jobId = data?.jobId;
       setLastSend(
-        `Queued ${queued} emails at ${timestamp}${failed ? ` (${failed} failed)` : ""} [indexes ${startIndex} - ${
+        `Enqueued ${queued} emails${failed ? ` (${failed} failed)` : ""} at ${timestamp} [indexes ${startIndex} - ${
           startIndex + slice.length - 1
-        }]`
+        }]${jobId ? ` job: ${jobId}` : ""}`
       );
-      toast.success(data?.message ?? `Queued ${queued} emails.${failed ? ` ${failed} failed.` : ""}`);
+      toast.success(data?.message ?? `Enqueued ${queued} emails.${failed ? ` ${failed} failed.` : ""}`);
       const failedList: string[] = (data?.failedRecipients as string[] | undefined) ?? [];
       if (failedList.length) {
         const sample = failedList.slice(0, 5).join(", ");
