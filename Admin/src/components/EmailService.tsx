@@ -36,8 +36,8 @@ const normalizeHeader = (key: string) => key.toLowerCase().replace(/\s+/g, "");
 const EMAIL_HEADERS = ["email", "e-mail", "mail", "address", "emailaddress"];
 const NAME_HEADERS = ["name", "fullname", "full_name", "full name"];
 
-// Use the production logo (same path used in backend verify email template).
-const LOGO_SRC = "https://assets.wanzami.com/logo.png";
+// Use the production logo from S3 (same as backend welcome template). This avoids cert issues on assets.wanzami.com.
+const LOGO_SRC = "https://wanzami-bucket.s3.eu-north-1.amazonaws.com/wanzami_assets/wanzami_logo.png";
 
 const pickRecipientFromRow = (row: Record<string, any>): Recipient | null => {
   const entries = Object.entries(row).filter(([, v]) => v !== null && v !== undefined && String(v).trim().length > 0);
