@@ -72,7 +72,7 @@ const FILMMAKER_TEMPLATE_BODY = `<!DOCTYPE html>
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="640" style="max-width:640px;background:#111;border:1px solid #1f1f1f;border-radius:12px;overflow:hidden;">
           <tr>
             <td style="padding:20px 24px 0 24px;">
-              <img src="${LOGO_SRC}" alt="Wanzami TV" width="150" style="display:block;border:0;outline:none;text-decoration:none;height:auto;max-height:64px;" />
+              <img src="${LOGO_SRC}" alt="Wanzami TV" width="150" style="display:block;border:0;outline:none;text-decoration:none;height:auto;" />
             </td>
           </tr>
           <tr>
