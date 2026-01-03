@@ -169,6 +169,8 @@ export function EmailService() {
   const [sendingLive, setSendingLive] = useState(false);
   const [lastTest, setLastTest] = useState<string | null>(null);
   const [lastSend, setLastSend] = useState<string | null>(null);
+  const [batchSize, setBatchSize] = useState<number>(50);
+  const [startIndex, setStartIndex] = useState<number>(0);
   const token = useMemo(() => (typeof window !== "undefined" ? localStorage.getItem("accessToken") : null), []);
 
   const validTestEmails = useMemo(() => parseEmailList(testEmailsInput), [testEmailsInput]);
@@ -357,11 +359,16 @@ export function EmailService() {
       toast.error("No valid email addresses to send. Please clean the list and try again.");
       return;
     }
-    if (invalidCount > 0) {
-      toast.info(`Removed ${invalidCount} invalid email${invalidCount > 1 ? "s" : ""} before sending.`);
+    const slice = cleanedRecipients.slice(
+      Math.max(0, startIndex),
+      Math.max(0, startIndex) + Math.max(1, batchSize || 1)
+    );
+    if (slice.length === 0) {
+      toast.error("No recipients in the selected batch. Adjust start index or batch size.");
+      return;
     }
 
-    if (!window.confirm(`Send this email to ${cleanedRecipients.length} recipients?`)) {
+    if (!window.confirm(`Send this email to ${slice.length} recipients (indexes ${startIndex} to ${startIndex + slice.length - 1})?`)) {
       return;
     }
 
@@ -373,7 +380,7 @@ export function EmailService() {
         body: JSON.stringify({
           subject: templateSubject,
           html: templateBody,
-          recipients: cleanedRecipients,
+          recipients: slice,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -390,15 +397,20 @@ export function EmailService() {
         return;
       }
       const timestamp = new Date().toLocaleString();
-      const queued = data?.queued ?? cleanedRecipients.length;
+      const queued = data?.queued ?? slice.length;
       const failed = data?.failed ?? 0;
-      setLastSend(`Queued ${queued} emails at ${timestamp}${failed ? ` (${failed} failed)` : ""}`);
+      setLastSend(
+        `Queued ${queued} emails at ${timestamp}${failed ? ` (${failed} failed)` : ""} [indexes ${startIndex} - ${
+          startIndex + slice.length - 1
+        }]`
+      );
       toast.success(data?.message ?? `Queued ${queued} emails.${failed ? ` ${failed} failed.` : ""}`);
       const failedList: string[] = (data?.failedRecipients as string[] | undefined) ?? [];
       if (failedList.length) {
         const sample = failedList.slice(0, 5).join(", ");
         toast.info(`Failed to queue ${failedList.length} email(s): ${sample}`);
       }
+      setStartIndex((prev) => prev + Math.max(1, batchSize || 1));
     } catch (err) {
       toast.error("Failed to queue emails");
     } finally {
@@ -684,6 +696,29 @@ export function EmailService() {
                 placeholder="qa@wanzami.com, product@wanzami.com"
               />
               <p className="text-xs text-neutral-500">Separate by commas or new lines.</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-sm text-neutral-300">Batch size</label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={batchSize}
+                  onChange={(e) => setBatchSize(Number(e.target.value) || 1)}
+                  className="bg-neutral-950 border-neutral-800 text-white"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm text-neutral-300">Start index</label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={startIndex}
+                  onChange={(e) => setStartIndex(Math.max(0, Number(e.target.value) || 0))}
+                  className="bg-neutral-950 border-neutral-800 text-white"
+                />
+              </div>
             </div>
 
             <div className="flex items-center gap-3">
