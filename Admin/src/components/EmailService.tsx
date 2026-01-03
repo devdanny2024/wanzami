@@ -390,8 +390,15 @@ export function EmailService() {
         return;
       }
       const timestamp = new Date().toLocaleString();
-      setLastSend(`Queued ${dedupedRecipients.length} emails at ${timestamp}`);
-      toast.success(data?.message ?? `Queued ${dedupedRecipients.length} emails.`);
+      const queued = data?.queued ?? cleanedRecipients.length;
+      const failed = data?.failed ?? 0;
+      setLastSend(`Queued ${queued} emails at ${timestamp}${failed ? ` (${failed} failed)` : ""}`);
+      toast.success(data?.message ?? `Queued ${queued} emails.${failed ? ` ${failed} failed.` : ""}`);
+      const failedList: string[] = (data?.failedRecipients as string[] | undefined) ?? [];
+      if (failedList.length) {
+        const sample = failedList.slice(0, 5).join(", ");
+        toast.info(`Failed to queue ${failedList.length} email(s): ${sample}`);
+      }
     } catch (err) {
       toast.error("Failed to queue emails");
     } finally {

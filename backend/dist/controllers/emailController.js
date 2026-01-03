@@ -26,8 +26,25 @@ const sendBatch = async (recipients, subject, html) => {
         subject,
         html: renderTemplate(html, recipient),
     })));
-    const failed = results.filter((r) => r.status === "rejected").length;
-    return { queued: recipients.length - failed, failed };
+    const failedRecipients = [];
+    const queuedRecipients = [];
+    results.forEach((r, idx) => {
+        const email = recipients[idx]?.email;
+        if (!email)
+            return;
+        if (r.status === "rejected") {
+            failedRecipients.push(email);
+        }
+        else {
+            queuedRecipients.push(email);
+        }
+    });
+    return {
+        queued: queuedRecipients.length,
+        failed: failedRecipients.length,
+        queuedRecipients,
+        failedRecipients,
+    };
 };
 export const sendTestEmails = async (req, res) => {
     const parsed = EmailPayloadSchema.safeParse(req.body);
@@ -38,11 +55,13 @@ export const sendTestEmails = async (req, res) => {
     if (recipients.length === 0) {
         return res.status(400).json({ message: "No valid recipients" });
     }
-    const { queued, failed } = await sendBatch(recipients, parsed.data.subject, parsed.data.html);
+    const { queued, failed, queuedRecipients, failedRecipients } = await sendBatch(recipients, parsed.data.subject, parsed.data.html);
     return res.json({
         message: "Test emails dispatched",
         queued,
         failed,
+        queuedRecipients,
+        failedRecipients,
     });
 };
 export const sendCampaignEmails = async (req, res) => {
@@ -54,10 +73,12 @@ export const sendCampaignEmails = async (req, res) => {
     if (recipients.length === 0) {
         return res.status(400).json({ message: "No valid recipients" });
     }
-    const { queued, failed } = await sendBatch(recipients, parsed.data.subject, parsed.data.html);
+    const { queued, failed, queuedRecipients, failedRecipients } = await sendBatch(recipients, parsed.data.subject, parsed.data.html);
     return res.json({
         message: "Emails queued for delivery",
         queued,
         failed,
+        queuedRecipients,
+        failedRecipients,
     });
 };
