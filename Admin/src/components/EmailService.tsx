@@ -36,15 +36,8 @@ const normalizeHeader = (key: string) => key.toLowerCase().replace(/\s+/g, "");
 const EMAIL_HEADERS = ["email", "e-mail", "mail", "address", "emailaddress"];
 const NAME_HEADERS = ["name", "fullname", "full_name", "full name"];
 
-// Inline SVG fallback logo to ensure the email always renders a brand mark without external assets.
-const LOGO_SRC =
-  "data:image/svg+xml;utf8," +
-  encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" width="170" height="40" viewBox="0 0 170 40">' +
-      '<rect width="170" height="40" rx="8" fill="#0b0b0b"/>' +
-      '<text x="16" y="26" fill="#fd7e14" font-family="Arial,Helvetica,sans-serif" font-size="18" font-weight="bold">WANZAMI TV</text>' +
-    "</svg>"
-  );
+// Use the production logo from our S3 assets (same as backend email templates).
+const LOGO_SRC = "https://wanzami-bucket.s3.eu-north-1.amazonaws.com/wanzami_assets/wanzami_logo.png";
 
 const pickRecipientFromRow = (row: Record<string, any>): Recipient | null => {
   const entries = Object.entries(row).filter(([, v]) => v !== null && v !== undefined && String(v).trim().length > 0);
