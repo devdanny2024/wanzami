@@ -352,7 +352,13 @@ export function EmailService() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        toast.error(data?.message ?? "Failed to queue emails");
+        const issues = (data?.issues || data?.errors) as any[] | undefined;
+        if (issues?.length) {
+          const first = issues[0];
+          toast.error(first?.message ?? data?.message ?? "Failed to queue emails");
+        } else {
+          toast.error(data?.message ?? "Failed to queue emails");
+        }
         return;
       }
       const timestamp = new Date().toLocaleString();
