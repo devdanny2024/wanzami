@@ -24,7 +24,11 @@ type Recipient = {
 };
 
 const emailRegex = /^[^\s@]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/i;
-const sanitizeEmail = (val?: string | null) => (val ?? "").trim().replace(/[;,]+$/g, "").toLowerCase();
+const sanitizeEmail = (val?: string | null) =>
+  (val ?? "")
+    .trim()
+    .replace(/[;,.:]+$/g, "")
+    .toLowerCase();
 const isValidEmail = (val?: string | null) => {
   const s = sanitizeEmail(val);
   return !!s && emailRegex.test(s);
@@ -364,7 +368,9 @@ export function EmailService() {
         const issues = (data?.issues || data?.errors) as any[] | undefined;
         if (issues?.length) {
           const first = issues[0];
-          toast.error(first?.message ?? data?.message ?? "Failed to queue emails");
+          const detail = first?.path ? ` (${first.path.join(".")})` : "";
+          const value = first?.received || first?.message;
+          toast.error(`${first?.message ?? data?.message ?? "Failed to queue emails"}${detail}${value ? `: ${value}` : ""}`);
         } else {
           toast.error(data?.message ?? "Failed to queue emails");
         }
