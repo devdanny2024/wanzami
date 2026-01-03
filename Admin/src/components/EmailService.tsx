@@ -319,6 +319,22 @@ export function EmailService() {
       toast.error("Upload recipients and complete the template before sending.");
       return;
     }
+
+    const cleanedRecipients = dedupedRecipients
+      .map((r) => ({
+        email: r.email?.trim().toLowerCase(),
+        name: r.name?.trim() || undefined,
+      }))
+      .filter((r) => !!r.email && emailRegex.test(r.email));
+    const invalidCount = dedupedRecipients.length - cleanedRecipients.length;
+    if (cleanedRecipients.length === 0) {
+      toast.error("No valid email addresses to send. Please clean the list and try again.");
+      return;
+    }
+    if (invalidCount > 0) {
+      toast.info(`Removed ${invalidCount} invalid email${invalidCount > 1 ? "s" : ""} before sending.`);
+    }
+
     if (!window.confirm(`Send this email to ${dedupedRecipients.length} recipients?`)) {
       return;
     }
@@ -331,7 +347,7 @@ export function EmailService() {
         body: JSON.stringify({
           subject: templateSubject,
           html: templateBody,
-          recipients: dedupedRecipients,
+          recipients: cleanedRecipients,
         }),
       });
       const data = await res.json().catch(() => ({}));
