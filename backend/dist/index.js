@@ -9,11 +9,14 @@ import eventRoutes from "./routes/eventRoutes.js";
 import popularityRoutes from "./routes/popularityRoutes.js";
 import recommendationRoutes from "./routes/recommendationRoutes.js";
 import logRoutes from "./routes/logRoutes.js";
+import ppvRoutes from "./routes/ppvRoutes.js";
+import emailRoutes from "./routes/emailRoutes.js";
 import { recordError } from "./utils/errorLogger.js";
 const app = express();
 const allowedOrigins = [
     "https://wanzami.vercel.app",
     "https://wanzami-admin.vercel.app",
+    "https://api.carlylehub.org",
     "https://wanzami.duckdns.org",
     "http://localhost:3000",
     "http://localhost:3001",
@@ -29,7 +32,17 @@ app.use(cors({
         return callback(null, true);
     },
     credentials: false,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    optionsSuccessStatus: 204,
 }));
+// Ensure CORS headers even on errors/proxies that might strip the above.
+app.use((req, res, next) => {
+    res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+    res.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    next();
+});
 app.use(express.json());
 app.use(cookieParser());
 app.use("/api", authRoutes);
@@ -39,6 +52,8 @@ app.use("/api", eventRoutes);
 app.use("/api", popularityRoutes);
 app.use("/api", recommendationRoutes);
 app.use("/api", logRoutes);
+app.use("/api", ppvRoutes);
+app.use("/api", emailRoutes);
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.use((_, res) => res.status(404).json({ message: "Not found" }));
 app.use((err, req, res, _next) => {

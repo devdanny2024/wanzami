@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { requireAdmin, requireAuth } from "../middleware/auth.js";
-import { listTitles, listEpisodesForTitle, listPublicTitles, getTitleWithEpisodes, createTitle, updateTitle, publishTitle, presignAsset, presignAssetRead, deleteTitle, createEpisode, updateEpisode, deleteEpisode, listSeasonsForTitle, upsertSeasonsForTitle, updateSeason, deleteSeason, } from "../controllers/contentController.js";
+import { listTitles, listEpisodesForTitle, listPublicTitles, getTitleWithEpisodes, createTitle, updateTitle, publishTitle, presignAsset, presignAssetRead, deleteTitle, createEpisode, updateEpisode, deleteEpisode, listSeasonsForTitle, upsertSeasonsForTitle, updateSeason, deleteSeason, purgeAllTitles, } from "../controllers/contentController.js";
 const router = Router();
 // Public catalog
 router.get("/titles", listPublicTitles);
@@ -13,6 +13,7 @@ router.post("/admin/titles", requireAuth, requireAdmin, createTitle);
 router.patch("/admin/titles/:id", requireAuth, requireAdmin, updateTitle);
 router.post("/admin/titles/:id/publish", requireAuth, requireAdmin, publishTitle);
 router.delete("/admin/titles/:id", requireAuth, requireAdmin, deleteTitle);
+router.post("/admin/titles/purge", requireAuth, requireAdmin, purgeAllTitles);
 router.post("/admin/titles/:id/episodes", requireAuth, requireAdmin, createEpisode);
 router.patch("/admin/episodes/:episodeId", requireAuth, requireAdmin, updateEpisode);
 router.delete("/admin/episodes/:episodeId", requireAuth, requireAdmin, deleteEpisode);

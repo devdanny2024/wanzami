@@ -11,6 +11,7 @@ import {
   Settings,
   ShieldQuestion,
   Bug,
+  Mail,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -26,6 +27,7 @@ const navItems = [
   { id: 'blog', label: 'Blog', icon: FileText },
   { id: 'users', label: 'Users', icon: Users },
   { id: 'team', label: 'Team', icon: ShieldQuestion },
+  { id: 'email', label: 'Email Service', icon: Mail },
   { id: 'payments', label: 'Payments', icon: Wallet },
   { id: 'invoices', label: 'Invoices', icon: CreditCard },
   { id: 'moderation', label: 'Moderation', icon: Shield },

@@ -1,7 +1,7 @@
 import { Worker } from "bullmq";
 import IORedis from "ioredis";
 import ffmpeg from "fluent-ffmpeg";
-import ffmpegStatic from "ffmpeg-static";
+import { createRequire } from "module";
 import { prisma } from "../prisma.js";
 import { config } from "../config.js";
 import { AssetStatus, UploadStatus } from "@prisma/client";
@@ -9,13 +9,28 @@ import { downloadToFile, uploadFile } from "../upload/s3.js";
 import { mkdtemp, rm, stat } from "fs/promises";
 import path from "path";
 import os from "os";
-if (ffmpegStatic) {
-    ffmpeg.setFfmpegPath(ffmpegStatic);
+const require = createRequire(import.meta.url);
+let ffmpegStaticPath = null;
+try {
+    // ffmpeg-static is optional; if it failed to install, skip.
+    const mod = require("ffmpeg-static");
+    ffmpegStaticPath = mod ?? null;
+}
+catch (err) {
+    ffmpegStaticPath = null;
+}
+if (config.ffmpegPath) {
+    ffmpeg.setFfmpegPath(config.ffmpegPath);
+}
+else if (ffmpegStaticPath) {
+    ffmpeg.setFfmpegPath(ffmpegStaticPath);
 }
 const connection = new IORedis(config.redisUrl, {
     maxRetriesPerRequest: null,
     enableReadyCheck: false,
 });
+// Use a hashtagged prefix so BullMQ keys hash to the same slot in Redis Cluster/Valkey.
+const prefix = "{bullmq}";
 const renditionToHeight = (r) => {
     switch (r) {
         case "R4K":
@@ -104,6 +119,7 @@ const worker = new Worker("transcode", async (job) => {
 }, {
     connection,
     concurrency: 1,
+    prefix,
 });
 worker.on("failed", async (job, err) => {
     if (!job?.data)

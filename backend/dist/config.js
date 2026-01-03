@@ -22,4 +22,18 @@ export const config = {
     ffmpegPath: process.env.FFMPEG_PATH,
     uploadMaxConcurrency: numberOrDefault(process.env.UPLOAD_MAX_CONCURRENCY, 10),
     downloadMaxConcurrency: numberOrDefault(process.env.DOWNLOAD_MAX_CONCURRENCY, 10),
+    paystack: {
+        secretKey: process.env.PAYSTACK_SECRET_KEY ?? "",
+        publicKey: process.env.PAYSTACK_PUBLIC_KEY ?? "",
+        callbackUrl: process.env.PAYSTACK_CALLBACK_URL ?? "",
+        webhookSecret: process.env.PAYSTACK_WEBHOOK_SECRET ?? "",
+    },
+    flutterwave: {
+        publicKey: process.env.FLW_PUBLIC_KEY ?? "",
+        secretKey: process.env.FLW_SECRET_KEY ?? "",
+        encryptionKey: process.env.FLW_ENCRYPTION_KEY ?? "",
+        baseUrl: process.env.FLW_BASE_URL ?? "https://api.flutterwave.com",
+        webhookSecret: process.env.FLW_WEBHOOK_SECRET ?? "",
+    },
+    ppvAccessDays: numberOrDefault(process.env.PPV_ACCESS_DAYS, 30),
 };

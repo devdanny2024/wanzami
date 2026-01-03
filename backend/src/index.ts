@@ -10,6 +10,7 @@ import popularityRoutes from "./routes/popularityRoutes.js";
 import recommendationRoutes from "./routes/recommendationRoutes.js";
 import logRoutes from "./routes/logRoutes.js";
 import ppvRoutes from "./routes/ppvRoutes.js";
+import emailRoutes from "./routes/emailRoutes.js";
 import { recordError } from "./utils/errorLogger.js";
 import type { AuthenticatedRequest } from "./middleware/auth.js";
 
@@ -57,6 +58,7 @@ app.use("/api", popularityRoutes);
 app.use("/api", recommendationRoutes);
 app.use("/api", logRoutes);
 app.use("/api", ppvRoutes);
+app.use("/api", emailRoutes);
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 

@@ -5,6 +5,7 @@ import { config } from "../config.js";
 import { resolveCountry } from "../utils/country.js";
 import { auditLog } from "../utils/audit.js";
 import { AssetStatus } from "@prisma/client";
+import { DeleteObjectsCommand, S3Client } from "@aws-sdk/client-s3";
 const kidSafeRatings = ["G", "PG", "TV-Y", "TV-G", "TV-PG", "PG-13"];
 const teenSafeRatings = ["PG-13", "TV-14"];
 const parseOptionalNumber = (val) => {
@@ -48,6 +49,10 @@ export const listTitles = async (_req, res) => {
             introEndSec: t.introEndSec,
             archived: t.archived,
             pendingReview: t.pendingReview,
+            isPpv: t.isPpv,
+            ppvPriceNaira: t.ppvPriceNaira,
+            ppvCurrency: t.ppvCurrency,
+            ppvDescription: t.ppvDescription,
             createdAt: t.createdAt,
             updatedAt: t.updatedAt,
             episodeCount: t.episodes.length,
@@ -169,6 +174,10 @@ export const listPublicTitles = async (req, res) => {
             introEndSec: t.introEndSec,
             archived: t.archived,
             pendingReview: t.pendingReview,
+            isPpv: t.isPpv,
+            ppvPriceNaira: t.ppvPriceNaira,
+            ppvCurrency: t.ppvCurrency,
+            ppvDescription: t.ppvDescription,
             createdAt: t.createdAt,
             updatedAt: t.updatedAt,
             episodeCount: t.episodes.length,
@@ -279,6 +288,10 @@ export const getTitleWithEpisodes = async (req, res) => {
             createdAt: title.createdAt,
             updatedAt: title.updatedAt,
             releaseYear: title.releaseDate ? title.releaseDate.getUTCFullYear() : undefined,
+            isPpv: title.isPpv,
+            ppvPriceNaira: title.ppvPriceNaira,
+            ppvCurrency: title.ppvCurrency,
+            ppvDescription: title.ppvDescription,
             episodeCount: title.episodes.length,
             assetVersions,
             episodes,
@@ -346,7 +359,7 @@ export const listEpisodesForTitle = async (req, res) => {
     });
 };
 export const createTitle = async (req, res) => {
-    const { name, type, description, posterUrl, thumbnailUrl, trailerUrl, previewSpriteUrl, previewVttUrl, releaseYear, genres, cast, crew, language, maturityRating, runtimeMinutes, countryAvailability, isOriginal, pendingReview, introStartSec, introEndSec, seasons, } = req.body;
+    const { name, type, description, posterUrl, thumbnailUrl, trailerUrl, previewSpriteUrl, previewVttUrl, releaseYear, genres, cast, crew, language, maturityRating, runtimeMinutes, countryAvailability, isOriginal, pendingReview, introStartSec, introEndSec, isPpv, ppvPriceNaira, ppvCurrency, seasons, } = req.body;
     if (!name || !type) {
         return res.status(400).json({ message: "name and type are required" });
     }
@@ -375,6 +388,11 @@ export const createTitle = async (req, res) => {
             isOriginal: isOriginal ?? false,
             archived: false,
             pendingReview: pendingReview ?? false,
+            isPpv: isPpv ?? false,
+            ppvPriceNaira: ppvPriceNaira !== undefined && ppvPriceNaira !== null && !Number.isNaN(Number(ppvPriceNaira))
+                ? Number(ppvPriceNaira)
+                : null,
+            ppvCurrency: ppvCurrency ?? null,
             seasons: type === "SERIES" && Array.isArray(seasons)
                 ? {
                     create: seasons.map((s) => ({
@@ -405,7 +423,7 @@ export const updateTitle = async (req, res) => {
     const id = req.params.id ? BigInt(req.params.id) : null;
     if (!id)
         return res.status(400).json({ message: "Missing title id" });
-    const { name, description, posterUrl, thumbnailUrl, trailerUrl, previewSpriteUrl, previewVttUrl, archived, releaseYear, genres, cast, crew, language, maturityRating, runtimeMinutes, countryAvailability, isOriginal, pendingReview, introStartSec, introEndSec, } = req.body;
+    const { name, description, posterUrl, thumbnailUrl, trailerUrl, previewSpriteUrl, previewVttUrl, archived, releaseYear, genres, cast, crew, language, maturityRating, runtimeMinutes, countryAvailability, isOriginal, pendingReview, introStartSec, introEndSec, isPpv, ppvPriceNaira, ppvCurrency, } = req.body;
     const data = {};
     if (name !== undefined)
         data.name = name;
@@ -450,6 +468,14 @@ export const updateTitle = async (req, res) => {
         data.isOriginal = isOriginal;
     if (pendingReview !== undefined)
         data.pendingReview = pendingReview;
+    if (isPpv !== undefined)
+        data.isPpv = isPpv;
+    if (ppvPriceNaira !== undefined) {
+        data.ppvPriceNaira =
+            ppvPriceNaira !== null && !Number.isNaN(Number(ppvPriceNaira)) ? Number(ppvPriceNaira) : null;
+    }
+    if (ppvCurrency !== undefined)
+        data.ppvCurrency = ppvCurrency;
     try {
         const title = await prisma.title.update({ where: { id }, data });
         void auditLog({
@@ -844,4 +870,99 @@ export const deleteTitle = async (req, res) => {
     ]);
     void auditLog({ action: "TITLE_DELETE", resource: id.toString() });
     return res.status(204).send();
+};
+const s3Delete = async (keys) => {
+    if (!config.s3.bucket || !keys.length)
+        return;
+    const client = new S3Client({
+        region: config.s3.region || process.env.AWS_REGION || "eu-north-1",
+        endpoint: config.s3.endpoint && config.s3.endpoint.trim() !== "" ? config.s3.endpoint : undefined,
+        forcePathStyle: !!config.s3.endpoint,
+        credentials: config.s3.accessKeyId && config.s3.secretAccessKey
+            ? { accessKeyId: config.s3.accessKeyId, secretAccessKey: config.s3.secretAccessKey }
+            : undefined,
+    });
+    const unique = Array.from(new Set(keys.filter(Boolean)));
+    for (let i = 0; i < unique.length; i += 900) {
+        const batch = unique.slice(i, i + 900);
+        const cmd = new DeleteObjectsCommand({
+            Bucket: config.s3.bucket,
+            Delete: { Objects: batch.map((k) => ({ Key: k })) },
+        });
+        await client.send(cmd);
+    }
+};
+const extractKeyFromUrl = (url) => {
+    if (!url)
+        return null;
+    try {
+        if (url.startsWith("s3://")) {
+            const without = url.replace("s3://", "");
+            const [bucket, ...rest] = without.split("/");
+            if (bucket === config.s3.bucket) {
+                return rest.join("/");
+            }
+            return null;
+        }
+        if (url.startsWith("http://") || url.startsWith("https://")) {
+            const u = new URL(url);
+            const path = u.pathname.startsWith("/") ? u.pathname.slice(1) : u.pathname;
+            // subdomain style bucket.s3.region.amazonaws.com/key
+            if (u.hostname.startsWith(`${config.s3.bucket}.`)) {
+                return decodeURIComponent(path);
+            }
+        }
+    }
+    catch {
+        return null;
+    }
+    return null;
+};
+export const purgeAllTitles = async (_req, res) => {
+    try {
+        const titles = await prisma.title.findMany({
+            select: {
+                posterUrl: true,
+                thumbnailUrl: true,
+                trailerUrl: true,
+                previewSpriteUrl: true,
+                previewVttUrl: true,
+            },
+        });
+        const assets = await prisma.assetVersion.findMany({ select: { url: true } });
+        const urls = [
+            ...titles.flatMap((t) => [
+                t.posterUrl,
+                t.thumbnailUrl,
+                t.trailerUrl,
+                t.previewSpriteUrl,
+                t.previewVttUrl,
+            ]),
+            ...assets.map((a) => a.url),
+        ].filter(Boolean);
+        const keys = urls
+            .map((u) => extractKeyFromUrl(u))
+            .filter((k) => !!k);
+        // Delete DB records
+        await prisma.$transaction([
+            prisma.assetVersion.deleteMany({}),
+            prisma.episode.deleteMany({}),
+            prisma.season.deleteMany({}),
+            prisma.titleSimilarity.deleteMany({}),
+            prisma.titleEmbedding.deleteMany({}),
+            prisma.popularitySnapshot.deleteMany({}),
+            prisma.uploadJob.deleteMany({}),
+            prisma.title.deleteMany({}),
+        ]);
+        // Delete S3 objects
+        if (keys.length) {
+            await s3Delete(keys);
+        }
+        void auditLog({ action: "TITLE_PURGE_ALL", resource: "all" });
+        return res.json({ message: "All titles purged", deletedKeys: keys.length });
+    }
+    catch (err) {
+        console.error("purgeAllTitles error", err);
+        return res.status(500).json({ message: "Failed to purge titles" });
+    }
 };

@@ -441,6 +441,31 @@ function AddEditMovieForm({
     try {
       setSaving(true);
       setError(null);
+      const assetUploads: { label: string; run: (targetId: number) => Promise<void> }[] = [];
+      const queueAssetUpload = (
+        file: File,
+        kind: "poster" | "thumbnail" | "trailer" | "previewSprite" | "previewVtt",
+        field: "posterUrl" | "thumbnailUrl" | "trailerUrl" | "previewSpriteUrl" | "previewVttUrl"
+      ) => {
+        assetUploads.push({
+          label: field,
+          run: async (targetId: number) => {
+            const uploadedUrl = await uploadAsset(file, kind);
+            const patchRes = await fetch(`/api/admin/titles/${targetId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: token ? `Bearer ${token}` : "",
+              },
+              body: JSON.stringify({ [field]: uploadedUrl }),
+            });
+            const patchData = await patchRes.json();
+            if (!patchRes.ok) {
+              throw new Error(patchData?.message || `Failed to save ${field}`);
+            }
+          },
+        });
+      };
       if (!title.trim()) {
         setError("Title is required");
         setSaving(false);
@@ -458,12 +483,11 @@ function AddEditMovieForm({
         isOriginal,
         genres,
       };
-
-      if (posterFile) payload.posterUrl = await uploadAsset(posterFile, "poster");
-      if (thumbFile) payload.thumbnailUrl = await uploadAsset(thumbFile, "thumbnail");
-      if (previewSpriteFile) payload.previewSpriteUrl = await uploadAsset(previewSpriteFile, "previewSprite");
-      if (previewVttFile) payload.previewVttUrl = await uploadAsset(previewVttFile, "previewVtt");
-      if (trailerFile) payload.trailerUrl = await uploadAsset(trailerFile, "trailer");
+      if (posterFile) queueAssetUpload(posterFile, "poster", "posterUrl");
+      if (thumbFile) queueAssetUpload(thumbFile, "thumbnail", "thumbnailUrl");
+      if (previewSpriteFile) queueAssetUpload(previewSpriteFile, "previewSprite", "previewSpriteUrl");
+      if (previewVttFile) queueAssetUpload(previewVttFile, "previewVtt", "previewVttUrl");
+      if (trailerFile) queueAssetUpload(trailerFile, "trailer", "trailerUrl");
       else if (trailerUrlText) payload.trailerUrl = trailerUrlText;
 
       if (metaTitle) payload.metaTitle = metaTitle;
@@ -555,6 +579,25 @@ function AddEditMovieForm({
         throw new Error(data?.message || "Failed to save movie");
       }
       const newId = Number(data?.title?.id ?? movie?.id);
+
+      if (assetUploads.length && newId) {
+        toast.info("Artwork and trailer uploads are running in the background. We'll attach them automatically.");
+        void (async () => {
+          const results = await Promise.allSettled(assetUploads.map((task) => task.run(newId)));
+          const failures = results
+            .map((result, idx) => ({ result, label: assetUploads[idx].label }))
+            .filter((r) => r.result.status === "rejected") as Array<{
+            result: PromiseRejectedResult;
+            label: string;
+          }>;
+          if (failures.length) {
+            toast.error(`Some assets failed to upload: ${failures.map((f) => f.label).join(", ")}`);
+          } else {
+            toast.success("All artwork/trailer uploads finished");
+          }
+        })();
+      }
+
       if (videoFile && newId) {
         onQueueUpload(newId, videoFile);
       }

@@ -16,6 +16,7 @@ import { TeamManagement } from './components/TeamManagement';
 import { UploadDock } from './components/UploadDock';
 import { UploadQueueProvider, useUploadQueue } from './context/UploadQueueProvider';
 import { Logs } from './components/Logs';
+import { EmailService } from './components/EmailService';
 
 export default function App() {
   return (
@@ -133,6 +134,8 @@ function AppContent() {
         return <TeamManagement />;
       case 'logs':
         return <Logs />;
+      case 'email':
+        return <EmailService />;
       default:
         return <Dashboard />;
     }
