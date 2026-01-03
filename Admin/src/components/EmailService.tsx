@@ -170,6 +170,7 @@ export function EmailService() {
   const readyToSend = dedupedRecipients.length > 0 && templateSubject.trim().length > 0 && templateBody.trim().length > 0;
   const sampleRecipient = dedupedRecipients[0] ?? { name: "Subscriber", email: "user@example.com" };
   const authHeaders = useMemo(() => (token ? { Authorization: `Bearer ${token}` } : {}), [token]);
+  const isHtmlTemplate = useMemo(() => /<\s*[\w!]/.test(templateBody), [templateBody]);
 
   const parseDelimitedText = (text: string) => {
     const lines = text
@@ -545,8 +546,17 @@ export function EmailService() {
                     <span className="font-semibold text-white">Subject:</span>
                     <span>{templateSubject || "Subject goes here"}</span>
                   </div>
-                  <div className="bg-neutral-900 border border-neutral-800 rounded-md p-3 text-neutral-200 text-sm whitespace-pre-wrap overflow-y-auto">
-                    {personalizedPreview || "Your template preview will appear here."}
+                  <div className="bg-neutral-900 border border-neutral-800 rounded-md p-3 text-neutral-200 text-sm overflow-y-auto">
+                    {isHtmlTemplate ? (
+                      <div
+                        className="text-neutral-200 text-sm leading-relaxed [&_*]:max-w-full [&_*]:text-current"
+                        dangerouslySetInnerHTML={{
+                          __html: personalizedPreview || "Your template preview will appear here.",
+                        }}
+                      />
+                    ) : (
+                      <div className="whitespace-pre-wrap">{personalizedPreview || "Your template preview will appear here."}</div>
+                    )}
                   </div>
                 </div>
               </div>
