@@ -23,14 +23,15 @@ type Recipient = {
   name?: string;
 };
 
-const emailRegex = /\S+@\S+\.\S+/;
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
+const isValidEmail = (val?: string | null) => !!val && emailRegex.test(val.trim());
 
 const parseEmailList = (input: string) =>
   input
     .split(/[\n,;]+/)
     .map((item) => item.trim())
     .filter(Boolean)
-    .filter((item, idx, arr) => emailRegex.test(item) && arr.indexOf(item) === idx);
+    .filter((item, idx, arr) => isValidEmail(item) && arr.indexOf(item) === idx);
 
 const normalizeHeader = (key: string) => key.toLowerCase().replace(/\s+/g, "");
 const EMAIL_HEADERS = ["email", "e-mail", "mail", "address", "emailaddress"];
@@ -47,9 +48,9 @@ const pickRecipientFromRow = (row: Record<string, any>): Recipient | null => {
     entries.find(([key]) => candidates.includes(normalizeHeader(key)))?.[1] as string | undefined;
 
   const headerEmail = byHeader(EMAIL_HEADERS)?.toString().trim();
-  const fallbackEmail = entries.map(([, v]) => v.toString().trim()).find((v) => emailRegex.test(v));
-  const email = headerEmail && emailRegex.test(headerEmail) ? headerEmail : fallbackEmail;
-  if (!email || !emailRegex.test(email)) return null;
+  const fallbackEmail = entries.map(([, v]) => v.toString().trim()).find((v) => isValidEmail(v));
+  const email = headerEmail && isValidEmail(headerEmail) ? headerEmail : fallbackEmail;
+  if (!email || !isValidEmail(email)) return null;
 
   const headerName = (byHeader(NAME_HEADERS) as string | undefined)?.toString().trim();
   const name =
@@ -183,7 +184,7 @@ export function EmailService() {
     let invalid = 0;
     for (const line of lines) {
       const parts = line.split(/,|\t/).map((p) => p.trim()).filter(Boolean);
-      const email = parts.find((p) => emailRegex.test(p));
+      const email = parts.find((p) => isValidEmail(p));
       if (!email) {
         invalid += 1;
         continue;
@@ -335,7 +336,7 @@ export function EmailService() {
       toast.info(`Removed ${invalidCount} invalid email${invalidCount > 1 ? "s" : ""} before sending.`);
     }
 
-    if (!window.confirm(`Send this email to ${dedupedRecipients.length} recipients?`)) {
+    if (!window.confirm(`Send this email to ${cleanedRecipients.length} recipients?`)) {
       return;
     }
 
