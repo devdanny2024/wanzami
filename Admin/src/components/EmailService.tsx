@@ -36,6 +36,16 @@ const normalizeHeader = (key: string) => key.toLowerCase().replace(/\s+/g, "");
 const EMAIL_HEADERS = ["email", "e-mail", "mail", "address", "emailaddress"];
 const NAME_HEADERS = ["name", "fullname", "full_name", "full name"];
 
+// Inline SVG fallback logo to ensure the email always renders a brand mark without external assets.
+const LOGO_SRC =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="170" height="40" viewBox="0 0 170 40">' +
+      '<rect width="170" height="40" rx="8" fill="#0b0b0b"/>' +
+      '<text x="16" y="26" fill="#fd7e14" font-family="Arial,Helvetica,sans-serif" font-size="18" font-weight="bold">WANZAMI TV</text>' +
+    "</svg>"
+  );
+
 const pickRecipientFromRow = (row: Record<string, any>): Recipient | null => {
   const entries = Object.entries(row).filter(([, v]) => v !== null && v !== undefined && String(v).trim().length > 0);
   if (!entries.length) return null;
@@ -67,6 +77,11 @@ const FILMMAKER_TEMPLATE_BODY = `<!DOCTYPE html>
     <tr>
       <td align="center" style="padding:32px 12px;">
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="640" style="max-width:640px;background:#111;border:1px solid #1f1f1f;border-radius:12px;overflow:hidden;">
+          <tr>
+            <td style="padding:20px 24px 0 24px;">
+              <img src="${LOGO_SRC}" alt="Wanzami TV" width="170" height="40" style="display:block;border:0;outline:none;text-decoration:none;" />
+            </td>
+          </tr>
           <tr>
             <td style="padding:28px 24px 12px 24px;background:linear-gradient(135deg, #171717 0%, #0f0f0f 50%, #111 100%);">
               <div style="font-size:12px;letter-spacing:0.3px;color:#cfcfcf;text-transform:uppercase;">Wanzami TV Presents</div>
