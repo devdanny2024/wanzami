@@ -42,11 +42,14 @@ const sendBatch = async (recipients: Recipient[], subject: string, html: string)
 
   const failedRecipients: string[] = [];
   const queuedRecipients: string[] = [];
+  const failedDetails: Array<{ email: string; error: string }> = [];
   results.forEach((r, idx) => {
     const email = recipients[idx]?.email;
     if (!email) return;
     if (r.status === "rejected") {
       failedRecipients.push(email);
+      const error = (r.reason as any)?.message ?? String((r.reason as any) ?? "Unknown error");
+      failedDetails.push({ email, error });
     } else {
       queuedRecipients.push(email);
     }
@@ -57,6 +60,7 @@ const sendBatch = async (recipients: Recipient[], subject: string, html: string)
     failed: failedRecipients.length,
     queuedRecipients,
     failedRecipients,
+    failedDetails,
   };
 };
 
@@ -71,7 +75,7 @@ export const sendTestEmails = async (req: Request, res: Response) => {
     return res.status(400).json({ message: "No valid recipients" });
   }
 
-  const { queued, failed, queuedRecipients, failedRecipients } = await sendBatch(
+  const { queued, failed, queuedRecipients, failedRecipients, failedDetails } = await sendBatch(
     recipients,
     parsed.data.subject,
     parsed.data.html
@@ -82,6 +86,7 @@ export const sendTestEmails = async (req: Request, res: Response) => {
     failed,
     queuedRecipients,
     failedRecipients,
+    failedDetails,
   });
 };
 
@@ -96,7 +101,7 @@ export const sendCampaignEmails = async (req: Request, res: Response) => {
     return res.status(400).json({ message: "No valid recipients" });
   }
 
-  const { queued, failed, queuedRecipients, failedRecipients } = await sendBatch(
+  const { queued, failed, queuedRecipients, failedRecipients, failedDetails } = await sendBatch(
     recipients,
     parsed.data.subject,
     parsed.data.html
@@ -107,5 +112,6 @@ export const sendCampaignEmails = async (req: Request, res: Response) => {
     failed,
     queuedRecipients,
     failedRecipients,
+    failedDetails,
   });
 };

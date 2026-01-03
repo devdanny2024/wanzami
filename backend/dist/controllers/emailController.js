@@ -28,12 +28,15 @@ const sendBatch = async (recipients, subject, html) => {
     })));
     const failedRecipients = [];
     const queuedRecipients = [];
+    const failedDetails = [];
     results.forEach((r, idx) => {
         const email = recipients[idx]?.email;
         if (!email)
             return;
         if (r.status === "rejected") {
             failedRecipients.push(email);
+            const error = r.reason?.message ?? String(r.reason ?? "Unknown error");
+            failedDetails.push({ email, error });
         }
         else {
             queuedRecipients.push(email);
@@ -44,6 +47,7 @@ const sendBatch = async (recipients, subject, html) => {
         failed: failedRecipients.length,
         queuedRecipients,
         failedRecipients,
+        failedDetails,
     };
 };
 export const sendTestEmails = async (req, res) => {
@@ -55,13 +59,14 @@ export const sendTestEmails = async (req, res) => {
     if (recipients.length === 0) {
         return res.status(400).json({ message: "No valid recipients" });
     }
-    const { queued, failed, queuedRecipients, failedRecipients } = await sendBatch(recipients, parsed.data.subject, parsed.data.html);
+    const { queued, failed, queuedRecipients, failedRecipients, failedDetails } = await sendBatch(recipients, parsed.data.subject, parsed.data.html);
     return res.json({
         message: "Test emails dispatched",
         queued,
         failed,
         queuedRecipients,
         failedRecipients,
+        failedDetails,
     });
 };
 export const sendCampaignEmails = async (req, res) => {
@@ -73,12 +78,13 @@ export const sendCampaignEmails = async (req, res) => {
     if (recipients.length === 0) {
         return res.status(400).json({ message: "No valid recipients" });
     }
-    const { queued, failed, queuedRecipients, failedRecipients } = await sendBatch(recipients, parsed.data.subject, parsed.data.html);
+    const { queued, failed, queuedRecipients, failedRecipients, failedDetails } = await sendBatch(recipients, parsed.data.subject, parsed.data.html);
     return res.json({
         message: "Emails queued for delivery",
         queued,
         failed,
         queuedRecipients,
         failedRecipients,
+        failedDetails,
     });
 };
