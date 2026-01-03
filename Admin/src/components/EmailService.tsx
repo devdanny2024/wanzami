@@ -82,7 +82,7 @@ const FILMMAKER_TEMPLATE_BODY = `<!DOCTYPE html>
           <tr>
             <td style="padding:20px 24px;">
               <p style="margin:0 0 14px 0;font-size:15px;line-height:1.6;color:#e5e5e5;">
-                Hi {{name || "filmmaker"}},
+                Hi {{name}},
               </p>
               <p style="margin:0 0 16px 0;font-size:15px;line-height:1.6;color:#e5e5e5;">
                 Submit your 15–20 minute short film and let the audience decide. We are selecting <strong>20 filmmakers</strong> who believe in their craft. Entry fee is <strong>₦50,000</strong> — refunded if your film is not shortlisted.
