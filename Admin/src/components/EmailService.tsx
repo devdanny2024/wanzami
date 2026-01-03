@@ -36,8 +36,8 @@ const normalizeHeader = (key: string) => key.toLowerCase().replace(/\s+/g, "");
 const EMAIL_HEADERS = ["email", "e-mail", "mail", "address", "emailaddress"];
 const NAME_HEADERS = ["name", "fullname", "full_name", "full name"];
 
-// Use the production logo from our S3 assets (same as backend email templates).
-const LOGO_SRC = "https://wanzami-bucket.s3.eu-north-1.amazonaws.com/wanzami_assets/wanzami_logo.png";
+// Use the production logo (same path used in backend verify email template).
+const LOGO_SRC = "https://assets.wanzami.com/logo.png";
 
 const pickRecipientFromRow = (row: Record<string, any>): Recipient | null => {
   const entries = Object.entries(row).filter(([, v]) => v !== null && v !== undefined && String(v).trim().length > 0);
@@ -129,12 +129,6 @@ const FILMMAKER_TEMPLATE_BODY = `<!DOCTYPE html>
                   </td>
                 </tr>
               </table>
-
-              <div style="text-align:center;margin:20px 0 12px 0;">
-                <a href="https://wanzami.com/submit-film" style="display:inline-block;background:#f97316;color:#0b0b0b;text-decoration:none;padding:14px 22px;border-radius:8px;font-weight:bold;font-size:15px;">
-                  Submit your film
-                </a>
-              </div>
               <p style="margin:10px 0 0 0;font-size:12px;line-height:1.5;color:#a3a3a3;text-align:center;">
                 Terms and conditions apply. If your film is not shortlisted, your entry fee is refunded.
               </p>
