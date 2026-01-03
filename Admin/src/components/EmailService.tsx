@@ -26,6 +26,7 @@ type Recipient = {
 const emailRegex = /^[^\s@]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/i;
 const sanitizeEmail = (val?: string | null) =>
   (val ?? "")
+    .replace(/[\u200b\uFEFF]/g, "")
     .trim()
     .replace(/[;,.:]+$/g, "")
     .toLowerCase();
@@ -340,6 +341,17 @@ export function EmailService() {
       }))
       .filter((r) => !!r.email && isValidEmail(r.email));
     const invalidCount = dedupedRecipients.length - cleanedRecipients.length;
+    if (invalidCount > 0) {
+      const invalidEmails = dedupedRecipients
+        .map((r) => sanitizeEmail(r.email))
+        .filter((e) => !isValidEmail(e))
+        .slice(0, 3);
+      toast.info(
+        `Removed ${invalidCount} invalid email${invalidCount > 1 ? "s" : ""}${
+          invalidEmails.length ? `: ${invalidEmails.join(", ")}` : ""
+        }.`
+      );
+    }
     if (cleanedRecipients.length === 0) {
       toast.error("No valid email addresses to send. Please clean the list and try again.");
       return;
