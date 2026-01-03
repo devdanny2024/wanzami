@@ -16,6 +16,7 @@ import {
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
+import * as XLSX from "xlsx";
 
 type Recipient = {
   email: string;
@@ -30,6 +31,113 @@ const parseEmailList = (input: string) =>
     .map((item) => item.trim())
     .filter(Boolean)
     .filter((item, idx, arr) => emailRegex.test(item) && arr.indexOf(item) === idx);
+
+const normalizeHeader = (key: string) => key.toLowerCase().replace(/\s+/g, "");
+const EMAIL_HEADERS = ["email", "e-mail", "mail", "address", "emailaddress"];
+const NAME_HEADERS = ["name", "fullname", "full_name", "full name"];
+
+const pickRecipientFromRow = (row: Record<string, any>): Recipient | null => {
+  const entries = Object.entries(row).filter(([, v]) => v !== null && v !== undefined && String(v).trim().length > 0);
+  if (!entries.length) return null;
+
+  const byHeader = (candidates: string[]) =>
+    entries.find(([key]) => candidates.includes(normalizeHeader(key)))?.[1] as string | undefined;
+
+  const headerEmail = byHeader(EMAIL_HEADERS)?.toString().trim();
+  const fallbackEmail = entries.map(([, v]) => v.toString().trim()).find((v) => emailRegex.test(v));
+  const email = headerEmail && emailRegex.test(headerEmail) ? headerEmail : fallbackEmail;
+  if (!email || !emailRegex.test(email)) return null;
+
+  const headerName = (byHeader(NAME_HEADERS) as string | undefined)?.toString().trim();
+  const name =
+    headerName && headerName.length > 0
+      ? headerName
+      : entries
+          .map(([, v]) => v.toString().trim())
+          .find((v) => v.length > 0 && !emailRegex.test(v));
+
+  return { email, name };
+};
+
+const FILMMAKER_TEMPLATE_SUBJECT = "Are you the filmmaker who can pull an audience?";
+const FILMMAKER_TEMPLATE_BODY = `<!DOCTYPE html>
+<html lang="en">
+<body style="margin:0;padding:0;background:#0f0f0f;font-family:Arial,Helvetica,sans-serif;color:#f5f5f5;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+    <tr>
+      <td align="center" style="padding:32px 12px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="640" style="max-width:640px;background:#111;border:1px solid #1f1f1f;border-radius:12px;overflow:hidden;">
+          <tr>
+            <td style="padding:28px 24px 12px 24px;background:linear-gradient(135deg, #171717 0%, #0f0f0f 50%, #111 100%);">
+              <div style="font-size:12px;letter-spacing:0.3px;color:#cfcfcf;text-transform:uppercase;">Wanzami TV Presents</div>
+              <h1 style="margin:12px 0 6px 0;font-size:26px;line-height:1.3;color:#f97316;">
+                If you're really a filmmaker, prove your film can pull an audience.
+              </h1>
+              <p style="margin:4px 0 0 0;font-size:15px;line-height:1.5;color:#e5e5e5;">
+                Wanzami isn't looking for excuses. We're looking for stories people actually want to see.
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:20px 24px;">
+              <p style="margin:0 0 14px 0;font-size:15px;line-height:1.6;color:#e5e5e5;">
+                Hi {{name || "filmmaker"}},
+              </p>
+              <p style="margin:0 0 16px 0;font-size:15px;line-height:1.6;color:#e5e5e5;">
+                Submit your 15–20 minute short film and let the audience decide. We are selecting <strong>20 filmmakers</strong> who believe in their craft. Entry fee is <strong>₦50,000</strong> — refunded if your film is not shortlisted.
+              </p>
+
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:8px 0 16px 0;">
+                <tr>
+                  <td style="padding:14px 16px;background:#0c0c0c;border:1px solid #1f1f1f;border-radius:10px;">
+                    <p style="margin:0;font-size:15px;line-height:1.6;color:#f5f5f5;">
+                      <strong style="color:#f97316;">No panel.</strong> Just an audience that wants to see your film. Prices go to the films with the highest streams. Rally your supporters — the more views you drive, the higher your chances of winning.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:8px 0 18px 0;">
+                <tr>
+                  <td style="padding:14px 16px;background:#0c0c0c;border:1px solid #1f1f1f;border-radius:10px;">
+                    <p style="margin:0 0 10px 0;font-size:14px;letter-spacing:0.4px;text-transform:uppercase;color:#cfcfcf;">Prizes for the top 3 films</p>
+                    <ul style="margin:0;padding-left:18px;color:#e5e5e5;font-size:15px;line-height:1.6;">
+                      <li>🥇 ₦1,000,000</li>
+                      <li>🥈 ₦750,000</li>
+                      <li>🥉 ₦500,000</li>
+                    </ul>
+                  </td>
+                </tr>
+              </table>
+
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:8px 0 18px 0;">
+                <tr>
+                  <td style="padding:14px 16px;background:#0c0c0c;border:1px solid #1f1f1f;border-radius:10px;">
+                    <p style="margin:0;font-size:15px;line-height:1.6;color:#e5e5e5;">
+                      <strong>Deadline:</strong> Submission closes January 30th, 2026.<br/>
+                      <strong>Contact:</strong> <a href="mailto:info@wanzamientertainment.com" style="color:#f97316;text-decoration:none;">info@wanzamientertainment.com</a>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <div style="text-align:center;margin:20px 0 12px 0;">
+                <a href="https://wanzami.com/submit-film" style="display:inline-block;background:#f97316;color:#0b0b0b;text-decoration:none;padding:14px 22px;border-radius:8px;font-weight:bold;font-size:15px;">
+                  Submit your film
+                </a>
+              </div>
+              <p style="margin:10px 0 0 0;font-size:12px;line-height:1.5;color:#a3a3a3;text-align:center;">
+                Terms and conditions apply. If your film is not shortlisted, your entry fee is refunded.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
 
 export function EmailService() {
   const [recipients, setRecipients] = useState<Recipient[]>([]);
@@ -63,37 +171,72 @@ export function EmailService() {
   const sampleRecipient = dedupedRecipients[0] ?? { name: "Subscriber", email: "user@example.com" };
   const authHeaders = useMemo(() => (token ? { Authorization: `Bearer ${token}` } : {}), [token]);
 
-  const handleFileUpload = async (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-    const file = files[0];
-    const text = await file.text();
+  const parseDelimitedText = (text: string) => {
     const lines = text
       .split(/\r?\n/)
       .map((line) => line.trim())
       .filter(Boolean);
-
     const next: Recipient[] = [];
-    const invalid: string[] = [];
-
+    let invalid = 0;
     for (const line of lines) {
       const parts = line.split(/,|\t/).map((p) => p.trim()).filter(Boolean);
       const email = parts.find((p) => emailRegex.test(p));
       if (!email) {
-        invalid.push(line);
+        invalid += 1;
         continue;
       }
       const name = parts.find((p) => p !== email);
       next.push({ email, name });
     }
+    return { next, invalid };
+  };
 
-    if (next.length === 0) {
+  const parseExcel = async (file: File) => {
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer, { type: "array" });
+    const sheetName = workbook.SheetNames[0];
+    if (!sheetName) return { next: [], invalid: 0 };
+    const sheet = workbook.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: "" });
+    const next: Recipient[] = [];
+    let invalid = 0;
+    rows.forEach((row) => {
+      const rec = pickRecipientFromRow(row);
+      if (rec) {
+        next.push(rec);
+      } else {
+        invalid += 1;
+      }
+    });
+    return { next, invalid };
+  };
+
+  const handleFileUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    const ext = file.name.toLowerCase();
+    let parsed: { next: Recipient[]; invalid: number } = { next: [], invalid: 0 };
+
+    try {
+      if (ext.endsWith(".xlsx") || ext.endsWith(".xls")) {
+        parsed = await parseExcel(file);
+      } else {
+        const text = await file.text();
+        parsed = parseDelimitedText(text);
+      }
+    } catch (err) {
+      toast.error("Failed to read file. Please try again or use CSV/XLSX.");
+      return;
+    }
+
+    if (parsed.next.length === 0) {
       toast.error("No valid email addresses found in the file.");
-      setUploadInfo({ fileName: file.name, imported: 0, invalid: lines.length });
+      setUploadInfo({ fileName: file.name, imported: 0, invalid: parsed.invalid });
       return;
     }
 
     setRecipients((prev) => {
-      const combined = [...prev, ...next];
+      const combined = [...prev, ...parsed.next];
       const dedup = new Map<string, Recipient>();
       combined.forEach((rec) => {
         const key = rec.email.toLowerCase();
@@ -102,8 +245,8 @@ export function EmailService() {
       return Array.from(dedup.values());
     });
 
-    setUploadInfo({ fileName: file.name, imported: next.length, invalid: invalid.length });
-    toast.success(`Loaded ${next.length} recipients${invalid.length ? `, skipped ${invalid.length}` : ""}.`);
+    setUploadInfo({ fileName: file.name, imported: parsed.next.length, invalid: parsed.invalid });
+    toast.success(`Loaded ${parsed.next.length} recipients${parsed.invalid ? `, skipped ${parsed.invalid}` : ""}.`);
   };
 
   const handleManualAdd = () => {
@@ -162,6 +305,12 @@ export function EmailService() {
     }
   };
 
+  const loadFilmmakerTemplate = () => {
+    setTemplateSubject(FILMMAKER_TEMPLATE_SUBJECT);
+    setTemplateBody(FILMMAKER_TEMPLATE_BODY);
+    toast.success("Loaded the filmmaker campaign template");
+  };
+
   const sendLive = async () => {
     if (!readyToSend) {
       toast.error("Upload recipients and complete the template before sending.");
@@ -214,7 +363,7 @@ export function EmailService() {
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl text-white">Email Service</h1>
         <p className="text-neutral-400">
-          Upload a recipient list, craft a template, send tests, and launch campaigns with confidence.
+          Upload a recipient list (CSV/XLSX), craft a template, send tests, and launch campaigns with confidence.
         </p>
       </div>
 
@@ -280,20 +429,20 @@ export function EmailService() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-white text-lg">Upload recipients</CardTitle>
               <Badge className="bg-neutral-800 text-neutral-200 border border-neutral-700">
-                CSV or TXT
+                CSV, TXT, XLSX
               </Badge>
             </div>
-            <p className="text-neutral-400 text-sm">Upload a CSV (name,email) or paste addresses below.</p>
+            <p className="text-neutral-400 text-sm">Upload a CSV or Excel file (name,email) or paste addresses below.</p>
           </CardHeader>
           <CardContent className="space-y-4">
             <label className="border border-dashed border-neutral-700 hover:border-[#fd7e14] transition-colors rounded-lg p-4 flex flex-col items-center gap-2 text-neutral-300 cursor-pointer">
               <Upload className="w-6 h-6 text-[#fd7e14]" />
               <p className="text-sm text-center">
-                Drop a CSV/TXT file here, or click to choose.
+                Drop a CSV/TXT/XLSX file here, or click to choose.
               </p>
               <Input
                 type="file"
-                accept=".csv,.txt"
+                accept=".csv,.txt,.xlsx,.xls"
                 className="hidden"
                 onChange={(e) => void handleFileUpload(e.target.files)}
               />
@@ -357,6 +506,10 @@ export function EmailService() {
               <div className="flex gap-2">
                 <Badge className="bg-neutral-800 text-neutral-200 border border-neutral-700">{"{{name}}"}</Badge>
                 <Badge className="bg-neutral-800 text-neutral-200 border border-neutral-700">{"{{email}}"}</Badge>
+                <Button size="sm" variant="outline" className="border-neutral-700 text-white" onClick={loadFilmmakerTemplate}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Load filmmaker template
+                </Button>
               </div>
             </div>
           </CardHeader>
@@ -419,7 +572,7 @@ export function EmailService() {
           </CardHeader>
           <CardContent className="space-y-3">
             {dedupedRecipients.length === 0 && (
-              <p className="text-neutral-500 text-sm">Upload a file or paste emails to see them here.</p>
+              <p className="text-neutral-500 text-sm">Upload a CSV/XLSX file or paste emails to see them here.</p>
             )}
             {dedupedRecipients.slice(0, 8).map((recipient) => (
               <div
@@ -499,7 +652,7 @@ export function EmailService() {
                 <p>Flow</p>
               </div>
               <ol className="list-decimal list-inside text-xs text-neutral-400 space-y-1">
-                <li>Upload a CSV of users (name,email) or paste addresses.</li>
+                <li>Upload a CSV or Excel file (name,email) or paste addresses.</li>
                 <li>Write or paste your template. Use {"{{name}}"} and {"{{email}}"} placeholders.</li>
                 <li>Send a test to the QA list before launching to everyone.</li>
               </ol>
