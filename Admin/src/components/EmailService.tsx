@@ -23,13 +23,17 @@ type Recipient = {
   name?: string;
 };
 
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
-const isValidEmail = (val?: string | null) => !!val && emailRegex.test(val.trim());
+const emailRegex = /^[^\s@]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/i;
+const sanitizeEmail = (val?: string | null) => (val ?? "").trim().replace(/[;,]+$/g, "").toLowerCase();
+const isValidEmail = (val?: string | null) => {
+  const s = sanitizeEmail(val);
+  return !!s && emailRegex.test(s);
+};
 
 const parseEmailList = (input: string) =>
   input
     .split(/[\n,;]+/)
-    .map((item) => item.trim())
+    .map((item) => sanitizeEmail(item))
     .filter(Boolean)
     .filter((item, idx, arr) => isValidEmail(item) && arr.indexOf(item) === idx);
 
@@ -48,7 +52,7 @@ const pickRecipientFromRow = (row: Record<string, any>): Recipient | null => {
     entries.find(([key]) => candidates.includes(normalizeHeader(key)))?.[1] as string | undefined;
 
   const headerEmail = byHeader(EMAIL_HEADERS)?.toString().trim();
-  const fallbackEmail = entries.map(([, v]) => v.toString().trim()).find((v) => isValidEmail(v));
+  const fallbackEmail = entries.map(([, v]) => sanitizeEmail(v.toString())).find((v) => isValidEmail(v));
   const email = headerEmail && isValidEmail(headerEmail) ? headerEmail : fallbackEmail;
   if (!email || !isValidEmail(email)) return null;
 
@@ -183,7 +187,7 @@ export function EmailService() {
     const next: Recipient[] = [];
     let invalid = 0;
     for (const line of lines) {
-      const parts = line.split(/,|\t/).map((p) => p.trim()).filter(Boolean);
+      const parts = line.split(/,|\t/).map((p) => sanitizeEmail(p)).filter(Boolean);
       const email = parts.find((p) => isValidEmail(p));
       if (!email) {
         invalid += 1;
@@ -205,7 +209,11 @@ export function EmailService() {
     const next: Recipient[] = [];
     let invalid = 0;
     rows.forEach((row) => {
-      const rec = pickRecipientFromRow(row);
+      const rec = pickRecipientFromRow(
+        Object.fromEntries(
+          Object.entries(row).map(([k, v]) => [k, typeof v === "string" ? sanitizeEmail(v) : v])
+        )
+      );
       if (rec) {
         next.push(rec);
       } else {
@@ -323,10 +331,10 @@ export function EmailService() {
 
     const cleanedRecipients = dedupedRecipients
       .map((r) => ({
-        email: r.email?.trim().toLowerCase(),
+        email: sanitizeEmail(r.email),
         name: r.name?.trim() || undefined,
       }))
-      .filter((r) => !!r.email && emailRegex.test(r.email));
+      .filter((r) => !!r.email && isValidEmail(r.email));
     const invalidCount = dedupedRecipients.length - cleanedRecipients.length;
     if (cleanedRecipients.length === 0) {
       toast.error("No valid email addresses to send. Please clean the list and try again.");
