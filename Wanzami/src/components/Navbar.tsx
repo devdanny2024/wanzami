@@ -157,17 +157,6 @@ export function Navbar({
                 Settings
               </a>
 
-              {/* Desktop Logout (icon) */}
-              {isAuthenticated && onLogout && (
-                <button
-                  onClick={onLogout}
-                  className="hidden md:flex w-10 h-10 items-center justify-center bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all group"
-                  aria-label="Logout"
-                >
-                  <Power className="w-5 h-5 text-white group-hover:text-[#fd7e14] transition-colors" />
-                </button>
-              )}
-
               {/* Mobile menu button */}
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
