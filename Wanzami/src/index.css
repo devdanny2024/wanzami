@@ -2851,8 +2851,8 @@
 
   @media (width >= 48rem) {
     .md\:pt-32 {
-      padding-top: calc(var(--spacing) * 32);
-    }
+        padding-top: calc(var(--spacing) * 40);
+      }
   }
 
   @media (width >= 48rem) {
