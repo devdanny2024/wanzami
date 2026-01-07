@@ -4,30 +4,14 @@ import { motion } from 'motion/react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { Logo } from './Logo';
 import { Loader } from './ui/loader';
 import { TopLoader } from './TopLoader';
-import whiteLogo from '../assets/WhiteWanzmiiLogo.png';
+import orangeLogo from '../assets/logo.png';
 
 interface AuthPageProps {
   onAuth: () => void;
   onShowSignup: () => void;
 }
-
-type Shape = {
-  type: 'circle' | 'rounded' | 'square';
-  color: string;
-  size: string;
-  x: number;
-  y: number;
-  duration?: number;
-};
-
-const geometricShapes: Shape[] = [
-  { type: 'circle', color: 'bg-orange-500', size: 'w-64 h-64', x: 12, y: 60, duration: 18 },
-  { type: 'rounded', color: 'bg-purple-500', size: 'w-64 h-64', x: 64, y: 24, duration: 20 },
-  { type: 'circle', color: 'bg-teal-400', size: 'w-52 h-52', x: 42, y: 54, duration: 16 },
-];
 
 export function AuthPage({ onAuth, onShowSignup }: AuthPageProps) {
   const [showPassword, setShowPassword] = useState(false);
@@ -106,94 +90,23 @@ export function AuthPage({ onAuth, onShowSignup }: AuthPageProps) {
   };
 
   return (
-    <div className="min-h-screen md:h-screen bg-black text-white relative md:overflow-hidden">
+    <div className="min-h-screen bg-black text-white relative overflow-hidden">
       <TopLoader active={loading || googleLoading} />
-      <div className="flex flex-row w-full min-h-screen md:h-full md:overflow-hidden">
-        {/* Left gradient hero with soft floating shapes */}
-        <div
-          className="relative overflow-hidden items-center justify-center hidden md:flex md:w-1/2 md:h-full md:overflow-hidden"
-          style={{
-            background:
-              'radial-gradient(circle at 15% 20%, rgba(255,123,57,0.65), transparent 42%), radial-gradient(circle at 72% 10%, rgba(194,71,255,0.55), transparent 48%), radial-gradient(circle at 58% 72%, rgba(0,194,168,0.55), transparent 50%), linear-gradient(135deg, #ff7b39, #c247ff 45%, #00c2a8)',
-            minHeight: '100vh',
-          }}
-        >
-          <div className="absolute inset-0 backdrop-blur-3xl bg-gradient-to-br from-[#ff7b39]/30 via-[#c247ff]/25 to-[#00c2a8]/25" />
-          <div className="absolute inset-0" style={{ perspective: '1000px' }}>
-            {geometricShapes.map((shape, index) => (
-              <motion.div
-                key={`${shape.type}-${index}`}
-                className={`absolute ${shape.size}`}
-                style={{ left: `${shape.x}%`, top: `${shape.y}%` }}
-                initial={{ opacity: 0.75, scale: 1 }}
-                animate={{
-                  x: [0, 30, 0],
-                  y: [0, -25, 0],
-                  scale: [1, 1.05, 1],
-                  opacity: [0.75, 0.9, 0.75],
-                }}
-                transition={{
-                  duration: shape.duration ?? 18,
-                  delay: index * 1.2,
-                  repeat: Infinity,
-                  ease: 'easeInOut',
-                }}
-              >
-                <div
-                  className={`w-full h-full ${shape.color} ${
-                    shape.type === 'circle'
-                      ? 'rounded-full'
-                      : shape.type === 'rounded'
-                      ? 'rounded-3xl rotate-45'
-                      : 'rounded-lg'
-                  }`}
-                  style={{ boxShadow: '0 30px 90px rgba(0, 0, 0, 0.35)', filter: 'blur(1px)' }}
-                />
-                <div
-                  className={`absolute inset-0 ${shape.color} ${
-                    shape.type === 'circle'
-                      ? 'rounded-full'
-                      : shape.type === 'rounded'
-                      ? 'rounded-3xl rotate-45'
-                      : 'rounded-lg'
-                  }`}
-                  style={{ filter: 'blur(30px)', opacity: 0.65, transform: 'scale(1.25)' }}
-                />
-              </motion.div>
-            ))}
+      <div className="flex items-center justify-center px-6 py-16 w-full">
+        <div className="w-full max-w-md">
+          <div className="flex flex-col items-center gap-3 mb-8">
+            <Image src={orangeLogo} alt="Wanzami" width={110} height={110} priority className="mx-auto" />
+            <div className="text-center">
+              <h1 className="text-white text-3xl font-semibold">Welcome back</h1>
+              <p className="text-white/70 text-sm">Sign in to continue your streaming journey.</p>
+            </div>
           </div>
 
-          <div className="relative z-10 flex flex-col items-center justify-center w-full px-12 text-center">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
-              <Image src={whiteLogo} alt="Wanzami" width={140} height={140} priority className="mx-auto" />
-              <h1 className="text-white text-5xl font-semibold mt-6 mb-4 drop-shadow-[0_5px_30px_rgba(0,0,0,0.4)]">
-                Welcome Back
-              </h1>
-              <p className="text-white/80 text-xl max-w-md mx-auto">
-                Continue your streaming journey with unlimited entertainment.
-              </p>
-            </motion.div>
-          </div>
-        </div>
-
-        {/* Right column: centered dark card on black */}
-        <div
-          className="flex items-center justify-center px-6 py-16 bg-black w-full md:w-1/2 min-h-screen md:h-full md:overflow-y-auto"
-          style={{
-            minHeight: '100vh',
-          }}
-        >
-          <div className="relative w-full max-w-md">
-            <div className="absolute inset-0 rounded-3xl bg-gradient-to-b from-white/4 to-white/0 blur-lg" />
-            <div className="relative rounded-3xl bg-[#0d0d0f] border border-white/10 shadow-[0_30px_80px_rgba(0,0,0,0.55)] p-8">
-              <div className="lg:hidden flex items-center justify-center gap-2 mb-8">
-                <Image src={whiteLogo} alt="Wanzami" width={72} height={72} priority className="mx-auto" />
-              </div>
-
-              <div className="mb-8">
-                <h2 className="text-3xl font-semibold mb-1">Sign in to your account</h2>
-                <p className="text-white/70 text-sm">Welcome back! Please enter your details.</p>
-              </div>
+          <div className="rounded-3xl bg-[#0d0d0f] border border-white/10 shadow-[0_30px_80px_rgba(0,0,0,0.55)] p-8">
+            <div className="mb-6">
+              <h2 className="text-2xl font-semibold mb-1">Sign in</h2>
+              <p className="text-white/70 text-sm">Enter your details below.</p>
+            </div>
 
               <div className="space-y-3 mb-6">
                 <button

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { sendEmail } from "../utils/mailer.js";
+import { emailQueue } from "../queues/emailQueue.js";
 const RecipientSchema = z.object({
     email: z.string().email(),
     name: z.string().optional(),
@@ -8,6 +9,8 @@ const EmailPayloadSchema = z.object({
     subject: z.string().min(1, "Subject is required"),
     html: z.string().min(1, "Email body is required"),
     recipients: z.array(RecipientSchema).min(1, "At least one recipient is required"),
+    startIndex: z.coerce.number().int().min(0).optional(),
+    batchSize: z.coerce.number().int().min(1).optional(),
 });
 const dedupeRecipients = (recipients) => {
     const map = new Map();
@@ -78,13 +81,22 @@ export const sendCampaignEmails = async (req, res) => {
     if (recipients.length === 0) {
         return res.status(400).json({ message: "No valid recipients" });
     }
-    const { queued, failed, queuedRecipients, failedRecipients, failedDetails } = await sendBatch(recipients, parsed.data.subject, parsed.data.html);
+    const startIndex = Math.max(0, parsed.data.startIndex ?? 0);
+    const batchSize = Math.max(1, parsed.data.batchSize ?? 50);
+    const slice = recipients.slice(startIndex, startIndex + batchSize);
+    const job = await emailQueue.add("send", {
+        subject: parsed.data.subject,
+        html: parsed.data.html,
+        recipients: slice,
+        startIndex,
+        batchSize,
+    });
     return res.json({
-        message: "Emails queued for delivery",
-        queued,
-        failed,
-        queuedRecipients,
-        failedRecipients,
-        failedDetails,
+        message: "Emails enqueued for delivery",
+        jobId: job.id,
+        queuedCount: slice.length,
+        totalRecipients: recipients.length,
+        startIndex,
+        batchSize,
     });
 };
