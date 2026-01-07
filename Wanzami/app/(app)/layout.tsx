@@ -83,7 +83,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const mainPadding = useMemo(() => {
     if (currentPage === "search") {
-      return "pt-24 md:pt-28";
+      return "pt-16 md:pt-20";
     }
     return "pt-28 md:pt-32";
   }, [currentPage]);
