@@ -34,7 +34,6 @@ export function Navbar({
     { label: 'Movies', page: 'movies', href: '/movies' },
     { label: 'Series', page: 'series', href: '/series' },
     { label: 'My Movies', page: 'mymovies', href: '/mymovies' },
-    { label: 'Kids', page: 'kids', href: '/kids' },
     { label: 'My List', page: 'mylist', href: '/mylist' },
   ];
 
