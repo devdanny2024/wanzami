@@ -178,7 +178,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         onLogout={logout}
         isAuthenticated={true}
       />
-      {children}
+      <main className="pt-28 md:pt-32 px-4 md:px-6">{children}</main>
       <Footer />
     </div>
   );
