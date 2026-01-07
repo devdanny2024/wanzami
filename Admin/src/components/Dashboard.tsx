@@ -59,7 +59,7 @@ export function Dashboard() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch("/api/admin/dashboard/summary", {
+        const res = await fetch("/api/admin/dashboard/summary?days=30&engagementHours=24&activeMinutes=1", {
           method: "GET",
           cache: "no-store",
         });
@@ -263,4 +263,3 @@ export function Dashboard() {
     </div>
   );
 }
-

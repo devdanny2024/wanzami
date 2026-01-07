@@ -11,17 +11,44 @@ const startOfUtcDay = (d: Date) => {
 };
 
 const formatWeekdayLabel = (d: Date) =>
-  d.toLocaleDateString("en-US", { weekday: "short" });
+  d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
 export const adminDashboardSummary = async (
-  _req: AuthenticatedRequest,
+  req: AuthenticatedRequest,
   res: Response
 ) => {
   const now = new Date();
   const startToday = startOfUtcDay(now);
-  const since7Days = new Date(now.getTime() - 6 * DAY_MS);
-  const since24Hours = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const activeSince = new Date(now.getTime() - 5 * 60 * 1000);
+
+  const rawDays = Number((req.query.days as string) ?? "7");
+  const days =
+    Number.isFinite(rawDays) && rawDays > 0 && rawDays <= 90 ? rawDays : 7;
+
+  const rawEngagementHours = Number(
+    (req.query.engagementHours as string) ?? "24"
+  );
+  const engagementHours =
+    Number.isFinite(rawEngagementHours) &&
+    rawEngagementHours > 0 &&
+    rawEngagementHours <= 168
+      ? rawEngagementHours
+      : 24;
+
+  const rawActiveMinutes = Number(
+    (req.query.activeMinutes as string) ?? "1"
+  );
+  const activeMinutes =
+    Number.isFinite(rawActiveMinutes) &&
+    rawActiveMinutes > 0 &&
+    rawActiveMinutes <= 60
+      ? rawActiveMinutes
+      : 1;
+
+  const sinceDailyWindow = new Date(now.getTime() - (days - 1) * DAY_MS);
+  const sinceEngagement = new Date(
+    now.getTime() - engagementHours * 60 * 60 * 1000
+  );
+  const activeSince = new Date(now.getTime() - activeMinutes * 60 * 1000);
 
   const [totalUsers, titleCount, ppvPurchasesTodayAgg, ppvRevenueAgg, streamsEvents, revenueEvents, engagementEvents, activeEvents] =
     await Promise.all([
@@ -40,20 +67,20 @@ export const adminDashboardSummary = async (
       prisma.engagementEvent.findMany({
         where: {
           eventType: "PLAY_START",
-          occurredAt: { gte: since7Days },
+          occurredAt: { gte: sinceDailyWindow },
         },
         select: { occurredAt: true },
       }),
       prisma.ppvPurchase.findMany({
         where: {
           status: "SUCCESS",
-          createdAt: { gte: since7Days },
+          createdAt: { gte: sinceDailyWindow },
         },
         select: { createdAt: true, amountNaira: true },
       }),
       prisma.engagementEvent.findMany({
         where: {
-          occurredAt: { gte: since24Hours },
+          occurredAt: { gte: sinceEngagement },
         },
         select: { occurredAt: true },
       }),
@@ -98,7 +125,7 @@ export const adminDashboardSummary = async (
 
   const dailyStreams: { date: string; streams: number }[] = [];
   const dailyRevenue: { date: string; revenue: number }[] = [];
-  for (let i = 6; i >= 0; i--) {
+  for (let i = days - 1; i >= 0; i--) {
     const day = new Date(now.getTime() - i * DAY_MS);
     const dayKey = startOfUtcDay(day).toISOString().slice(0, 10);
     const label = formatWeekdayLabel(day);
@@ -146,4 +173,3 @@ export const adminDashboardSummary = async (
     contentEngagement,
   });
 };
-
