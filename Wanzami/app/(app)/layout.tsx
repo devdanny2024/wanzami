@@ -81,6 +81,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return "home";
   }, [pathname]);
 
+  const mainPadding = useMemo(() => {
+    if (currentPage === "search") {
+      return "pt-24 md:pt-28";
+    }
+    return "pt-28 md:pt-32";
+  }, [currentPage]);
+
   useEffect(() => {
     // Prompt user to pick a profile after login, try refreshing if missing access token
     if (typeof window === "undefined") return;
@@ -178,7 +185,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         onLogout={logout}
         isAuthenticated={true}
       />
-      <main className="pt-28 md:pt-32 px-4 md:px-6">{children}</main>
+      <main className={`${mainPadding} px-4 md:px-6`}>{children}</main>
       <Footer />
     </div>
   );
