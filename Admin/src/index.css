@@ -1530,6 +1530,11 @@
     color: var(--color-white);
   }
 
+  /* Email Service: force text-white to render dark on light cards */
+  .email-service-root .text-white {
+    color: #000000;
+  }
+
   .text-yellow-400 {
     color: var(--color-yellow-400);
   }
