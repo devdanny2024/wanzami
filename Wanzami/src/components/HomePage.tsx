@@ -109,7 +109,7 @@ export function HomePage({
   return (
     <div className="min-h-screen bg-black">
       <Hero onPlayClick={onMovieClick} featured={featured} />
-      <div className="relative -mt-32 z-10 pb-12 md:pb-16">
+      <div className="relative -mt-24 md:-mt-32 z-10 pb-12 md:pb-16">
         {loading ? (
           <div className="text-gray-400 px-4 md:px-12 lg:px-16">Loading catalog...</div>
         ) : error ? (
@@ -138,7 +138,7 @@ export function HomePage({
             )}
             {moviesOnly.length > 0 || top10Movies.length > 0 || trendingMovies.length > 0 ? (
               <>
-                <div className="px-4 md:px-12 lg:px-16 mt-6">
+                <div className="md:px-12 lg:px-16 mt-6">
                   <h2 className="text-white text-2xl mb-3">Movies</h2>
                 </div>
                 {top10Movies.length > 0 && (
@@ -161,7 +161,7 @@ export function HomePage({
 
             {seriesOnly.length > 0 || top10Series.length > 0 || trendingSeries.length > 0 ? (
               <>
-                <div className="px-4 md:px-12 lg:px-16 mt-6">
+                <div className="md:px-12 lg:px-16 mt-6">
                   <h2 className="text-white text-2xl mb-3">Series</h2>
                 </div>
                 {top10Series.length > 0 && (
