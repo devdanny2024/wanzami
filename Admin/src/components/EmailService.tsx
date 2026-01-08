@@ -566,8 +566,7 @@ export function EmailService() {
                   <label className="text-sm text-neutral-300">Quick add emails</label>
                   <Button
                     size="sm"
-                    variant="outline"
-                    className="border-neutral-700 text-white flex items-center gap-2"
+                    className="bg-[#fd7e14] hover:bg-[#ff9940] text-white flex items-center gap-2 border-none"
                     onClick={() => void loadAllRegisteredUsers()}
                     disabled={loadingAudience}
                   >
