@@ -125,7 +125,11 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
     return badges;
   }, [movie]);
 
+  const [isSharing, setIsSharing] = useState(false);
+
   const handleShare = async () => {
+    if (isSharing) return;
+    setIsSharing(true);
     setShareError(null);
     const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
     const title = movie?.title ?? 'Wanzami title';
@@ -137,6 +141,8 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
       }
     } catch (err: any) {
       setShareError(err?.message ?? 'Unable to share right now.');
+    } finally {
+      setIsSharing(false);
     }
   };
 
