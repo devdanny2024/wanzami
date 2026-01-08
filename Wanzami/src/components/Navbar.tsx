@@ -171,106 +171,33 @@ export function Navbar({
             </div>
           </div>
 
-          {/* Mobile navigation pills */}
-          <div className="mt-3 mb-1 flex lg:hidden items-center gap-2 overflow-x-auto scrollbar-hide px-1">
-            {navItems.map((item) => {
-              const isActive = currentPage === item.page;
-              return (
-                <button
-                  key={item.page}
-                  type="button"
-                  onClick={() => onNavigate(item.page)}
-                  className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                    isActive
-                      ? "bg-[#fd7e14] text-white"
-                      : "bg-white/5 text-gray-300 border border-white/10"
-                  }`}
-                >
-                  {item.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </motion.nav>
-
-      {/* Mobile Menu */}
-      <AnimatePresence>
-        {isMobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
-            className="fixed top-[88px] left-4 right-4 z-[60] lg:hidden"
-          >
-            <div className="bg-[#0b0b0c]/98 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
-              <div className="p-4 space-y-1">
-                {navItems.map((item) => {
-                  const isActive = currentPage === item.page;
-                  
-                  return (
-                    <Link
-                      key={item.page}
-                      href={item.href}
-                      onClick={() => {
-                        onNavigate(item.page);
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
-                        isActive
-                          ? 'bg-[#fd7e14]/20 border border-[#fd7e14] text-white'
-                          : 'text-gray-400 hover:bg-white/5 hover:text-white'
-                      }`}
-                    >
-                      {item.label}
-                    </Link>
-                  );
-                })}
-                
-                <hr className="border-white/10 my-2" />
-                
-                <a
-                  href="/settings"
-                  className="block w-full text-left px-4 py-3 rounded-xl text-gray-400 hover:bg-white/5 hover:text-white transition-all"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Settings
-                </a>
-                {!isAuthenticated && (
-                  <a
-                    href="/login"
-                    className="w-full text-left px-4 py-3 rounded-xl text-gray-400 hover:bg-white/5 hover:text-white transition-all inline-flex items-center gap-2"
-                  >
-                    <LogIn className="w-4 h-4" />
-                    Login
-                  </a>
-                )}
-                
-                {isAuthenticated && onLogout && (
+          {/* Mobile navigation pills, toggled by hamburger */}
+          {isMobileMenuOpen && (
+            <div className="mt-3 mb-1 flex lg:hidden items-center gap-2 overflow-x-auto scrollbar-hide px-1">
+              {navItems.map((item) => {
+                const isActive = currentPage === item.page;
+                return (
                   <button
+                    key={item.page}
+                    type="button"
                     onClick={() => {
-                      onLogout?.();
+                      onNavigate(item.page);
                       setIsMobileMenuOpen(false);
                     }}
-                    className="w-full text-left px-4 py-3 rounded-xl text-gray-400 hover:bg-white/5 hover:text-white transition-all inline-flex items-center gap-2"
+                    className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                      isActive
+                        ? "bg-[#fd7e14] text-white"
+                        : "bg-white/5 text-gray-300 border border-white/10"
+                    }`}
                   >
-                    <Power className="w-4 h-4" />
-                    Sign Out
+                    {item.label}
                   </button>
-                )}
-                <a
-                  href="/settings"
-                  className="block w-full text-left px-4 py-3 rounded-xl text-gray-400 hover:bg-white/5 hover:text-white transition-all"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Settings
-                </a>
-              </div>
+                );
+              })}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </div>
+      </motion.nav>
     </>
   );
 }
