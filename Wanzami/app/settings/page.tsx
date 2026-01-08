@@ -141,8 +141,8 @@ export default function SettingsPage() {
   }
 
     return (
-    <main className="min-h-screen bg-[#0b0b0c] text-white px-4 md:px-6 py-6 md:py-10">
-        <div className="max-w-6xl mx-auto space-y-8 md:space-y-10">
+      <main className="min-h-screen bg-[#0b0b0c] text-white px-4 md:px-6 py-6 md:py-10 flex justify-start md:justify-center">
+        <div className="w-full max-w-6xl space-y-8 md:space-y-10">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-3">
             <button
