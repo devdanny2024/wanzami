@@ -49,6 +49,24 @@ export default function SettingsPage() {
   const [emailUpdates, setEmailUpdates] = useState(true);
   const [productNews, setProductNews] = useState(false);
 
+  const setActiveProfileFromProfile = (profile: Profile) => {
+    setActiveProfileId(profile.id);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("activeProfileId", profile.id);
+      } catch {
+        // ignore
+      }
+    }
+    setAutoplay(profile.autoplay ?? true);
+    setLanguage(profile.language ?? "en");
+    const prefs = (profile.preferences ?? {}) as any;
+    setDataSaver(Boolean(prefs.dataSaver));
+    setDefaultQuality((prefs.defaultQuality as any) ?? "auto");
+    setEmailUpdates(prefs.emailUpdates !== false);
+    setProductNews(Boolean(prefs.productNews));
+  };
+
   const hasAuth = useMemo(() => {
     if (typeof window === "undefined") return false;
     return Boolean(localStorage.getItem("accessToken"));
@@ -82,14 +100,7 @@ export default function SettingsPage() {
       const storedActive = typeof window !== "undefined" ? localStorage.getItem("activeProfileId") : null;
       const active = list.find((prof) => prof.id === storedActive) ?? list[0] ?? null;
       if (active) {
-        setActiveProfileId(active.id);
-        setAutoplay(active.autoplay ?? true);
-        setLanguage(active.language ?? "en");
-        const prefs = (active.preferences ?? {}) as any;
-        setDataSaver(Boolean(prefs.dataSaver));
-        setDefaultQuality((prefs.defaultQuality as any) ?? "auto");
-        setEmailUpdates(prefs.emailUpdates !== false);
-        setProductNews(Boolean(prefs.productNews));
+        setActiveProfileFromProfile(active);
       }
     } catch (err: any) {
       toast.error(err.message ?? "Unable to load settings");
@@ -268,11 +279,34 @@ export default function SettingsPage() {
 
               {/* Profile preferences */}
               <section className="border border-white/10 rounded-2xl bg-black/40 p-5 md:p-6 space-y-4">
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                   <div>
                     <h2 className="text-lg font-semibold">Profile preferences</h2>
-                    <p className="text-gray-400 text-sm">Applies to your active profile.</p>
+                    <p className="text-gray-400 text-sm">
+                      Playback, data and notifications for your selected profile.
+                    </p>
                   </div>
+                  {profiles.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {profiles.map((p) => {
+                        const isActive = p.id === activeProfileId;
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => setActiveProfileFromProfile(p)}
+                            className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                              isActive
+                                ? "bg-[#fd7e14] border-[#fd7e14] text-black"
+                                : "bg-black/40 border-white/15 text-gray-200 hover:border-white/40"
+                            }`}
+                          >
+                            {p.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
