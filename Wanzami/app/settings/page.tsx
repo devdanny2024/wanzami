@@ -140,9 +140,9 @@ export default function SettingsPage() {
     );
   }
 
-  return (
-    <main className="min-h-screen bg-[#0b0b0c] text-white px-6 py-10">
-      <div className="max-w-6xl mx-auto space-y-10">
+    return (
+    <main className="min-h-screen bg-[#0b0b0c] text-white px-4 md:px-6 py-6 md:py-10">
+        <div className="max-w-6xl mx-auto space-y-8 md:space-y-10">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-3">
             <button
@@ -158,8 +158,8 @@ export default function SettingsPage() {
           </p>
         </div>
 
-        {loading ? (
-          <div className="flex items-center gap-3 text-gray-300">
+          {loading ? (
+            <div className="flex items-center justify-center gap-3 text-gray-300 py-20">
             <Loader />
             <span>Loading your settings…</span>
           </div>
