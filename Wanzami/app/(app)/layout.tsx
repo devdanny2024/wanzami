@@ -85,7 +85,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (currentPage === "search") {
       return "pt-16 md:pt-20";
     }
-    return "pt-28 md:pt-32";
+    if (currentPage === "home") {
+      return "pt-24 md:pt-28";
+    }
+    // Non‑home pages: give extra top padding on mobile so content clears the floating navbar
+    return "pt-40 md:pt-32";
   }, [currentPage]);
 
   useEffect(() => {
