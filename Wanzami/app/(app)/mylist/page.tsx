@@ -89,7 +89,7 @@ export default function MyListPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black pb-12 px-4 md:px-12 lg:px-16">
+    <div className="min-h-screen bg-black pb-12 px-4 md:px-12 lg:px-16 pt-10 md:pt-0">
       <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
         <div>
           <h1 className="text-white text-3xl md:text-4xl">My List</h1>

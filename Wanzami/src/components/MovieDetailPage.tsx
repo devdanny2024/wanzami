@@ -4,7 +4,7 @@ import { Play, Plus, Share2, ThumbsUp, X, Lock } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
-import { MovieData } from './MovieCard';
+import { MovieCard, MovieData } from './MovieCard';
 import { isInMyList, toggleMyList } from '@/lib/myList';
 import { fetchTitles, type Title } from '@/lib/contentClient';
 
@@ -410,7 +410,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
                     <motion.div
                       key={itemId}
                       className="group cursor-pointer rounded-xl overflow-hidden border border-gray-800 bg-white/5 hover:border-[#fd7e14]/60 transition-all relative h-full flex flex-col"
-                      style={{ aspectRatio: '16 / 9' }}
+                      style={{ aspectRatio: '16 / 9', width: '220px', minWidth: '220px' }}
                       whileHover={{ scale: 1.01 }}
                       onClick={() => {
                         const targetId = (item as any).backendId || (item as any).id || itemId;
@@ -422,7 +422,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
                       <div className="relative w-full h-full">
                         <ImageWithFallback src={thumb} alt={title} className="w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <button className="absolute bottom-3 left-3 bg-[#fd7e14] hover:bg-[#e86f0f] text-white px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button className="absolute bottom-3 left-3 bg-[#fd7e14] hover:bg-[#e86f0f] text-white px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-2">
                           <Play className="w-4 h-4 fill-current" />
                           Play
                         </button>
