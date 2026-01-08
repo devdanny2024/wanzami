@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
+import { SupportChatBubble } from "@/components/SupportChatBubble";
 
 export const metadata: Metadata = {
   title: "Wanzami",
@@ -15,7 +16,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-black text-white">
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <SupportChatBubble />
+        </Providers>
       </body>
     </html>
   );

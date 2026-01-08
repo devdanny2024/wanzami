@@ -3,7 +3,6 @@
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { TopLoader } from "@/components/TopLoader";
-import { SupportChatBubble } from "@/components/SupportChatBubble";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -191,7 +190,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         isAuthenticated={true}
       />
       <main className={`${mainPadding} px-4 md:px-6`}>{children}</main>
-      <SupportChatBubble />
       <Footer />
     </div>
   );
