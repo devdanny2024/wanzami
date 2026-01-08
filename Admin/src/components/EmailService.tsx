@@ -561,8 +561,20 @@ export function EmailService() {
               />
             </label>
 
-            <div className="space-y-2">
-              <label className="text-sm text-neutral-300">Quick add emails</label>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-sm text-neutral-300">Quick add emails</label>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-neutral-700 text-white flex items-center gap-2"
+                    onClick={() => void loadAllRegisteredUsers()}
+                    disabled={loadingAudience}
+                  >
+                    <Users className="w-4 h-4" />
+                    {loadingAudience ? "Loading users..." : "Add all registered users"}
+                  </Button>
+                </div>
               <Textarea
                 value={manualList}
                 onChange={(e) => setManualList(e.target.value)}
