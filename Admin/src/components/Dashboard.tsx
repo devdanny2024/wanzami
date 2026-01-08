@@ -48,6 +48,14 @@ const formatCurrency = (value: number) =>
     maximumFractionDigits: 0,
   }).format(value);
 
+const authHeaders = () => {
+  const token =
+    typeof window !== "undefined"
+      ? window.localStorage.getItem("accessToken")
+      : null;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
 export function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [dailyStreams, setDailyStreams] = useState<DailyStreamsPoint[]>([]);
@@ -63,6 +71,9 @@ export function Dashboard() {
       try {
         const res = await fetch("/api/admin/dashboard/summary?days=30&engagementHours=24&activeMinutes=1", {
           method: "GET",
+          headers: {
+            ...authHeaders(),
+          },
           cache: "no-store",
         });
         if (!res.ok) {
