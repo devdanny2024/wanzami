@@ -12,6 +12,7 @@ import {
   ShieldQuestion,
   Bug,
   Mail,
+  MessageCircle,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -28,6 +29,7 @@ const navItems = [
   { id: 'users', label: 'Users', icon: Users },
   { id: 'team', label: 'Team', icon: ShieldQuestion },
   { id: 'email', label: 'Email Service', icon: Mail },
+  { id: 'support', label: 'Support', icon: MessageCircle },
   { id: 'payments', label: 'Payments', icon: Wallet },
   { id: 'invoices', label: 'Invoices', icon: CreditCard },
   { id: 'moderation', label: 'Moderation', icon: Shield },

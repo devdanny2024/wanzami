@@ -12,6 +12,7 @@ import logRoutes from "./routes/logRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import ppvRoutes from "./routes/ppvRoutes.js";
 import emailRoutes from "./routes/emailRoutes.js";
+import supportRoutes from "./routes/supportRoutes.js";
 import { recordError } from "./utils/errorLogger.js";
 import type { AuthenticatedRequest } from "./middleware/auth.js";
 
@@ -61,6 +62,7 @@ app.use("/api", logRoutes);
 app.use("/api", ppvRoutes);
 app.use("/api", emailRoutes);
 app.use("/api", dashboardRoutes);
+app.use("/api", supportRoutes);
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
