@@ -50,7 +50,7 @@ export function Navbar({
         }`}
       >
         <div className="max-w-[95%] mx-auto">
-          <div className={`relative flex items-center justify-between px-6 md:px-8 py-4 transition-all duration-500 ${
+          <div className={`relative flex items-center justify-between px-4 md:px-8 py-4 transition-all duration-500 ${
             isScrolled
               ? 'bg-[#0b0b0c]/95 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/50'
               : 'bg-white/5 backdrop-blur-md border border-white/5'
@@ -169,6 +169,27 @@ export function Navbar({
                 )}
               </button>
             </div>
+          </div>
+
+          {/* Mobile navigation pills */}
+          <div className="mt-3 mb-1 flex lg:hidden items-center gap-2 overflow-x-auto scrollbar-hide px-1">
+            {navItems.map((item) => {
+              const isActive = currentPage === item.page;
+              return (
+                <button
+                  key={item.page}
+                  type="button"
+                  onClick={() => onNavigate(item.page)}
+                  className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                    isActive
+                      ? "bg-[#fd7e14] text-white"
+                      : "bg-white/5 text-gray-300 border border-white/10"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
           </div>
         </div>
       </motion.nav>
