@@ -171,6 +171,7 @@ export function EmailService() {
   const [lastSend, setLastSend] = useState<string | null>(null);
   const [batchSize, setBatchSize] = useState<number>(50);
   const [startIndex, setStartIndex] = useState<number>(0);
+  const [loadingAudience, setLoadingAudience] = useState(false);
   const token = useMemo(() => (typeof window !== "undefined" ? localStorage.getItem("accessToken") : null), []);
 
   const validTestEmails = useMemo(() => parseEmailList(testEmailsInput), [testEmailsInput]);
@@ -322,6 +323,43 @@ export function EmailService() {
       toast.error("Failed to send test emails");
     } finally {
       setSendingTest(false);
+    }
+  };
+
+  const loadAllRegisteredUsers = async () => {
+    setLoadingAudience(true);
+    try {
+      const res = await fetch("/api/admin/email/audience", {
+        method: "GET",
+        headers: { "Content-Type": "application/json", ...authHeaders },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data?.message ?? "Failed to load registered users");
+        return;
+      }
+      const list = (data?.recipients as Recipient[] | undefined) ?? [];
+      if (!list.length) {
+        toast.info("No registered users found to add.");
+        return;
+      }
+      setRecipients((prev) => {
+        const existing = new Map<string, Recipient>();
+        for (const r of prev) {
+          existing.set(sanitizeEmail(r.email), r);
+        }
+        for (const r of list) {
+          const email = sanitizeEmail(r.email);
+          if (!isValidEmail(email)) continue;
+          existing.set(email, { email, name: r.name });
+        }
+        return Array.from(existing.values());
+      });
+      toast.success(`Loaded ${list.length} registered users into the audience.`);
+    } catch (err: any) {
+      toast.error(err?.message ?? "Failed to load registered users");
+    } finally {
+      setLoadingAudience(false);
     }
   };
 
