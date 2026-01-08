@@ -6,9 +6,9 @@ import { sendEmail } from "../utils/mailer.js";
 import { config } from "../config.js";
 
 const createTicketSchema = z.object({
-  email: z.string().email(),
-  subject: z.string().min(3).max(200),
-  message: z.string().min(10).max(5000),
+  email: z.string().email().transform((v) => v.trim()),
+  subject: z.string().trim().min(1).max(200),
+  message: z.string().trim().min(3).max(5000),
 });
 
 const replySchema = z.object({
