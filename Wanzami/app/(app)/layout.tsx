@@ -72,6 +72,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (pathname.startsWith("/dashboard")) return "dashboard";
     if (pathname.startsWith("/settings")) return "settings";
     if (pathname.startsWith("/payment")) return "payment";
+    if (pathname.startsWith("/contact")) return "contact";
     if (pathname.startsWith("/movies")) return "movies";
     if (pathname.startsWith("/series")) return "series";
     if (pathname.startsWith("/kids")) return "kids";
@@ -84,6 +85,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const mainPadding = useMemo(() => {
     if (currentPage === "search") {
       return "pt-16 md:pt-20";
+    }
+    if (currentPage === "contact") {
+      return "pt-32 md:pt-32";
     }
     if (currentPage === "home") {
       return "pt-24 md:pt-28";

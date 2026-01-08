@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { requireAdmin, requireAuth } from "../middleware/auth.js";
+import { supportTicketRateLimit } from "../middleware/rateLimit.js";
 import {
   createSupportTicket,
   listSupportTickets,
@@ -11,7 +12,7 @@ import {
 const router = Router();
 
 // Public endpoint for customers to create tickets.
-router.post("/support/tickets", createSupportTicket);
+router.post("/support/tickets", supportTicketRateLimit, createSupportTicket);
 
 // Admin endpoints to view and update tickets.
 router.get("/admin/support/tickets", requireAuth, requireAdmin, listSupportTickets);

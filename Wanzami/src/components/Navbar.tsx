@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Search, User, Menu, X, LogIn, Power } from 'lucide-react';
+import { Search, User, Menu, X, LogIn } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import wanzamiLogo from '../assets/logo.png';
 
@@ -35,6 +35,7 @@ export function Navbar({
     { label: 'Series', page: 'series', href: '/series' },
     { label: 'My Movies', page: 'mymovies', href: '/mymovies' },
     { label: 'My List', page: 'mylist', href: '/mylist' },
+    { label: 'Help', page: 'contact', href: '/contact' },
   ];
 
   return (

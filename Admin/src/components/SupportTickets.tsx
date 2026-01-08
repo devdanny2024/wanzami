@@ -14,6 +14,7 @@ type Ticket = {
 
 type TicketsResponse = {
   tickets: Ticket[];
+  counts?: Record<string, number>;
 };
 
 type TicketMessage = {
@@ -46,12 +47,31 @@ export function SupportTickets() {
   const [messages, setMessages] = useState<TicketMessage[]>([]);
   const [reply, setReply] = useState("");
   const [replying, setReplying] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [query, setQuery] = useState<string>("");
+  const [days, setDays] = useState<string>("7");
+  const [counts, setCounts] = useState<Record<string, number>>({});
 
-  const load = async () => {
+  const load = async (opts?: { status?: string; q?: string; days?: string }) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/support/tickets", {
+      const url = new URL("/api/admin/support/tickets", window.location.origin);
+      const statusParam = opts?.status ?? statusFilter;
+      const qParam = opts?.q ?? query;
+      const daysParam = opts?.days ?? days;
+
+      if (statusParam && statusParam !== "all") {
+        url.searchParams.set("status", statusParam);
+      }
+      if (qParam) {
+        url.searchParams.set("q", qParam);
+      }
+      if (daysParam && daysParam !== "all") {
+        url.searchParams.set("days", daysParam);
+      }
+
+      const res = await fetch(url.toString(), {
         headers: {
           ...authHeaders(),
         },
@@ -62,6 +82,17 @@ export function SupportTickets() {
       }
       const data = (await res.json()) as TicketsResponse;
       setTickets(data.tickets ?? []);
+      if (data.counts) {
+        setCounts(data.counts);
+        try {
+          window.localStorage.setItem(
+            "wanzami-support-open-count",
+            String(data.counts["OPEN"] ?? 0),
+          );
+        } catch {
+          // ignore
+        }
+      }
     } catch (err: any) {
       setError(err?.message ?? "Failed to load tickets");
     } finally {
@@ -138,19 +169,81 @@ export function SupportTickets() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl text-white">Support Tickets</h1>
           <p className="text-sm text-neutral-400">
             Messages submitted from the Contact page and in-app support bubble.
           </p>
+          <div className="mt-1 flex flex-wrap gap-3 text-xs text-neutral-400">
+            <span>
+              Open:{" "}
+              <span className="text-neutral-200">
+                {counts["OPEN"] ?? 0}
+              </span>
+            </span>
+            <span>
+              In progress:{" "}
+              <span className="text-neutral-200">
+                {counts["IN_PROGRESS"] ?? 0}
+              </span>
+            </span>
+            <span>
+              Resolved:{" "}
+              <span className="text-neutral-200">
+                {counts["RESOLVED"] ?? 0}
+              </span>
+            </span>
+          </div>
         </div>
-        <button
-          onClick={() => void load()}
-          className="px-3 py-1.5 rounded-lg text-sm bg-neutral-800 text-white hover:bg-neutral-700 border border-neutral-700"
-        >
-          Refresh
-        </button>
+        <div className="flex flex-col md:flex-row gap-2 md:items-center">
+          <input
+            type="text"
+            placeholder="Search subject or message"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                void load({ q: e.currentTarget.value });
+              }
+            }}
+            className="w-full md:w-56 rounded-lg bg-neutral-900 border border-neutral-700 px-3 py-1.5 text-xs text-white outline-none focus:border-[#fd7e14] focus:ring-1 focus:ring-[#fd7e14]"
+          />
+          <select
+            value={statusFilter}
+            onChange={(e) => {
+              const value = e.target.value;
+              setStatusFilter(value);
+              void load({ status: value });
+            }}
+            className="rounded-lg bg-neutral-900 border border-neutral-700 px-3 py-1.5 text-xs text-white outline-none focus:border-[#fd7e14] focus:ring-1 focus:ring-[#fd7e14]"
+          >
+            <option value="all">All statuses</option>
+            <option value="OPEN">Open</option>
+            <option value="IN_PROGRESS">In progress</option>
+            <option value="RESOLVED">Resolved</option>
+            <option value="CLOSED">Closed</option>
+          </select>
+          <select
+            value={days}
+            onChange={(e) => {
+              const value = e.target.value;
+              setDays(value);
+              void load({ days: value });
+            }}
+            className="rounded-lg bg-neutral-900 border border-neutral-700 px-3 py-1.5 text-xs text-white outline-none focus:border-[#fd7e14] focus:ring-1 focus:ring-[#fd7e14]"
+          >
+            <option value="7">Last 7 days</option>
+            <option value="30">Last 30 days</option>
+            <option value="all">All time</option>
+          </select>
+          <button
+            onClick={() => void load()}
+            className="px-3 py-1.5 rounded-lg text-sm bg-neutral-800 text-white hover:bg-neutral-700 border border-neutral-700"
+          >
+            Refresh
+          </button>
+        </div>
       </div>
 
       {error && (

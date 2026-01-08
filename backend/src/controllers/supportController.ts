@@ -2,6 +2,8 @@ import { Response } from "express";
 import { z } from "zod";
 import { prisma } from "../prisma.js";
 import type { AuthenticatedRequest } from "../middleware/auth.js";
+import { sendEmail } from "../utils/mailer.js";
+import { config } from "../config.js";
 
 const createTicketSchema = z.object({
   email: z.string().email(),
@@ -39,6 +41,16 @@ export const createSupportTicket = async (req: AuthenticatedRequest, res: Respon
     },
   });
 
+  // Fire-and-forget email notification to support.
+  void sendEmail({
+    to: config.supportEmail,
+    subject: `[Support] New ticket from ${email}`,
+    html: `<p><strong>From:</strong> ${email}</p>
+<p><strong>Subject:</strong> ${subject}</p>
+<p><strong>Message:</strong></p>
+<p>${message.replace(/\n/g, "<br/>")}</p>`,
+  }).catch(() => {});
+
   return res.status(201).json({
     ticket: {
       id: ticket.id.toString(),
@@ -57,17 +69,52 @@ export const createSupportTicket = async (req: AuthenticatedRequest, res: Respon
 export const listSupportTickets = async (req: AuthenticatedRequest, res: Response) => {
   const status = typeof req.query.status === "string" ? req.query.status : undefined;
   const limit = Number(req.query.limit ?? "50");
+  const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+  const email = typeof req.query.email === "string" ? req.query.email.trim() : "";
+  const days = req.query.days ? Number(req.query.days) : NaN;
 
-  const where =
-    status && ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"].includes(status)
-      ? { status: status as any }
-      : {};
+  const where: any = {};
+
+  if (status && ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"].includes(status)) {
+    where.status = status;
+  }
+
+  if (email) {
+    where.email = { contains: email, mode: "insensitive" };
+  }
+
+  if (q) {
+    where.OR = [
+      { subject: { contains: q, mode: "insensitive" } },
+      { message: { contains: q, mode: "insensitive" } },
+    ];
+  }
+
+  if (!Number.isNaN(days) && days > 0) {
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    where.createdAt = { gte: since };
+  }
 
   const tickets = await prisma.supportTicket.findMany({
     where,
     orderBy: { createdAt: "desc" },
     take: Number.isFinite(limit) && limit > 0 && limit <= 200 ? limit : 50,
   });
+
+  const countsRaw = await prisma.supportTicket.groupBy({
+    by: ["status"],
+    _count: { _all: true },
+  });
+
+  const counts: Record<string, number> = {};
+  for (const row of countsRaw) {
+    const key = row.status;
+    const value =
+      typeof row._count === "object" && row._count
+        ? (row._count as any)._all ?? 0
+        : 0;
+    counts[key] = value;
+  }
 
   return res.json({
     tickets: tickets.map((t) => ({
@@ -81,6 +128,7 @@ export const listSupportTickets = async (req: AuthenticatedRequest, res: Respons
       updatedAt: t.updatedAt,
       lastReplyAt: t.lastReplyAt,
     })),
+    counts,
   });
 };
 
@@ -162,7 +210,7 @@ export const addSupportTicketReply = async (req: AuthenticatedRequest, res: Resp
 
   const ticket = await prisma.supportTicket.findUnique({
     where: { id: BigInt(ticketId) },
-    select: { id: true },
+    select: { id: true, email: true, subject: true },
   });
   if (!ticket) {
     return res.status(404).json({ message: "Ticket not found" });
@@ -185,6 +233,16 @@ export const addSupportTicketReply = async (req: AuthenticatedRequest, res: Resp
     },
   });
 
+  // Notify the customer that an admin has replied, best-effort.
+  if (ticket.email) {
+    void sendEmail({
+      to: ticket.email,
+      subject: `Re: ${ticket.subject}`,
+      html: `<p>Our support team has replied to your ticket:</p>
+<p>${message.replace(/\n/g, "<br/>")}</p>`,
+    }).catch(() => {});
+  }
+
   return res.status(201).json({
     message: {
       id: created.id.toString(),
@@ -195,4 +253,3 @@ export const addSupportTicketReply = async (req: AuthenticatedRequest, res: Resp
     },
   });
 };
-

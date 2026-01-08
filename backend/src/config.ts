@@ -40,4 +40,5 @@ export const config = {
     webhookSecret: process.env.FLW_WEBHOOK_SECRET ?? "",
   },
   ppvAccessDays: numberOrDefault(process.env.PPV_ACCESS_DAYS, 30),
+  supportEmail: process.env.SUPPORT_EMAIL ?? "support@wanzami.com",
 };
