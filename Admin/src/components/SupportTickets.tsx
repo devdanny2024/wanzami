@@ -271,7 +271,7 @@ export function SupportTickets() {
                 <span className="truncate">{t.subject}</span>
                 <Badge
                   variant="outline"
-                  className="text-[10px] uppercase tracking-wide border-neutral-700"
+                  className="text-[10px] uppercase tracking-wide border-neutral-700 text-neutral-100 bg-neutral-900"
                 >
                   {t.status.replace("_", " ")}
                 </Badge>
@@ -331,7 +331,7 @@ export function SupportTickets() {
                 </span>
                 <Badge
                   variant="outline"
-                  className="text-[10px] uppercase tracking-wide border-neutral-700"
+                  className="text-[10px] uppercase tracking-wide border-neutral-700 text-neutral-100 bg-neutral-900"
                 >
                   {selectedTicket.status.replace("_", " ")}
                 </Badge>
