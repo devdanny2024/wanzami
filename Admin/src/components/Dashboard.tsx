@@ -19,10 +19,12 @@ import { TelemetryPanel } from "./TelemetryPanel";
 type DashboardStats = {
   totalUsers: number;
   activeViewersNow: number;
+  streamsLast24h: number;
+  newUsersLast7Days: number;
   ppvPurchasesToday: number;
   totalPpvRevenueNaira: number;
+  ppvRevenueLast7DaysNaira: number;
   moviesAndSeriesCount: number;
-  blogPostsPublished: number;
 };
 
 type DailyStreamsPoint = { date: string; streams: number };
@@ -90,8 +92,18 @@ export function Dashboard() {
             icon: Users,
           },
           {
+            title: "New Users (7 days)",
+            value: formatNumber(stats.newUsersLast7Days),
+            icon: Users,
+          },
+          {
             title: "Active Viewers Now",
             value: formatNumber(stats.activeViewersNow),
+            icon: Eye,
+          },
+          {
+            title: "Streams (last 24h)",
+            value: formatNumber(stats.streamsLast24h),
             icon: Eye,
           },
           {
@@ -100,19 +112,14 @@ export function Dashboard() {
             icon: CreditCard,
           },
           {
-            title: "Total PPV Revenue",
-            value: formatCurrency(stats.totalPpvRevenueNaira),
+            title: "PPV Revenue (7 days)",
+            value: formatCurrency(stats.ppvRevenueLast7DaysNaira),
             icon: DollarSign,
           },
           {
             title: "Movies & Series Count",
             value: formatNumber(stats.moviesAndSeriesCount),
             icon: Film,
-          },
-          {
-            title: "Blog Posts Published",
-            value: formatNumber(stats.blogPostsPublished),
-            icon: FileText,
           },
         ];
 

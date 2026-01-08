@@ -48,9 +48,23 @@ export const adminDashboardSummary = async (
   const sinceEngagement = new Date(
     now.getTime() - engagementHours * 60 * 60 * 1000
   );
+  const sinceStreams24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const sinceUsers7Days = new Date(now.getTime() - 7 * DAY_MS);
   const activeSince = new Date(now.getTime() - activeMinutes * 60 * 1000);
 
-  const [totalUsers, titleCount, ppvPurchasesTodayAgg, ppvRevenueAgg, streamsEvents, revenueEvents, engagementEvents, activeEvents] =
+  const [
+    totalUsers,
+    titleCount,
+    ppvPurchasesTodayAgg,
+    ppvRevenueAgg,
+    streamsEvents,
+    revenueEvents,
+    engagementEvents,
+    activeEvents,
+    streamsLast24hCount,
+    newUsersLast7Days,
+    ppvRevenueLast7Agg,
+  ] =
     await Promise.all([
       prisma.user.count(),
       prisma.title.count(),
@@ -90,10 +104,29 @@ export const adminDashboardSummary = async (
         },
         select: { profileId: true, sessionId: true, deviceId: true },
       }),
+      prisma.engagementEvent.count({
+        where: {
+          eventType: "PLAY_START",
+          occurredAt: { gte: sinceStreams24h },
+        },
+      }),
+      prisma.user.count({
+        where: {
+          createdAt: { gte: sinceUsers7Days },
+        },
+      }),
+      prisma.ppvPurchase.aggregate({
+        where: {
+          status: "SUCCESS",
+          createdAt: { gte: sinceUsers7Days },
+        },
+        _sum: { amountNaira: true },
+      }),
     ]);
 
-  const totalPpvRevenueNaira = Number(
-    ppvRevenueAgg._sum.amountNaira ?? 0
+  const totalPpvRevenueNaira = Number(ppvRevenueAgg._sum.amountNaira ?? 0);
+  const ppvRevenueLast7DaysNaira = Number(
+    ppvRevenueLast7Agg._sum.amountNaira ?? 0
   );
 
   const activeIds = new Set<string>();
@@ -165,8 +198,10 @@ export const adminDashboardSummary = async (
       activeViewersNow,
       ppvPurchasesToday: ppvPurchasesTodayAgg,
       totalPpvRevenueNaira,
+       streamsLast24h: streamsLast24hCount,
+       newUsersLast7Days,
+       ppvRevenueLast7DaysNaira,
       moviesAndSeriesCount: titleCount,
-      blogPostsPublished: 0,
     },
     dailyStreams,
     dailyRevenue,
