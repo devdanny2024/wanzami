@@ -44,6 +44,8 @@ model User {
   auditLogs AdminAuditLog[]
   ppvPurchases PpvPurchase[]
   ppvViolations PpvViolation[]
+  supportTickets SupportTicket[]
+  supportTicketMessages SupportTicketMessage[]
 }
 
 model Session {
