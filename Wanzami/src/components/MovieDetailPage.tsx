@@ -395,7 +395,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
           {relatedItems.length > 0 && (
             <div>
               <h2 className="text-white mb-6 text-xl md:text-2xl">More Like This</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4 max-w-6xl mx-auto">
+              <div className="flex gap-3 md:gap-4 overflow-x-auto scrollbar-hide px-1 max-w-6xl mx-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 {relatedItems.slice(0, 5).map((item, idx) => {
                   const itemId = (item as any).backendId || item.id || idx;
                   const title = (item as any).title || (item as any).name || 'Title';
