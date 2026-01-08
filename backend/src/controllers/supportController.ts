@@ -5,6 +5,9 @@ import type { AuthenticatedRequest } from "../middleware/auth.js";
 import { sendEmail } from "../utils/mailer.js";
 import { config } from "../config.js";
 
+// Keep Zod around for reply validation, but handle ticket creation
+// with more permissive, hand-rolled validation so we never block
+// real users on overly strict schemas.
 const createTicketSchema = z.object({
   email: z.string().email().transform((v) => v.trim()),
   subject: z.string().trim().min(1).max(200),
@@ -16,12 +19,20 @@ const replySchema = z.object({
 });
 
 export const createSupportTicket = async (req: AuthenticatedRequest, res: Response) => {
-  const parsed = createTicketSchema.safeParse(req.body);
-  if (!parsed.success) {
-    return res.status(400).json({ message: "Invalid ticket payload", issues: parsed.error.issues });
+  const body = (req.body ?? {}) as any;
+
+  const emailRaw = typeof body.email === "string" ? body.email.trim() : "";
+  if (!emailRaw || !emailRaw.includes("@")) {
+    return res.status(400).json({ message: "Invalid ticket payload", issues: [{ path: ["email"], message: "Valid email is required" }] });
   }
 
-  const { email, subject, message } = parsed.data;
+  let subject = typeof body.subject === "string" ? body.subject.trim() : "";
+  if (!subject) subject = "Support request";
+
+  let message = typeof body.message === "string" ? body.message.trim() : "";
+  if (!message) message = "(no message provided)";
+
+  const email = emailRaw;
 
   const userId = req.user?.userId ?? null;
 
