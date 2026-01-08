@@ -12,6 +12,7 @@ type Profile = {
   kidMode?: boolean;
   language?: string;
   autoplay?: boolean;
+  preferences?: Record<string, any> | null;
 };
 
 const AVATAR_OPTIONS = [
@@ -40,6 +41,13 @@ export default function SettingsPage() {
   const [kidMode, setKidMode] = useState(false);
   const [selectedAvatar, setSelectedAvatar] = useState("/avatars/avatar1.svg");
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
+  const [autoplay, setAutoplay] = useState(true);
+  const [language, setLanguage] = useState("en");
+  const [dataSaver, setDataSaver] = useState(false);
+  const [defaultQuality, setDefaultQuality] = useState<"auto" | "hd" | "sd">("auto");
+  const [emailUpdates, setEmailUpdates] = useState(true);
+  const [productNews, setProductNews] = useState(false);
 
   const hasAuth = useMemo(() => {
     if (typeof window === "undefined") return false;
@@ -63,13 +71,26 @@ export default function SettingsPage() {
   };
 
   const loadAll = async () => {
-    if (!hasAuth) {
-      setLoading(false);
-      return;
-    }
-    try {
+      if (!hasAuth) {
+        setLoading(false);
+        return;
+      }
+      try {
       const p = await fetcher("/api/user/profiles");
-      setProfiles(p.profiles ?? []);
+      const list: Profile[] = p.profiles ?? [];
+      setProfiles(list);
+      const storedActive = typeof window !== "undefined" ? localStorage.getItem("activeProfileId") : null;
+      const active = list.find((prof) => prof.id === storedActive) ?? list[0] ?? null;
+      if (active) {
+        setActiveProfileId(active.id);
+        setAutoplay(active.autoplay ?? true);
+        setLanguage(active.language ?? "en");
+        const prefs = (active.preferences ?? {}) as any;
+        setDataSaver(Boolean(prefs.dataSaver));
+        setDefaultQuality((prefs.defaultQuality as any) ?? "auto");
+        setEmailUpdates(prefs.emailUpdates !== false);
+        setProductNews(Boolean(prefs.productNews));
+      }
     } catch (err: any) {
       toast.error(err.message ?? "Unable to load settings");
     } finally {
@@ -92,7 +113,7 @@ export default function SettingsPage() {
     }
   }, [showProfileModal]);
 
-  const createProfile = async () => {
+    const createProfile = async () => {
     if (profiles.length >= 4) {
       toast.error("You can only have up to 4 profiles.");
       return;
@@ -106,7 +127,7 @@ export default function SettingsPage() {
         method: "POST",
         body: JSON.stringify({ name: profileName, kidMode, avatarUrl: selectedAvatar }),
       });
-      setProfiles((prev) => [...prev, data.profile]);
+        setProfiles((prev) => [...prev, data.profile]);
       setProfileName("");
       setKidMode(false);
       setSelectedAvatar("/avatars/avatar1.svg");
@@ -124,6 +145,29 @@ export default function SettingsPage() {
       toast.success("Profile removed");
     } catch (err: any) {
       toast.error(err.message ?? "Unable to delete profile");
+    }
+  };
+
+  const savePreferences = async () => {
+    if (!activeProfileId) return;
+    try {
+      const body = {
+        language,
+        autoplay,
+        preferences: {
+          dataSaver,
+          defaultQuality,
+          emailUpdates,
+          productNews,
+        },
+      };
+      await fetcher(`/api/user/profiles/${activeProfileId}`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      });
+      toast.success("Preferences saved");
+    } catch (err: any) {
+      toast.error(err.message ?? "Unable to save preferences");
     }
   };
 
@@ -164,7 +208,7 @@ export default function SettingsPage() {
             <span>Loading your settings…</span>
           </div>
         ) : (
-          <div className="space-y-8">
+            <div className="space-y-8">
             {/* Profiles */}
             <section className="bg-[#141414] border border-gray-800 rounded-xl p-6 space-y-6">
               <div className="flex items-center justify-between gap-4">
@@ -220,7 +264,140 @@ export default function SettingsPage() {
                   </div>
                 ))}
               </div>
-            </section>
+              </section>
+
+              {/* Profile preferences */}
+              <section className="border border-white/10 rounded-2xl bg-black/40 p-5 md:p-6 space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-semibold">Profile preferences</h2>
+                    <p className="text-gray-400 text-sm">Applies to your active profile.</p>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-sm text-gray-300">Language</label>
+                    <select
+                      value={language}
+                      onChange={(e) => setLanguage(e.target.value)}
+                      className="w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2 text-sm text-white"
+                    >
+                      <option value="en">English</option>
+                      <option value="fr">French</option>
+                      <option value="es">Spanish</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="text-sm text-gray-300">Autoplay next episode</p>
+                      <p className="text-xs text-gray-500">
+                        Continue watching automatically when an episode ends.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAutoplay((v) => !v)}
+                      className={`w-12 h-7 rounded-full border transition-colors flex items-center px-1 ${
+                        autoplay
+                          ? "bg-[#fd7e14] border-[#fd7e14] justify-end"
+                          : "bg-black/40 border-white/20 justify-start"
+                      }`}
+                    >
+                      <span className="w-4 h-4 rounded-full bg-white" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Playback & data */}
+                <div className="grid gap-4 md:grid-cols-2 pt-2 border-t border-white/5 mt-2">
+                  <div className="space-y-2">
+                    <label className="text-sm text-gray-300">Default quality</label>
+                    <select
+                      value={defaultQuality}
+                      onChange={(e) => setDefaultQuality(e.target.value as any)}
+                      className="w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2 text-sm text-white"
+                    >
+                      <option value="auto">Auto</option>
+                      <option value="hd">HD</option>
+                      <option value="sd">Data saver</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="text-sm text-gray-300">Data saver on mobile</p>
+                      <p className="text-xs text-gray-500">
+                        Prefer lower resolutions when streaming on mobile data.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setDataSaver((v) => !v)}
+                      className={`w-12 h-7 rounded-full border transition-colors flex items-center px-1 ${
+                        dataSaver
+                          ? "bg-[#fd7e14] border-[#fd7e14] justify-end"
+                          : "bg-black/40 border-white/20 justify-start"
+                      }`}
+                    >
+                      <span className="w-4 h-4 rounded-full bg-white" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Notifications */}
+                <div className="grid gap-4 md:grid-cols-2 pt-2 border-t border-white/5 mt-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="text-sm text-gray-300">Email updates</p>
+                      <p className="text-xs text-gray-500">
+                        Receive recommendations and account updates.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEmailUpdates((v) => !v)}
+                      className={`w-12 h-7 rounded-full border transition-colors flex items-center px-1 ${
+                        emailUpdates
+                          ? "bg-[#fd7e14] border-[#fd7e14] justify-end"
+                          : "bg-black/40 border-white/20 justify-start"
+                      }`}
+                    >
+                      <span className="w-4 h-4 rounded-full bg-white" />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="text-sm text-gray-300">Product news</p>
+                      <p className="text-xs text-gray-500">
+                        Hear about new features and releases.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setProductNews((v) => !v)}
+                      className={`w-12 h-7 rounded-full border transition-colors flex items-center px-1 ${
+                        productNews
+                          ? "bg-[#fd7e14] border-[#fd7e14] justify-end"
+                          : "bg-black/40 border-white/20 justify-start"
+                      }`}
+                    >
+                      <span className="w-4 h-4 rounded-full bg-white" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-3">
+                  <button
+                    type="button"
+                    onClick={savePreferences}
+                    className="px-4 py-2 rounded-lg bg-[#fd7e14] hover:bg-[#ff9f4d] text-black font-semibold text-sm"
+                  >
+                    Save changes
+                  </button>
+                </div>
+              </section>
 
           </div>
         )}
