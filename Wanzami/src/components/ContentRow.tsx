@@ -52,6 +52,16 @@ export function ContentRow({ title, movies, onMovieClick, maxVisible }: ContentR
     if (!container) return;
 
     const recalc = () => {
+      const viewportWidth = typeof window !== "undefined" ? window.innerWidth : container.clientWidth;
+
+      // On mobile, use a fixed narrower card width so more cards are visible in the viewport.
+      if (viewportWidth < 768) {
+        setCardWidth(200);
+        setShowLeftArrow(container.scrollLeft > 0);
+        setShowRightArrow(container.scrollLeft < container.scrollWidth - container.clientWidth - 10);
+        return;
+      }
+
       const available = container.clientWidth - GAP_PX * (ITEMS_PER_VIEW - 1);
       const target = available / ITEMS_PER_VIEW;
       const clamped = Math.max(300, Math.min(420, target));
