@@ -220,7 +220,6 @@ export function CustomMediaPlayer({
   const unmounted = useRef(false);
   const endCardShownRef = useRef(false);
   const hlsRef = useRef<Hls | null>(null);
-  const hlsRef = useRef<Hls | null>(null);
   const [showEndCard, setShowEndCard] = useState(false);
   const [endCardSentiment, setEndCardSentiment] = useState<"UP" | "DOWN" | null>(null);
   const [endCardLoading, setEndCardLoading] = useState(false);
