@@ -34,6 +34,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
   const [related, setRelated] = useState<RelatedItem[]>([]);
   const [liked, setLiked] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
+  const [showTrailerModal, setShowTrailerModal] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -270,6 +271,16 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
                 </button>
               )}
 
+              {movie?.trailerUrl && (
+                <button
+                  onClick={() => setShowTrailerModal(true)}
+                  className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-5 md:px-6 py-3 md:py-4 rounded-xl backdrop-blur-md border border-white/20 transition-colors"
+                >
+                  <Play className="w-5 h-5 md:w-6 md:h-6" />
+                  <span className="text-sm md:text-base">Watch Trailer</span>
+                </button>
+              )}
+
               <button
                 onClick={() => {
                   const targetId = movie?.backendId ?? movie?.id;
@@ -304,6 +315,26 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
           </div>
         </div>
       </div>
+
+      {showTrailerModal && movie?.trailerUrl && (
+        <div className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center px-4">
+          <div className="relative w-full max-w-4xl aspect-video">
+            <button
+              onClick={() => setShowTrailerModal(false)}
+              className="absolute -top-10 right-0 w-10 h-10 bg-black/80 hover:bg-black rounded-full flex items-center justify-center text-white border border-white/30"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <video
+              className="w-full h-full rounded-xl bg-black object-contain"
+              src={movie.trailerUrl}
+              controls
+              autoPlay
+              playsInline
+            />
+          </div>
+        </div>
+      )}
 
       {/* Details section */}
       <div className="px-4 md:px-12 lg:px-16 py-8 md:py-12">
