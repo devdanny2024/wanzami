@@ -39,6 +39,8 @@ export const config = {
     baseUrl: process.env.FLW_BASE_URL ?? "https://api.flutterwave.com",
     webhookSecret: process.env.FLW_WEBHOOK_SECRET ?? "",
   },
+  // Optional CDN base for media playback (e.g., CloudFront): https://cdn.yourdomain.com
+  mediaCdnBase: process.env.MEDIA_CDN_BASE?.replace(/\/+$/, ""),
   // PPV access should last at least 30 days; allow higher via env but never lower.
   ppvAccessDays: Math.max(numberOrDefault(process.env.PPV_ACCESS_DAYS, 30), 30),
   supportEmail: process.env.SUPPORT_EMAIL ?? "support@wanzami.com",

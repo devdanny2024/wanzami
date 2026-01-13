@@ -144,6 +144,10 @@ const resolvePlaybackUrl = async (url?: string | null) => {
   if (!url) return url;
   const key = extractS3KeyFromUrl(url);
   if (key) {
+    // Prefer CDN if configured; otherwise presign S3
+    if (config.mediaCdnBase) {
+      return `${config.mediaCdnBase}/${key}`;
+    }
     try {
       return await presignGetObject(key, 3600);
     } catch (err) {
