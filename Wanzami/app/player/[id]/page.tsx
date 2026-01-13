@@ -76,7 +76,10 @@ const buildSourcesFromAssets = (
     return sorted.map((a) => ({
       src: a.url as string,
       label: labelForRendition(a.rendition),
-      type: 'video/mp4',
+      type:
+        (a.url as string).toLowerCase().endsWith('.m3u8')
+          ? 'application/x-mpegURL'
+          : 'video/mp4',
     }));
   }
 
@@ -133,36 +136,16 @@ export default function PlayerPage({ params }: { params: { id: string } }) {
       try {
         const detail = await fetchTitleWithEpisodes(id, country ?? undefined);
         if (!cancelled) {
-          setTitle(detail ?? null);
-          try {
-            const access = await fetchPpvAccess({
-              titleId: id,
-              accessToken: authInfo.token,
-              profileId: authInfo.profileId,
-              country,
-            });
-            if (!cancelled && access?.isPpv && !access?.hasAccess) {
-              // Record violation with record=true
-              if (authInfo.token) {
-                void fetch(
-                  `${process.env.NEXT_PUBLIC_API_BASE ?? process.env.AUTH_SERVICE_URL ?? 'https://api.carlylehub.org/api'}/ppv/access/${id}?record=true`,
-                  {
-                    headers: { Authorization: `Bearer ${authInfo.token}` },
-                  }
-                ).catch(() => {});
-              }
-              setPpvDenied(true);
-              setBlocked(true);
-              setError('Purchase required to access this title.');
-              setTitle(null);
-              return;
-            } else {
-              setPpvDenied(false);
-              setBlocked(false);
-            }
-          } catch (err: any) {
-            console.warn('PPV access check failed', err?.message ?? err);
+          if (detail?.isPpv && detail.ppvStreamAllowed === false) {
+            setPpvDenied(true);
+            setBlocked(true);
+            setError('Purchase required to access this title.');
+            setTitle(null);
+            return;
           }
+          setPpvDenied(false);
+          setBlocked(false);
+          setTitle(detail ?? null);
         }
       } catch (err: any) {
         if (!cancelled) {

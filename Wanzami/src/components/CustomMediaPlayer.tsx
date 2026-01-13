@@ -19,6 +19,7 @@ import {
   PictureInPicture,
 } from "lucide-react";
 import { fetchBecauseYouWatched, postEvents } from "@/lib/contentClient";
+import Hls from "hls.js";
 import { hasRatedEndcard, markRatedEndcard } from "@/lib/endCardCache";
 
 type MediaSource = {
@@ -142,7 +143,9 @@ export function CustomMediaPlayer({
             : a.rendition === "R360"
             ? "360p"
             : a.rendition ?? "Source",
-        type: "video/mp4",
+        type: (a.url as string).toLowerCase().endsWith(".m3u8")
+          ? "application/x-mpegURL"
+          : "video/mp4",
       }));
   }, []);
 
@@ -216,6 +219,7 @@ export function CustomMediaPlayer({
   const hasSentStart = useRef(false);
   const unmounted = useRef(false);
   const endCardShownRef = useRef(false);
+  const hlsRef = useRef<any>(null);
   const [showEndCard, setShowEndCard] = useState(false);
   const [endCardSentiment, setEndCardSentiment] = useState<"UP" | "DOWN" | null>(null);
   const [endCardLoading, setEndCardLoading] = useState(false);
@@ -418,13 +422,59 @@ export function CustomMediaPlayer({
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !currentSrc?.src) return;
-    video.src = currentEpisode?.streamUrl || currentSrc.src;
-    video.load();
+    const src = currentEpisode?.streamUrl || currentSrc?.src;
+    if (!video || !src) return;
+
+    const isHlsSource = (source: string, type?: string) => {
+      const lower = source.toLowerCase();
+      if (lower.endsWith(".m3u8")) return true;
+      if (type && type.toLowerCase().includes("mpegurl")) return true;
+      return false;
+    };
+
+    const hlsLike = isHlsSource(src, currentSrc?.type);
+
+    const detachHls = () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+    };
+
+    if (hlsLike && typeof window !== "undefined") {
+      if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        detachHls();
+        video.src = src;
+        video.load();
+      } else if (Hls.isSupported()) {
+        if (!hlsRef.current) {
+          hlsRef.current = new Hls({ enableWorker: true });
+        } else {
+          hlsRef.current.detachMedia();
+        }
+        hlsRef.current.loadSource(src);
+        hlsRef.current.attachMedia(video);
+      } else {
+        detachHls();
+        video.src = src;
+        video.load();
+      }
+    } else {
+      detachHls();
+      video.src = src;
+      video.load();
+    }
+
     if (shouldAutoplay) {
       void video.play().catch(() => undefined);
     }
-  }, [currentSrc?.src, currentEpisode?.streamUrl, shouldAutoplay]);
+
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.detachMedia();
+      }
+    };
+  }, [currentSrc?.src, currentSrc?.type, currentEpisode?.streamUrl, shouldAutoplay]);
 
   useEffect(() => {
     const video = videoRef.current;

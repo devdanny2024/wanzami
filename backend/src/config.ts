@@ -39,5 +39,7 @@ export const config = {
     baseUrl: process.env.FLW_BASE_URL ?? "https://api.flutterwave.com",
     webhookSecret: process.env.FLW_WEBHOOK_SECRET ?? "",
   },
-  ppvAccessDays: numberOrDefault(process.env.PPV_ACCESS_DAYS, 30),
+  // PPV access should last at least 30 days; allow higher via env but never lower.
+  ppvAccessDays: Math.max(numberOrDefault(process.env.PPV_ACCESS_DAYS, 30), 30),
+  supportEmail: process.env.SUPPORT_EMAIL ?? "support@wanzami.com",
 };

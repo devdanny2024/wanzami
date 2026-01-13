@@ -7,6 +7,7 @@ import { resolveCountry } from "../utils/country.js";
 import { auditLog } from "../utils/audit.js";
 import { AssetStatus } from "@prisma/client";
 import { DeleteObjectsCommand, S3Client } from "@aws-sdk/client-s3";
+import { verifyAccessToken } from "../auth/jwt.js";
 
 const kidSafeRatings = ["G", "PG", "TV-Y", "TV-G", "TV-PG", "PG-13"];
 const teenSafeRatings = ["PG-13", "TV-14"];
@@ -204,6 +205,18 @@ export const getTitleWithEpisodes = async (req: Request, res: Response) => {
   const kidMode = parseKidMode(req);
   const age = deriveAge(req);
 
+  let userId: bigint | null = null;
+  try {
+    const header = req.headers.authorization;
+    if (header?.startsWith("Bearer ")) {
+      const token = header.replace("Bearer ", "");
+      const payload = verifyAccessToken(token);
+      userId = payload.userId;
+    }
+  } catch {
+    userId = null;
+  }
+
   const title = await prisma.title.findFirst({
     where: {
       id: titleId,
@@ -241,13 +254,36 @@ export const getTitleWithEpisodes = async (req: Request, res: Response) => {
     return res.status(404).json({ message: "Title not found" });
   }
 
+  let ppvStreamAllowed = true;
+  if (title.isPpv) {
+    ppvStreamAllowed = false;
+
+    if (userId) {
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      if (user && !user.ppvBanned) {
+        const active = await prisma.ppvPurchase.findFirst({
+          where: {
+            userId,
+            titleId,
+            status: "SUCCESS",
+            accessExpiresAt: { gt: new Date() },
+          },
+          orderBy: { createdAt: "desc" },
+        });
+        if (active) {
+          ppvStreamAllowed = true;
+        }
+      }
+    }
+  }
+
   const trailerUrl = await resolvePlaybackUrl(title.trailerUrl);
 
   const assetVersions = await Promise.all(
     title.assetVersions.map(async (a) => ({
       id: a.id.toString(),
       rendition: a.rendition,
-      url: await resolvePlaybackUrl(a.url),
+      url: ppvStreamAllowed ? await resolvePlaybackUrl(a.url) : null,
       sizeBytes: a.sizeBytes ? Number(a.sizeBytes) : undefined,
       durationSec: a.durationSec ?? undefined,
       status: a.status,
@@ -274,7 +310,7 @@ export const getTitleWithEpisodes = async (req: Request, res: Response) => {
         (e as any).assetVersions?.map(async (a: any) => ({
           id: a.id.toString(),
           rendition: a.rendition,
-          url: await resolvePlaybackUrl(a.url),
+          url: ppvStreamAllowed ? await resolvePlaybackUrl(a.url) : null,
           sizeBytes: a.sizeBytes ? Number(a.sizeBytes) : undefined,
           durationSec: a.durationSec ?? undefined,
           status: a.status,
@@ -309,6 +345,7 @@ export const getTitleWithEpisodes = async (req: Request, res: Response) => {
       updatedAt: title.updatedAt,
       releaseYear: title.releaseDate ? title.releaseDate.getUTCFullYear() : undefined,
       isPpv: title.isPpv,
+      ppvStreamAllowed,
       ppvPriceNaira: title.ppvPriceNaira,
       ppvCurrency: title.ppvCurrency,
       ppvDescription: title.ppvDescription,

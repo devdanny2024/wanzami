@@ -171,6 +171,7 @@ export function EmailService() {
   const [lastSend, setLastSend] = useState<string | null>(null);
   const [batchSize, setBatchSize] = useState<number>(50);
   const [startIndex, setStartIndex] = useState<number>(0);
+  const [loadingAudience, setLoadingAudience] = useState(false);
   const token = useMemo(() => (typeof window !== "undefined" ? localStorage.getItem("accessToken") : null), []);
 
   const validTestEmails = useMemo(() => parseEmailList(testEmailsInput), [testEmailsInput]);
@@ -325,6 +326,43 @@ export function EmailService() {
     }
   };
 
+  const loadAllRegisteredUsers = async () => {
+    setLoadingAudience(true);
+    try {
+      const res = await fetch("/api/admin/email/audience", {
+        method: "GET",
+        headers: { "Content-Type": "application/json", ...authHeaders },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data?.message ?? "Failed to load registered users");
+        return;
+      }
+      const list = (data?.recipients as Recipient[] | undefined) ?? [];
+      if (!list.length) {
+        toast.info("No registered users found to add.");
+        return;
+      }
+      setRecipients((prev) => {
+        const existing = new Map<string, Recipient>();
+        for (const r of prev) {
+          existing.set(sanitizeEmail(r.email), r);
+        }
+        for (const r of list) {
+          const email = sanitizeEmail(r.email);
+          if (!isValidEmail(email)) continue;
+          existing.set(email, { email, name: r.name });
+        }
+        return Array.from(existing.values());
+      });
+      toast.success(`Loaded ${list.length} registered users into the audience.`);
+    } catch (err: any) {
+      toast.error(err?.message ?? "Failed to load registered users");
+    } finally {
+      setLoadingAudience(false);
+    }
+  };
+
   const loadFilmmakerTemplate = () => {
     setTemplateSubject(FILMMAKER_TEMPLATE_SUBJECT);
     setTemplateBody(FILMMAKER_TEMPLATE_BODY);
@@ -434,7 +472,7 @@ export function EmailService() {
   }, [templateBody, sampleRecipient]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 email-service-root">
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl text-white">Email Service</h1>
         <p className="text-neutral-400">
@@ -523,8 +561,19 @@ export function EmailService() {
               />
             </label>
 
-            <div className="space-y-2">
-              <label className="text-sm text-neutral-300">Quick add emails</label>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-sm text-neutral-300">Quick add emails</label>
+                  <Button
+                    size="sm"
+                    className="bg-[#fd7e14] hover:bg-[#ff9940] text-white flex items-center gap-2 border-none"
+                    onClick={() => void loadAllRegisteredUsers()}
+                    disabled={loadingAudience}
+                  >
+                    <Users className="w-4 h-4" />
+                    {loadingAudience ? "Loading users..." : "Add all registered users"}
+                  </Button>
+                </div>
               <Textarea
                 value={manualList}
                 onChange={(e) => setManualList(e.target.value)}

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { 
   LayoutDashboard, 
   Film, 
@@ -12,6 +13,7 @@ import {
   ShieldQuestion,
   Bug,
   Mail,
+  MessageCircle,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -28,6 +30,7 @@ const navItems = [
   { id: 'users', label: 'Users', icon: Users },
   { id: 'team', label: 'Team', icon: ShieldQuestion },
   { id: 'email', label: 'Email Service', icon: Mail },
+  { id: 'support', label: 'Support', icon: MessageCircle },
   { id: 'payments', label: 'Payments', icon: Wallet },
   { id: 'invoices', label: 'Invoices', icon: CreditCard },
   { id: 'moderation', label: 'Moderation', icon: Shield },
@@ -37,6 +40,29 @@ const navItems = [
 ];
 
 export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
+  const [openCount, setOpenCount] = useState<number>(0);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem('wanzami-support-open-count');
+      if (raw) {
+        const parsed = Number(raw);
+        if (!Number.isNaN(parsed)) setOpenCount(parsed);
+      }
+    } catch {
+      // ignore
+    }
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'wanzami-support-open-count' && e.newValue != null) {
+        const parsed = Number(e.newValue);
+        if (!Number.isNaN(parsed)) setOpenCount(parsed);
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
   return (
     <div className="w-64 bg-neutral-900 border-r border-neutral-800 flex flex-col">
       {/* Logo */}
@@ -71,7 +97,14 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
               `}
             >
               <Icon className="w-5 h-5" />
-              <span>{item.label}</span>
+              <span className="flex-1 flex items-center justify-between">
+                <span>{item.label}</span>
+                {item.id === 'support' && openCount > 0 && (
+                  <span className="ml-2 inline-flex items-center justify-center rounded-full bg-[#fd7e14] text-[10px] px-2 py-0.5 text-white">
+                    {openCount}
+                  </span>
+                )}
+              </span>
             </button>
           );
         })}

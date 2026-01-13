@@ -18,9 +18,18 @@ export function Footer() {
               <ul className="space-y-3">
                 {links.map((link) => (
                   <li key={link}>
-                    <button className="text-gray-500 hover:text-white text-sm transition-colors">
-                      {link}
-                    </button>
+                    {link === 'Contact' ? (
+                      <a
+                        href="/contact"
+                        className="text-gray-500 hover:text-white text-sm transition-colors"
+                      >
+                        Contact
+                      </a>
+                    ) : (
+                      <button className="text-gray-500 hover:text-white text-sm transition-colors">
+                        {link}
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>

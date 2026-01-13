@@ -4,7 +4,7 @@ import { Play, Plus, Share2, ThumbsUp, X, Lock } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
-import { MovieData } from './MovieCard';
+import { MovieCard, MovieData } from './MovieCard';
 import { isInMyList, toggleMyList } from '@/lib/myList';
 import { fetchTitles, type Title } from '@/lib/contentClient';
 
@@ -34,6 +34,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
   const [related, setRelated] = useState<RelatedItem[]>([]);
   const [liked, setLiked] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
+  const [showTrailerModal, setShowTrailerModal] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -125,7 +126,11 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
     return badges;
   }, [movie]);
 
+  const [isSharing, setIsSharing] = useState(false);
+
   const handleShare = async () => {
+    if (isSharing) return;
+    setIsSharing(true);
     setShareError(null);
     const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
     const title = movie?.title ?? 'Wanzami title';
@@ -137,6 +142,8 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
       }
     } catch (err: any) {
       setShareError(err?.message ?? 'Unable to share right now.');
+    } finally {
+      setIsSharing(false);
     }
   };
 
@@ -264,6 +271,16 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
                 </button>
               )}
 
+              {movie?.trailerUrl && (
+                <button
+                  onClick={() => setShowTrailerModal(true)}
+                  className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-5 md:px-6 py-3 md:py-4 rounded-xl backdrop-blur-md border border-white/20 transition-colors"
+                >
+                  <Play className="w-5 h-5 md:w-6 md:h-6" />
+                  <span className="text-sm md:text-base">Watch Trailer</span>
+                </button>
+              )}
+
               <button
                 onClick={() => {
                   const targetId = movie?.backendId ?? movie?.id;
@@ -298,6 +315,26 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
           </div>
         </div>
       </div>
+
+      {showTrailerModal && movie?.trailerUrl && (
+        <div className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center px-4">
+          <div className="relative w-full max-w-4xl aspect-video">
+            <button
+              onClick={() => setShowTrailerModal(false)}
+              className="absolute -top-10 right-0 w-10 h-10 bg-black/80 hover:bg-black rounded-full flex items-center justify-center text-white border border-white/30"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <video
+              className="w-full h-full rounded-xl bg-black object-contain"
+              src={movie.trailerUrl}
+              controls
+              autoPlay
+              playsInline
+            />
+          </div>
+        </div>
+      )}
 
       {/* Details section */}
       <div className="px-4 md:px-12 lg:px-16 py-8 md:py-12">
@@ -389,7 +426,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
           {relatedItems.length > 0 && (
             <div>
               <h2 className="text-white mb-6 text-xl md:text-2xl">More Like This</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4 max-w-6xl mx-auto">
+              <div className="flex gap-3 md:gap-4 overflow-x-auto scrollbar-hide px-1 max-w-6xl mx-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 {relatedItems.slice(0, 5).map((item, idx) => {
                   const itemId = (item as any).backendId || item.id || idx;
                   const title = (item as any).title || (item as any).name || 'Title';
@@ -404,7 +441,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
                     <motion.div
                       key={itemId}
                       className="group cursor-pointer rounded-xl overflow-hidden border border-gray-800 bg-white/5 hover:border-[#fd7e14]/60 transition-all relative h-full flex flex-col"
-                      style={{ aspectRatio: '16 / 9' }}
+                      style={{ aspectRatio: '16 / 9', width: '220px', minWidth: '220px' }}
                       whileHover={{ scale: 1.01 }}
                       onClick={() => {
                         const targetId = (item as any).backendId || (item as any).id || itemId;
@@ -416,7 +453,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
                       <div className="relative w-full h-full">
                         <ImageWithFallback src={thumb} alt={title} className="w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <button className="absolute bottom-3 left-3 bg-[#fd7e14] hover:bg-[#e86f0f] text-white px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button className="absolute bottom-3 left-3 bg-[#fd7e14] hover:bg-[#e86f0f] text-white px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-2">
                           <Play className="w-4 h-4 fill-current" />
                           Play
                         </button>

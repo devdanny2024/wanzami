@@ -6,7 +6,7 @@ import { prisma } from "../prisma.js";
 import { config } from "../config.js";
 import { AssetStatus, UploadStatus, Rendition } from "@prisma/client";
 import { downloadToFile, uploadFile } from "../upload/s3.js";
-import { mkdtemp, rm, stat } from "fs/promises";
+import { mkdtemp, rm, readdir, stat } from "fs/promises";
 import path from "path";
 import os from "os";
 
@@ -58,8 +58,20 @@ const renditionToHeight = (r: Rendition) => {
   }
 };
 
-async function transcodeToHeight(src: string, dest: string, height: number) {
-  return new Promise<void>((resolve, reject) => {
+async function transcodeToHlsRendition(
+  src: string,
+  tmpDir: string,
+  uploadJobId: string | number,
+  rendition: Rendition,
+  height: number,
+  durationSec: number,
+  titleId: bigint | null,
+  episodeId: bigint | null
+) {
+  const playlistPath = path.join(tmpDir, `${rendition}.m3u8`);
+  const segmentPattern = path.join(tmpDir, `${rendition}_%03d.ts`);
+
+  await new Promise<void>((resolve, reject) => {
     ffmpeg(src)
       .outputOptions([
         "-c:v libx264",
@@ -67,11 +79,46 @@ async function transcodeToHeight(src: string, dest: string, height: number) {
         "-preset veryfast",
         "-c:a aac",
         "-b:a 128k",
+        "-f hls",
+        "-hls_time 6",
+        "-hls_playlist_type vod",
+        "-hls_segment_type mpegts",
+        `-hls_segment_filename ${segmentPattern}`,
       ])
-      .output(dest)
+      .output(playlistPath)
       .on("end", () => resolve())
       .on("error", (err) => reject(err))
       .run();
+  });
+
+  // Upload playlist + segments to S3 under vod/{uploadJobId}/
+  const files = await readdir(tmpDir);
+  let totalSize = 0;
+  for (const file of files) {
+    if (!file.startsWith(rendition)) continue;
+    const fullPath = path.join(tmpDir, file);
+    const key = `vod/${uploadJobId}/${file}`;
+    const contentType = file.endsWith(".m3u8")
+      ? "application/vnd.apple.mpegurl"
+      : "video/MP2T";
+    const uploaded = await uploadFile(key, fullPath, contentType);
+    totalSize += uploaded.size ?? (await stat(fullPath)).size;
+  }
+
+  const playlistKey = `vod/${uploadJobId}/${rendition}.m3u8`;
+
+  const where: any = { rendition };
+  if (titleId != null) where.titleId = titleId;
+  if (episodeId != null) where.episodeId = episodeId;
+
+  await prisma.assetVersion.updateMany({
+    where,
+    data: {
+      status: AssetStatus.READY,
+      url: `s3://${config.s3.bucket ?? ""}/${playlistKey}`,
+      sizeBytes: BigInt(totalSize),
+      durationSec,
+    },
   });
 }
 
@@ -98,26 +145,17 @@ const worker = new Worker<TranscodeJob>(
       }
 
       for (const rendition of data.renditions) {
-        const outPath = path.join(tmpDir, `${rendition}.mp4`);
         const height = renditionToHeight(rendition);
-        await transcodeToHeight(srcPath, outPath, height);
-        const s3Key = `vod/${data.uploadJobId}/${rendition}.mp4`;
-        const uploaded = await uploadFile(s3Key, outPath, "video/mp4");
-        const size = uploaded.size ?? (await stat(outPath)).size;
-
-        await prisma.assetVersion.updateMany({
-          where: {
-            titleId,
-            episodeId,
-            rendition,
-          },
-          data: {
-            status: AssetStatus.READY,
-            url: `s3://${config.s3.bucket ?? ""}/${s3Key}`,
-            sizeBytes: BigInt(size),
-            durationSec,
-          },
-        });
+        await transcodeToHlsRendition(
+          srcPath,
+          tmpDir,
+          data.uploadJobId,
+          rendition,
+          height,
+          durationSec,
+          titleId,
+          episodeId
+        );
       }
 
       await prisma.uploadJob.update({

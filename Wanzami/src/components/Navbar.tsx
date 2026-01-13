@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Search, User, Menu, X, LogIn, Power } from 'lucide-react';
+import { Search, User, Menu, X, LogIn } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import wanzamiLogo from '../assets/logo.png';
 
@@ -34,8 +34,8 @@ export function Navbar({
     { label: 'Movies', page: 'movies', href: '/movies' },
     { label: 'Series', page: 'series', href: '/series' },
     { label: 'My Movies', page: 'mymovies', href: '/mymovies' },
-    { label: 'Kids', page: 'kids', href: '/kids' },
     { label: 'My List', page: 'mylist', href: '/mylist' },
+    { label: 'Help', page: 'contact', href: '/contact' },
   ];
 
   return (
@@ -51,7 +51,7 @@ export function Navbar({
         }`}
       >
         <div className="max-w-[95%] mx-auto">
-          <div className={`relative flex items-center justify-between px-6 md:px-8 py-4 transition-all duration-500 ${
+          <div className={`relative flex items-center justify-between px-4 md:px-8 py-4 transition-all duration-500 ${
             isScrolled
               ? 'bg-[#0b0b0c]/95 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/50'
               : 'bg-white/5 backdrop-blur-md border border-white/5'
@@ -158,17 +158,6 @@ export function Navbar({
                 Settings
               </a>
 
-              {/* Desktop Logout (icon) */}
-              {isAuthenticated && onLogout && (
-                <button
-                  onClick={onLogout}
-                  className="hidden md:flex w-10 h-10 items-center justify-center bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all group"
-                  aria-label="Logout"
-                >
-                  <Power className="w-5 h-5 text-white group-hover:text-[#fd7e14] transition-colors" />
-                </button>
-              )}
-
               {/* Mobile menu button */}
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -182,86 +171,34 @@ export function Navbar({
               </button>
             </div>
           </div>
-        </div>
-      </motion.nav>
 
-      {/* Mobile Menu */}
-      <AnimatePresence>
-        {isMobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
-            className="fixed top-[88px] left-4 right-4 z-[60] lg:hidden"
-          >
-            <div className="bg-[#0b0b0c]/98 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
-              <div className="p-4 space-y-1">
-                {navItems.map((item) => {
-                  const isActive = currentPage === item.page;
-                  
-                  return (
-                    <Link
-                      key={item.page}
-                      href={item.href}
-                      onClick={() => {
-                        onNavigate(item.page);
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
-                        isActive
-                          ? 'bg-[#fd7e14]/20 border border-[#fd7e14] text-white'
-                          : 'text-gray-400 hover:bg-white/5 hover:text-white'
-                      }`}
-                    >
-                      {item.label}
-                    </Link>
-                  );
-                })}
-                
-                <hr className="border-white/10 my-2" />
-                
-                <a
-                  href="/settings"
-                  className="block w-full text-left px-4 py-3 rounded-xl text-gray-400 hover:bg-white/5 hover:text-white transition-all"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Settings
-                </a>
-                {!isAuthenticated && (
-                  <a
-                    href="/login"
-                    className="w-full text-left px-4 py-3 rounded-xl text-gray-400 hover:bg-white/5 hover:text-white transition-all inline-flex items-center gap-2"
-                  >
-                    <LogIn className="w-4 h-4" />
-                    Login
-                  </a>
-                )}
-                
-                {isAuthenticated && onLogout && (
+          {/* Mobile navigation pills, toggled by hamburger */}
+          {isMobileMenuOpen && (
+            <div className="mt-3 mb-1 flex lg:hidden items-center gap-2 overflow-x-auto scrollbar-hide px-1">
+              {navItems.map((item) => {
+                const isActive = currentPage === item.page;
+                return (
                   <button
+                    key={item.page}
+                    type="button"
                     onClick={() => {
-                      onLogout?.();
+                      onNavigate(item.page);
                       setIsMobileMenuOpen(false);
                     }}
-                    className="w-full text-left px-4 py-3 rounded-xl text-gray-400 hover:bg-white/5 hover:text-white transition-all inline-flex items-center gap-2"
+                    className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                      isActive
+                        ? "bg-[#fd7e14] text-white"
+                        : "bg-white/5 text-gray-300 border border-white/10"
+                    }`}
                   >
-                    <Power className="w-4 h-4" />
-                    Sign Out
+                    {item.label}
                   </button>
-                )}
-                <a
-                  href="/settings"
-                  className="block w-full text-left px-4 py-3 rounded-xl text-gray-400 hover:bg-white/5 hover:text-white transition-all"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Settings
-                </a>
-              </div>
+                );
+              })}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </div>
+      </motion.nav>
     </>
   );
 }

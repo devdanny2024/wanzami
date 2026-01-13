@@ -17,6 +17,7 @@ import { UploadDock } from './components/UploadDock';
 import { UploadQueueProvider, useUploadQueue } from './context/UploadQueueProvider';
 import { Logs } from './components/Logs';
 import { EmailService } from './components/EmailService';
+import { SupportTickets } from './components/SupportTickets';
 
 export default function App() {
   return (
@@ -136,6 +137,8 @@ function AppContent() {
         return <Logs />;
       case 'email':
         return <EmailService />;
+      case 'support':
+        return <SupportTickets />;
       default:
         return <Dashboard />;
     }

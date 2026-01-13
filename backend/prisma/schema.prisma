@@ -44,6 +44,8 @@ model User {
   auditLogs AdminAuditLog[]
   ppvPurchases PpvPurchase[]
   ppvViolations PpvViolation[]
+  supportTickets SupportTicket[]
+  supportTicketMessages SupportTicketMessage[]
 }
 
 model Session {
@@ -190,6 +192,7 @@ model Title {
   genres      String[]  @default([])
   cast        String[]  @default([])
   crew        String[]  @default([])
+  castMeta    Json?
   language    String?   @default("en")
   maturityRating String?
   runtimeMinutes Int?
@@ -462,4 +465,39 @@ model PpvViolation {
   createdAt DateTime @default(now())
 
   @@index([userId, titleId])
+}
+
+enum SupportTicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+model SupportTicket {
+  id          BigInt              @id @default(autoincrement())
+  user        User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId      BigInt?
+  email       String
+  subject     String
+  message     String
+  status      SupportTicketStatus @default(OPEN)
+  priority    String              @default("normal")
+  source      String              @default("web")
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  lastReplyAt DateTime?
+
+  messages SupportTicketMessage[]
+}
+
+model SupportTicketMessage {
+  id        BigInt        @id @default(autoincrement())
+  ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticketId  BigInt
+  user      User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId    BigInt?
+  isAdmin   Boolean       @default(false)
+  message   String
+  createdAt DateTime      @default(now())
 }

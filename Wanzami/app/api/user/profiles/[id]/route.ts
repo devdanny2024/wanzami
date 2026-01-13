@@ -12,10 +12,9 @@ const forwardHeaders = (req: NextRequest) => {
   return headers;
 };
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+type Params = { params: { id: string } };
+
+export async function PATCH(req: NextRequest, { params }: Params) {
   const body = await req.json();
   const result = await authFetch(`/user/profiles/${params.id}`, {
     method: "PATCH",
@@ -25,13 +24,11 @@ export async function PATCH(
   return NextResponse.json(result.data, { status: result.status });
 }
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(req: NextRequest, { params }: Params) {
   const result = await authFetch(`/user/profiles/${params.id}`, {
     method: "DELETE",
     headers: forwardHeaders(req),
   });
   return NextResponse.json(result.data, { status: result.status });
 }
+

@@ -1877,12 +1877,12 @@
   }
 
   .pt-12 {
-    padding-top: calc(var(--spacing) * 12);
-  }
-
+      padding-top: calc(var(--spacing) * 12);
+    }
+  
   .pt-16 {
-    padding-top: calc(var(--spacing) * 16);
-  }
+      padding-top: calc(var(--spacing) * 45);
+    }
 
   .pt-24 {
     padding-top: calc(var(--spacing) * 24);
@@ -2851,8 +2851,8 @@
 
   @media (width >= 48rem) {
     .md\:pt-32 {
-      padding-top: calc(var(--spacing) * 32);
-    }
+        padding-top: calc(var(--spacing) * 40);
+      }
   }
 
   @media (width >= 48rem) {
