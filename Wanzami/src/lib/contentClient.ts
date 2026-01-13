@@ -8,6 +8,7 @@ export type Title = {
   name: string;
   type: "MOVIE" | "SERIES";
   isPpv?: boolean;
+  ppvStreamAllowed?: boolean;
   ppvPriceNaira?: number | null;
   ppvCurrency?: string | null;
   ppvDescription?: string | null;

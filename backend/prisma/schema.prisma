@@ -192,6 +192,7 @@ model Title {
   genres      String[]  @default([])
   cast        String[]  @default([])
   crew        String[]  @default([])
+  castMeta    Json?
   language    String?   @default("en")
   maturityRating String?
   runtimeMinutes Int?
