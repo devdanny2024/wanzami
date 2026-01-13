@@ -78,7 +78,11 @@ export default function TitlePage({ params }: { params: { id: string } }) {
       setLoading(true);
       setError(null);
       try {
-        const detail = await fetchTitleWithEpisodes(id, country ?? undefined);
+        const detail = await fetchTitleWithEpisodes(id, {
+          country: country ?? undefined,
+          accessToken,
+          profileId,
+        });
         if (!cancelled) {
           setTitle(detail ?? null);
           if (detail) {

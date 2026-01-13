@@ -134,7 +134,11 @@ export default function PlayerPage({ params }: { params: { id: string } }) {
       setLoading(true);
       setError(null);
       try {
-        const detail = await fetchTitleWithEpisodes(id, country ?? undefined);
+        const detail = await fetchTitleWithEpisodes(id, {
+          country: country ?? undefined,
+          accessToken: authInfo.token,
+          profileId: authInfo.profileId,
+        });
         if (!cancelled) {
           if (detail?.isPpv && detail.ppvStreamAllowed === false) {
             setPpvDenied(true);

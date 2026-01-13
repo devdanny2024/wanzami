@@ -85,10 +85,21 @@ export async function fetchTitles(country?: string): Promise<Title[]> {
   return (data?.titles as Title[]) ?? [];
 }
 
-export async function fetchTitleWithEpisodes(id: string, country?: string) {
-  const query = country ? `?country=${encodeURIComponent(country)}` : "";
+export async function fetchTitleWithEpisodes(
+  id: string,
+  opts?: { country?: string; accessToken?: string | null; profileId?: string | null }
+) {
+  const params = new URLSearchParams();
+  if (opts?.country) params.set("country", opts.country);
+  if (opts?.profileId) params.set("profileId", opts.profileId);
+  const query = params.toString() ? `?${params.toString()}` : "";
+
+  const headers: Record<string, string> = {};
+  if (opts?.accessToken) headers.Authorization = `Bearer ${opts.accessToken}`;
+
   const res = await fetchWithTimeout(`${API_BASE}/titles/${id}${query}`, {
     cache: "no-store",
+    headers: Object.keys(headers).length ? headers : undefined,
   });
   const data = await handleJsonResponse(res);
   return data?.title as Title & {
