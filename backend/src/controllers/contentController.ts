@@ -115,12 +115,35 @@ const maturityClause = (kidMode: boolean, age: number | null) => {
   return undefined;
 };
 
+const extractS3KeyFromUrl = (url?: string | null) => {
+  if (!url) return null;
+  try {
+    if (url.startsWith("s3://")) {
+      const withoutScheme = url.replace("s3://", "");
+      const [, ...rest] = withoutScheme.split("/");
+      const key = rest.join("/");
+      return key || null;
+    }
+    if (url.startsWith("http://") || url.startsWith("https://")) {
+      const u = new URL(url);
+      const path = u.pathname.startsWith("/") ? u.pathname.slice(1) : u.pathname;
+      if (config.s3.bucket && u.hostname.startsWith(`${config.s3.bucket}.`)) {
+        return decodeURIComponent(path);
+      }
+    }
+    if (!url.includes("://")) {
+      return url;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+};
+
 const resolvePlaybackUrl = async (url?: string | null) => {
   if (!url) return url;
-  if (url.startsWith("s3://")) {
-    const withoutScheme = url.replace("s3://", "");
-    const [, ...rest] = withoutScheme.split("/");
-    const key = rest.join("/");
+  const key = extractS3KeyFromUrl(url);
+  if (key) {
     try {
       return await presignGetObject(key, 3600);
     } catch (err) {
