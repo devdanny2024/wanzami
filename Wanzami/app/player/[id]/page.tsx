@@ -76,7 +76,10 @@ const buildSourcesFromAssets = (
     return sorted.map((a) => ({
       src: a.url as string,
       label: labelForRendition(a.rendition),
-      type: 'video/mp4',
+      type:
+        (a.url as string).toLowerCase().endsWith('.m3u8')
+          ? 'application/x-mpegURL'
+          : 'video/mp4',
     }));
   }
 
