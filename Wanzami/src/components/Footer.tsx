@@ -1,4 +1,4 @@
-import { Facebook, Instagram, Tiktok, Twitter, Youtube } from 'lucide-react';
+import { Facebook, Instagram, Music2, Twitter, Youtube } from 'lucide-react';
 
 export function Footer() {
   const footerLinks = {
@@ -8,7 +8,7 @@ export function Footer() {
   const socials = [
     { name: 'Instagram', href: 'https://www.instagram.com/wanzamientertainment?igsh=MXFlMmxmYWFtbXN3MA==', icon: Instagram },
     { name: 'Facebook', href: 'https://www.facebook.com/share/1AZQQfhusc/?mibextid=wwXIfr', icon: Facebook },
-    { name: 'TikTok', href: 'https://www.tiktok.com/@wanzami.entertainm?_r=1&_t=ZS-928mNACGiyG', icon: Tiktok },
+    { name: 'TikTok', href: 'https://www.tiktok.com/@wanzami.entertainm?_r=1&_t=ZS-928mNACGiyG', icon: Music2 },
     { name: 'Twitter', href: 'https://x.com/wanzamitv?s=21', icon: Twitter },
     { name: 'YouTube', href: 'https://youtube.com/@wanzami?si=xZAiaaUjKCe_peJB', icon: Youtube },
   ];
