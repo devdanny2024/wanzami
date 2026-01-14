@@ -88,6 +88,12 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
         },
         token ?? undefined
       );
+      if (init.uploadedBytes && task.file.size > 0) {
+        const pct = Math.round((init.uploadedBytes / task.file.size) * 100);
+        setTasks((prev) =>
+          prev.map((t) => (t.id === task.id ? { ...t, progress: Math.min(100, pct) } : t))
+        );
+      }
       setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, jobId: init.jobId } : t)));
       await uploadMultipart(task.file, init, token, (p) => {
         const elapsed = (performance.now() - startTime) / 1000;
@@ -209,7 +215,7 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
     }
     setTasks((prev) =>
       prev.map((t) =>
-        t.id === id ? { ...t, status: "pending", progress: 0, error: undefined } : t
+        t.id === id ? { ...t, status: "pending", error: undefined } : t
       )
     );
     setRunning(true);
@@ -283,7 +289,7 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
       setTasks((prev) =>
         prev.map((t) => {
           if (t.status !== "failed") return t;
-          return { ...t, status: "pending", progress: 0, error: undefined };
+          return { ...t, status: "pending", error: undefined };
         })
       );
       setRunning(true);

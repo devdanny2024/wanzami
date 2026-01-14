@@ -80,6 +80,7 @@ export function UploadDock({ tasks, onRemove, onClear, onRetry }: UploadDockProp
                     {(t.size / (1024 * 1024)).toFixed(1)} MB
                     {t.rendition ? ` - ${t.rendition}` : ""}
                     {t.assetKind ? ` - ${t.assetKind}` : ""} - {t.status}
+                    {typeof t.progress === "number" ? ` - ${t.progress}%` : ""}
                     {t.speedMbps ? ` - ${t.speedMbps.toFixed(1)} Mbps` : ""}
                     {t.error ? ` - ${t.error}` : ""}
                   </p>
