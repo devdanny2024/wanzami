@@ -1058,7 +1058,7 @@ export const deleteSeason = async (req: Request, res: Response) => {
 export const presignAsset = async (req: Request, res: Response) => {
   const { contentType, kind } = req.body as {
     contentType?: string;
-    kind?: "poster" | "thumbnail" | "trailer" | "previewSprite" | "previewVtt";
+    kind?: "poster" | "thumbnail" | "trailer";
   };
   const keyPrefix = kind ?? "asset";
   const key = `${keyPrefix}/${Date.now()}-${crypto.randomUUID()}`;

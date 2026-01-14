@@ -286,7 +286,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
               {movie?.trailerUrl && (
                 <button
                   onClick={() => setShowTrailerModal(true)}
-                  className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-5 md:px-6 py-3 md:py-4 rounded-xl backdrop-blur-md border border-white/20 transition-colors"
+                  className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-6 md:px-7 py-3 md:py-4 rounded-xl backdrop-blur-md border border-white/20 transition-colors"
                 >
                   <Play className="w-5 h-5 md:w-6 md:h-6" />
                   <span className="text-sm md:text-base">Watch Trailer</span>
