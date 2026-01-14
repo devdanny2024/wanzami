@@ -364,6 +364,7 @@ function AddEditMovieForm({
   movie?: MovieTitle;
   onQueueUpload: (id: number, file: File) => void;
 }) {
+  const { startAssetUpload } = useUploadQueue();
   const [title, setTitle] = useState(movie?.name ?? "");
   const [description, setDescription] = useState(movie?.description ?? "");
   const [genres, setGenres] = useState<string[]>([]);
