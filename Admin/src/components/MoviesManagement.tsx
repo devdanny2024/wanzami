@@ -53,7 +53,7 @@ export function MoviesManagement() {
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [movies, setMovies] = useState<MovieTitle[]>([]);
-  const { startUpload, tasks } = useUploadQueue();
+  const { startUpload, startAssetUpload, tasks } = useUploadQueue();
 
   const token = useMemo(() => (typeof window !== "undefined" ? localStorage.getItem("accessToken") : null), []);
 
@@ -410,61 +410,10 @@ function AddEditMovieForm({
     setPpvCurrency((movie as any)?.ppvCurrency ?? "NGN");
   }, [movie?.id]);
 
-  const uploadAsset = async (file: File, kind: "poster" | "thumbnail" | "trailer") => {
-    const res = await fetch("/api/admin/assets/presign", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: token ? `Bearer ${token}` : "",
-      },
-      body: JSON.stringify({ contentType: file.type || "application/octet-stream", kind }),
-    });
-    const data = await res.json();
-    if (!res.ok || !data.url || !data.key) {
-      throw new Error(data?.message || "Failed to presign upload");
-    }
-    const putRes = await fetch(data.url, {
-      method: "PUT",
-      headers: {
-        "Content-Type": file.type || "application/octet-stream",
-      },
-      body: file,
-    });
-    if (!putRes.ok) {
-      throw new Error("Upload failed");
-    }
-    return (data.publicUrl as string) || (data.key as string);
-  };
-
   const handleSave = async () => {
     try {
       setSaving(true);
       setError(null);
-      const assetUploads: { label: string; run: (targetId: number) => Promise<void> }[] = [];
-      const queueAssetUpload = (
-        file: File,
-        kind: "poster" | "thumbnail" | "trailer",
-        field: "posterUrl" | "thumbnailUrl" | "trailerUrl" | "shortTrailerUrl"
-      ) => {
-        assetUploads.push({
-          label: field,
-          run: async (targetId: number) => {
-            const uploadedUrl = await uploadAsset(file, kind);
-            const patchRes = await fetch(`/api/admin/titles/${targetId}`, {
-              method: "PATCH",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: token ? `Bearer ${token}` : "",
-              },
-              body: JSON.stringify({ [field]: uploadedUrl }),
-            });
-            const patchData = await patchRes.json();
-            if (!patchRes.ok) {
-              throw new Error(patchData?.message || `Failed to save ${field}`);
-            }
-          },
-        });
-      };
       if (!title.trim()) {
         setError("Title is required");
         setSaving(false);
@@ -482,11 +431,11 @@ function AddEditMovieForm({
         isOriginal,
         genres,
       };
-      if (posterFile) queueAssetUpload(posterFile, "poster", "posterUrl");
-      if (thumbFile) queueAssetUpload(thumbFile, "thumbnail", "thumbnailUrl");
-      if (shortTrailerFile) queueAssetUpload(shortTrailerFile, "trailer", "shortTrailerUrl");
-      if (trailerFile) queueAssetUpload(trailerFile, "trailer", "trailerUrl");
-      else if (trailerUrlText) payload.trailerUrl = trailerUrlText;
+      if (trailerFile) {
+        // Uploaded after save via queue.
+      } else if (trailerUrlText) {
+        payload.trailerUrl = trailerUrlText;
+      }
       if (!shortTrailerFile && shortTrailerUrlText) payload.shortTrailerUrl = shortTrailerUrlText;
 
       if (metaTitle) payload.metaTitle = metaTitle;
@@ -579,22 +528,27 @@ function AddEditMovieForm({
       }
       const newId = Number(data?.title?.id ?? movie?.id);
 
-      if (assetUploads.length && newId) {
-        toast.info("Artwork and trailer uploads are running in the background. We'll attach them automatically.");
-        void (async () => {
-          const results = await Promise.allSettled(assetUploads.map((task) => task.run(newId)));
-          const failures = results
-            .map((result, idx) => ({ result, label: assetUploads[idx].label }))
-            .filter((r) => r.result.status === "rejected") as Array<{
-            result: PromiseRejectedResult;
-            label: string;
-          }>;
-          if (failures.length) {
-            toast.error(`Some assets failed to upload: ${failures.map((f) => f.label).join(", ")}`);
-          } else {
-            toast.success("All artwork/trailer uploads finished");
-          }
-        })();
+      let queuedAssets = 0;
+      if (newId) {
+        if (posterFile) {
+          startAssetUpload("MOVIE", newId, posterFile, "poster", "posterUrl");
+          queuedAssets += 1;
+        }
+        if (thumbFile) {
+          startAssetUpload("MOVIE", newId, thumbFile, "thumbnail", "thumbnailUrl");
+          queuedAssets += 1;
+        }
+        if (shortTrailerFile) {
+          startAssetUpload("MOVIE", newId, shortTrailerFile, "trailer", "shortTrailerUrl");
+          queuedAssets += 1;
+        }
+        if (trailerFile) {
+          startAssetUpload("MOVIE", newId, trailerFile, "trailer", "trailerUrl");
+          queuedAssets += 1;
+        }
+      }
+      if (queuedAssets > 0) {
+        toast.info("Artwork and trailer uploads were added to the queue.");
       }
 
       if (videoFile && newId) {

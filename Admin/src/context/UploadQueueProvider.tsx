@@ -9,11 +9,20 @@ type QueueTask = UploadTask & {
   kind: "MOVIE" | "EPISODE" | "SERIES";
   jobId?: string;
   rendition?: string;
+  assetKind?: "poster" | "thumbnail" | "trailer";
+  assetField?: "posterUrl" | "thumbnailUrl" | "trailerUrl" | "shortTrailerUrl";
 };
 
 type UploadQueueContextValue = {
   tasks: QueueTask[];
   startUpload: (kind: QueueTask["kind"], targetId: number, file: File, rendition?: string) => void;
+  startAssetUpload: (
+    kind: "MOVIE" | "SERIES",
+    targetId: number,
+    file: File,
+    assetKind: QueueTask["assetKind"],
+    assetField: QueueTask["assetField"]
+  ) => void;
   removeTask: (id: string) => void;
   clearTasks: () => void;
 };
@@ -62,6 +71,10 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
   const handleUpload = async (task: QueueTask) => {
     try {
       if (!task.file) throw new Error("Missing file");
+      if (task.assetKind && task.assetField) {
+        await handleAssetUpload(task);
+        return;
+      }
       const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
       const startTime = performance.now();
       const init = await initUpload(
@@ -98,6 +111,40 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
     }
   };
 
+  const handleAssetUpload = async (task: QueueTask) => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    if (!task.targetId) throw new Error("Missing target id");
+    if (!task.assetKind || !task.assetField) throw new Error("Missing asset metadata");
+    const presign = await authFetch("/admin/assets/presign", {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: JSON.stringify({
+        contentType: task.file?.type || "application/octet-stream",
+        kind: task.assetKind,
+      }),
+    });
+    if (!presign.ok || !(presign.data as any)?.url || !(presign.data as any)?.key) {
+      throw new Error((presign.data as any)?.message || "Failed to presign upload");
+    }
+    const uploadUrl = (presign.data as any).url as string;
+    const publicUrl = (presign.data as any).publicUrl || (presign.data as any).key;
+    const putRes = await fetch(uploadUrl, {
+      method: "PUT",
+      headers: { "Content-Type": task.file?.type || "application/octet-stream" },
+      body: task.file,
+    });
+    if (!putRes.ok) throw new Error("Upload failed");
+    const patch = await authFetch(`/admin/titles/${task.targetId}`, {
+      method: "PATCH",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: JSON.stringify({ [task.assetField]: publicUrl }),
+    });
+    if (!patch.ok) throw new Error((patch.data as any)?.message || "Failed to attach asset");
+    setTasks((prev) =>
+      prev.map((t) => (t.id === task.id ? { ...t, status: "completed", progress: 100 } : t))
+    );
+  };
+
   const startUpload = (kind: QueueTask["kind"], targetId: number, file: File, rendition?: string) => {
     const task: QueueTask = {
       id: `${Date.now()}-${file.name}-${Math.random().toString(36).slice(2)}`,
@@ -109,6 +156,30 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
       targetId,
       kind,
       rendition,
+    };
+    setTasks((prev) => [...prev, task]);
+    setRunning(true);
+  };
+
+  const startAssetUpload = (
+    kind: "MOVIE" | "SERIES",
+    targetId: number,
+    file: File,
+    assetKind: QueueTask["assetKind"],
+    assetField: QueueTask["assetField"]
+  ) => {
+    const label = assetKind ? `${assetKind} - ${file.name}` : file.name;
+    const task: QueueTask = {
+      id: `${Date.now()}-${file.name}-${Math.random().toString(36).slice(2)}`,
+      name: label,
+      size: file.size,
+      status: "pending",
+      progress: 0,
+      file,
+      targetId,
+      kind,
+      assetKind: assetKind ?? undefined,
+      assetField: assetField ?? undefined,
     };
     setTasks((prev) => [...prev, task]);
     setRunning(true);
@@ -182,7 +253,7 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
   }, [tasks]);
 
   return (
-    <UploadQueueContext.Provider value={{ tasks, startUpload, removeTask, clearTasks }}>
+    <UploadQueueContext.Provider value={{ tasks, startUpload, startAssetUpload, removeTask, clearTasks }}>
       {children}
     </UploadQueueContext.Provider>
   );

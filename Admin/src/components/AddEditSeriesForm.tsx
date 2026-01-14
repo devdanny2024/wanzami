@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Switch } from "./ui/switch";
 import { MovieTitle } from "./MoviesManagement"; // reuse shape
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { useUploadQueue } from "@/context/UploadQueueProvider";
 
 const GENRE_OPTIONS = [
   "Action",
@@ -56,6 +57,7 @@ export function AddEditSeriesForm({
   const [introEnd, setIntroEnd] = useState<number | "">("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { startAssetUpload } = useUploadQueue();
 
   useEffect(() => {
     setTitle(series?.name ?? "");
@@ -77,32 +79,6 @@ export function AddEditSeriesForm({
     setShortTrailerFile(null);
     setShortTrailerUrlText((series as any)?.shortTrailerUrl ?? "");
   }, [series?.id]);
-
-  const uploadAsset = async (file: File, kind: "poster" | "thumbnail" | "trailer") => {
-    const res = await fetch("/api/admin/assets/presign", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: token ? `Bearer ${token}` : "",
-      },
-      body: JSON.stringify({ contentType: file.type || "application/octet-stream", kind }),
-    });
-    const data = await res.json();
-    if (!res.ok || !data.url || !data.key) {
-      throw new Error(data?.message || "Failed to presign upload");
-    }
-    const putRes = await fetch(data.url, {
-      method: "PUT",
-      headers: {
-        "Content-Type": file.type || "application/octet-stream",
-      },
-      body: file,
-    });
-    if (!putRes.ok) {
-      throw new Error("Upload failed");
-    }
-    return (data.publicUrl as string) || (data.key as string);
-  };
 
   const handleSave = async () => {
     if (!title.trim() || !description.trim()) {
@@ -169,10 +145,9 @@ export function AddEditSeriesForm({
         payload.ppvPriceNaira = null;
         payload.ppvCurrency = null;
       }
-      if (posterFile) payload.posterUrl = await uploadAsset(posterFile, "poster");
-      if (thumbFile) payload.thumbnailUrl = await uploadAsset(thumbFile, "thumbnail");
-      if (shortTrailerFile) payload.shortTrailerUrl = await uploadAsset(shortTrailerFile, "trailer");
-      if (trailerFile) payload.trailerUrl = await uploadAsset(trailerFile, "trailer");
+      if (trailerFile) {
+        // Uploaded after save via queue.
+      }
       if (!shortTrailerFile && shortTrailerUrlText) payload.shortTrailerUrl = shortTrailerUrlText;
       const res = await fetch(endpoint, {
         method,
@@ -184,7 +159,14 @@ export function AddEditSeriesForm({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.message || "Save failed");
-      // No rendition uploads for series here; only artwork + trailer
+      const newId = Number((data as any)?.title?.id ?? series?.id);
+      if (newId) {
+        if (posterFile) startAssetUpload("SERIES", newId, posterFile, "poster", "posterUrl");
+        if (thumbFile) startAssetUpload("SERIES", newId, thumbFile, "thumbnail", "thumbnailUrl");
+        if (shortTrailerFile) startAssetUpload("SERIES", newId, shortTrailerFile, "trailer", "shortTrailerUrl");
+        if (trailerFile) startAssetUpload("SERIES", newId, trailerFile, "trailer", "trailerUrl");
+      }
+      // No rendition uploads for series here; only artwork + trailer.
       onSaved();
     } catch (err: any) {
       setError(err?.message || "Save failed");
