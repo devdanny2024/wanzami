@@ -77,7 +77,8 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
         return;
       }
       const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-      const startTime = performance.now();
+      let lastTick = performance.now();
+      let lastBytes = 0;
       const init = await initUpload(
         {
           kind: task.kind,
@@ -90,14 +91,20 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
       );
       if (init.uploadedBytes && task.file.size > 0) {
         const pct = Math.round((init.uploadedBytes / task.file.size) * 100);
+        lastBytes = init.uploadedBytes;
+        lastTick = performance.now();
         setTasks((prev) =>
           prev.map((t) => (t.id === task.id ? { ...t, progress: Math.min(100, pct) } : t))
         );
       }
       setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, jobId: init.jobId } : t)));
       await uploadMultipart(task.file, init, token, (p) => {
-        const elapsed = (performance.now() - startTime) / 1000;
-        const speed = elapsed > 0 ? (p.uploadedBytes * 8) / (elapsed * 1_000_000) : undefined;
+        const now = performance.now();
+        const elapsed = (now - lastTick) / 1000;
+        const deltaBytes = p.uploadedBytes - lastBytes;
+        const speed = elapsed > 0 ? (deltaBytes * 8) / (elapsed * 1_000_000) : undefined;
+        lastBytes = p.uploadedBytes;
+        lastTick = now;
         setTasks((prev) =>
           prev.map((t) =>
             t.id === task.id
