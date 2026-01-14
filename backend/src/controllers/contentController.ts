@@ -308,7 +308,6 @@ export const getTitleWithEpisodes = async (req: Request, res: Response) => {
 
   const trailerUrl = await resolvePlaybackUrl(title.trailerUrl);
   const shortTrailerUrl = await resolvePlaybackUrl(title.shortTrailerUrl);
-  const shortTrailerUrl = await resolvePlaybackUrl(title.shortTrailerUrl);
 
   const assetVersions = await Promise.all(
     title.assetVersions.map(async (a) => ({
@@ -459,6 +458,7 @@ export const createTitle = async (req: Request, res: Response) => {
     posterUrl,
     thumbnailUrl,
     trailerUrl,
+    shortTrailerUrl,
     previewSpriteUrl,
     previewVttUrl,
   releaseYear,
@@ -482,9 +482,9 @@ export const createTitle = async (req: Request, res: Response) => {
   type?: "MOVIE" | "SERIES";
   description?: string;
   posterUrl?: string;
-    thumbnailUrl?: string;
-    trailerUrl?: string;
-    shortTrailerUrl?: string;
+  thumbnailUrl?: string;
+  trailerUrl?: string;
+  shortTrailerUrl?: string;
     previewSpriteUrl?: string;
     previewVttUrl?: string;
     releaseYear?: number | string;
@@ -529,7 +529,6 @@ export const createTitle = async (req: Request, res: Response) => {
       posterUrl,
       thumbnailUrl,
       trailerUrl,
-      shortTrailerUrl,
       shortTrailerUrl,
       previewSpriteUrl,
       previewVttUrl,
@@ -589,6 +588,7 @@ export const updateTitle = async (req: Request, res: Response) => {
     posterUrl,
     thumbnailUrl,
     trailerUrl,
+    shortTrailerUrl,
     previewSpriteUrl,
     previewVttUrl,
     archived,
@@ -1171,6 +1171,7 @@ export const purgeAllTitles = async (_req: Request, res: Response) => {
         posterUrl: true,
         thumbnailUrl: true,
         trailerUrl: true,
+        shortTrailerUrl: true,
         previewSpriteUrl: true,
         previewVttUrl: true,
       },
@@ -1181,6 +1182,7 @@ export const purgeAllTitles = async (_req: Request, res: Response) => {
         t.posterUrl,
         t.thumbnailUrl,
         t.trailerUrl,
+        t.shortTrailerUrl,
         t.shortTrailerUrl,
         t.previewSpriteUrl,
         t.previewVttUrl,
