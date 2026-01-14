@@ -50,6 +50,8 @@ export function AddEditSeriesForm({
   const [posterFile, setPosterFile] = useState<File | null>(null);
   const [thumbFile, setThumbFile] = useState<File | null>(null);
   const [trailerFile, setTrailerFile] = useState<File | null>(null);
+  const [shortTrailerFile, setShortTrailerFile] = useState<File | null>(null);
+  const [shortTrailerUrlText, setShortTrailerUrlText] = useState((series as any)?.shortTrailerUrl ?? "");
   const [introStart, setIntroStart] = useState<number | "">("");
   const [introEnd, setIntroEnd] = useState<number | "">("");
   const [saving, setSaving] = useState(false);
@@ -72,6 +74,8 @@ export function AddEditSeriesForm({
     setPosterFile(null);
     setThumbFile(null);
     setTrailerFile(null);
+    setShortTrailerFile(null);
+    setShortTrailerUrlText((series as any)?.shortTrailerUrl ?? "");
   }, [series?.id]);
 
   const uploadAsset = async (file: File, kind: "poster" | "thumbnail" | "trailer") => {
@@ -167,7 +171,9 @@ export function AddEditSeriesForm({
       }
       if (posterFile) payload.posterUrl = await uploadAsset(posterFile, "poster");
       if (thumbFile) payload.thumbnailUrl = await uploadAsset(thumbFile, "thumbnail");
+      if (shortTrailerFile) payload.shortTrailerUrl = await uploadAsset(shortTrailerFile, "trailer");
       if (trailerFile) payload.trailerUrl = await uploadAsset(trailerFile, "trailer");
+      if (!shortTrailerFile && shortTrailerUrlText) payload.shortTrailerUrl = shortTrailerUrlText;
       const res = await fetch(endpoint, {
         method,
         headers: {
@@ -398,6 +404,33 @@ export function AddEditSeriesForm({
             <label htmlFor="series-trailer-upload" className="block text-neutral-400">
               {trailerFile ? `Selected: ${trailerFile.name}` : "Drop or click to upload trailer"}
             </label>
+          </div>
+        </div>
+        <div>
+          <Label className="text-neutral-300">Short Trailer (hero background)</Label>
+          {(series as any)?.shortTrailerUrl && !shortTrailerFile && (
+            <p className="text-xs text-neutral-500 mb-1">Current: {(series as any)?.shortTrailerUrl}</p>
+          )}
+          <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
+            <input
+              type="file"
+              accept="video/*"
+              className="hidden"
+              id="series-short-trailer-upload"
+              onChange={(e) => setShortTrailerFile(e.target.files?.[0] ?? null)}
+            />
+            <label htmlFor="series-short-trailer-upload" className="block text-neutral-400">
+              {shortTrailerFile ? `Selected: ${shortTrailerFile.name}` : "Drop or click to upload short trailer"}
+            </label>
+          </div>
+          <div className="mt-2">
+            <Label className="text-neutral-300">Or link</Label>
+            <Input
+              value={shortTrailerUrlText}
+              onChange={(e) => setShortTrailerUrlText(e.target.value)}
+              className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+              placeholder="https://cdn.../short-trailer.mp4"
+            />
           </div>
         </div>
         {error && <p className="text-red-400 text-sm">{error}</p>}

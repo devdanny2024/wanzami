@@ -308,6 +308,7 @@ export const getTitleWithEpisodes = async (req: Request, res: Response) => {
 
   const trailerUrl = await resolvePlaybackUrl(title.trailerUrl);
   const shortTrailerUrl = await resolvePlaybackUrl(title.shortTrailerUrl);
+  const shortTrailerUrl = await resolvePlaybackUrl(title.shortTrailerUrl);
 
   const assetVersions = await Promise.all(
     title.assetVersions.map(async (a) => ({
@@ -366,6 +367,7 @@ export const getTitleWithEpisodes = async (req: Request, res: Response) => {
       posterUrl: title.posterUrl,
       thumbnailUrl: title.thumbnailUrl,
       trailerUrl,
+      shortTrailerUrl,
       introStartSec: title.introStartSec,
       introEndSec: title.introEndSec,
       previewSpriteUrl: title.previewSpriteUrl,
