@@ -11,7 +11,6 @@ type QueueTask = UploadTask & {
   rendition?: string;
   assetKind?: "poster" | "thumbnail" | "trailer";
   assetField?: "posterUrl" | "thumbnailUrl" | "trailerUrl" | "shortTrailerUrl";
-  retryCount?: number;
 };
 
 type UploadQueueContextValue = {
@@ -274,17 +273,17 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
     return () => clearTimeout(timer);
   }, [tasks]);
 
-  // Auto-retry failed tasks after 5 seconds (limited attempts).
+  // Auto-retry failed tasks after 5 seconds (no max attempts).
   useEffect(() => {
     if (tasks.length === 0) return;
-    const retryable = tasks.filter((t) => t.status === "failed" && (t.retryCount ?? 0) < 3);
+    const retryable = tasks.filter((t) => t.status === "failed");
     if (retryable.length === 0) return;
     const timer = setTimeout(() => {
       if (typeof navigator !== "undefined" && navigator.onLine === false) return;
       setTasks((prev) =>
         prev.map((t) => {
-          if (t.status !== "failed" || (t.retryCount ?? 0) >= 3) return t;
-          return { ...t, status: "pending", progress: 0, error: undefined, retryCount: (t.retryCount ?? 0) + 1 };
+          if (t.status !== "failed") return t;
+          return { ...t, status: "pending", progress: 0, error: undefined };
         })
       );
       setRunning(true);
