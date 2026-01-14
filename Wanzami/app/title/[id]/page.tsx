@@ -29,6 +29,18 @@ const mapToDetailMovie = (title: Title | null, fallbackId: string) => {
   const minutes = durationMinutes % 60;
   const durationLabel =
     durationMinutes > 0 ? `${hours}h ${minutes.toString().padStart(2, '0')}m` : undefined;
+
+  const isLikelyVideo = (u?: string | null) =>
+    typeof u === 'string' &&
+    ['.mp4', '.m3u8', '.mov', '.webm'].some((ext) => u.toLowerCase().includes(ext));
+
+  const shortTrailer =
+    (title as any)?.shortTrailerUrl && isLikelyVideo((title as any).shortTrailerUrl)
+      ? (title as any).shortTrailerUrl
+      : isLikelyVideo(title.previewSpriteUrl)
+        ? title.previewSpriteUrl
+        : null;
+
   return {
     id: title.id,
     backendId: title.id,
@@ -46,6 +58,7 @@ const mapToDetailMovie = (title: Title | null, fallbackId: string) => {
     posterUrl: title.posterUrl,
     thumbnailUrl: title.thumbnailUrl,
     trailerUrl: title.trailerUrl,
+    shortTrailerUrl: shortTrailer,
     assetVersions: title.assetVersions,
   };
 };

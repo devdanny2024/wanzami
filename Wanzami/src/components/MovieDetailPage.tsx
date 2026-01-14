@@ -1,6 +1,6 @@
 'use client';
 
-import { Play, Plus, Share2, ThumbsUp, X, Lock } from 'lucide-react';
+import { Play, Plus, Share2, ThumbsUp, X, Lock, Volume2, VolumeX } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
@@ -35,6 +35,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
   const [liked, setLiked] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
   const [showTrailerModal, setShowTrailerModal] = useState(false);
+  const [heroMuted, setHeroMuted] = useState(true);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -174,12 +175,12 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
 
       {/* Hero banner */}
       <div className="relative h-[70vh] md:h-[85vh]">
-        {movie.trailerUrl ? (
+        {movie.shortTrailerUrl || movie.trailerUrl ? (
           <video
             className="w-full h-full object-cover"
-            src={movie.trailerUrl}
+            src={movie.shortTrailerUrl || movie.trailerUrl}
             autoPlay
-            muted
+            muted={heroMuted}
             loop
             playsInline
             poster={movie.image}
@@ -191,6 +192,17 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
         {/* Gradients */}
         <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
+
+        {/* Hero mute toggle */}
+        {movie.shortTrailerUrl || movie.trailerUrl ? (
+          <button
+            onClick={() => setHeroMuted((m) => !m)}
+            className="absolute bottom-6 right-6 z-20 w-12 h-12 rounded-full bg-black/60 hover:bg-black/80 border border-white/20 flex items-center justify-center text-white transition"
+            aria-label={heroMuted ? 'Unmute trailer' : 'Mute trailer'}
+          >
+            {heroMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
+          </button>
+        ) : null}
 
         {/* Content */}
         <div className="absolute inset-0 flex items-end pb-12 md:pb-16 px-4 md:px-12 lg:px-16">
