@@ -23,6 +23,7 @@ type UploadQueueContextValue = {
     assetKind: QueueTask["assetKind"],
     assetField: QueueTask["assetField"]
   ) => void;
+  retryTask: (id: string) => void;
   removeTask: (id: string) => void;
   clearTasks: () => void;
 };
@@ -195,6 +196,25 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
     setRunning(false);
   };
 
+  const retryTask = (id: string) => {
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
+    if (!task.file) {
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === id ? { ...t, status: "failed", error: "File missing. Re-select the file to resume." } : t
+        )
+      );
+      return;
+    }
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === id ? { ...t, status: "pending", progress: 0, error: undefined } : t
+      )
+    );
+    setRunning(true);
+  };
+
   // Poll backend for upload/transcode status to update dock (including PROCESSING -> COMPLETED/FAILED).
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -253,7 +273,7 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
   }, [tasks]);
 
   return (
-    <UploadQueueContext.Provider value={{ tasks, startUpload, startAssetUpload, removeTask, clearTasks }}>
+    <UploadQueueContext.Provider value={{ tasks, startUpload, startAssetUpload, retryTask, removeTask, clearTasks }}>
       {children}
     </UploadQueueContext.Provider>
   );

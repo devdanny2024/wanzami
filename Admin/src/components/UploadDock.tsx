@@ -19,9 +19,10 @@ interface UploadDockProps {
   tasks: UploadTask[];
   onRemove: (id: string) => void;
   onClear: () => void;
+  onRetry: (id: string) => void;
 }
 
-export function UploadDock({ tasks, onRemove, onClear }: UploadDockProps) {
+export function UploadDock({ tasks, onRemove, onClear, onRetry }: UploadDockProps) {
   const [collapsed, setCollapsed] = useState(false);
 
   const active = tasks.filter((t) => t.status !== "completed");
@@ -84,6 +85,14 @@ export function UploadDock({ tasks, onRemove, onClear }: UploadDockProps) {
                   </p>
                   <Progress value={t.progress} className="h-2 mt-2" />
                 </div>
+                {t.status === "failed" && (
+                  <button
+                    onClick={() => onRetry(t.id)}
+                    className="text-xs text-[#fd7e14] hover:text-[#ff9940]"
+                  >
+                    Resume
+                  </button>
+                )}
                 <button
                   onClick={() => onRemove(t.id)}
                   className="p-1 rounded hover:bg-neutral-800 text-neutral-500"

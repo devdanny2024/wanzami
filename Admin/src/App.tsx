@@ -31,7 +31,7 @@ function AppContent() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const [currentPage, setCurrentPage] = useState('dashboard');
-  const { tasks, removeTask, clearTasks } = useUploadQueue();
+  const { tasks, removeTask, clearTasks, retryTask } = useUploadQueue();
 
   useEffect(() => {
     const verify = async () => {
@@ -153,7 +153,7 @@ function AppContent() {
           {renderPage()}
         </main>
       </div>
-      <UploadDock tasks={tasks} onRemove={removeTask} onClear={clearTasks} />
+      <UploadDock tasks={tasks} onRemove={removeTask} onClear={clearTasks} onRetry={retryTask} />
     </div>
   );
 }

@@ -106,7 +106,7 @@ export const listMultipartParts = async (key: string, uploadId: string) => {
   }
   const client = s3Client();
   const parts: { partNumber: number; size: number; etag?: string }[] = [];
-  let marker: number | undefined;
+  let marker: string | undefined;
   while (true) {
     const res = await client.send(
       new ListPartsCommand({
