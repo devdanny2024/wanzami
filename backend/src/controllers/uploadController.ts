@@ -2,7 +2,14 @@ import crypto from "crypto";
 import { Request, Response } from "express";
 import { z } from "zod";
 import { prisma } from "../prisma.js";
-import { createMultipartUpload, presignPartUrls, completeMultipartUpload, partSizeBytes } from "../upload/s3.js";
+import {
+  createMultipartUpload,
+  presignPartUrls,
+  presignPartUrlsForNumbers,
+  completeMultipartUpload,
+  partSizeBytes,
+  listMultipartParts,
+} from "../upload/s3.js";
 import { config } from "../config.js";
 import { UploadStatus, Rendition, TitleType, AssetStatus } from "@prisma/client";
 import { transcodeQueue } from "../queues/transcodeQueue.js";
@@ -279,4 +286,44 @@ export const listUploads = async (_req: Request, res: Response) => {
       updatedAt: j.updatedAt,
     })),
   });
+};
+
+export const resumeUpload = async (req: Request, res: Response) => {
+  const jobId = req.params.id ? BigInt(req.params.id) : null;
+  if (!jobId) return res.status(400).json({ message: "Missing job id" });
+  const job = await prisma.uploadJob.findUnique({ where: { id: jobId } });
+  if (!job) return res.status(404).json({ message: "Job not found" });
+  if (job.status === UploadStatus.COMPLETED) {
+    return res.status(409).json({ message: "Upload already completed" });
+  }
+  const payload = job.payload as any;
+  const uploadId = payload?.uploadId;
+  const key = payload?.key;
+  if (!uploadId || !key) {
+    return res.status(400).json({ message: "Upload cannot be resumed" });
+  }
+  try {
+    const parts = await listMultipartParts(key, uploadId);
+    const uploadedParts = parts.map((p) => p.partNumber);
+    const uploadedBytes = parts.reduce((sum, p) => sum + p.size, 0);
+    const partCount = Math.max(1, Math.ceil(Number(job.bytesTotal ?? 0) / partSizeBytes));
+    const remaining = [];
+    for (let i = 1; i <= partCount; i += 1) {
+      if (!uploadedParts.includes(i)) remaining.push(i);
+    }
+    const presignedParts = await presignPartUrlsForNumbers(key, uploadId, remaining);
+    return res.json({
+      jobId: job.id.toString(),
+      uploadId,
+      key,
+      partSize: partSizeBytes,
+      partCount,
+      uploadedParts: parts,
+      uploadedBytes,
+      presignedParts,
+    });
+  } catch (err: any) {
+    const code = err?.name === "NoSuchUpload" ? 410 : 500;
+    return res.status(code).json({ message: "Failed to resume upload", error: err?.message });
+  }
 };

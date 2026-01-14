@@ -5,6 +5,7 @@ import {
   updateUploadProgress,
   completeUpload,
   listUploads,
+  resumeUpload,
 } from "../controllers/uploadController.js";
 
 const router = Router();
@@ -12,6 +13,7 @@ const router = Router();
 router.post("/admin/uploads/init", requireAuth, requireAdmin, initUpload);
 router.patch("/admin/uploads/:id/progress", requireAuth, requireAdmin, updateUploadProgress);
 router.post("/admin/uploads/:id/complete", requireAuth, requireAdmin, completeUpload);
+router.post("/admin/uploads/:id/resume", requireAuth, requireAdmin, resumeUpload);
 router.get("/admin/uploads", requireAuth, requireAdmin, listUploads);
 
 export default router;

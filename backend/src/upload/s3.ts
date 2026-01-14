@@ -6,6 +6,7 @@ import {
   PutObjectCommand,
   GetObjectCommand,
   UploadPartCommand,
+  ListPartsCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { config } from "../config.js";
@@ -71,6 +72,58 @@ export const presignPartUrls = async (key: string, uploadId: string, partCount: 
     presigned.push({ partNumber, url });
   }
   return presigned;
+};
+
+export const presignPartUrlsForNumbers = async (
+  key: string,
+  uploadId: string,
+  partNumbers: number[]
+) => {
+  if (!config.s3.bucket) {
+    throw new Error("S3 bucket not configured");
+  }
+  const client = s3Client();
+  const presigned = [];
+  for (const partNumber of partNumbers) {
+    const url = await getSignedUrl(
+      client,
+      new UploadPartCommand({
+        Bucket: config.s3.bucket,
+        Key: key,
+        UploadId: uploadId,
+        PartNumber: partNumber,
+      }),
+      { expiresIn: 21600 }
+    );
+    presigned.push({ partNumber, url });
+  }
+  return presigned;
+};
+
+export const listMultipartParts = async (key: string, uploadId: string) => {
+  if (!config.s3.bucket) {
+    throw new Error("S3 bucket not configured");
+  }
+  const client = s3Client();
+  const parts: { partNumber: number; size: number; etag?: string }[] = [];
+  let marker: number | undefined;
+  while (true) {
+    const res = await client.send(
+      new ListPartsCommand({
+        Bucket: config.s3.bucket,
+        Key: key,
+        UploadId: uploadId,
+        PartNumberMarker: marker,
+      })
+    );
+    for (const part of res.Parts ?? []) {
+      if (!part.PartNumber) continue;
+      parts.push({ partNumber: part.PartNumber, size: part.Size ?? 0, etag: part.ETag ?? undefined });
+    }
+    if (!res.IsTruncated) break;
+    marker = res.NextPartNumberMarker;
+  }
+  return parts;
 };
 
 export const completeMultipartUpload = async (
