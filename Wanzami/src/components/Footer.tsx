@@ -2,9 +2,7 @@ import { Facebook, Instagram, Tiktok, Twitter, Youtube } from 'lucide-react';
 
 export function Footer() {
   const footerLinks = {
-    Company: ['About Us', 'Careers', 'Press', 'Blog'],
-    Support: ['Help Center', 'Contact', 'FAQs', 'Device Support'],
-    Legal: ['Privacy Policy', 'Terms of Service', 'Cookie Policy', 'Refund Policy'],
+    Support: ['Contact'],
   };
 
   const socials = [
@@ -19,30 +17,28 @@ export function Footer() {
     <footer className="bg-[#0b0b0c] border-t border-white/5 pt-16 pb-8">
       <div className="max-w-7xl mx-auto px-4 md:px-12 lg:px-16">
         {/* Main footer content */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
-          {Object.entries(footerLinks).map(([category, links]) => (
-            <div key={category}>
-              <h3 className="text-white text-sm mb-4 tracking-wide">{category}</h3>
-              <ul className="space-y-3">
-                {links.map((link) => (
-                  <li key={link}>
-                    {link === 'Contact' ? (
-                      <a
-                        href="/contact"
-                        className="text-gray-500 hover:text-white text-sm transition-colors"
-                      >
-                        Contact
-                      </a>
-                    ) : (
-                      <button className="text-gray-500 hover:text-white text-sm transition-colors">
-                        {link}
-                      </button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+          {Object.entries(footerLinks)
+            .filter(([, links]) => links.length)
+            .map(([category, links]) => (
+              <div key={category}>
+                <h3 className="text-white text-sm mb-4 tracking-wide">{category}</h3>
+                <ul className="space-y-3">
+                  {links.map((link) => (
+                    <li key={link}>
+                      {link === 'Contact' ? (
+                        <a
+                          href="/contact"
+                          className="text-gray-500 hover:text-white text-sm transition-colors"
+                        >
+                          Contact
+                        </a>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
 
           {/* Social links */}
           <div>
