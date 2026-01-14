@@ -21,6 +21,10 @@ export interface MovieData {
   thumbnailUrl?: string;
   completionPercent?: number;
   runtimeMinutes?: number | null;
+  isPpv?: boolean;
+  hasAccess?: boolean;
+  ppvPriceNaira?: number | null;
+  ppvCurrency?: string | null;
   currentEpisodeId?: string;
   currentEpisodeLabel?: string;
   resumePositionSec?: number;
@@ -36,7 +40,9 @@ interface MovieCardProps {
 
 export function MovieCard({ movie, onClick }: MovieCardProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const isFree = (movie as any)?.isPpv === false;
   const owned =
+    isFree ||
     Boolean(
       (movie as any)?.isOwned ||
       (movie as any)?.owned ||
@@ -123,8 +129,8 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
           }}
           className="inline-flex items-center justify-center gap-2 bg-[#fd7e14] hover:bg-[#e86f0f] text-white px-4 py-2 rounded-lg text-sm transition-colors"
         >
-          {owned ? <Play className="w-4 h-4 fill-current" /> : <Info className="w-4 h-4" />}
-          <span>{owned ? "Play" : "Buy"}</span>
+          {owned || isFree ? <Play className="w-4 h-4 fill-current" /> : <Info className="w-4 h-4" />}
+          <span>{owned || isFree ? "Play" : "Buy"}</span>
         </button>
       </div>
     </motion.div>

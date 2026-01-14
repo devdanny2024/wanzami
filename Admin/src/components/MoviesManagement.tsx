@@ -828,6 +828,14 @@ function AddEditMovieForm({
             />
             {posterFile && <p className="text-xs text-[#fd7e14] mt-2">Selected: {posterFile.name}</p>}
           </label>
+          {movie?.posterUrl && !posterFile && (
+            <p className="text-xs text-neutral-400 mt-2">
+              Current:{" "}
+              <a className="text-[#fd7e14]" href={movie.posterUrl} target="_blank" rel="noreferrer">
+                {movie.posterUrl}
+              </a>
+            </p>
+          )}
         </div>
 
         <div>
@@ -843,6 +851,14 @@ function AddEditMovieForm({
             />
             {thumbFile && <p className="text-xs text-[#fd7e14] mt-2">Selected: {thumbFile.name}</p>}
           </label>
+          {movie?.thumbnailUrl && !thumbFile && (
+            <p className="text-xs text-neutral-400 mt-2">
+              Current:{" "}
+              <a className="text-[#fd7e14]" href={movie.thumbnailUrl} target="_blank" rel="noreferrer">
+                {movie.thumbnailUrl}
+              </a>
+            </p>
+          )}
         </div>
 
         <div>
@@ -867,6 +883,19 @@ function AddEditMovieForm({
               placeholder="https://cdn.../short-trailer.mp4"
             />
           </div>
+          {(movie as any)?.shortTrailerUrl && !shortTrailerFile && (
+            <p className="text-xs text-neutral-400 mt-2">
+              Current:{" "}
+              <a
+                className="text-[#fd7e14]"
+                href={shortTrailerUrlText || (movie as any).shortTrailerUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {shortTrailerUrlText || (movie as any).shortTrailerUrl}
+              </a>
+            </p>
+          )}
         </div>
 
         <div>
@@ -891,6 +920,14 @@ function AddEditMovieForm({
               placeholder="https://youtube.com/..."
             />
           </div>
+          {movie?.trailerUrl && !trailerFile && (
+            <p className="text-xs text-neutral-400 mt-2">
+              Current:{" "}
+              <a className="text-[#fd7e14]" href={trailerUrlText || movie.trailerUrl} target="_blank" rel="noreferrer">
+                {trailerUrlText || movie.trailerUrl}
+              </a>
+            </p>
+          )}
         </div>
       </TabsContent>
 

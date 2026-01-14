@@ -354,7 +354,12 @@ export function AddEditSeriesForm({
           <div>
             <Label className="text-neutral-300">Poster</Label>
             {series?.posterUrl && !posterFile && (
-              <p className="text-xs text-neutral-500 mb-1">Current: {series?.posterUrl}</p>
+              <p className="text-xs text-neutral-500 mb-1">
+                Current:{" "}
+                <a className="text-[#fd7e14]" href={series.posterUrl} target="_blank" rel="noreferrer">
+                  {series.posterUrl}
+                </a>
+              </p>
             )}
             <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
               <input
@@ -372,7 +377,12 @@ export function AddEditSeriesForm({
           <div>
             <Label className="text-neutral-300">Thumbnail</Label>
             {series?.thumbnailUrl && !thumbFile && (
-              <p className="text-xs text-neutral-500 mb-1">Current: {series?.thumbnailUrl}</p>
+              <p className="text-xs text-neutral-500 mb-1">
+                Current:{" "}
+                <a className="text-[#fd7e14]" href={series.thumbnailUrl} target="_blank" rel="noreferrer">
+                  {series.thumbnailUrl}
+                </a>
+              </p>
             )}
             <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
               <input
@@ -391,7 +401,12 @@ export function AddEditSeriesForm({
         <div>
           <Label className="text-neutral-300">Trailer</Label>
           {series?.trailerUrl && !trailerFile && (
-            <p className="text-xs text-neutral-500 mb-1">Current: {series?.trailerUrl}</p>
+            <p className="text-xs text-neutral-500 mb-1">
+              Current:{" "}
+              <a className="text-[#fd7e14]" href={series.trailerUrl} target="_blank" rel="noreferrer">
+                {series.trailerUrl}
+              </a>
+            </p>
           )}
           <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
             <input
@@ -409,7 +424,17 @@ export function AddEditSeriesForm({
         <div>
           <Label className="text-neutral-300">Short Trailer (hero background)</Label>
           {(series as any)?.shortTrailerUrl && !shortTrailerFile && (
-            <p className="text-xs text-neutral-500 mb-1">Current: {(series as any)?.shortTrailerUrl}</p>
+            <p className="text-xs text-neutral-500 mb-1">
+              Current:{" "}
+              <a
+                className="text-[#fd7e14]"
+                href={shortTrailerUrlText || (series as any)?.shortTrailerUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {shortTrailerUrlText || (series as any)?.shortTrailerUrl}
+              </a>
+            </p>
           )}
           <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
             <input

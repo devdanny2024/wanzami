@@ -29,6 +29,7 @@ export type Title = {
   previewVttUrl?: string | null;
   enableEndCardRating?: boolean;
   endCreditsStart?: number;
+  releaseDate?: string | null;
   releaseYear?: number;
   archived?: boolean;
   episodeCount?: number;

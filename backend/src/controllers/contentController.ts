@@ -63,6 +63,7 @@ export const listTitles = async (_req: Request, res: Response) => {
       updatedAt: t.updatedAt,
       episodeCount: t.episodes.length,
       seasonCount: t.seasons.length,
+      releaseDate: t.releaseDate,
       releaseYear: t.releaseDate ? t.releaseDate.getUTCFullYear() : undefined,
     })),
   });
@@ -219,6 +220,7 @@ export const listPublicTitles = async (req: Request, res: Response) => {
       updatedAt: t.updatedAt,
       episodeCount: t.episodes.length,
       seasonCount: t.seasons.length,
+      releaseDate: t.releaseDate,
       releaseYear: t.releaseDate ? t.releaseDate.getUTCFullYear() : undefined,
     })),
   });

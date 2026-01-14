@@ -12,6 +12,7 @@ interface HeroContent {
   rating: string;
   year: string;
   genre: string;
+   isPpv?: boolean;
 }
 
 interface HeroProps {
@@ -143,7 +144,9 @@ export function Hero({ onPlayClick, onMoreInfoClick, featured }: HeroProps) {
                   className="flex items-center justify-center gap-2 bg-[#fd7e14] hover:bg-[#e86f0f] text-white px-6 md:px-8 py-3 md:py-4 rounded-xl transition-all duration-200 hover:scale-105"
                 >
                   <Play className="w-5 h-5 md:w-6 md:h-6 fill-current" />
-                  <span className="text-sm md:text-base">Buy Now</span>
+                  <span className="text-sm md:text-base">
+                    {current.isPpv ? "Buy Now" : "Play Now"}
+                  </span>
                 </button>
 
                 <button
