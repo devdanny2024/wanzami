@@ -521,6 +521,12 @@ export const createTitle = async (req: Request, res: Response) => {
     releaseYear && !Number.isNaN(Number(releaseYear)) ? new Date(`${releaseYear}-01-01T00:00:00.000Z`) : undefined;
   const parsedRuntime =
     runtimeMinutes !== undefined && !Number.isNaN(Number(runtimeMinutes)) ? Number(runtimeMinutes) : undefined;
+  const normalizedCurrency = isPpv ? ppvCurrency ?? "NGN" : "NGN";
+  const normalizedPrice =
+    isPpv && ppvPriceNaira !== undefined && ppvPriceNaira !== null && !Number.isNaN(Number(ppvPriceNaira))
+      ? Number(ppvPriceNaira)
+      : null;
+
   const title = await prisma.title.create({
     data: {
       name,
@@ -546,11 +552,8 @@ export const createTitle = async (req: Request, res: Response) => {
       archived: false,
       pendingReview: pendingReview ?? false,
       isPpv: isPpv ?? false,
-      ppvPriceNaira:
-        ppvPriceNaira !== undefined && ppvPriceNaira !== null && !Number.isNaN(Number(ppvPriceNaira))
-          ? Number(ppvPriceNaira)
-          : null,
-      ppvCurrency: ppvCurrency ?? null,
+      ppvPriceNaira: normalizedPrice,
+      ppvCurrency: normalizedCurrency,
       seasons:
         type === "SERIES" && Array.isArray(seasons)
           ? {
@@ -661,12 +664,18 @@ export const updateTitle = async (req: Request, res: Response) => {
   }
   if (isOriginal !== undefined) data.isOriginal = isOriginal;
   if (pendingReview !== undefined) data.pendingReview = pendingReview;
-  if (isPpv !== undefined) data.isPpv = isPpv;
+  if (isPpv !== undefined) {
+    data.isPpv = isPpv;
+    if (!isPpv) {
+      data.ppvPriceNaira = null;
+      data.ppvCurrency = "NGN";
+    }
+  }
   if (ppvPriceNaira !== undefined) {
     data.ppvPriceNaira =
       ppvPriceNaira !== null && !Number.isNaN(Number(ppvPriceNaira)) ? Number(ppvPriceNaira) : null;
   }
-  if (ppvCurrency !== undefined) data.ppvCurrency = ppvCurrency;
+  if (ppvCurrency !== undefined) data.ppvCurrency = ppvCurrency ?? "NGN";
   try {
     const title = await prisma.title.update({ where: { id }, data });
     void auditLog({
