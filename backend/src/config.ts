@@ -21,6 +21,7 @@ export const config = {
     bucket: process.env.S3_BUCKET,
     accessKeyId: process.env.S3_ACCESS_KEY,
     secretAccessKey: process.env.S3_SECRET_KEY,
+    accelerate: process.env.S3_ACCELERATE === "true",
   },
   redisUrl: process.env.REDIS_URL ?? "redis://localhost:6379",
   ffmpegPath: process.env.FFMPEG_PATH,

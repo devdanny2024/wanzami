@@ -53,8 +53,14 @@ export async function uploadMultipart(
   onProgress?: (p: UploadProgress) => void
 ) {
   const parts: { ETag: string; PartNumber: number }[] = [];
-  let uploaded = 0;
-  for (const part of init.presignedParts) {
+  const partUploads: number[] = new Array(init.presignedParts.length).fill(0);
+  const maxConcurrency = Math.max(
+    2,
+    Number(process.env.NEXT_PUBLIC_UPLOAD_MAX_CONCURRENCY ?? "6")
+  );
+  let cursor = 0;
+
+  const uploadPart = async (part: { partNumber: number; url: string }, index: number) => {
     const start = (part.partNumber - 1) * init.partSize;
     const end = Math.min(start + init.partSize, file.size);
     const blob = file.slice(start, end);
@@ -67,16 +73,27 @@ export async function uploadMultipart(
     }
     const etag = res.headers.get("etag") ?? `part-${part.partNumber}`;
     parts.push({ ETag: etag, PartNumber: part.partNumber });
-    uploaded = end;
-    onProgress?.({ uploadedBytes: uploaded, totalBytes: file.size });
+    partUploads[index] = end - start;
+    const uploadedBytes = partUploads.reduce((sum, size) => sum + size, 0);
+    onProgress?.({ uploadedBytes, totalBytes: file.size });
     await authFetch(`/admin/uploads/${init.jobId}/progress`, {
       method: "PATCH",
       headers: {
         Authorization: token ? `Bearer ${token}` : "",
       },
-      body: JSON.stringify({ bytesUploaded: uploaded }),
+      body: JSON.stringify({ bytesUploaded: uploadedBytes }),
     });
-  }
+  };
+
+  const workers = Array.from({ length: Math.min(maxConcurrency, init.presignedParts.length) }, async () => {
+    while (cursor < init.presignedParts.length) {
+      const index = cursor;
+      cursor += 1;
+      await uploadPart(init.presignedParts[index], index);
+    }
+  });
+
+  await Promise.all(workers);
 
   const complete = await authFetch(`/admin/uploads/${init.jobId}/complete`, {
     method: "POST",
@@ -86,7 +103,7 @@ export async function uploadMultipart(
     body: JSON.stringify({
       uploadId: init.uploadId,
       key: init.key,
-      parts,
+      parts: parts.sort((a, b) => a.PartNumber - b.PartNumber),
     }),
   });
   if (!complete.ok) {

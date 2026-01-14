@@ -13,7 +13,8 @@ import { createWriteStream } from "fs";
 import { stat } from "fs/promises";
 import { pipeline } from "stream/promises";
 
-const PART_SIZE = 10 * 1024 * 1024; // 10MB
+const partSizeMb = Number(process.env.S3_MULTIPART_PART_SIZE_MB ?? "64");
+const PART_SIZE = Math.max(5, Number.isFinite(partSizeMb) ? partSizeMb : 64) * 1024 * 1024; // >= 5MB
 
 const endpoint = config.s3.endpoint && config.s3.endpoint.trim() !== "" ? config.s3.endpoint : undefined;
 const region = (config.s3.region && config.s3.region.trim()) || (process.env.AWS_REGION && process.env.AWS_REGION.trim()) || "eu-north-1";
@@ -22,6 +23,7 @@ const s3Client = () => {
   const base: any = {
     region,
     forcePathStyle: !!endpoint,
+    useAccelerateEndpoint: config.s3.accelerate && !endpoint,
   };
   if (endpoint) {
     base.endpoint = endpoint;
@@ -64,7 +66,7 @@ export const presignPartUrls = async (key: string, uploadId: string, partCount: 
         UploadId: uploadId,
         PartNumber: partNumber,
       }),
-      { expiresIn: 3600 }
+      { expiresIn: 21600 }
     );
     presigned.push({ partNumber, url });
   }
