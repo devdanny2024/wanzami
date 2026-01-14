@@ -267,7 +267,8 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (tasks.length === 0) return;
     const hasInFlight = tasks.some((t) => t.status === "pending" || t.status === "uploading" || t.status === "processing");
-    if (hasInFlight) return;
+    const hasFailed = tasks.some((t) => t.status === "failed");
+    if (hasInFlight || hasFailed) return;
     const timer = setTimeout(() => clearTasks(), 2000);
     return () => clearTimeout(timer);
   }, [tasks]);
