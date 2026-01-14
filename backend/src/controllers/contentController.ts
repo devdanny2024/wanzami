@@ -48,6 +48,7 @@ export const listTitles = async (_req: Request, res: Response) => {
       posterUrl: t.posterUrl,
       thumbnailUrl: t.thumbnailUrl,
       trailerUrl: t.trailerUrl,
+      shortTrailerUrl: t.shortTrailerUrl,
       previewSpriteUrl: t.previewSpriteUrl,
       previewVttUrl: t.previewVttUrl,
       introStartSec: t.introStartSec,
@@ -205,6 +206,7 @@ export const listPublicTitles = async (req: Request, res: Response) => {
       posterUrl: t.posterUrl,
       thumbnailUrl: t.thumbnailUrl,
       trailerUrl: t.trailerUrl,
+      shortTrailerUrl: t.shortTrailerUrl,
       introStartSec: t.introStartSec,
       introEndSec: t.introEndSec,
       archived: t.archived,
@@ -305,6 +307,7 @@ export const getTitleWithEpisodes = async (req: Request, res: Response) => {
   }
 
   const trailerUrl = await resolvePlaybackUrl(title.trailerUrl);
+  const shortTrailerUrl = await resolvePlaybackUrl(title.shortTrailerUrl);
 
   const assetVersions = await Promise.all(
     title.assetVersions.map(async (a) => ({
@@ -479,6 +482,7 @@ export const createTitle = async (req: Request, res: Response) => {
   posterUrl?: string;
     thumbnailUrl?: string;
     trailerUrl?: string;
+    shortTrailerUrl?: string;
     previewSpriteUrl?: string;
     previewVttUrl?: string;
     releaseYear?: number | string;
@@ -523,6 +527,8 @@ export const createTitle = async (req: Request, res: Response) => {
       posterUrl,
       thumbnailUrl,
       trailerUrl,
+      shortTrailerUrl,
+      shortTrailerUrl,
       previewSpriteUrl,
       previewVttUrl,
       introStartSec: parseOptionalNumber(introStartSec),
@@ -605,6 +611,7 @@ export const updateTitle = async (req: Request, res: Response) => {
   posterUrl?: string;
   thumbnailUrl?: string;
     trailerUrl?: string;
+    shortTrailerUrl?: string;
     previewSpriteUrl?: string;
     previewVttUrl?: string;
     archived?: boolean;
@@ -630,6 +637,7 @@ export const updateTitle = async (req: Request, res: Response) => {
   if (posterUrl !== undefined) data.posterUrl = posterUrl;
   if (thumbnailUrl !== undefined) data.thumbnailUrl = thumbnailUrl;
   if (trailerUrl !== undefined) data.trailerUrl = trailerUrl;
+  if (shortTrailerUrl !== undefined) data.shortTrailerUrl = shortTrailerUrl;
   if (previewSpriteUrl !== undefined) data.previewSpriteUrl = previewSpriteUrl;
   if (previewVttUrl !== undefined) data.previewVttUrl = previewVttUrl;
   if (introStartSec !== undefined) data.introStartSec = parseOptionalNumber(introStartSec);
@@ -1171,6 +1179,7 @@ export const purgeAllTitles = async (_req: Request, res: Response) => {
         t.posterUrl,
         t.thumbnailUrl,
         t.trailerUrl,
+        t.shortTrailerUrl,
         t.previewSpriteUrl,
         t.previewVttUrl,
       ]),

@@ -24,6 +24,7 @@ export type Title = {
   posterUrl?: string | null;
   thumbnailUrl?: string | null;
   trailerUrl?: string | null;
+  shortTrailerUrl?: string | null;
   previewSpriteUrl?: string | null;
   previewVttUrl?: string | null;
   enableEndCardRating?: boolean;

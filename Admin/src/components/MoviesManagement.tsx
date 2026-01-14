@@ -29,6 +29,7 @@ export type MovieTitle = {
   previewVttUrl?: string | null;
   description?: string | null;
   trailerUrl?: string | null;
+  shortTrailerUrl?: string | null;
   archived?: boolean;
   createdAt?: string;
   episodeCount?: number;
@@ -374,10 +375,10 @@ function AddEditMovieForm({
   const [isOriginal, setIsOriginal] = useState<boolean>(!!movie?.isOriginal);
   const [posterFile, setPosterFile] = useState<File | null>(null);
   const [thumbFile, setThumbFile] = useState<File | null>(null);
-  const [previewSpriteFile, setPreviewSpriteFile] = useState<File | null>(null);
-  const [previewVttFile, setPreviewVttFile] = useState<File | null>(null);
   const [trailerFile, setTrailerFile] = useState<File | null>(null);
   const [trailerUrlText, setTrailerUrlText] = useState(movie?.trailerUrl ?? "");
+  const [shortTrailerFile, setShortTrailerFile] = useState<File | null>(null);
+  const [shortTrailerUrlText, setShortTrailerUrlText] = useState((movie as any)?.shortTrailerUrl ?? "");
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [ppvEnabled, setPpvEnabled] = useState<boolean>(!!(movie as any)?.isPpv);
   const [ppvPrice, setPpvPrice] = useState<string>(
@@ -396,6 +397,7 @@ function AddEditMovieForm({
     setTitle(movie?.name ?? "");
     setDescription(movie?.description ?? "");
     setTrailerUrlText(movie?.trailerUrl ?? "");
+    setShortTrailerUrlText((movie as any)?.shortTrailerUrl ?? "");
     setLanguage((movie as any)?.language ?? "en");
     setRuntimeMinutes((movie as any)?.runtimeMinutes ? String((movie as any).runtimeMinutes) : "");
     setMaturityRating((movie as any)?.maturityRating ?? "");
@@ -408,10 +410,7 @@ function AddEditMovieForm({
     setPpvCurrency((movie as any)?.ppvCurrency ?? "NGN");
   }, [movie?.id]);
 
-  const uploadAsset = async (
-    file: File,
-    kind: "poster" | "thumbnail" | "trailer" | "previewSprite" | "previewVtt"
-  ) => {
+  const uploadAsset = async (file: File, kind: "poster" | "thumbnail" | "trailer") => {
     const res = await fetch("/api/admin/assets/presign", {
       method: "POST",
       headers: {
@@ -444,8 +443,8 @@ function AddEditMovieForm({
       const assetUploads: { label: string; run: (targetId: number) => Promise<void> }[] = [];
       const queueAssetUpload = (
         file: File,
-        kind: "poster" | "thumbnail" | "trailer" | "previewSprite" | "previewVtt",
-        field: "posterUrl" | "thumbnailUrl" | "trailerUrl" | "previewSpriteUrl" | "previewVttUrl"
+        kind: "poster" | "thumbnail" | "trailer",
+        field: "posterUrl" | "thumbnailUrl" | "trailerUrl" | "shortTrailerUrl"
       ) => {
         assetUploads.push({
           label: field,
@@ -485,10 +484,10 @@ function AddEditMovieForm({
       };
       if (posterFile) queueAssetUpload(posterFile, "poster", "posterUrl");
       if (thumbFile) queueAssetUpload(thumbFile, "thumbnail", "thumbnailUrl");
-      if (previewSpriteFile) queueAssetUpload(previewSpriteFile, "previewSprite", "previewSpriteUrl");
-      if (previewVttFile) queueAssetUpload(previewVttFile, "previewVtt", "previewVttUrl");
+      if (shortTrailerFile) queueAssetUpload(shortTrailerFile, "trailer", "shortTrailerUrl");
       if (trailerFile) queueAssetUpload(trailerFile, "trailer", "trailerUrl");
       else if (trailerUrlText) payload.trailerUrl = trailerUrlText;
+      if (!shortTrailerFile && shortTrailerUrlText) payload.shortTrailerUrl = shortTrailerUrlText;
 
       if (metaTitle) payload.metaTitle = metaTitle;
       if (metaDescription) payload.metaDescription = metaDescription;
@@ -846,34 +845,27 @@ function AddEditMovieForm({
           </label>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label className="text-neutral-300">Preview Sprite (for hover thumbnails)</Label>
-            <label className="mt-1 block border-2 border-dashed border-neutral-800 rounded-lg p-6 text-center bg-neutral-950 cursor-pointer">
-              <p className="text-neutral-400">Upload a sprite sheet (e.g. JPG/PNG)</p>
-              <p className="text-xs text-neutral-500 mt-1">Use evenly spaced frames for seek previews.</p>
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => setPreviewSpriteFile(e.target.files?.[0] ?? null)}
-              />
-              {previewSpriteFile && <p className="text-xs text-[#fd7e14] mt-2">Selected: {previewSpriteFile.name}</p>}
-            </label>
-          </div>
-          <div>
-            <Label className="text-neutral-300">Preview VTT (timestamp map)</Label>
-            <label className="mt-1 block border-2 border-dashed border-neutral-800 rounded-lg p-6 text-center bg-neutral-950 cursor-pointer">
-              <p className="text-neutral-400">Upload a WebVTT file that references the sprite</p>
-              <p className="text-xs text-neutral-500 mt-1">Required for frame-accurate hover previews.</p>
-              <input
-                type="file"
-                accept=".vtt,text/vtt"
-                className="hidden"
-                onChange={(e) => setPreviewVttFile(e.target.files?.[0] ?? null)}
-              />
-              {previewVttFile && <p className="text-xs text-[#fd7e14] mt-2">Selected: {previewVttFile.name}</p>}
-            </label>
+        <div>
+          <Label className="text-neutral-300">Short Trailer (hero background)</Label>
+          <label className="mt-1 block border-2 border-dashed border-neutral-800 rounded-lg p-8 text-center bg-neutral-950 cursor-pointer">
+            <p className="text-neutral-400">Drop short trailer file here or click to browse</p>
+            <p className="text-xs text-neutral-500 mt-1">MP4 or HLS</p>
+            <input
+              type="file"
+              accept="video/*"
+              className="hidden"
+              onChange={(e) => setShortTrailerFile(e.target.files?.[0] ?? null)}
+            />
+            {shortTrailerFile && <p className="text-xs text-[#fd7e14] mt-2">Selected: {shortTrailerFile.name}</p>}
+          </label>
+          <div className="mt-3">
+            <Label className="text-neutral-300">Or link</Label>
+            <Input
+              value={shortTrailerUrlText}
+              onChange={(e) => setShortTrailerUrlText(e.target.value)}
+              className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+              placeholder="https://cdn.../short-trailer.mp4"
+            />
           </div>
         </div>
 
