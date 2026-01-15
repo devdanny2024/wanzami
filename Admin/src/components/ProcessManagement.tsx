@@ -68,7 +68,10 @@ export function ProcessManagement() {
     try {
       setLoading(true);
       setError(null);
-      const res = await authFetch("/admin/uploads");
+      const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+      const res = await authFetch("/admin/uploads", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (!res.ok) throw new Error(res.data?.message || "Failed to load processes");
       setJobs((res.data as any)?.uploads ?? []);
     } catch (err: any) {
@@ -119,7 +122,7 @@ export function ProcessManagement() {
                 </div>
                 <div className="text-xs text-neutral-400">
                   {formatBytes(uploaded)} / {formatBytes(total)}
-                  {typeof percent === "number" ? ` • ${percent}%` : ""}
+                  {typeof percent === "number" ? ` - ${percent}%` : ""}
                 </div>
                 {job.error && <p className="text-xs text-red-400">Error: {job.error}</p>}
               </CardContent>
