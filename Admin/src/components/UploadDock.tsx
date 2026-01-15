@@ -31,9 +31,17 @@ interface UploadDockProps {
   onRemove: (id: string) => void;
   onClear: () => void;
   onRetry: (id: string) => void;
+  onRetryJob?: (id: string) => void;
 }
 
-export function UploadDock({ tasks, serverJobs, onRemove, onClear, onRetry }: UploadDockProps) {
+export function UploadDock({
+  tasks,
+  serverJobs,
+  onRemove,
+  onClear,
+  onRetry,
+  onRetryJob,
+}: UploadDockProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [tab, setTab] = useState<"queue" | "jobs">("queue");
 
@@ -172,6 +180,14 @@ export function UploadDock({ tasks, serverJobs, onRemove, onClear, onRetry }: Up
                           <X className="w-4 h-4" />
                         </button>
                       )}
+                      {j.status === "FAILED" && onRetryJob && (
+                        <button
+                          onClick={() => onRetryJob(j.id)}
+                          className="ml-2 text-xs text-[#fd7e14] hover:text-[#ff9940]"
+                        >
+                          Retry
+                        </button>
+                      )}
                     </div>
                   );
                 })}
@@ -181,4 +197,3 @@ export function UploadDock({ tasks, serverJobs, onRemove, onClear, onRetry }: Up
     </div>
   );
 }
-

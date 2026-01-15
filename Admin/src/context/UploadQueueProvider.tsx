@@ -35,6 +35,7 @@ type UploadQueueContextValue = {
     assetField: QueueTask["assetField"]
   ) => void;
   retryTask: (id: string) => void;
+  retryServerJob: (id: string) => Promise<void>;
   removeTask: (id: string) => void;
   clearTasks: () => void;
 };
@@ -240,6 +241,17 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
     setRunning(true);
   };
 
+  const retryServerJob = async (id: string) => {
+    try {
+      await authFetch(`/admin/uploads/${id}/retry`, {
+        method: "POST",
+      });
+      // The polling effect below will pick up the updated job status.
+    } catch {
+      // Swallow errors; the dock will continue to show the existing state.
+    }
+  };
+
   // Poll backend for upload/transcode status to update dock (including PROCESSING -> COMPLETED/FAILED).
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -336,7 +348,7 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
 
   return (
     <UploadQueueContext.Provider
-      value={{ tasks, serverJobs, startUpload, startAssetUpload, retryTask, removeTask, clearTasks }}
+      value={{ tasks, serverJobs, startUpload, startAssetUpload, retryTask, retryServerJob, removeTask, clearTasks }}
     >
       {children}
     </UploadQueueContext.Provider>

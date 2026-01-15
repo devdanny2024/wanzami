@@ -27,7 +27,9 @@ export const config = {
   ffmpegPath: process.env.FFMPEG_PATH,
   uploadMaxConcurrency: numberOrDefault(process.env.UPLOAD_MAX_CONCURRENCY, 10),
   downloadMaxConcurrency: numberOrDefault(process.env.DOWNLOAD_MAX_CONCURRENCY, 10),
-  transcodeConcurrency: numberOrDefault(process.env.TRANSCODE_CONCURRENCY, 1),
+  // Allow multiple ffmpeg workers per process; default to 3 so
+  // large batches do not get stuck behind a single long-running job.
+  transcodeConcurrency: numberOrDefault(process.env.TRANSCODE_CONCURRENCY, 3),
   paystack: {
     secretKey: process.env.PAYSTACK_SECRET_KEY ?? "",
     publicKey: process.env.PAYSTACK_PUBLIC_KEY ?? "",

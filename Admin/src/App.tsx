@@ -31,7 +31,7 @@ function AppContent() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const [currentPage, setCurrentPage] = useState('dashboard');
-  const { tasks, serverJobs, removeTask, clearTasks, retryTask } = useUploadQueue();
+  const { tasks, serverJobs, removeTask, clearTasks, retryTask, retryServerJob } = useUploadQueue();
 
   useEffect(() => {
     const verify = async () => {
@@ -159,6 +159,7 @@ function AppContent() {
         onRemove={removeTask}
         onClear={clearTasks}
         onRetry={retryTask}
+        onRetryJob={retryServerJob}
       />
     </div>
   );

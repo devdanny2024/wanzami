@@ -174,8 +174,14 @@ const worker = new Worker<TranscodeJob>(
   },
   {
     connection,
+    // Allow multiple ffmpeg jobs per worker, controlled via env.
     concurrency: Math.max(config.transcodeConcurrency || 1, 1),
     prefix,
+    // Transcodes for large files can legitimately run for a long time.
+    // Increase the lock duration and stalled threshold so BullMQ
+    // does not mark long-running jobs as "stalled" and fail them.
+    lockDuration: 1000 * 60 * 60, // 1 hour lock per job
+    maxStalledCount: 5,
   }
 );
 
