@@ -174,7 +174,7 @@ const worker = new Worker<TranscodeJob>(
   },
   {
     connection,
-    concurrency: 1,
+    concurrency: Math.max(config.transcodeConcurrency || 1, 1),
     prefix,
   }
 );

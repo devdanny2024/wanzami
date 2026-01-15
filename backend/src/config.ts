@@ -27,6 +27,7 @@ export const config = {
   ffmpegPath: process.env.FFMPEG_PATH,
   uploadMaxConcurrency: numberOrDefault(process.env.UPLOAD_MAX_CONCURRENCY, 10),
   downloadMaxConcurrency: numberOrDefault(process.env.DOWNLOAD_MAX_CONCURRENCY, 10),
+  transcodeConcurrency: numberOrDefault(process.env.TRANSCODE_CONCURRENCY, 1),
   paystack: {
     secretKey: process.env.PAYSTACK_SECRET_KEY ?? "",
     publicKey: process.env.PAYSTACK_PUBLIC_KEY ?? "",
