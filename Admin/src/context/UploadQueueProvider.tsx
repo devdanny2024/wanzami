@@ -128,7 +128,9 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
       });
       setTasks((prev) => {
         const updated = prev.map((t) =>
-          t.id === task.id ? { ...t, status: "completed", progress: 100, speedMbps: undefined } : t
+          t.id === task.id
+            ? { ...t, status: "completed" as QueueTask["status"], progress: 100, speedMbps: undefined }
+            : t
         );
         const transcodeId = `${task.id}-transcode`;
         const hasTranscode = updated.some((t) => t.id === transcodeId);
@@ -137,7 +139,7 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
             id: transcodeId,
             name: `Transcode - ${task.name}`,
             size: task.size,
-            status: "processing",
+            status: "processing" as QueueTask["status"],
             progress: 100,
             jobId: task.jobId,
             kind: task.kind,
