@@ -290,6 +290,44 @@ export const listUploads = async (_req: Request, res: Response) => {
   });
 };
 
+export const retryTranscode = async (req: Request, res: Response) => {
+  const jobId = req.params.id ? BigInt(req.params.id) : null;
+  if (!jobId) return res.status(400).json({ message: "Missing job id" });
+
+  const job = await prisma.uploadJob.findUnique({ where: { id: jobId } });
+  if (!job) return res.status(404).json({ message: "Job not found" });
+
+  if (job.status !== UploadStatus.FAILED) {
+    return res.status(400).json({ message: "Only failed jobs can be retried" });
+  }
+
+  const payload = job.payload as any;
+  const key = payload?.key as string | undefined;
+  const renditions = (payload?.renditions as Rendition[] | undefined) ?? defaultRenditions;
+
+  if (!key) {
+    return res.status(400).json({ message: "Job payload missing key; cannot retry" });
+  }
+
+  const updated = await prisma.uploadJob.update({
+    where: { id: jobId },
+    data: {
+      status: UploadStatus.PROCESSING,
+      error: null,
+    },
+  });
+
+  await transcodeQueue.add("transcode", {
+    uploadJobId: updated.id.toString(),
+    key,
+    renditions,
+    titleId: job.titleId ? job.titleId.toString() : null,
+    episodeId: job.episodeId ? job.episodeId.toString() : null,
+  });
+
+  return res.json({ message: "Transcode retried", jobId: updated.id.toString() });
+};
+
 export const resumeUpload = async (req: Request, res: Response) => {
   const jobId = req.params.id ? BigInt(req.params.id) : null;
   if (!jobId) return res.status(400).json({ message: "Missing job id" });
