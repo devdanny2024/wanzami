@@ -126,9 +126,29 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
           )
         );
       });
-      setTasks((prev) =>
-        prev.map((t) => (t.id === task.id ? { ...t, status: "processing", progress: 100, speedMbps: undefined } : t))
-      );
+      setTasks((prev) => {
+        const updated = prev.map((t) =>
+          t.id === task.id ? { ...t, status: "completed", progress: 100, speedMbps: undefined } : t
+        );
+        const transcodeId = `${task.id}-transcode`;
+        const hasTranscode = updated.some((t) => t.id === transcodeId);
+        if (!hasTranscode) {
+          updated.push({
+            id: transcodeId,
+            name: `Transcode - ${task.name}`,
+            size: task.size,
+            status: "processing",
+            progress: 100,
+            jobId: task.jobId,
+            kind: task.kind,
+            targetId: task.targetId,
+          });
+        }
+        return updated;
+      });
+      setTimeout(() => {
+        removeTask(task.id);
+      }, 2000);
     } catch (err: any) {
       setTasks((prev) =>
         prev.map((t) =>
