@@ -140,6 +140,7 @@ export const initUpload = async (req: Request, res: Response) => {
           key,
           uploadId,
           fileName,
+          partSize: partSizeBytes,
           renditions: renditions && renditions.length ? renditions : defaultRenditions,
         },
       },
@@ -339,6 +340,7 @@ export const resumeUpload = async (req: Request, res: Response) => {
   const payload = job.payload as any;
   const uploadId = payload?.uploadId;
   const key = payload?.key;
+  const partSize = Number(payload?.partSize) || partSizeBytes;
   if (!uploadId || !key) {
     return res.status(400).json({ message: "Upload cannot be resumed" });
   }
@@ -346,7 +348,7 @@ export const resumeUpload = async (req: Request, res: Response) => {
     const parts = await listMultipartParts(key, uploadId);
     const uploadedParts = parts.map((p) => p.partNumber);
     const uploadedBytes = parts.reduce((sum, p) => sum + p.size, 0);
-    const partCount = Math.max(1, Math.ceil(Number(job.bytesTotal ?? 0) / partSizeBytes));
+    const partCount = Math.max(1, Math.ceil(Number(job.bytesTotal ?? 0) / partSize));
     const remaining = [];
     for (let i = 1; i <= partCount; i += 1) {
       if (!uploadedParts.includes(i)) remaining.push(i);
@@ -356,7 +358,7 @@ export const resumeUpload = async (req: Request, res: Response) => {
       jobId: job.id.toString(),
       uploadId,
       key,
-      partSize: partSizeBytes,
+      partSize,
       partCount,
       uploadedParts: parts,
       uploadedBytes,
