@@ -57,7 +57,18 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
     if (!raw) return;
     try {
       const saved = JSON.parse(raw) as Omit<QueueTask, "file">[];
-      setTasks(saved.map((t) => ({ ...t, file: undefined })));
+      const restored = saved.map((t) => ({ ...t, file: undefined }));
+      setTasks(
+        restored.map((t) => {
+          if (t.status === "completed") return t;
+          return {
+            ...t,
+            status: "failed",
+            error: "File missing. Re-select the file to resume.",
+            progress: t.progress ?? 0,
+          };
+        })
+      );
     } catch (err) {
       console.error("Failed to restore upload queue", err);
     }
@@ -361,6 +372,7 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
       setTasks((prev) =>
         prev.map((t) => {
           if (t.status !== "failed") return t;
+          if (!t.file) return t;
           return { ...t, status: "pending", error: undefined };
         })
       );
