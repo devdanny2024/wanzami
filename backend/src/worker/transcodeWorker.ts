@@ -58,6 +58,19 @@ const renditionToHeight = (r: Rendition) => {
   }
 };
 
+async function safeUpdateUploadJob(
+  uploadJobId: bigint,
+  data: { status: UploadStatus; error?: string | null }
+) {
+  const result = await prisma.uploadJob.updateMany({
+    where: { id: uploadJobId },
+    data,
+  });
+  if (result.count === 0) {
+    console.warn("uploadJob missing for update", { uploadJobId, status: data.status });
+  }
+}
+
 async function transcodeToHlsRendition(
   src: string,
   tmpDir: string,
@@ -158,14 +171,11 @@ const worker = new Worker<TranscodeJob>(
         );
       }
 
-      await prisma.uploadJob.update({
-        where: { id: uploadJobId },
-        data: { status: UploadStatus.COMPLETED },
-      });
+      await safeUpdateUploadJob(uploadJobId, { status: UploadStatus.COMPLETED });
     } catch (err: any) {
-      await prisma.uploadJob.update({
-        where: { id: uploadJobId },
-        data: { status: UploadStatus.FAILED, error: err?.message ?? "Transcode failed" },
+      await safeUpdateUploadJob(uploadJobId, {
+        status: UploadStatus.FAILED,
+        error: err?.message ?? "Transcode failed",
       });
       throw err;
     } finally {
@@ -188,9 +198,9 @@ const worker = new Worker<TranscodeJob>(
 worker.on("failed", async (job, err) => {
   if (!job?.data) return;
   const data = job.data as TranscodeJob;
-  await prisma.uploadJob.update({
-    where: { id: BigInt(data.uploadJobId) },
-    data: { status: UploadStatus.FAILED, error: err?.message ?? "Transcode failed" },
+  await safeUpdateUploadJob(BigInt(data.uploadJobId), {
+    status: UploadStatus.FAILED,
+    error: err?.message ?? "Transcode failed",
   });
 });
 
