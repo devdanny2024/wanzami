@@ -10,6 +10,7 @@ type UploadJob = {
   status: "UPLOADING" | "PROCESSING" | "COMPLETED" | "FAILED";
   bytesUploaded?: number;
   bytesTotal?: number | null;
+  processingPercent?: number | null;
   error?: string | null;
   createdAt?: string;
   updatedAt?: string;
@@ -94,9 +95,10 @@ export function ProcessManagement() {
     };
   }, []);
 
-  const ongoing = useMemo(() => jobs.filter((j) => isOngoing(j.status)), [jobs]);
+  const ongoing = useMemo(() => jobs.filter((j) => j.status === "PROCESSING"), [jobs]);
   const completed = useMemo(() => jobs.filter((j) => j.status === "COMPLETED"), [jobs]);
   const failed = useMemo(() => jobs.filter((j) => j.status === "FAILED"), [jobs]);
+  const processesOnly = useMemo(() => jobs.filter((j) => j.status !== "UPLOADING"), [jobs]);
 
   const renderList = (items: UploadJob[]) => {
     if (items.length === 0) {
@@ -107,7 +109,14 @@ export function ProcessManagement() {
         {items.map((job) => {
           const total = job.bytesTotal ?? undefined;
           const uploaded = job.bytesUploaded ?? 0;
-          const percent = total ? Math.round((uploaded / total) * 100) : undefined;
+          const percent =
+            job.status === "PROCESSING"
+              ? job.processingPercent ?? undefined
+              : job.status === "COMPLETED"
+              ? 100
+              : total
+              ? Math.round((uploaded / total) * 100)
+              : undefined;
           return (
             <Card key={job.id} className="bg-neutral-950 border-neutral-800">
               <CardContent className="p-4 space-y-2">
@@ -121,7 +130,7 @@ export function ProcessManagement() {
                   <Badge className={statusBadge(job.status)}>{statusLabel(job.status)}</Badge>
                 </div>
                 <div className="text-xs text-neutral-400">
-                  {formatBytes(uploaded)} / {formatBytes(total)}
+                  {job.status === "PROCESSING" ? "Transcoding" : `${formatBytes(uploaded)} / ${formatBytes(total)}`}
                   {typeof percent === "number" ? ` - ${percent}%` : ""}
                 </div>
                 {job.error && <p className="text-xs text-red-400">Error: {job.error}</p>}
@@ -138,7 +147,7 @@ export function ProcessManagement() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl text-white">Processes</h1>
-          <p className="text-neutral-400 mt-1">Uploads and transcode status</p>
+          <p className="text-neutral-400 mt-1">Transcode processes</p>
         </div>
         <Button onClick={fetchJobs} className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
           Refresh
@@ -165,13 +174,13 @@ export function ProcessManagement() {
                   Failed ({failed.length})
                 </TabsTrigger>
                 <TabsTrigger value="all" className="data-[state=active]:bg-[#fd7e14] data-[state=active]:text-white">
-                  All ({jobs.length})
+                  All ({processesOnly.length})
                 </TabsTrigger>
               </TabsList>
               <TabsContent value="ongoing" className="mt-4">{renderList(ongoing)}</TabsContent>
               <TabsContent value="completed" className="mt-4">{renderList(completed)}</TabsContent>
               <TabsContent value="failed" className="mt-4">{renderList(failed)}</TabsContent>
-              <TabsContent value="all" className="mt-4">{renderList(jobs)}</TabsContent>
+              <TabsContent value="all" className="mt-4">{renderList(processesOnly)}</TabsContent>
             </Tabs>
           )}
         </CardContent>

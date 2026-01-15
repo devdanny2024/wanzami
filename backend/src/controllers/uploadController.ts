@@ -276,8 +276,29 @@ export const listUploads = async (_req: Request, res: Response) => {
     orderBy: { createdAt: "desc" },
     take: 50,
   });
+  const jobsWithProgress = await Promise.all(
+    jobs.map(async (j) => {
+      const payload = (j.payload as any) || {};
+      const renditions: Rendition[] = Array.isArray(payload.renditions) ? payload.renditions : [];
+      let processingPercent: number | null = null;
+      if (renditions.length > 0 && (j.titleId || j.episodeId)) {
+        const versions = await prisma.assetVersion.findMany({
+          where: {
+            ...(j.titleId ? { titleId: j.titleId } : {}),
+            ...(j.episodeId ? { episodeId: j.episodeId } : {}),
+            rendition: { in: renditions },
+          },
+          select: { status: true },
+        });
+        const total = versions.length;
+        const ready = versions.filter((v) => v.status === AssetStatus.READY).length;
+        processingPercent = total > 0 ? Math.round((ready / total) * 100) : null;
+      }
+      return { job: j, processingPercent };
+    })
+  );
   return res.json({
-    uploads: jobs.map((j) => ({
+    uploads: jobsWithProgress.map(({ job: j, processingPercent }) => ({
       id: j.id.toString(),
       status: j.status,
       bytesUploaded: Number(j.bytesUploaded ?? 0),
@@ -287,6 +308,7 @@ export const listUploads = async (_req: Request, res: Response) => {
       error: j.error,
       createdAt: j.createdAt,
       updatedAt: j.updatedAt,
+      processingPercent,
     })),
   });
 };
