@@ -18,6 +18,7 @@ import { UploadQueueProvider, useUploadQueue } from './context/UploadQueueProvid
 import { Logs } from './components/Logs';
 import { EmailService } from './components/EmailService';
 import { SupportTickets } from './components/SupportTickets';
+import { ProcessManagement } from './components/ProcessManagement';
 
 export default function App() {
   return (
@@ -139,6 +140,8 @@ function AppContent() {
         return <EmailService />;
       case 'support':
         return <SupportTickets />;
+      case 'processes':
+        return <ProcessManagement />;
       default:
         return <Dashboard />;
     }
