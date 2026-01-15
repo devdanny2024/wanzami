@@ -133,7 +133,7 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
         const transcodeId = `${task.id}-transcode`;
         const hasTranscode = updated.some((t) => t.id === transcodeId);
         if (!hasTranscode) {
-          updated.push({
+          const transcodeTask: QueueTask = {
             id: transcodeId,
             name: `Transcode - ${task.name}`,
             size: task.size,
@@ -142,7 +142,8 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
             jobId: task.jobId,
             kind: task.kind,
             targetId: task.targetId,
-          });
+          };
+          updated.push(transcodeTask);
         }
         return updated;
       });
