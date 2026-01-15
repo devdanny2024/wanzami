@@ -15,6 +15,17 @@ type QueueTask = UploadTask & {
 
 type UploadQueueContextValue = {
   tasks: QueueTask[];
+  serverJobs: {
+    id: string;
+    status: string;
+    bytesUploaded: number;
+    bytesTotal: number | null;
+    fileName?: string | null;
+    kind?: string | null;
+    error?: string | null;
+    createdAt?: string;
+    updatedAt?: string;
+  }[];
   startUpload: (kind: QueueTask["kind"], targetId: number, file: File, rendition?: string) => void;
   startAssetUpload: (
     kind: "MOVIE" | "SERIES",
@@ -32,6 +43,7 @@ const UploadQueueContext = createContext<UploadQueueContextValue | undefined>(un
 
 export function UploadQueueProvider({ children }: { children: React.ReactNode }) {
   const [tasks, setTasks] = useState<QueueTask[]>([]);
+  const [serverJobs, setServerJobs] = useState<UploadQueueContextValue["serverJobs"]>([]);
   const [running, setRunning] = useState(false);
   const activeCount = useRef(0);
   const MAX_CONCURRENCY = 3;
@@ -233,8 +245,6 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
     if (typeof window === "undefined") return;
     const token = localStorage.getItem("accessToken");
     if (!token) return;
-    const hasInFlight = tasks.some((t) => t.jobId && (t.status === "processing" || t.status === "uploading"));
-    if (!hasInFlight) return;
 
     let cancelled = false;
     const poll = async () => {
@@ -243,9 +253,26 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) return;
-        const uploads = (res.data as any)?.uploads ?? [];
+        const uploads = ((res.data as any)?.uploads ?? []) as any[];
         if (!Array.isArray(uploads)) return;
         if (cancelled) return;
+
+        // Expose all jobs to consumers (for global "Processing" tab).
+        setServerJobs(
+          uploads.map((u) => ({
+            id: String(u.id),
+            status: String(u.status),
+            bytesUploaded: Number(u.bytesUploaded ?? 0),
+            bytesTotal: u.bytesTotal != null ? Number(u.bytesTotal) : null,
+            fileName: u.fileName ?? null,
+            kind: u.kind ?? null,
+            error: u.error ?? null,
+            createdAt: u.createdAt,
+            updatedAt: u.updatedAt,
+          }))
+        );
+
+        // Update any local queue tasks that map to a server job.
         setTasks((prev) =>
           prev.map((t) => {
             if (!t.jobId) return t;
@@ -258,7 +285,10 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
               return { ...t, status: "failed", progress: 100, error: job.error ?? t.error };
             }
             if (job.status === "PROCESSING") {
-              return { ...t, status: "processing", progress: 100 };
+              const total = Number(job.bytesTotal ?? 0);
+              const uploaded = Number(job.bytesUploaded ?? 0);
+              const pct = total > 0 ? Math.round((uploaded / total) * 100) : 100;
+              return { ...t, status: "processing", progress: pct };
             }
             return t;
           })
@@ -274,7 +304,7 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
       cancelled = true;
       clearInterval(interval);
     };
-  }, [tasks]);
+  }, [tasks.length]);
 
   // Auto-clear once every task is completed (no pending/uploading/processing).
   useEffect(() => {
@@ -305,7 +335,9 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
   }, [tasks]);
 
   return (
-    <UploadQueueContext.Provider value={{ tasks, startUpload, startAssetUpload, retryTask, removeTask, clearTasks }}>
+    <UploadQueueContext.Provider
+      value={{ tasks, serverJobs, startUpload, startAssetUpload, retryTask, removeTask, clearTasks }}
+    >
       {children}
     </UploadQueueContext.Provider>
   );

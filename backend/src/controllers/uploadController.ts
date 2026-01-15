@@ -281,6 +281,8 @@ export const listUploads = async (_req: Request, res: Response) => {
       status: j.status,
       bytesUploaded: Number(j.bytesUploaded ?? 0),
       bytesTotal: j.bytesTotal ? Number(j.bytesTotal) : null,
+      fileName: (j.payload as any)?.fileName ?? null,
+      kind: (j.payload as any)?.kind ?? null,
       error: j.error,
       createdAt: j.createdAt,
       updatedAt: j.updatedAt,
