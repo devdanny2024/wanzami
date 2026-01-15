@@ -64,6 +64,7 @@ export function ProcessManagement() {
   const [jobs, setJobs] = useState<UploadJob[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [actionId, setActionId] = useState<string | null>(null);
 
   const fetchJobs = async () => {
     try {
@@ -100,6 +101,26 @@ export function ProcessManagement() {
   const failed = useMemo(() => jobs.filter((j) => j.status === "FAILED"), [jobs]);
   const processesOnly = useMemo(() => jobs.filter((j) => j.status !== "UPLOADING"), [jobs]);
 
+  const handleRetry = async (job: UploadJob) => {
+    try {
+      setActionId(job.id);
+      setError(null);
+      const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+      const res = await authFetch(`/admin/uploads/${job.id}/retry`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) {
+        throw new Error(res.data?.message || "Failed to requeue transcode");
+      }
+      await fetchJobs();
+    } catch (err: any) {
+      setError(err?.message || "Failed to requeue transcode");
+    } finally {
+      setActionId(null);
+    }
+  };
+
   const renderList = (items: UploadJob[]) => {
     if (items.length === 0) {
       return <p className="text-sm text-neutral-500">No processes found.</p>;
@@ -117,6 +138,8 @@ export function ProcessManagement() {
               : total
               ? Math.round((uploaded / total) * 100)
               : undefined;
+          const canRetry = job.status === "FAILED" || job.status === "PROCESSING";
+          const actionLabel = job.status === "FAILED" ? "Retry" : "Restart";
           return (
             <Card key={job.id} className="bg-neutral-950 border-neutral-800">
               <CardContent className="p-4 space-y-2">
@@ -134,6 +157,18 @@ export function ProcessManagement() {
                   {typeof percent === "number" ? ` - ${percent}%` : ""}
                 </div>
                 {job.error && <p className="text-xs text-red-400">Error: {job.error}</p>}
+                {canRetry && (
+                  <div className="flex justify-end">
+                    <Button
+                      size="sm"
+                      className="bg-[#fd7e14] hover:bg-[#ff9940] text-white"
+                      disabled={actionId === job.id}
+                      onClick={() => handleRetry(job)}
+                    >
+                      {actionId === job.id ? "Requeuing..." : actionLabel}
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           );

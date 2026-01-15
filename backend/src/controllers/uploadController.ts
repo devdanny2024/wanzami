@@ -320,8 +320,8 @@ export const retryTranscode = async (req: Request, res: Response) => {
   const job = await prisma.uploadJob.findUnique({ where: { id: jobId } });
   if (!job) return res.status(404).json({ message: "Job not found" });
 
-  if (job.status !== UploadStatus.FAILED) {
-    return res.status(400).json({ message: "Only failed jobs can be retried" });
+  if (job.status !== UploadStatus.FAILED && job.status !== UploadStatus.PROCESSING) {
+    return res.status(400).json({ message: "Only failed or processing jobs can be retried" });
   }
 
   const payload = job.payload as any;
@@ -348,7 +348,7 @@ export const retryTranscode = async (req: Request, res: Response) => {
     episodeId: job.episodeId ? job.episodeId.toString() : null,
   });
 
-  return res.json({ message: "Transcode retried", jobId: updated.id.toString() });
+  return res.json({ message: "Transcode requeued", jobId: updated.id.toString() });
 };
 
 export const resumeUpload = async (req: Request, res: Response) => {
