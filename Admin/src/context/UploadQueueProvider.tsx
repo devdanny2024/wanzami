@@ -137,29 +137,13 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
           )
         );
       });
-      setTasks((prev) => {
-        const updated = prev.map((t) =>
+      setTasks((prev) =>
+        prev.map((t) =>
           t.id === task.id
             ? { ...t, status: "completed" as QueueTask["status"], progress: 100, speedMbps: undefined }
             : t
-        );
-        const transcodeId = `${task.id}-transcode`;
-        const hasTranscode = updated.some((t) => t.id === transcodeId);
-        if (!hasTranscode) {
-          const transcodeTask: QueueTask = {
-            id: transcodeId,
-            name: `Transcode - ${task.name}`,
-            size: task.size,
-            status: "processing" as QueueTask["status"],
-            progress: 100,
-            jobId: task.jobId,
-            kind: task.kind,
-            targetId: task.targetId,
-          };
-          updated.push(transcodeTask);
-        }
-        return updated;
-      });
+        )
+      );
       setTimeout(() => {
         removeTask(task.id);
       }, 2000);
@@ -322,6 +306,7 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
         setTasks((prev) =>
           prev.map((t) => {
             if (!t.jobId) return t;
+            if (t.status === "completed") return t;
             const job = uploads.find((u: any) => String(u.id) === String(t.jobId));
             if (!job) return t;
             if (job.status === "COMPLETED") {
