@@ -1,7 +1,7 @@
 'use client';
 
 import { Play, Plus, Share2, ThumbsUp, X, Lock, Volume2, VolumeX } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { MovieCard, MovieData } from './MovieCard';
@@ -36,6 +36,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
   const [shareError, setShareError] = useState<string | null>(null);
   const [showTrailerModal, setShowTrailerModal] = useState(false);
   const [heroMuted, setHeroMuted] = useState(true);
+  const heroVideoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -63,6 +64,16 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
     };
     void loadRelated();
   }, [country, movie]);
+
+  useEffect(() => {
+    const heroVideo = heroVideoRef.current;
+    if (!heroVideo) return;
+    if (showTrailerModal) {
+      heroVideo.pause();
+    } else {
+      void heroVideo.play().catch(() => undefined);
+    }
+  }, [showTrailerModal]);
 
   useEffect(() => {
     const targetId = movie?.backendId ?? movie?.id;
@@ -178,6 +189,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
         {movie.shortTrailerUrl || movie.trailerUrl ? (
           <video
             className="w-full h-full object-cover"
+            ref={heroVideoRef}
             src={movie.shortTrailerUrl || movie.trailerUrl}
             autoPlay
             muted={heroMuted}

@@ -228,6 +228,35 @@ export function CustomMediaPlayer({
     { id: string; backendId?: string; title: string; image: string }[]
   >([]);
 
+  const shouldLockLandscape = useCallback(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(max-width: 900px)").matches;
+  }, []);
+
+  const lockLandscape = useCallback(async () => {
+    if (typeof window === "undefined") return;
+    if (!shouldLockLandscape()) return;
+    const orientation = window.screen?.orientation;
+    if (!orientation?.lock) return;
+    try {
+      await orientation.lock("landscape");
+    } catch {
+      // ignore lock failures (browser restrictions)
+    }
+  }, [shouldLockLandscape]);
+
+  const unlockLandscape = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const orientation = window.screen?.orientation;
+    if (orientation?.unlock) {
+      try {
+        orientation.unlock();
+      } catch {
+        // ignore
+      }
+    }
+  }, []);
+
   const updateLocalContinueWatching = useCallback(
     (payload: { completionPercent?: number; positionSec?: number; durationSec?: number }) => {
       if (typeof window === "undefined") return;
@@ -545,6 +574,7 @@ export function CustomMediaPlayer({
     const handlePlaying = () => {
       setIsPlaying(true);
       sendPlayStart("playing");
+      void lockLandscape();
     };
 
     video.addEventListener("timeupdate", handleTimeUpdate);
@@ -610,6 +640,10 @@ export function CustomMediaPlayer({
     setCurrentTime(target);
     lastKnownTime.current = target;
     void emitEvent("SCRUB", { reason, positionSec: target }, true);
+    if (isPlaying) {
+      pendingResume.current = true;
+      void video.play().catch(() => undefined);
+    }
   };
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -620,6 +654,10 @@ export function CustomMediaPlayer({
     setCurrentTime(time);
     lastKnownTime.current = time;
     void emitEvent("SCRUB", { reason: "seek", positionSec: time }, true);
+    if (isPlaying) {
+      pendingResume.current = true;
+      void video.play().catch(() => undefined);
+    }
   };
 
   const adjustVolume = (delta: number) => {
@@ -733,7 +771,6 @@ export function CustomMediaPlayer({
   const handleQualityChange = (source: MediaSource) => {
     const video = videoRef.current;
     const time = video?.currentTime ?? 0;
-    const wasPlaying = isPlaying;
     setIsBuffering(true);
     setCurrentSrc(source);
     setShowQualityMenu(false);
@@ -743,10 +780,8 @@ export function CustomMediaPlayer({
     setTimeout(() => {
       if (videoRef.current) {
         videoRef.current.currentTime = time;
-        if (wasPlaying) {
-          pendingResume.current = true;
-          void videoRef.current.play().catch(() => undefined);
-        }
+        pendingResume.current = true;
+        void videoRef.current.play().catch(() => undefined);
       }
     }, 100);
   };
@@ -872,8 +907,9 @@ export function CustomMediaPlayer({
     return () => {
       unmounted.current = true;
       void emitEvent("PLAY_END", { reason: "unmount" }, true);
+      unlockLandscape();
     };
-  }, [emitEvent]);
+  }, [emitEvent, unlockLandscape]);
 
   const formatTime = (time: number) => {
     const hours = Math.floor(time / 3600);
@@ -1063,7 +1099,7 @@ export function CustomMediaPlayer({
 
       {isBuffering && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 14 }}>
-          <div className="h-12 w-12 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+          <div className="h-12 w-12 border-2 border-white/30 border-t-[#fd7e14] rounded-full animate-spin" />
         </div>
       )}
 
