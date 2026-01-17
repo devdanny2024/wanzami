@@ -236,10 +236,10 @@ export function CustomMediaPlayer({
   const lockLandscape = useCallback(async () => {
     if (typeof window === "undefined") return;
     if (!shouldLockLandscape()) return;
-    const orientation = window.screen?.orientation;
-    if (!orientation?.lock) return;
+    const orientation = window.screen?.orientation as ScreenOrientation | undefined;
+    if (!orientation || typeof (orientation as any).lock !== "function") return;
     try {
-      await orientation.lock("landscape");
+      await (orientation as any).lock("landscape");
     } catch {
       // ignore lock failures (browser restrictions)
     }
@@ -247,10 +247,10 @@ export function CustomMediaPlayer({
 
   const unlockLandscape = useCallback(() => {
     if (typeof window === "undefined") return;
-    const orientation = window.screen?.orientation;
-    if (orientation?.unlock) {
+    const orientation = window.screen?.orientation as ScreenOrientation | undefined;
+    if (orientation && typeof (orientation as any).unlock === "function") {
       try {
-        orientation.unlock();
+        (orientation as any).unlock();
       } catch {
         // ignore
       }
