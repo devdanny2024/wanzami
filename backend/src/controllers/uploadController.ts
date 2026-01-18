@@ -374,19 +374,28 @@ export const backfillTranscodes = async (req: Request, res: Response) => {
       continue;
     }
 
+    const versionWhere = {
+      ...(job.titleId ? { titleId: job.titleId } : {}),
+      ...(job.episodeId ? { episodeId: job.episodeId } : {}),
+      rendition: { in: renditions },
+    };
+
     // Skip jobs that already have a master playlist wired.
     const versions = await prisma.assetVersion.findMany({
-      where: {
-        ...(job.titleId ? { titleId: job.titleId } : {}),
-        ...(job.episodeId ? { episodeId: job.episodeId } : {}),
-        rendition: { in: renditions },
-      },
+      where: versionWhere,
       select: { url: true },
     });
     const hasMaster = versions.some((v) => (v.url ?? "").includes("/master.m3u8"));
     if (hasMaster) {
       continue;
     }
+
+    // Reset asset versions for this title/episode back to PROCESSING so
+    // dashboard progress reflects the new backfill run (0% -> 100%).
+    await prisma.assetVersion.updateMany({
+      where: versionWhere,
+      data: { status: AssetStatus.PROCESSING },
+    });
 
     const updated = await prisma.uploadJob.update({
       where: { id: job.id },
