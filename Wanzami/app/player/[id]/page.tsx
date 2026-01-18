@@ -69,27 +69,58 @@ const buildSourcesFromAssets = (
     assetsInput
       ?.map((a) => ({ ...a, url: convertS3Url(a?.url) }))
       .filter((a) => a?.url) ?? [];
+
+  if (!assets.length) {
+    return [
+      {
+        src: 'https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+        label: 'Demo',
+        type: 'video/mp4',
+      },
+    ];
+  }
+
+  const hasMaster = assets.some((a) => (a.url as string).includes('/master.m3u8'));
+
+  if (hasMaster) {
+    const master = assets.find((a) => (a.url as string).includes('/master.m3u8'))!;
+    const masterUrl = master.url as string;
+
+    const autoSource = {
+      src: masterUrl,
+      label: 'Auto',
+      type: masterUrl.toLowerCase().endsWith('.m3u8') ? 'application/x-mpegURL' : 'video/mp4',
+    };
+
+    const sortedWithRenditions = assets
+      .slice()
+      .sort((a, b) => (renditionRank[b.rendition] ?? 0) - (renditionRank[a.rendition] ?? 0));
+
+    const manualSources = sortedWithRenditions.map((a) => {
+      const baseUrl = (a.url as string).includes('master.m3u8')
+        ? (a.url as string).replace('master.m3u8', `${a.rendition}.m3u8`)
+        : (a.url as string);
+      return {
+        src: baseUrl,
+        label: labelForRendition(a.rendition),
+        type: baseUrl.toLowerCase().endsWith('.m3u8') ? 'application/x-mpegURL' : 'video/mp4',
+      };
+    });
+
+    return [autoSource, ...manualSources];
+  }
+
   const sorted = assets.sort(
     (a, b) => (renditionRank[b.rendition] ?? 0) - (renditionRank[a.rendition] ?? 0)
   );
-  if (sorted.length) {
-    return sorted.map((a) => ({
-      src: a.url as string,
-      label: labelForRendition(a.rendition),
-      type:
-        (a.url as string).toLowerCase().endsWith('.m3u8')
-          ? 'application/x-mpegURL'
-          : 'video/mp4',
-    }));
-  }
-
-  return [
-    {
-      src: 'https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-      label: 'Demo',
-      type: 'video/mp4',
-    },
-  ];
+  return sorted.map((a) => ({
+    src: a.url as string,
+    label: labelForRendition(a.rendition),
+    type:
+      (a.url as string).toLowerCase().endsWith('.m3u8')
+        ? 'application/x-mpegURL'
+        : 'video/mp4',
+  }));
 };
 
 const fallbackDemo = (id?: string | null) => ({
