@@ -64,6 +64,7 @@ export function ProcessManagement() {
   const [jobs, setJobs] = useState<UploadJob[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+   const [backfillRunning, setBackfillRunning] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
 
   const fetchJobs = async () => {
@@ -118,6 +119,27 @@ export function ProcessManagement() {
       setError(err?.message || "Failed to requeue transcode");
     } finally {
       setActionId(null);
+    }
+  };
+
+  const handleBackfill = async () => {
+    try {
+      setBackfillRunning(true);
+      setError(null);
+      const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+      const res = await authFetch("/admin/uploads/backfill-transcodes", {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: JSON.stringify({ limit: 10 }),
+      });
+      if (!res.ok) {
+        throw new Error(res.data?.message || "Failed to start backfill");
+      }
+      await fetchJobs();
+    } catch (err: any) {
+      setError(err?.message || "Failed to start backfill");
+    } finally {
+      setBackfillRunning(false);
     }
   };
 
@@ -184,9 +206,18 @@ export function ProcessManagement() {
           <h1 className="text-3xl text-white">Processes</h1>
           <p className="text-neutral-400 mt-1">Transcode processes</p>
         </div>
-        <Button onClick={fetchJobs} className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
-          Refresh
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={handleBackfill}
+            className="bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-600"
+            disabled={backfillRunning}
+          >
+            {backfillRunning ? "Starting…" : "Backfill old titles"}
+          </Button>
+          <Button onClick={fetchJobs} className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
+            Refresh
+          </Button>
+        </div>
       </div>
 
       <Card className="bg-neutral-900 border-neutral-800">

@@ -351,6 +351,69 @@ export const retryTranscode = async (req: Request, res: Response) => {
   return res.json({ message: "Transcode requeued", jobId: updated.id.toString() });
 };
 
+export const backfillTranscodes = async (req: Request, res: Response) => {
+  const rawLimit = (req.body as any)?.limit ?? req.query.limit;
+  const parsedLimit = Number(rawLimit);
+  const take = Number.isFinite(parsedLimit) && parsedLimit > 0 && parsedLimit <= 50 ? parsedLimit : 10;
+
+  const candidates = await prisma.uploadJob.findMany({
+    where: { status: UploadStatus.COMPLETED },
+    orderBy: { updatedAt: "asc" },
+    take,
+  });
+
+  const queued: string[] = [];
+
+  for (const job of candidates) {
+    const payload = (job.payload as any) || {};
+    const key = payload?.key as string | undefined;
+    const renditions: Rendition[] =
+      (payload?.renditions as Rendition[] | undefined) ?? defaultRenditions;
+
+    if (!key || !renditions.length) {
+      continue;
+    }
+
+    // Skip jobs that already have a master playlist wired.
+    const versions = await prisma.assetVersion.findMany({
+      where: {
+        ...(job.titleId ? { titleId: job.titleId } : {}),
+        ...(job.episodeId ? { episodeId: job.episodeId } : {}),
+        rendition: { in: renditions },
+      },
+      select: { url: true },
+    });
+    const hasMaster = versions.some((v) => (v.url ?? "").includes("/master.m3u8"));
+    if (hasMaster) {
+      continue;
+    }
+
+    const updated = await prisma.uploadJob.update({
+      where: { id: job.id },
+      data: {
+        status: UploadStatus.PROCESSING,
+        error: null,
+      },
+    });
+
+    await transcodeQueue.add("transcode", {
+      uploadJobId: updated.id.toString(),
+      key,
+      renditions,
+      titleId: job.titleId ? job.titleId.toString() : null,
+      episodeId: job.episodeId ? job.episodeId.toString() : null,
+    });
+
+    queued.push(updated.id.toString());
+  }
+
+  return res.json({
+    message: "Backfill transcodes enqueued",
+    queuedCount: queued.length,
+    jobIds: queued,
+  });
+};
+
 export const resumeUpload = async (req: Request, res: Response) => {
   const jobId = req.params.id ? BigInt(req.params.id) : null;
   if (!jobId) return res.status(400).json({ message: "Missing job id" });

@@ -82,8 +82,15 @@ export default function TitlePage({ params }: { params: { id: string } }) {
       setCountry(stored ?? 'NG');
       setAccessToken(token);
       setProfileId(profile);
+
+      // If there is no access token at all, unauthenticated users
+      // should not be able to open title pages directly. Redirect
+      // them back to the splash/auth flow.
+      if (!token) {
+        router.replace('/splash');
+      }
     }
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     let cancelled = false;
@@ -123,13 +130,13 @@ export default function TitlePage({ params }: { params: { id: string } }) {
         if (!cancelled) setLoading(false);
       }
     };
-    if (country !== null) {
+    if (country !== null && accessToken) {
       void load();
     }
     return () => {
       cancelled = true;
     };
-  }, [id, country]);
+  }, [id, country, accessToken, profileId]);
 
   const detailMovie = useMemo(() => mapToDetailMovie(title, id), [title, id]);
 

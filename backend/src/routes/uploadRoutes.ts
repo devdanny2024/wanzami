@@ -7,6 +7,7 @@ import {
   listUploads,
   resumeUpload,
   retryTranscode,
+  backfillTranscodes,
 } from "../controllers/uploadController.js";
 
 const router = Router();
@@ -17,5 +18,6 @@ router.post("/admin/uploads/:id/complete", requireAuth, requireAdmin, completeUp
 router.post("/admin/uploads/:id/resume", requireAuth, requireAdmin, resumeUpload);
 router.get("/admin/uploads", requireAuth, requireAdmin, listUploads);
 router.post("/admin/uploads/:id/retry", requireAuth, requireAdmin, retryTranscode);
+router.post("/admin/uploads/backfill-transcodes", requireAuth, requireAdmin, backfillTranscodes);
 
 export default router;

@@ -6,7 +6,7 @@ import { prisma } from "../prisma.js";
 import { config } from "../config.js";
 import { AssetStatus, UploadStatus, Rendition } from "@prisma/client";
 import { downloadToFile, uploadFile } from "../upload/s3.js";
-import { mkdtemp, rm, readdir, stat } from "fs/promises";
+import { mkdtemp, rm, readdir, stat, writeFile } from "fs/promises";
 import path from "path";
 import os from "os";
 
@@ -58,6 +58,22 @@ const renditionToHeight = (r: Rendition) => {
   }
 };
 
+const renditionInfo = (r: Rendition) => {
+  switch (r) {
+    case "R4K":
+      return { height: 2160, width: 3840, bandwidth: 12000000 };
+    case "R2K":
+      return { height: 1440, width: 2560, bandwidth: 8000000 };
+    case "R1080":
+      return { height: 1080, width: 1920, bandwidth: 5000000 };
+    case "R720":
+      return { height: 720, width: 1280, bandwidth: 3000000 };
+    case "R360":
+    default:
+      return { height: 360, width: 640, bandwidth: 800000 };
+  }
+};
+
 async function safeUpdateUploadJob(
   uploadJobId: bigint,
   data: { status: UploadStatus; error?: string | null }
@@ -78,11 +94,17 @@ async function transcodeToHlsRendition(
   rendition: Rendition,
   height: number,
   durationSec: number,
+   audioChannels: number,
   titleId: bigint | null,
   episodeId: bigint | null
 ) {
   const playlistPath = path.join(tmpDir, `${rendition}.m3u8`);
   const segmentPattern = path.join(tmpDir, `${rendition}_%03d.ts`);
+
+  const isSurround = audioChannels >= 6;
+  const audioOptions = isSurround
+    ? ["-ac 6", "-b:a 384k"]
+    : ["-ac 2", "-b:a 160k"];
 
   await new Promise<void>((resolve, reject) => {
     ffmpeg(src)
@@ -91,7 +113,7 @@ async function transcodeToHlsRendition(
         `-vf scale=-2:${height}`,
         "-preset veryfast",
         "-c:a aac",
-        "-b:a 128k",
+        ...audioOptions,
         "-f hls",
         "-hls_time 6",
         "-hls_playlist_type vod",
@@ -135,6 +157,41 @@ async function transcodeToHlsRendition(
   });
 }
 
+async function writeAndUploadMasterPlaylist(
+  tmpDir: string,
+  uploadJobId: string | number,
+  renditions: Rendition[],
+  titleId: bigint | null,
+  episodeId: bigint | null
+) {
+  if (!config.s3.bucket) return;
+  if (!renditions.length) return;
+
+  const sorted = renditions.slice().sort((a, b) => renditionToHeight(a) - renditionToHeight(b));
+  const lines: string[] = ["#EXTM3U", "#EXT-X-VERSION:3"];
+  for (const r of sorted) {
+    const { height, width, bandwidth } = renditionInfo(r);
+    lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${bandwidth},RESOLUTION=${width}x${height}`);
+    lines.push(`${r}.m3u8`);
+  }
+
+  const masterPath = path.join(tmpDir, "master.m3u8");
+  await writeFile(masterPath, lines.join("\n"), "utf8");
+  const key = `vod/${uploadJobId}/master.m3u8`;
+  await uploadFile(key, masterPath, "application/vnd.apple.mpegurl");
+
+  const where: any = { rendition: { in: renditions } };
+  if (titleId != null) where.titleId = titleId;
+  if (episodeId != null) where.episodeId = episodeId;
+
+  await prisma.assetVersion.updateMany({
+    where,
+    data: {
+      url: `s3://${config.s3.bucket}/${key}`,
+    },
+  });
+}
+
 const worker = new Worker<TranscodeJob>(
   "transcode",
   async (job: Job<TranscodeJob>) => {
@@ -147,11 +204,18 @@ const worker = new Worker<TranscodeJob>(
     try {
       await downloadToFile(data.key, srcPath);
       let durationSec = 0;
+      let audioChannels = 2;
       try {
         const probe = await new Promise<any>((resolve, reject) =>
           ffmpeg.ffprobe(srcPath, (err: any, meta: any) => (err ? reject(err) : resolve(meta)))
         );
         durationSec = Math.round(probe.format?.duration ?? 0);
+        const audioStream = (probe.streams ?? []).find(
+          (s: any) => s.codec_type === "audio"
+        );
+        if (audioStream?.channels && typeof audioStream.channels === "number") {
+          audioChannels = audioStream.channels;
+        }
       } catch {
         // If ffprobe is unavailable, continue without duration to avoid failing the whole job.
         durationSec = 0;
@@ -166,10 +230,15 @@ const worker = new Worker<TranscodeJob>(
           rendition,
           height,
           durationSec,
+          audioChannels,
           titleId,
           episodeId
         );
       }
+
+      // After all renditions are created, generate a master HLS
+      // playlist so the client player can use adaptive streaming.
+      await writeAndUploadMasterPlaylist(tmpDir, data.uploadJobId, data.renditions, titleId, episodeId);
 
       await safeUpdateUploadJob(uploadJobId, { status: UploadStatus.COMPLETED });
     } catch (err: any) {
