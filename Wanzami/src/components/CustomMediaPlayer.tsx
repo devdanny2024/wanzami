@@ -98,6 +98,7 @@ export function CustomMediaPlayer({
   const hideControlsTimer = useRef<NodeJS.Timeout | null>(null);
   const lastTapRef = useRef<number | null>(null);
   const lastTapXRef = useRef<number | null>(null);
+  const ignoreClickUntil = useRef<number>(0);
   const normalizedSources = useMemo(() => {
     if (!sources || !sources.length) return [];
     return sources.map((s, idx) => ({
@@ -619,6 +620,7 @@ export function CustomMediaPlayer({
       setIsPlaying(false);
       void emitEvent("PLAY_END", { reason: "pause" }, true);
     } else {
+      setIsBuffering(true);
       void video.play().catch(() => undefined);
       setIsPlaying(true);
       sendPlayStart("play");
@@ -627,7 +629,9 @@ export function CustomMediaPlayer({
 
   const seekRelative = (deltaSec: number, reason: string = "key_seek") => {
     const video = videoRef.current;
-    if (!video || !Number.isFinite(video.duration)) return;
+    if (!video) return;
+    if (!video.duration || !Number.isFinite(video.duration)) return;
+    setIsBuffering(true);
     const target = Math.max(0, Math.min(video.duration || 0, (video.currentTime || 0) + deltaSec));
     video.currentTime = target;
     setCurrentTime(target);
@@ -643,6 +647,7 @@ export function CustomMediaPlayer({
     const time = parseFloat(e.target.value);
     const video = videoRef.current;
     if (!video) return;
+    setIsBuffering(true);
     video.currentTime = time;
     setCurrentTime(time);
     lastKnownTime.current = time;
@@ -1013,14 +1018,16 @@ export function CustomMediaPlayer({
     const last = lastTapRef.current ?? 0;
     const lastX = lastTapXRef.current;
     const isDoubleTap =
-      now - last < 300 && lastX != null && Math.abs(lastX - x) < width * 0.25;
+      now - last < 350 && lastX != null && Math.abs(lastX - x) < width * 0.35;
 
     if (isDoubleTap) {
+      e.preventDefault();
       const side = x < width / 2 ? "left" : "right";
       const delta = side === "left" ? -10 : 10;
       seekRelative(delta, "tap_skip");
       lastTapRef.current = null;
       lastTapXRef.current = null;
+      ignoreClickUntil.current = now + 400;
     } else {
       lastTapRef.current = now;
       lastTapXRef.current = x;
@@ -1050,7 +1057,13 @@ export function CustomMediaPlayer({
         src={currentEpisode?.streamUrl || currentSrc?.src}
         poster={poster ?? undefined}
         className={`absolute inset-0 w-full h-full object-contain bg-black ${isBuffering ? "blur-sm" : ""}`}
-        onClick={togglePlay}
+        onClick={() => {
+          const now = Date.now();
+          if (ignoreClickUntil.current && now < ignoreClickUntil.current) {
+            return;
+          }
+          togglePlay();
+        }}
         controls={false}
         style={{ zIndex: 1 }}
       />
@@ -1125,7 +1138,10 @@ export function CustomMediaPlayer({
       )}
 
       {isBuffering && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ zIndex: 14 }}>
+        <div
+          className="absolute inset-0 flex items-center justify-center pointer-events-none"
+          style={{ zIndex: 30 }}
+        >
           <div className="h-12 w-12 border-2 border-white/30 border-t-[#fd7e14] rounded-full animate-spin" />
         </div>
       )}
@@ -1214,6 +1230,20 @@ export function CustomMediaPlayer({
                 {isPlaying ? <Pause className="w-7 h-7" fill="white" /> : <Play className="w-7 h-7" fill="white" />}
               </button>
               <button
+                onClick={() => seekRelative(-10, "button_seek")}
+                className="text-white hover:scale-110 transition-transform"
+                aria-label="Rewind 10 seconds"
+              >
+                <SkipBack className="w-6 h-6" />
+              </button>
+              <button
+                onClick={() => seekRelative(10, "button_seek")}
+                className="text-white hover:scale-110 transition-transform"
+                aria-label="Fast forward 10 seconds"
+              >
+                <SkipForward className="w-6 h-6" />
+              </button>
+              <button
                 onClick={handlePrev}
                 disabled={!hasPrev}
                 className={`text-white hover:scale-110 transition-transform ${!hasPrev ? "opacity-40 cursor-not-allowed" : ""}`}
@@ -1293,6 +1323,20 @@ export function CustomMediaPlayer({
               aria-label={isPlaying ? "Pause" : "Play"}
             >
               {isPlaying ? <Pause className="w-8 h-8" fill="white" /> : <Play className="w-8 h-8" fill="white" />}
+            </button>
+            <button
+              onClick={() => seekRelative(-10, "button_seek")}
+              className="text-white hover:scale-110 transition-transform"
+              aria-label="Rewind 10 seconds"
+            >
+              <SkipBack className="w-7 h-7" />
+            </button>
+            <button
+              onClick={() => seekRelative(10, "button_seek")}
+              className="text-white hover:scale-110 transition-transform"
+              aria-label="Fast forward 10 seconds"
+            >
+              <SkipForward className="w-7 h-7" />
             </button>
             <button
               onClick={handlePrev}
