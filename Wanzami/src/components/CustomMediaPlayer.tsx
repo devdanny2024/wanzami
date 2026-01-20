@@ -181,14 +181,7 @@ export function CustomMediaPlayer({
     setCurrentSrc(pickInitialSource(activeSources) ?? activeSources[0]);
   }, [activeSources]);
 
-  const shouldAutoplay = useMemo(
-    () =>
-      Boolean(
-        (activeSources?.length ?? 0) > 0 ||
-          episodes?.some((ep) => ep.streamUrl)
-      ),
-    [activeSources?.length, episodes]
-  );
+  const shouldAutoplay = false;
   const hasSources = useMemo(() => {
     return Boolean(
       (activeSources && activeSources.length > 0) ||
@@ -687,10 +680,30 @@ export function CustomMediaPlayer({
   };
 
   const toggleFullscreen = () => {
+    const container = containerRef.current;
+    const video = videoRef.current;
+    if (!container) return;
+
+    // iOS Safari: use native fullscreen on the video element.
+    if (typeof window !== "undefined" && /iPad|iPhone|iPod/.test(window.navigator.userAgent)) {
+      const anyVideo = video as any;
+      if (anyVideo && typeof anyVideo.webkitEnterFullscreen === "function") {
+        anyVideo.webkitEnterFullscreen();
+        return;
+      }
+    }
+
     if (!document.fullscreenElement) {
-      containerRef.current?.requestFullscreen().catch(() => undefined);
+      container.requestFullscreen().catch(() => undefined);
+      // Try to lock orientation to landscape where supported.
+      if (typeof screen !== "undefined" && (screen as any).orientation?.lock) {
+        (screen as any).orientation.lock("landscape").catch(() => undefined);
+      }
     } else {
       document.exitFullscreen().catch(() => undefined);
+      if (typeof screen !== "undefined" && (screen as any).orientation?.unlock) {
+        (screen as any).orientation.unlock();
+      }
     }
   };
 
@@ -754,6 +767,12 @@ export function CustomMediaPlayer({
           if (document.fullscreenElement) {
             document.exitFullscreen().catch(() => undefined);
           } else {
+            const video = videoRef.current;
+            if (video) {
+              video.pause();
+              video.removeAttribute("src");
+              video.load();
+            }
             onClose();
           }
           break;
@@ -1052,7 +1071,15 @@ export function CustomMediaPlayer({
         <div className="flex items-center gap-3 md:gap-4 flex-1">
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => {
+              const video = videoRef.current;
+              if (video) {
+                video.pause();
+                video.removeAttribute("src");
+                video.load();
+              }
+              onClose();
+            }}
             className="text-white hover:bg-white/20 p-2 rounded-full transition-colors"
             aria-label="Back"
           >
