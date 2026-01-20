@@ -1243,20 +1243,24 @@ export function CustomMediaPlayer({
               >
                 <SkipForward className="w-6 h-6" />
               </button>
-              <button
-                onClick={handlePrev}
-                disabled={!hasPrev}
-                className={`text-white hover:scale-110 transition-transform ${!hasPrev ? "opacity-40 cursor-not-allowed" : ""}`}
-              >
-                <SkipBack className="w-6 h-6" fill="white" />
-              </button>
-              <button
-                onClick={handleNext}
-                disabled={!hasNext}
-                className={`text-white hover:scale-110 transition-transform ${!hasNext ? "opacity-40 cursor-not-allowed" : ""}`}
-              >
-                <SkipForward className="w-6 h-6" fill="white" />
-              </button>
+              {normalizedEpisodes.length > 1 && (
+                <>
+                  <button
+                    onClick={handlePrev}
+                    disabled={!hasPrev}
+                    className={`text-white hover:scale-110 transition-transform ${!hasPrev ? "opacity-40 cursor-not-allowed" : ""}`}
+                  >
+                    <SkipBack className="w-6 h-6" fill="white" />
+                  </button>
+                  <button
+                    onClick={handleNext}
+                    disabled={!hasNext}
+                    className={`text-white hover:scale-110 transition-transform ${!hasNext ? "opacity-40 cursor-not-allowed" : ""}`}
+                  >
+                    <SkipForward className="w-6 h-6" fill="white" />
+                  </button>
+                </>
+              )}
               <button onClick={toggleMute} className="text-white hover:scale-110 transition-transform">
                 {isMuted || volume === 0 ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
               </button>
@@ -1338,20 +1342,24 @@ export function CustomMediaPlayer({
             >
               <SkipForward className="w-7 h-7" />
             </button>
-            <button
-              onClick={handlePrev}
-              disabled={!hasPrev}
-              className={`text-white hover:scale-110 transition-transform ${!hasPrev ? "opacity-40 cursor-not-allowed" : ""}`}
-            >
-              <SkipBack className="w-7 h-7" fill="white" />
-            </button>
-            <button
-              onClick={handleNext}
-              disabled={!hasNext}
-              className={`text-white hover:scale-110 transition-transform ${!hasNext ? "opacity-40 cursor-not-allowed" : ""}`}
-            >
-              <SkipForward className="w-7 h-7" fill="white" />
-            </button>
+            {normalizedEpisodes.length > 1 && (
+              <>
+                <button
+                  onClick={handlePrev}
+                  disabled={!hasPrev}
+                  className={`text-white hover:scale-110 transition-transform ${!hasPrev ? "opacity-40 cursor-not-allowed" : ""}`}
+                >
+                  <SkipBack className="w-7 h-7" fill="white" />
+                </button>
+                <button
+                  onClick={handleNext}
+                  disabled={!hasNext}
+                  className={`text-white hover:scale-110 transition-transform ${!hasNext ? "opacity-40 cursor-not-allowed" : ""}`}
+                >
+                  <SkipForward className="w-7 h-7" fill="white" />
+                </button>
+              </>
+            )}
             <div className="flex items-center gap-2 group/volume">
               <button
                 onClick={toggleMute}
