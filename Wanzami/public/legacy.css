@@ -112,3 +112,206 @@ button:disabled {
   display: none;
 }
 
+/* ========================= */
+/* Splash page layout        */
+/* ========================= */
+
+/* Root */
+.splash-root,
+.splash-root body {
+  background-color: #000;
+  color: #fff;
+}
+
+/* Fixed header */
+header.splash-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.85);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+header.splash-header .inner {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+header.splash-header .brand {
+  display: flex;
+  align-items: center;
+}
+
+header.splash-header .brand img {
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-right: 0.5rem;
+}
+
+header.splash-header .brand-name {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+header.splash-header .actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Hero section */
+.splash-hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding-top: 4.5rem; /* make room for fixed header */
+}
+
+.splash-hero .hero-bg img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.splash-hero .hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, #000000, rgba(0, 0, 0, 0.7), #000000);
+}
+
+.splash-hero .hero-content {
+  position: relative;
+  z-index: 1;
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  text-align: center;
+}
+
+.splash-hero h1 {
+  font-size: 2.25rem;
+  line-height: 1.2;
+  margin-bottom: 1rem;
+}
+
+@media (min-width: 768px) {
+  .splash-hero h1 {
+    font-size: 2.75rem;
+  }
+}
+
+.splash-hero .lead {
+  font-size: 1.1rem;
+  margin-bottom: 0.75rem;
+}
+
+.splash-hero .sublead {
+  max-width: 32rem;
+  margin: 0 auto 1.5rem auto;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.splash-hero .cta-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .splash-hero .cta-row {
+    flex-direction: row;
+  }
+}
+
+.splash-hero .tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.splash-hero .tag-row span {
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+/* Scroll indicator */
+.splash-scroll-indicator {
+  position: absolute;
+  bottom: 2.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Features grid */
+.splash-features {
+  background-color: #000;
+  padding: 3rem 1.5rem 4rem 1.5rem;
+}
+
+.splash-features .inner {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.splash-features .grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+}
+
+@media (min-width: 768px) {
+  .splash-features .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .splash-features .grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.splash-features .card {
+  text-align: center;
+}
+
+.splash-features .card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 4rem;
+  height: 4rem;
+  border-radius: 999px;
+  background-color: rgba(253, 126, 20, 0.12);
+  margin-bottom: 0.5rem;
+}
+
+.splash-features .card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.splash-features .card-text {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.5;
+}

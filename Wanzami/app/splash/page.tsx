@@ -36,18 +36,18 @@ const ImageWithFallback = ({ src, alt, className }: { src: string; alt: string; 
 
 function Header({ onLogin, onRegister }: { onLogin: () => void; onRegister: () => void }) {
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-sm border-b border-white/10">
-      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-sm border-b border-white/10 splash-header">
+      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between inner">
+        <div className="flex items-center gap-2 brand">
           <img
             src={(logo as { src?: string }).src ?? (logo as unknown as string)}
             alt="Wanzami"
             className="w-10 h-10"
           />
-          <span className="text-white text-lg font-semibold">Wanzami</span>
+          <span className="text-white text-lg font-semibold brand-name">Wanzami</span>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 actions">
           <button
             onClick={onLogin}
             className="text-white/80 hover:text-white transition-colors px-4 py-2"
@@ -68,18 +68,18 @@ function Header({ onLogin, onRegister }: { onLogin: () => void; onRegister: () =
 
 function Hero({ onStart, onSignIn }: { onStart: () => void; onSignIn: () => void }) {
   return (
-    <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      <div className="absolute inset-0 z-0">
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden splash-hero">
+      <div className="absolute inset-0 z-0 hero-bg">
         <ImageWithFallback
           src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1600&q=80"
           alt="Streaming worlds collide"
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-black via-black/70 to-black/90" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black via-black/70 to-black/90 hero-overlay" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(253,126,20,0.12),transparent_40%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.08),transparent_30%)]" />
       </div>
 
-      <div className="relative z-10 max-w-4xl mx-auto px-6 text-center space-y-6">
+      <div className="relative z-10 max-w-4xl mx-auto px-6 text-center space-y-6 hero-content">
         <h1 className="text-white text-4xl md:text-5xl font-semibold leading-tight">
           Watch what matters.
         </h1>
@@ -91,7 +91,7 @@ function Hero({ onStart, onSignIn }: { onStart: () => void; onSignIn: () => void
           journey in under two minutes.
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center cta-row">
           <button
             onClick={onStart}
             className="bg-[#fd7e14] hover:bg-[#e86f0f] text-black px-8 py-4 rounded-lg flex items-center gap-2 transition-colors shadow-lg font-semibold"
@@ -107,7 +107,7 @@ function Hero({ onStart, onSignIn }: { onStart: () => void; onSignIn: () => void
           </button>
         </div>
 
-        <div className="flex flex-wrap gap-3 justify-center text-sm text-white/80">
+        <div className="flex flex-wrap gap-3 justify-center text-sm text-white/80 tag-row">
           <span className="px-3 py-2 rounded-full border border-white/15">Offline ready</span>
           <span className="px-3 py-2 rounded-full border border-white/15">Profiles & kids mode</span>
           <span className="px-3 py-2 rounded-full border border-white/15">Multi-device resume</span>
@@ -115,7 +115,7 @@ function Hero({ onStart, onSignIn }: { onStart: () => void; onSignIn: () => void
         </div>
       </div>
 
-      <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 z-10">
+      <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 z-10 splash-scroll-indicator">
         <div className="w-6 h-10 border-2 border-white/30 rounded-full flex justify-center">
           <div className="w-1.5 h-3 bg-white/50 rounded-full mt-2 animate-bounce" />
         </div>
@@ -126,18 +126,18 @@ function Hero({ onStart, onSignIn }: { onStart: () => void; onSignIn: () => void
 
 function Features() {
   return (
-    <div className="bg-black pt-16 pb-20 px-6 mt-12">
-      <div className="max-w-6xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+    <div className="bg-black pt-16 pb-20 px-6 mt-12 splash-features">
+      <div className="max-w-6xl mx-auto inner">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 grid">
           {features.map((feature, index) => {
             const Icon = feature.icon;
             return (
-              <div key={index} className="text-center space-y-3">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#fd7e14]/10 mb-2">
+              <div key={index} className="text-center space-y-3 card">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#fd7e14]/10 mb-2 card-icon">
                   <Icon className="w-8 h-8 text-[#fd7e14]" />
                 </div>
-                <h3 className="text-white text-lg font-semibold">{feature.title}</h3>
-                <p className="text-white/60 text-sm leading-relaxed">{feature.description}</p>
+                <h3 className="text-white text-lg font-semibold card-title">{feature.title}</h3>
+                <p className="text-white/60 text-sm leading-relaxed card-text">{feature.description}</p>
               </div>
             );
           })}
@@ -158,7 +158,7 @@ export default function SplashPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-black text-white relative overflow-hidden">
+    <div className="min-h-screen bg-black text-white relative overflow-hidden splash-root">
       {(!soundReady || navigating) && (
         <div className="absolute inset-0 z-[70] flex items-start justify-center pointer-events-none">
           <div className="mt-6 px-4 py-3 bg-black/75 border border-white/10 rounded-2xl shadow-lg flex items-center gap-3">
