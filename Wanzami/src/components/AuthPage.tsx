@@ -86,11 +86,11 @@ export function AuthPage({ onAuth, onShowSignup }: AuthPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white relative overflow-hidden">
+    <div className="min-h-screen bg-black text-white relative overflow-hidden auth-root">
       <TopLoader active={loading || googleLoading} />
-      <div className="flex items-center justify-center px-6 py-16 w-full">
-        <div className="w-full max-w-md">
-          <div className="flex flex-col items-center gap-3 mb-8">
+      <div className="flex items-center justify-center px-6 py-16 w-full auth-shell">
+        <div className="w-full max-w-md auth-card">
+          <div className="flex flex-col items-center gap-3 mb-8 auth-header">
             <Image src={orangeLogo} alt="Wanzami" width={110} height={110} priority className="mx-auto" />
             <div className="text-center">
               <h1 className="text-white text-3xl font-semibold">Welcome back</h1>
@@ -98,7 +98,7 @@ export function AuthPage({ onAuth, onShowSignup }: AuthPageProps) {
             </div>
           </div>
 
-          <div className="rounded-3xl bg-[#0d0d0f] border border-white/10 shadow-[0_30px_80px_rgba(0,0,0,0.55)] p-8">
+          <div className="rounded-3xl bg-[#0d0d0f] border border-white/10 shadow-[0_30px_80px_rgba(0,0,0,0.55)] p-8 auth-panel">
             <div className="mb-6">
               <h2 className="text-2xl font-semibold mb-1">Sign in</h2>
               <p className="text-white/70 text-sm">Enter your details below.</p>

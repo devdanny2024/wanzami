@@ -315,3 +315,29 @@ header.splash-header .actions {
   color: rgba(255, 255, 255, 0.7);
   line-height: 1.5;
 }
+
+/* ========================= */
+/* Auth (login) page layout  */
+/* ========================= */
+
+.auth-root {
+  background-color: #000;
+  color: #fff;
+}
+
+.auth-shell {
+  min-height: 100vh;
+}
+
+.auth-card {
+  max-width: 24rem;
+}
+
+.auth-header {
+  text-align: center;
+}
+
+.auth-panel {
+  border-radius: 1.5rem;
+  background-color: #0d0d0f;
+}
