@@ -96,10 +96,10 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center px-6 py-16">
+    <div className="min-h-screen bg-black text-white flex items-center justify-center px-6 py-16 auth-root">
       <TopLoader active={loading || googleLoading} />
-      <div className="w-full max-w-md">
-        <div className="flex flex-col items-center gap-3 mb-8">
+      <div className="w-full max-w-md auth-card">
+        <div className="flex flex-col items-center gap-3 mb-8 auth-header">
           <Image src={orangeLogo} alt="Wanzami" width={110} height={110} priority />
           <div className="text-center">
             <h1 className="text-white text-3xl font-semibold">Create your account</h1>
@@ -107,7 +107,7 @@ export default function RegisterPage() {
           </div>
         </div>
 
-        <div className="rounded-3xl bg-[#0d0d0f] border border-white/10 shadow-[0_30px_80px_rgba(0,0,0,0.55)] p-8">
+        <div className="rounded-3xl bg-[#0d0d0f] border border-white/10 shadow-[0_30px_80px_rgba(0,0,0,0.55)] p-8 auth-panel">
           <div className="space-y-3 mb-6">
             <button
               type="button"
