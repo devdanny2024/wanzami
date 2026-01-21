@@ -66,7 +66,7 @@ export default function SearchRoute() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-black home-root">
       {catalogLoading ? (
         <ListSkeleton title="Search" />
       ) : (

@@ -37,7 +37,7 @@ export default function ForgotPasswordPage() {
 
   if (status === "sent") {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center px-6">
+      <div className="min-h-screen bg-black text-white flex items-center justify-center px-6 auth-root">
         <div className="w-full max-w-md text-center">
           <div className="bg-orange-600/10 border border-orange-600/30 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
             <Mail className="w-10 h-10 text-orange-600" />
@@ -67,7 +67,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center px-6">
+    <div className="min-h-screen bg-black text-white flex items-center justify-center px-6 auth-root">
       <TopLoader active={loading} />
       <div className="w-full max-w-md">
         <button

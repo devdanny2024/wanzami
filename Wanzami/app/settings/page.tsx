@@ -184,7 +184,7 @@ export default function SettingsPage() {
 
   if (!hasAuth) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-[#0b0b0c] text-white px-6">
+      <main className="min-h-screen flex items-center justify-center bg-[#0b0b0c] text-white px-6 home-root">
         <div className="text-center space-y-3 max-w-xl">
           <h1 className="text-3xl font-semibold">Sign in to manage your account</h1>
           <p className="text-gray-400">
@@ -196,7 +196,7 @@ export default function SettingsPage() {
   }
 
     return (
-      <main className="min-h-screen bg-[#0b0b0c] text-white px-4 md:px-6 pt-24 md:pt-28 pb-10">
+      <main className="min-h-screen bg-[#0b0b0c] text-white px-4 md:px-6 pt-24 md:pt-28 pb-10 home-root">
         <div className="w-full max-w-6xl mx-auto space-y-8 md:space-y-10">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-3">

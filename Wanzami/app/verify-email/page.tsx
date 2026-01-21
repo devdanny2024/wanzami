@@ -96,7 +96,7 @@ function VerifyEmailContent() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center px-6">
+    <div className="min-h-screen bg-black text-white flex items-center justify-center px-6 auth-root">
       <TopLoader active={status === "pending" || resendLoading} />
       <div className="max-w-md w-full text-center">
         {renderIcon()}
@@ -150,7 +150,11 @@ function VerifyEmailContent() {
 export default function VerifyEmailPage() {
   return (
     <Suspense
-      fallback={<div className="min-h-screen bg-black text-white flex items-center justify-center">Loading...</div>}
+      fallback={
+        <div className="min-h-screen bg-black text-white flex items-center justify-center auth-root">
+          Loading...
+        </div>
+      }
     >
       <VerifyEmailContent />
     </Suspense>

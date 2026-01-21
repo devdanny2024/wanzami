@@ -48,7 +48,7 @@ function ResetPasswordForm() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center px-4">
+    <div className="min-h-screen bg-black text-white flex items-center justify-center px-4 auth-root">
       <TopLoader active={loading} />
       <div className="w-full max-w-md bg-white/5 border border-white/10 rounded-2xl p-8">
         <h1 className="text-2xl font-semibold mb-3">Reset Password</h1>
@@ -83,7 +83,7 @@ export default function ResetPasswordPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-black text-white flex items-center justify-center px-4">
+        <div className="min-h-screen bg-black text-white flex items-center justify-center px-4 auth-root">
           <div className="text-gray-300">Loading reset form…</div>
         </div>
       }

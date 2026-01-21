@@ -45,7 +45,7 @@ export default function ContactPage() {
   };
 
   return (
-    <div className="min-h-[60vh] max-w-2xl mx-auto space-y-6">
+    <div className="min-h-[60vh] max-w-2xl mx-auto space-y-6 home-root">
       <div>
         <h1 className="text-2xl md:text-3xl font-semibold">Contact Us</h1>
         <p className="mt-2 text-sm text-gray-300">
@@ -109,4 +109,3 @@ export default function ContactPage() {
     </div>
   );
 }
-
