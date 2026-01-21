@@ -211,7 +211,7 @@ export default function MoviesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-black home-root">
       {loading ? (
         <HomeSkeleton />
       ) : (
