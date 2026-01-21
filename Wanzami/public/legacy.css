@@ -1,0 +1,114 @@
+/* Legacy fallback stylesheet for very old browsers (e.g. some TV browsers)
+ * that don't understand CSS variables, oklch colors, @layer, etc.
+ * This is intentionally simple, but keeps the dark theme and brand orange. */
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background-color: #000;
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+body {
+  background-color: #000;
+}
+
+a {
+  color: #fd7e14;
+}
+
+button {
+  font-family: inherit;
+}
+
+/* Basic layout helpers */
+main {
+  box-sizing: border-box;
+}
+
+header, footer {
+  box-sizing: border-box;
+}
+
+/* Navbar + splash header approximations */
+header {
+  background: rgba(0, 0, 0, 0.85);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+/* Brand colors */
+.btn-orange,
+.bg-orange,
+.bg-brand {
+  background-color: #fd7e14;
+  color: #000;
+}
+
+.btn-orange-outline {
+  border: 1px solid #fd7e14;
+  color: #fd7e14;
+  background: transparent;
+}
+
+/* Simple utility stand‑ins */
+.text-white {
+  color: #ffffff !important;
+}
+
+.text-muted {
+  color: #cccccc !important;
+}
+
+.bg-black {
+  background-color: #000000 !important;
+}
+
+.bg-dark {
+  background-color: #050505 !important;
+}
+
+.border-light {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Player background */
+.player-root {
+  background-color: #000000;
+  color: #ffffff;
+}
+
+/* Make forms readable */
+input, select, textarea {
+  background-color: #151515;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #888888;
+}
+
+/* Buttons */
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Fallback for scrollbars */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+

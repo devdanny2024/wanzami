@@ -14,6 +14,27 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  if (window.CSS && CSS.supports && CSS.supports('color', 'oklch(59% 0.19 264)')) {
+                    return;
+                  }
+                } catch (e) {
+                  // ignore
+                }
+                var link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = '/legacy.css';
+                document.head.appendChild(link);
+              })();
+            `,
+          }}
+        />
+      </head>
       <body className="bg-black text-white">
         <Providers>
           {children}
