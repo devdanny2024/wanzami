@@ -108,9 +108,9 @@ export function HomePage({
   const hasCatalog = movies.length > 0;
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-black home-root">
       <Hero onPlayClick={onMovieClick} featured={featured} />
-      <div className="relative -mt-24 md:-mt-32 z-10 pb-12 md:pb-16">
+      <div className="relative -mt-24 md:-mt-32 z-10 pb-12 md:pb-16 home-content">
         {loading ? (
           <div className="text-gray-400 px-4 md:px-12 lg:px-16">Loading catalog...</div>
         ) : error ? (

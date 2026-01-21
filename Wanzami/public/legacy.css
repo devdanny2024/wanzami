@@ -341,3 +341,23 @@ header.splash-header .actions {
   border-radius: 1.5rem;
   background-color: #0d0d0f;
 }
+
+/* ========================= */
+/* Home page layout          */
+/* ========================= */
+
+.home-root {
+  background-color: #000;
+  color: #fff;
+}
+
+.home-content {
+  margin-top: -6rem;
+  padding-bottom: 3rem;
+}
+
+@media (min-width: 768px) {
+  .home-content {
+    margin-top: -8rem;
+  }
+}
