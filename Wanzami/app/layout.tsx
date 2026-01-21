@@ -20,8 +20,19 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
-                  if (window.CSS && CSS.supports && CSS.supports('color', 'oklch(59% 0.19 264)')) {
-                    return;
+                  var search = window.location && window.location.search;
+                  var forceLegacy = false;
+                  if (search && typeof URLSearchParams !== 'undefined') {
+                    var params = new URLSearchParams(search);
+                    if (params.get('legacy') === '1') {
+                      forceLegacy = true;
+                    }
+                  }
+
+                  if (!forceLegacy) {
+                    if (window.CSS && CSS.supports && CSS.supports('color', 'oklch(59% 0.19 264)')) {
+                      return;
+                    }
                   }
                 } catch (e) {
                   // ignore
