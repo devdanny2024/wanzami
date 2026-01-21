@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-// Temporarily disable main globals stylesheet so we can test legacy.css behaviour
-// import "./globals.css";
+import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
