@@ -292,7 +292,7 @@ export default function PlayerPage({ params }: { params: { id: string } }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black">
+    <div className="fixed inset-0 bg-black player-root">
       <CustomMediaPlayer
         title={title.name ?? `Title ${id}`}
         poster={title.thumbnailUrl ?? title.posterUrl}
