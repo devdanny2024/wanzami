@@ -15,6 +15,7 @@ import {
   Mail,
   MessageCircle,
   Activity,
+  Video,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -32,6 +33,7 @@ const navItems = [
   { id: 'team', label: 'Team', icon: ShieldQuestion },
   { id: 'email', label: 'Email Service', icon: Mail },
   { id: 'support', label: 'Support', icon: MessageCircle },
+  { id: 'creatorhub', label: 'Creator Hub', icon: Video },
   { id: 'payments', label: 'Payments', icon: Wallet },
   { id: 'invoices', label: 'Invoices', icon: CreditCard },
   { id: 'processes', label: 'Processes', icon: Activity },

@@ -9,6 +9,7 @@ import {
   fetchContinueWatching,
   fetchBecauseYouWatched,
   fetchForYou,
+  fetchLiveEvents,
 } from "@/lib/contentClient";
 import { MovieData } from "@/components/MovieCard";
 
@@ -30,6 +31,7 @@ export default function HomeRoute() {
   const [similarToLikes, setSimilarToLikes] = useState<MovieData[]>([]);
   const [recsLoading, setRecsLoading] = useState(false);
   const [recsError, setRecsError] = useState<string | null>(null);
+  const [liveEvents, setLiveEvents] = useState<any[]>([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -252,13 +254,14 @@ export default function HomeRoute() {
             setContinueWatchingItems(sortedCw.length > 0 ? sortedCw : localFallback);
         }
 
-        const [top10Res, trendingRes, top10SeriesRes, trendingSeriesRes, forYouRes] =
+        const [top10Res, trendingRes, top10SeriesRes, trendingSeriesRes, forYouRes, liveRes] =
           await Promise.all([
             fetchPopularity({ type: "MOVIE", window: "DAILY" }),
             fetchPopularity({ type: "MOVIE", window: "TRENDING" }),
             fetchPopularity({ type: "SERIES", window: "DAILY" }),
             fetchPopularity({ type: "SERIES", window: "TRENDING" }),
             fetchForYou(accessToken, profileId ?? undefined),
+            fetchLiveEvents(accessToken),
           ]);
 
         // Helper that can handle both popularity snapshots ({ titleId })
@@ -335,6 +338,7 @@ export default function HomeRoute() {
 
           // Similar to likes: reuse because-you-watched anchors list
           setSimilarToLikes(becauseMapped);
+          setLiveEvents(liveRes ?? []);
         }
       } catch (err: any) {
         const message = err?.name === "AbortError" ? "Recommendations timed out" : err?.message ?? "Failed to load recommendations";
@@ -425,6 +429,7 @@ export default function HomeRoute() {
           similarToLikes={similarToLikes}
           recsLoading={recsLoading}
           recsError={recsError}
+          liveEvents={liveEvents}
           showGenreRows={false}
         />
       )}

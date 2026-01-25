@@ -302,6 +302,28 @@ export type EngagementEventInput = {
   metadata?: Record<string, any>;
 };
 
+export type LiveEvent = {
+  id: string;
+  title: string;
+  description?: string | null;
+  thumbnailUrl?: string | null;
+  status: "SCHEDULED" | "LIVE" | "ENDED";
+  playbackUrl?: string | null;
+  createdAt?: string;
+  startedAt?: string | null;
+};
+
+export async function fetchLiveEvents(accessToken: string) {
+  const res = await fetchWithTimeout(`${API_BASE}/live/events`, {
+    cache: "no-store",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+  const data = await handleJsonResponse(res);
+  return (data?.events as LiveEvent[]) ?? [];
+}
+
 export async function postEvents(events: EngagementEventInput[], accessToken: string) {
   if (!events.length) return;
   const res = await fetchWithTimeout(`${API_BASE}/events`, {

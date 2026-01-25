@@ -1,6 +1,8 @@
 import { Hero } from "./Hero";
 import { ContentRow } from "./ContentRow";
 import { MovieData } from "./MovieCard";
+import { LiveRow } from "./LiveRow";
+import type { LiveEvent } from "@/lib/contentClient";
 
 interface HomePageProps {
   onMovieClick: (movie: any) => void;
@@ -22,6 +24,7 @@ interface HomePageProps {
   similarToLikes?: MovieData[];
   recsLoading?: boolean;
   recsError?: string | null;
+  liveEvents?: LiveEvent[];
   /**
    * Whether to render genre‑based browse rows.
    * Home route keeps this false so it focuses on recommendations only.
@@ -69,6 +72,7 @@ export function HomePage({
   similarToLikes = [],
   recsLoading,
   recsError,
+  liveEvents = [],
   showGenreRows = false,
 }: HomePageProps) {
   const sortedMovies = [...movies].sort((a, b) => {
@@ -119,6 +123,9 @@ export function HomePage({
           <>
             {forYouItems.length > 0 && (
               <ContentRow title="For You" movies={forYouItems} onMovieClick={onMovieClick} />
+            )}
+            {liveEvents.length > 0 && (
+              <LiveRow events={liveEvents} onSelect={() => (window.location.href = "/live")} />
             )}
             {continueWatching.length > 0 && (
               <ContentRow

@@ -31,6 +31,7 @@ export function Navbar({
 
   const navItems = [
     { label: 'Home', page: 'home', href: '/' },
+    { label: 'Live', page: 'live', href: '/live' },
     { label: 'Movies', page: 'movies', href: '/movies' },
     { label: 'Series', page: 'series', href: '/series' },
     { label: 'My Movies', page: 'mymovies', href: '/mymovies' },

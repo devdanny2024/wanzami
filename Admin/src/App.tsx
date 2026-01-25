@@ -19,6 +19,7 @@ import { Logs } from './components/Logs';
 import { EmailService } from './components/EmailService';
 import { SupportTickets } from './components/SupportTickets';
 import { ProcessManagement } from './components/ProcessManagement';
+import { CreatorHub } from './components/CreatorHub';
 
 export default function App() {
   return (
@@ -142,6 +143,8 @@ function AppContent() {
         return <SupportTickets />;
       case 'processes':
         return <ProcessManagement />;
+      case 'creatorhub':
+        return <CreatorHub />;
       default:
         return <Dashboard />;
     }

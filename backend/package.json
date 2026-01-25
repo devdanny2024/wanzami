@@ -19,6 +19,7 @@
     "jobs:compute-similarities": "tsx scripts/computeSimilarTitles.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-ivs": "^3.975.0",
     "@aws-sdk/client-s3": "^3.679.0",
     "@aws-sdk/s3-request-presigner": "^3.679.0",
     "@prisma/client": "^6.1.0",
