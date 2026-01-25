@@ -10,7 +10,7 @@ export default function LivePage() {
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<LiveEvent | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const hlsRef = useRef<Hls | null>(null);
+  const hlsRef = useRef<InstanceType<typeof Hls> | null>(null);
 
   useEffect(() => {
     const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
