@@ -28,6 +28,7 @@ function SuccessContent() {
       if (!accessToken) {
         setMessage('Please log in to complete this purchase.');
         setSubMessage('We could not verify without your session. Log in and check your My Movies.');
+        setTimeout(() => router.replace('/mymovies'), 1200);
         return;
       }
       try {
@@ -44,7 +45,8 @@ function SuccessContent() {
         router.replace(target);
       } catch (err: any) {
         setMessage('Verification failed.');
-        setSubMessage(err?.message ?? 'Please refresh and try again.');
+        setSubMessage(err?.message ?? 'We will open My Movies so you can check your access.');
+        setTimeout(() => router.replace('/mymovies'), 1200);
       } finally {
         if (typeof window !== 'undefined') {
           const url = new URL(window.location.href);
