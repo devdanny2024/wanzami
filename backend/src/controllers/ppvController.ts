@@ -561,6 +561,297 @@ export const verifyOrchestratedCharge = async (req: AuthenticatedRequest, res: R
   }
 };
 
+export const initiateGeneralPurchase = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const {
+      titleId,
+      method,
+      card,
+      customer,
+      bankTransfer,
+      ussd,
+      opay,
+      googlepay,
+      applepay,
+    } = req.body as {
+      titleId?: number;
+      method?: "card" | "bank_transfer" | "ussd" | "opay" | "googlepay" | "applepay";
+      card?: { number: string; cvv: string; expiryMonth: string; expiryYear: string; pin?: string };
+      customer?: {
+        firstName?: string;
+        lastName?: string;
+        email?: string;
+        phone?: string;
+        country?: string;
+        address?: {
+          line1?: string;
+          city?: string;
+          state?: string;
+          postalCode?: string;
+          country?: string;
+        };
+      };
+      bankTransfer?: Record<string, any>;
+      ussd?: { bankCode?: string; phoneNumber?: string };
+      opay?: { phoneNumber?: string };
+      googlepay?: { cardHolderName?: string };
+      applepay?: { cardHolderName?: string };
+    };
+
+    if (!titleId) return res.status(400).json({ message: "titleId required" });
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+    const title = await prisma.title.findUnique({ where: { id: BigInt(titleId) } });
+    if (!title) return res.status(404).json({ message: "Title not found" });
+    if (!title.isPpv) return res.status(400).json({ message: "Title is not PPV" });
+    if (!title.ppvPriceNaira || title.ppvPriceNaira <= 0) {
+      return res.status(400).json({ message: "PPV price not configured" });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    if (user.ppvBanned) return res.status(403).json({ message: "PPV access barred" });
+
+    const active = await prisma.ppvPurchase.findFirst({
+      where: {
+        userId: req.user.userId,
+        titleId: BigInt(titleId),
+        status: "SUCCESS",
+        accessExpiresAt: { gt: now() },
+      },
+    });
+    if (active) {
+      return res.status(409).json({ message: "Already purchased" });
+    }
+
+    const country = resolveCountry(req);
+    const baseCurrency = title.ppvCurrency ?? "NGN";
+    const amountNaira = title.ppvPriceNaira;
+    const localized = await safeLocalizePrice({
+      amount: amountNaira,
+      baseCurrency,
+      country,
+    });
+
+    if (!method) return res.status(400).json({ message: "Payment method required" });
+
+    const accessToken = await getFlutterwaveAccessToken();
+    const traceId = crypto.randomUUID();
+    const idempotencyKey = crypto.randomUUID();
+    const reference = `PPV-${titleId}-${Date.now()}`;
+
+    const { first, last } = resolveCustomerName(user);
+    const customerPayload = {
+      email: customer?.email ?? user.email,
+      name: {
+        first: customer?.firstName ?? first,
+        last: customer?.lastName ?? last,
+      },
+      phone: customer?.phone
+        ? {
+            country_code: customer?.phone?.startsWith("+")
+              ? customer.phone.replace("+", "").slice(0, 3)
+              : undefined,
+            number: customer.phone,
+          }
+        : undefined,
+      address: customer?.address
+        ? {
+            line1: customer.address.line1,
+            city: customer.address.city,
+            state: customer.address.state,
+            postal_code: customer.address.postalCode,
+            country: customer.address.country ?? customer.country ?? country,
+          }
+        : undefined,
+    };
+
+    const customerResp = await fetch(`${config.flutterwave.baseUrl}/customers`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        "X-Trace-Id": traceId,
+      },
+      body: JSON.stringify(customerPayload),
+    });
+    const customerJson = await customerResp.json().catch(() => ({}));
+    if (!customerResp.ok || customerJson.status !== "success") {
+      return res.status(502).json({ message: "Flutterwave customer failed", details: customerJson });
+    }
+    const customerId = customerJson?.data?.id;
+
+    let paymentMethodPayload: any = { type: method };
+    if (method === "card") {
+      if (!card?.number || !card?.cvv || !card?.expiryMonth || !card?.expiryYear) {
+        return res.status(400).json({ message: "Missing card details" });
+      }
+      paymentMethodPayload.card = encryptCardPayload({
+        number: card.number,
+        cvv: card.cvv,
+        expiryMonth: card.expiryMonth,
+        expiryYear: card.expiryYear,
+        pin: card.pin,
+      });
+    } else if (method === "ussd") {
+      paymentMethodPayload.ussd = {
+        bank: ussd?.bankCode,
+        phone_number: ussd?.phoneNumber,
+      };
+    } else if (method === "bank_transfer") {
+      paymentMethodPayload.bank_transfer = bankTransfer ?? {};
+    } else if (method === "opay") {
+      paymentMethodPayload.opay = opay?.phoneNumber ? { phone_number: opay.phoneNumber } : undefined;
+    } else if (method === "googlepay") {
+      paymentMethodPayload.googlepay = {
+        card_holder_name: googlepay?.cardHolderName,
+      };
+    } else if (method === "applepay") {
+      paymentMethodPayload.applepay = {
+        card_holder_name: applepay?.cardHolderName,
+      };
+    }
+
+    const pmdResp = await fetch(`${config.flutterwave.baseUrl}/payment-methods`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        "X-Trace-Id": traceId,
+        "X-Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify(paymentMethodPayload),
+    });
+    const pmdJson = await pmdResp.json().catch(() => ({}));
+    if (!pmdResp.ok || pmdJson.status !== "success") {
+      return res.status(502).json({ message: "Flutterwave payment method failed", details: pmdJson });
+    }
+    const paymentMethodId = pmdJson?.data?.id;
+
+    const chargePayload = {
+      reference,
+      currency: localized.currency,
+      amount: localized.amount,
+      customer_id: customerId,
+      payment_method_id: paymentMethodId,
+      redirect_url: config.paystack.callbackUrl || config.flutterwave.callbackUrl || undefined,
+    };
+
+    const chargeResp = await fetch(`${config.flutterwave.baseUrl}/charges`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        "X-Trace-Id": traceId,
+        "X-Idempotency-Key": idempotencyKey,
+      },
+      body: JSON.stringify(chargePayload),
+    });
+    const chargeJson = await chargeResp.json().catch(() => ({}));
+    if (!chargeResp.ok || chargeJson.status !== "success") {
+      return res.status(502).json({ message: "Flutterwave charge failed", details: chargeJson });
+    }
+
+    await prisma.ppvPurchase.create({
+      data: {
+        userId: req.user.userId,
+        titleId: BigInt(titleId),
+        amountNaira,
+        currency: localized.currency,
+        gateway: "FLUTTERWAVE",
+        paystackRef: reference,
+        status: "PENDING",
+        rawPayload: chargeJson,
+      },
+    });
+
+    const data = chargeJson?.data ?? {};
+    return res.json({
+      reference,
+      gateway: "FLUTTERWAVE",
+      currency: localized.currency,
+      amountNaira,
+      chargeId: data.id,
+      customerId,
+      paymentMethodId,
+      status: data.status,
+      nextAction: data.next_action ?? null,
+      paymentInstruction: data.payment_instruction ?? data.payment_instructions ?? null,
+    });
+  } catch (err: any) {
+    console.error("ppv general flow error", err);
+    return res.status(500).json({ message: "Failed to initiate PPV payment", error: err?.message });
+  }
+};
+
+export const authorizeGeneralCharge = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { chargeId, authorization } = req.body as {
+      chargeId?: string;
+      authorization?: Record<string, any>;
+    };
+    if (!chargeId || !authorization) {
+      return res.status(400).json({ message: "chargeId and authorization required" });
+    }
+    let authPayload = authorization;
+    if (authorization.type === "pin" && typeof authorization.pin === "string") {
+      const key = config.flutterwave.encryptionKey;
+      if (!key) return res.status(500).json({ message: "Encryption key not configured" });
+      const keyBytes = toKeyBytes(key);
+      const nonce = crypto.randomBytes(12);
+      const encryptedPin = encryptField(authorization.pin, keyBytes, nonce);
+      authPayload = {
+        type: "pin",
+        pin: {
+          nonce: nonce.toString("base64"),
+          encrypted_pin: encryptedPin,
+        },
+      };
+    }
+    const accessToken = await getFlutterwaveAccessToken();
+    const resp = await fetch(
+      `${config.flutterwave.baseUrl}/charges/${encodeURIComponent(chargeId)}/authorize`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ authorization: authPayload }),
+      }
+    );
+    const json = await resp.json().catch(() => ({}));
+    if (!resp.ok || json.status !== "success") {
+      return res.status(502).json({ message: "Flutterwave authorization failed", details: json });
+    }
+    return res.json(json);
+  } catch (err: any) {
+    console.error("ppv general authorize error", err);
+    return res.status(500).json({ message: "Failed to authorize payment", error: err?.message });
+  }
+};
+
+export const verifyGeneralCharge = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const chargeId = (req.query.chargeId as string | undefined) ?? undefined;
+    if (!chargeId) return res.status(400).json({ message: "chargeId required" });
+    const accessToken = await getFlutterwaveAccessToken();
+    const resp = await fetch(`${config.flutterwave.baseUrl}/charges/${encodeURIComponent(chargeId)}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    const json = await resp.json().catch(() => ({}));
+    if (!resp.ok || json.status !== "success") {
+      return res.status(502).json({ message: "Flutterwave verify failed", details: json });
+    }
+    return res.json(json);
+  } catch (err: any) {
+    console.error("ppv general verify error", err);
+    return res.status(500).json({ message: "Failed to verify payment", error: err?.message });
+  }
+};
+
 export const flutterwaveWebhook = async (req: Request, res: Response) => {
   try {
     const signature = req.headers["verif-hash"] as string;

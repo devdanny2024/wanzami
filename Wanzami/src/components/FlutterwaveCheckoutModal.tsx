@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  authorizePpvOrchestrated,
-  initiatePpvOrchestrated,
-  verifyPpvOrchestrated,
+  authorizePpvV4General,
+  initiatePpvV4General,
+  verifyPpvV4General,
 } from "@/lib/contentClient";
 import {
   Dialog,
@@ -141,7 +141,7 @@ export function FlutterwaveCheckoutModal({
             : undefined,
       };
 
-      const res = await initiatePpvOrchestrated({
+      const res = await initiatePpvV4General({
         titleId,
         accessToken,
         method,
@@ -212,7 +212,7 @@ export function FlutterwaveCheckoutModal({
         throw new Error("No authorization step required");
       }
 
-      const res = await authorizePpvOrchestrated({
+      const res = await authorizePpvV4General({
         accessToken,
         chargeId,
         authorization,
@@ -233,7 +233,7 @@ export function FlutterwaveCheckoutModal({
     setLoading(true);
     setError(null);
     try {
-      const res = await verifyPpvOrchestrated({ accessToken, chargeId });
+      const res = await verifyPpvV4General({ accessToken, chargeId });
       const data = res?.data ?? res;
       const currentStatus = data?.status ?? data?.data?.status ?? res?.status;
       setStatus(currentStatus ?? "pending");

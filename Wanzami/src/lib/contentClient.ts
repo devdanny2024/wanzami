@@ -191,7 +191,7 @@ export async function initiatePpvPurchase(params: {
   return data as { authorizationUrl?: string; reference?: string };
 }
 
-export async function initiatePpvOrchestrated(params: {
+export async function initiatePpvV4General(params: {
   titleId: string;
   accessToken: string;
   method: "card" | "bank_transfer" | "ussd" | "opay" | "googlepay" | "applepay";
@@ -221,8 +221,10 @@ export async function initiatePpvOrchestrated(params: {
   status?: string;
   nextAction?: any;
   paymentInstruction?: any;
+  customerId?: string;
+  paymentMethodId?: string;
 }> {
-  const res = await fetchWithTimeout(`${API_BASE}/ppv/orchestrate/initiate`, {
+  const res = await fetchWithTimeout(`${API_BASE}/ppv/v4/initiate`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -243,12 +245,12 @@ export async function initiatePpvOrchestrated(params: {
   return (await handleJsonResponse(res)) as any;
 }
 
-export async function authorizePpvOrchestrated(params: {
+export async function authorizePpvV4General(params: {
   accessToken: string;
   chargeId: string;
   authorization: Record<string, any>;
 }) {
-  const res = await fetchWithTimeout(`${API_BASE}/ppv/orchestrate/authorize`, {
+  const res = await fetchWithTimeout(`${API_BASE}/ppv/v4/authorize`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -262,11 +264,11 @@ export async function authorizePpvOrchestrated(params: {
   return (await handleJsonResponse(res)) as any;
 }
 
-export async function verifyPpvOrchestrated(params: {
+export async function verifyPpvV4General(params: {
   accessToken: string;
   chargeId: string;
 }) {
-  const url = new URL(`${API_BASE}/ppv/orchestrate/verify`);
+  const url = new URL(`${API_BASE}/ppv/v4/verify`);
   url.searchParams.set("chargeId", params.chargeId);
   const res = await fetchWithTimeout(url.toString(), {
     headers: {
