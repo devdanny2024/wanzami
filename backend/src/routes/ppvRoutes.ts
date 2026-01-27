@@ -11,6 +11,9 @@ import {
   myTitles,
   flutterwaveWebhook,
   verifyFlutterwavePurchase,
+  initiatePaystackPurchase,
+  verifyPaystackPurchase,
+  paystackWebhook,
   adminListPurchases,
 } from "../controllers/ppvController.js";
 import { requireAuth, requireAdmin } from "../middleware/auth.js";
@@ -29,5 +32,8 @@ router.get("/ppv/my-titles", requireAuth, myTitles);
 router.get("/admin/ppv/purchases", requireAuth, requireAdmin, adminListPurchases);
 router.post("/ppv/flutterwave/webhook", flutterwaveWebhook);
 router.post("/ppv/flutterwave/verify", requireAuth, verifyFlutterwavePurchase);
+router.post("/ppv/paystack/initiate", requireAuth, initiatePaystackPurchase);
+router.post("/ppv/paystack/verify", requireAuth, verifyPaystackPurchase);
+router.post("/ppv/paystack/webhook", paystackWebhook);
 
 export default router;

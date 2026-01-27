@@ -219,6 +219,44 @@ export async function verifyFlutterwavePurchase(params: {
   return (await handleJsonResponse(res)) as any;
 }
 
+export async function initiatePaystackPurchase(params: {
+  titleId: string;
+  accessToken: string;
+  profileId?: string | null;
+}) {
+  const res = await fetchWithTimeout(`${API_BASE}/ppv/paystack/initiate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${params.accessToken}`,
+    },
+    body: JSON.stringify({
+      titleId: params.titleId,
+      profileId: params.profileId ?? undefined,
+      country:
+        typeof window !== "undefined"
+          ? window.localStorage.getItem("countryCode") ?? undefined
+          : undefined,
+    }),
+  });
+  return (await handleJsonResponse(res)) as any;
+}
+
+export async function verifyPaystackPurchase(params: {
+  accessToken: string;
+  reference: string;
+}) {
+  const res = await fetchWithTimeout(`${API_BASE}/ppv/paystack/verify`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${params.accessToken}`,
+    },
+    body: JSON.stringify({ reference: params.reference }),
+  });
+  return (await handleJsonResponse(res)) as any;
+}
+
 export async function initiatePpvV4General(params: {
   titleId: string;
   accessToken: string;

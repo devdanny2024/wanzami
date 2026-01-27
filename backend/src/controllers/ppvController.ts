@@ -312,6 +312,102 @@ export const initiatePurchase = async (req: AuthenticatedRequest, res: Response)
   }
 };
 
+export const initiatePaystackPurchase = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { titleId } = req.body as { titleId?: number };
+    if (!titleId) return res.status(400).json({ message: "titleId required" });
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+
+    const title = await prisma.title.findUnique({ where: { id: BigInt(titleId) } });
+    if (!title) return res.status(404).json({ message: "Title not found" });
+    if (!title.isPpv) return res.status(400).json({ message: "Title is not PPV" });
+    if (!title.ppvPriceNaira || title.ppvPriceNaira <= 0) {
+      return res.status(400).json({ message: "PPV price not configured" });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    if (user.ppvBanned) return res.status(403).json({ message: "PPV access barred" });
+
+    const active = await prisma.ppvPurchase.findFirst({
+      where: {
+        userId: req.user.userId,
+        titleId: BigInt(titleId),
+        status: "SUCCESS",
+        accessExpiresAt: { gt: now() },
+      },
+    });
+    if (active) {
+      return res.status(409).json({ message: "Already purchased" });
+    }
+
+    const countryOverride = (req.body as any)?.country;
+    const country = (countryOverride ? String(countryOverride) : resolveCountry(req))?.toUpperCase();
+    const amountNaira = title.ppvPriceNaira;
+    const baseCurrency = title.ppvCurrency ?? "NGN";
+    const localized = await safeLocalizePrice({
+      amount: amountNaira,
+      baseCurrency,
+      country,
+    });
+
+    if (!config.paystack.secretKey) {
+      return res.status(500).json({ message: "Paystack secret key not configured" });
+    }
+
+    const reference = `PPV-PAY-${titleId}-${Date.now()}`;
+    const initializePayload = {
+      email: user.email,
+      amount: Math.round(localized.amount * 100),
+      currency: localized.currency,
+      reference,
+      callback_url: config.paystack.callbackUrl || undefined,
+    };
+
+    const paystackResp = await fetch("https://api.paystack.co/transaction/initialize", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.paystack.secretKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(initializePayload),
+    });
+    const paystackParsed = await readFlutterwaveResponse(paystackResp);
+    const paystackJson = paystackParsed.json ?? {};
+    if (!paystackResp.ok || paystackJson.status !== true) {
+      return res.status(502).json({
+        message: "Paystack init failed",
+        status: paystackResp.status,
+        details: paystackJson,
+        raw: paystackParsed.text,
+      });
+    }
+
+    await prisma.ppvPurchase.create({
+      data: {
+        userId: req.user.userId,
+        titleId: BigInt(titleId),
+        amountNaira,
+        currency: localized.currency,
+        gateway: "PAYSTACK",
+        paystackRef: reference,
+        status: "PENDING",
+        rawPayload: paystackJson,
+      },
+    });
+
+    return res.json({
+      authorizationUrl: paystackJson?.data?.authorization_url,
+      reference,
+      currency: localized.currency,
+      amount: localized.amount,
+    });
+  } catch (err) {
+    console.error("paystack initiate error", err);
+    return res.status(500).json({ message: "Failed to initiate Paystack purchase" });
+  }
+};
+
 export const initiateOrchestratedPurchase = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const {
@@ -1026,6 +1122,123 @@ export const verifyFlutterwavePurchase = async (req: AuthenticatedRequest, res: 
   } catch (err) {
     console.error("flutterwave verify error", err);
     return res.status(500).json({ message: "Verification failed" });
+  }
+};
+
+export const verifyPaystackPurchase = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { reference } = req.body as { reference?: string };
+    if (!reference) return res.status(400).json({ message: "reference required" });
+    if (!config.paystack.secretKey) {
+      return res.status(500).json({ message: "Paystack secret key not configured" });
+    }
+
+    const resp = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+      headers: {
+        Authorization: `Bearer ${config.paystack.secretKey}`,
+      },
+    });
+    const parsed = await readFlutterwaveResponse(resp);
+    const data = parsed.json ?? {};
+    if (!resp.ok || data.status !== true) {
+      return res.status(502).json({ message: "Paystack verify failed", details: data, raw: parsed.text });
+    }
+
+    const payload = data?.data ?? {};
+    const ref = payload?.reference ?? reference;
+    const purchase = await prisma.ppvPurchase.findUnique({
+      where: { paystackRef: ref },
+      include: { user: true, title: true },
+    });
+    if (!purchase) return res.status(404).json({ message: "Purchase not found" });
+
+    if (payload?.status === "success") {
+      const expiresAt = new Date(Date.now() + ppvAccessDays * 24 * 60 * 60 * 1000);
+      await prisma.ppvPurchase.update({
+        where: { paystackRef: ref },
+        data: {
+          status: "SUCCESS",
+          paystackTrxId: String(payload?.id ?? ""),
+          rawPayload: data,
+          accessExpiresAt: expiresAt,
+        },
+      });
+      if (purchase.status !== "SUCCESS") {
+        await sendPpvThankYou({
+          userEmail: purchase.user?.email,
+          userName: purchase.user?.name,
+          titleId: purchase.titleId,
+          titleName: purchase.title?.name,
+        });
+      }
+    } else {
+      await prisma.ppvPurchase.update({
+        where: { paystackRef: ref },
+        data: { status: "FAILED", rawPayload: data },
+      });
+    }
+
+    return res.json({ verified: true, data });
+  } catch (err) {
+    console.error("paystack verify error", err);
+    return res.status(500).json({ message: "Verification failed" });
+  }
+};
+
+export const paystackWebhook = async (req: Request, res: Response) => {
+  try {
+    const signature = req.headers["x-paystack-signature"] as string | undefined;
+    if (!signature || !config.paystack.webhookSecret) {
+      return res.status(401).json({ message: "Invalid signature" });
+    }
+    const hash = crypto
+      .createHmac("sha512", config.paystack.webhookSecret)
+      .update(JSON.stringify(req.body))
+      .digest("hex");
+    if (hash !== signature) {
+      return res.status(401).json({ message: "Invalid signature" });
+    }
+
+    const data = (req.body as any)?.data;
+    const ref = data?.reference;
+    if (!ref) return res.status(400).json({ message: "Missing reference" });
+
+    const purchase = await prisma.ppvPurchase.findUnique({
+      where: { paystackRef: ref },
+      include: { user: true, title: true },
+    });
+    if (!purchase) return res.status(404).json({ message: "Purchase not found" });
+
+    if ((req.body as any)?.event === "charge.success") {
+      const expiresAt = new Date(Date.now() + ppvAccessDays * 24 * 60 * 60 * 1000);
+      await prisma.ppvPurchase.update({
+        where: { paystackRef: ref },
+        data: {
+          status: "SUCCESS",
+          paystackTrxId: String(data?.id ?? ""),
+          rawPayload: req.body,
+          accessExpiresAt: expiresAt,
+        },
+      });
+      if (purchase.status !== "SUCCESS") {
+        await sendPpvThankYou({
+          userEmail: purchase.user?.email,
+          userName: purchase.user?.name,
+          titleId: purchase.titleId,
+          titleName: purchase.title?.name,
+        });
+      }
+    } else if (data?.status) {
+      await prisma.ppvPurchase.update({
+        where: { paystackRef: ref },
+        data: { status: "FAILED", rawPayload: req.body },
+      });
+    }
+
+    return res.json({ received: true });
+  } catch (err) {
+    console.error("paystack webhook error", err);
+    return res.status(500).json({ message: "Webhook processing failed" });
   }
 };
 

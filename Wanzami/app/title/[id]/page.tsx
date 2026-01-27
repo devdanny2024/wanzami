@@ -4,10 +4,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MovieDetailPage } from '@/components/MovieDetailPage';
 import { FlutterwaveCheckoutModal } from '@/components/FlutterwaveCheckoutModal';
+import { PpvPaymentChoiceModal } from '@/components/PpvPaymentChoiceModal';
 import {
   fetchPpvAccess,
   fetchTitleWithEpisodes,
   initiatePpvPurchase,
+  initiatePaystackPurchase,
+  verifyPaystackPurchase,
   verifyFlutterwavePurchase,
   type PpvAccess,
 } from '@/lib/contentClient';
@@ -82,6 +85,7 @@ export default function TitlePage({ params }: { params: { id: string } }) {
   const [profileId, setProfileId] = useState<string | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [buyLoading, setBuyLoading] = useState(false);
+  const [paymentChoiceOpen, setPaymentChoiceOpen] = useState(false);
   const useV4 = process.env.NEXT_PUBLIC_PPV_FLOW === 'v4';
 
   const loadFlutterwaveScript = () =>
@@ -227,66 +231,110 @@ export default function TitlePage({ params }: { params: { id: string } }) {
             router.push(`/player/${id}`);
             return;
           }
-          if (useV4) {
-            setCheckoutOpen(true);
+          setPaymentChoiceOpen(true);
+        }}
+      />
+      <PpvPaymentChoiceModal
+        open={paymentChoiceOpen}
+        onOpenChange={setPaymentChoiceOpen}
+        onSelect={(provider) => {
+          setPaymentChoiceOpen(false);
+          if (!accessToken) return;
+          if (provider === 'flutterwave') {
+            if (useV4) {
+              setCheckoutOpen(true);
+              return;
+            }
+            (async () => {
+              setBuyLoading(true);
+              try {
+                const init = await initiatePpvPurchase({
+                  titleId: id,
+                  accessToken,
+                  profileId,
+                });
+                await loadFlutterwaveScript();
+                const flutterwave = (window as any).FlutterwaveCheckout;
+                if (!flutterwave) throw new Error('Flutterwave unavailable');
+                flutterwave({
+                  public_key: init.publicKey,
+                  tx_ref: init.txRef,
+                  amount: init.amount,
+                  currency: init.currency,
+                  payment_options: 'card,banktransfer,ussd,opay,googlepay,applepay',
+                  customer: {
+                    email: init.customer?.email,
+                    name: init.customer?.name,
+                  },
+                  customizations: {
+                    title: init.title?.name ?? 'Wanzami',
+                    description: 'Wanzami PPV purchase',
+                  },
+                  redirect_url: init.redirectUrl,
+                  callback: async (data: any) => {
+                    try {
+                      await verifyFlutterwavePurchase({
+                        accessToken,
+                        transactionId: data?.transaction_id,
+                        txRef: data?.tx_ref,
+                      });
+                      const access = await fetchPpvAccess({
+                        titleId: id,
+                        accessToken,
+                        profileId,
+                        country,
+                      });
+                      setPpvAccess(access);
+                      if (access?.hasAccess) {
+                        router.push(`/player/${id}`);
+                      }
+                    } catch (err: any) {
+                      alert(err?.message ?? 'Payment verification failed');
+                    } finally {
+                      setBuyLoading(false);
+                    }
+                  },
+                  onclose: () => {
+                    setBuyLoading(false);
+                  },
+                });
+              } catch (err: any) {
+                setBuyLoading(false);
+                alert(err?.message ?? 'Unable to start purchase');
+              }
+            })();
             return;
           }
+
           (async () => {
             setBuyLoading(true);
             try {
-              const init = await initiatePpvPurchase({
+              const init = await initiatePaystackPurchase({
                 titleId: id,
                 accessToken,
                 profileId,
               });
-              await loadFlutterwaveScript();
-              const flutterwave = (window as any).FlutterwaveCheckout;
-              if (!flutterwave) throw new Error('Flutterwave unavailable');
-              flutterwave({
-                public_key: init.publicKey,
-                tx_ref: init.txRef,
-                amount: init.amount,
-                currency: init.currency,
-                payment_options: 'card,banktransfer,ussd,opay,googlepay,applepay',
-                customer: {
-                  email: init.customer?.email,
-                  name: init.customer?.name,
-                },
-                customizations: {
-                  title: init.title?.name ?? 'Wanzami',
-                  description: 'Wanzami PPV purchase',
-                },
-                redirect_url: init.redirectUrl,
-                callback: async (data: any) => {
-                  try {
-                    await verifyFlutterwavePurchase({
-                      accessToken,
-                      transactionId: data?.transaction_id,
-                      txRef: data?.tx_ref,
-                    });
-                    const access = await fetchPpvAccess({
-                      titleId: id,
-                      accessToken,
-                      profileId,
-                      country,
-                    });
-                    setPpvAccess(access);
-                    if (access?.hasAccess) {
-                      router.push(`/player/${id}`);
-                    }
-                  } catch (err: any) {
-                    alert(err?.message ?? 'Payment verification failed');
-                  } finally {
-                    setBuyLoading(false);
-                  }
-                },
-                onclose: () => {
-                  setBuyLoading(false);
-                },
-              });
+              if (init?.authorizationUrl) {
+                window.location.href = init.authorizationUrl;
+                return;
+              }
+              if (init?.reference) {
+                await verifyPaystackPurchase({ accessToken, reference: init.reference });
+                const access = await fetchPpvAccess({
+                  titleId: id,
+                  accessToken,
+                  profileId,
+                  country,
+                });
+                setPpvAccess(access);
+                if (access?.hasAccess) {
+                  router.push(`/player/${id}`);
+                }
+              }
             } catch (err: any) {
+              alert(err?.message ?? 'Unable to start Paystack');
+            } finally {
               setBuyLoading(false);
-              alert(err?.message ?? 'Unable to start purchase');
             }
           })();
         }}
@@ -306,7 +354,7 @@ export default function TitlePage({ params }: { params: { id: string } }) {
         <div className="fixed inset-0 z-[9999] bg-black/70 flex items-center justify-center">
           <div className="bg-[#0d0d0d] border border-white/10 rounded-xl px-6 py-5 flex flex-col items-center gap-3">
             <div className="h-10 w-10 border-2 border-white/20 border-t-[#fd7e14] rounded-full animate-spin" />
-            <p className="text-sm text-white/80">Starting payment…</p>
+            <p className="text-sm text-white/80">Starting payment...</p>
           </div>
         </div>
       ) : null}
