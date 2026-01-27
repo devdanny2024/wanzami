@@ -150,7 +150,10 @@ export async function fetchPpvAccess(params: {
 }): Promise<PpvAccess> {
   const query = new URLSearchParams();
   if (params.profileId) query.set("profileId", params.profileId);
-  if (params.country) query.set("country", params.country);
+  const fallbackCountry =
+    typeof window !== "undefined" ? window.localStorage.getItem("countryCode") : null;
+  const country = params.country ?? fallbackCountry ?? null;
+  if (country) query.set("country", country);
   query.set("record", "false");
   const res = await fetchWithTimeout(`${API_BASE}/ppv/access/${params.titleId}?${query.toString()}`, {
     cache: "no-store",
@@ -178,6 +181,10 @@ export async function initiatePpvPurchase(params: {
     body: JSON.stringify({
       titleId: params.titleId,
       profileId: params.profileId ?? undefined,
+      country:
+        typeof window !== "undefined"
+          ? window.localStorage.getItem("countryCode") ?? undefined
+          : undefined,
     }),
   });
   const data = await handleJsonResponse(res);

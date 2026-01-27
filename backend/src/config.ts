@@ -42,6 +42,11 @@ export const config = {
     encryptionKey: process.env.FLW_ENCRYPTION_KEY ?? "",
     baseUrl: process.env.FLW_BASE_URL ?? "https://api.flutterwave.com",
     webhookSecret: process.env.FLW_WEBHOOK_SECRET ?? "",
+    callbackUrl: process.env.FLW_CALLBACK_URL ?? process.env.PAYSTACK_CALLBACK_URL ?? "",
+  },
+  fx: {
+    apiBase: process.env.FX_API_BASE ?? "https://api.exchangerate.host/latest",
+    cacheTtlMs: numberOrDefault(process.env.FX_CACHE_TTL_MS, 6 * 60 * 60 * 1000),
   },
   // Optional CDN base for media playback (e.g., CloudFront): https://cdn.yourdomain.com
   mediaCdnBase: process.env.MEDIA_CDN_BASE?.replace(/\/+$/, ""),

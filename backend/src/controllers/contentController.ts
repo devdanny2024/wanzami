@@ -5,6 +5,7 @@ import { presignPutObject, presignGetObject } from "../upload/s3.js";
 import { config } from "../config.js";
 import { resolveCountry } from "../utils/country.js";
 import { auditLog } from "../utils/audit.js";
+import { localizePrice } from "../utils/pricing.js";
 import { AssetStatus } from "@prisma/client";
 import { DeleteObjectsCommand, S3Client } from "@aws-sdk/client-s3";
 import { verifyAccessToken } from "../auth/jwt.js";
@@ -142,6 +143,19 @@ const extractS3KeyFromUrl = (url?: string | null) => {
   return null;
 };
 
+const safeLocalizePrice = async (opts: {
+  amount: number;
+  baseCurrency: string;
+  country: string;
+}) => {
+  try {
+    return await localizePrice(opts);
+  } catch (err) {
+    console.error("price localization failed", err);
+    return { amount: opts.amount, currency: opts.baseCurrency, rate: 1 };
+  }
+};
+
 const resolvePlaybackUrl = async (url?: string | null) => {
   if (!url) return url;
   const key = extractS3KeyFromUrl(url);
@@ -190,40 +204,55 @@ export const listPublicTitles = async (req: Request, res: Response) => {
     },
   });
 
-  return res.json({
-    titles: titles.map((t) => ({
-      id: t.id.toString(),
-      name: t.name,
-      type: t.type,
-      description: t.description,
-      genres: t.genres,
-      cast: t.cast,
-      crew: t.crew,
-      language: t.language,
-      maturityRating: t.maturityRating,
-      runtimeMinutes: t.runtimeMinutes,
-      countryAvailability: t.countryAvailability,
-      isOriginal: t.isOriginal,
-      posterUrl: t.posterUrl,
-      thumbnailUrl: t.thumbnailUrl,
-      trailerUrl: t.trailerUrl,
-      shortTrailerUrl: t.shortTrailerUrl,
-      introStartSec: t.introStartSec,
-      introEndSec: t.introEndSec,
-      archived: t.archived,
-      pendingReview: t.pendingReview,
-      isPpv: t.isPpv,
-      ppvPriceNaira: t.ppvPriceNaira,
-      ppvCurrency: t.ppvCurrency,
-      ppvDescription: t.ppvDescription,
-      createdAt: t.createdAt,
-      updatedAt: t.updatedAt,
-      episodeCount: t.episodes.length,
-      seasonCount: t.seasons.length,
-      releaseDate: t.releaseDate,
-      releaseYear: t.releaseDate ? t.releaseDate.getUTCFullYear() : undefined,
-    })),
-  });
+  const localized = await Promise.all(
+    titles.map(async (t) => {
+      let ppvPriceNaira = t.ppvPriceNaira;
+      let ppvCurrency = t.ppvCurrency ?? "NGN";
+      if (t.isPpv && ppvPriceNaira) {
+        const localizedPrice = await safeLocalizePrice({
+          amount: ppvPriceNaira,
+          baseCurrency: ppvCurrency,
+          country,
+        });
+        ppvPriceNaira = localizedPrice.amount;
+        ppvCurrency = localizedPrice.currency;
+      }
+      return {
+        id: t.id.toString(),
+        name: t.name,
+        type: t.type,
+        description: t.description,
+        genres: t.genres,
+        cast: t.cast,
+        crew: t.crew,
+        language: t.language,
+        maturityRating: t.maturityRating,
+        runtimeMinutes: t.runtimeMinutes,
+        countryAvailability: t.countryAvailability,
+        isOriginal: t.isOriginal,
+        posterUrl: t.posterUrl,
+        thumbnailUrl: t.thumbnailUrl,
+        trailerUrl: t.trailerUrl,
+        shortTrailerUrl: t.shortTrailerUrl,
+        introStartSec: t.introStartSec,
+        introEndSec: t.introEndSec,
+        archived: t.archived,
+        pendingReview: t.pendingReview,
+        isPpv: t.isPpv,
+        ppvPriceNaira,
+        ppvCurrency,
+        ppvDescription: t.ppvDescription,
+        createdAt: t.createdAt,
+        updatedAt: t.updatedAt,
+        episodeCount: t.episodes.length,
+        seasonCount: t.seasons.length,
+        releaseDate: t.releaseDate,
+        releaseYear: t.releaseDate ? t.releaseDate.getUTCFullYear() : undefined,
+      };
+    })
+  );
+
+  return res.json({ titles: localized });
 };
 
 export const getTitleWithEpisodes = async (req: Request, res: Response) => {
@@ -311,6 +340,15 @@ export const getTitleWithEpisodes = async (req: Request, res: Response) => {
   const trailerUrl = await resolvePlaybackUrl(title.trailerUrl);
   const shortTrailerUrl = await resolvePlaybackUrl(title.shortTrailerUrl);
 
+  let localizedPrice = null as null | { amount: number; currency: string; rate: number };
+  if (title.isPpv && title.ppvPriceNaira) {
+    localizedPrice = await safeLocalizePrice({
+      amount: title.ppvPriceNaira,
+      baseCurrency: title.ppvCurrency ?? "NGN",
+      country,
+    });
+  }
+
   const assetVersions = await Promise.all(
     title.assetVersions.map(async (a) => ({
       id: a.id.toString(),
@@ -379,8 +417,8 @@ export const getTitleWithEpisodes = async (req: Request, res: Response) => {
       releaseYear: title.releaseDate ? title.releaseDate.getUTCFullYear() : undefined,
       isPpv: title.isPpv,
       ppvStreamAllowed,
-      ppvPriceNaira: title.ppvPriceNaira,
-      ppvCurrency: title.ppvCurrency,
+      ppvPriceNaira: localizedPrice ? localizedPrice.amount : title.ppvPriceNaira,
+      ppvCurrency: localizedPrice ? localizedPrice.currency : title.ppvCurrency,
       ppvDescription: title.ppvDescription,
       episodeCount: title.episodes.length,
       assetVersions,

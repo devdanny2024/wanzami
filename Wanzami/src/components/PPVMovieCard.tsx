@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Play, Clock } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { getCurrencySymbol } from '@/lib/currency';
 
 export interface PPVMovieData {
   id: number;
@@ -91,7 +92,7 @@ export function PPVMovieCard({ movie, onClick }: PPVMovieCardProps) {
               <div className="flex-1 bg-black/60 backdrop-blur-sm border border-[#fd7e14]/30 rounded-lg px-3 py-2">
                 <div className="text-xs text-gray-400">Rent for 48h</div>
                 <div className="text-[#fd7e14]">
-                  {movie.currency === 'NGN' ? '₦' : movie.currency === 'USDC' ? 'USDC ' : '$'}
+                  {movie.currency ? getCurrencySymbol(movie.currency) : '$'}
                   {movie.price.toLocaleString()}
                 </div>
               </div>
@@ -123,7 +124,7 @@ export function PPVMovieCard({ movie, onClick }: PPVMovieCardProps) {
       <div className="md:hidden mt-2">
         <div className="text-white text-sm line-clamp-1 mb-1">{movie.title}</div>
         <div className="text-[#fd7e14] text-sm">
-          {movie.currency === 'NGN' ? '₦' : movie.currency === 'USDC' ? 'USDC ' : '$'}
+          {movie.currency ? getCurrencySymbol(movie.currency) : '$'}
           {movie.price.toLocaleString()}
         </div>
       </div>

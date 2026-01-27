@@ -3,6 +3,7 @@ import { Play, X, Clock, Shield, Monitor, RefreshCw, ShoppingCart } from 'lucide
 import { motion } from 'motion/react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { PPVMovieData } from './PPVMovieCard';
+import { getCurrencySymbol } from '@/lib/currency';
 
 interface PPVMoviePageProps {
   movie: PPVMovieData & { description?: string; year?: string };
@@ -152,7 +153,7 @@ export function PPVMoviePage({
                       <p className="text-gray-400 text-sm mb-4">Watch for 48 hours</p>
                       <div className="flex items-end gap-2 mb-4">
                         <div className="text-3xl text-[#fd7e14]">
-                          {movie.currency === 'NGN' ? '₦' : movie.currency === 'USDC' ? 'USDC ' : '$'}
+                          {movie.currency ? getCurrencySymbol(movie.currency) : '$'}
                           {movie.price.toLocaleString()}
                         </div>
                       </div>
@@ -177,7 +178,7 @@ export function PPVMoviePage({
                         <p className="text-gray-400 text-sm mb-4">Own it forever</p>
                         <div className="flex items-end gap-2 mb-4">
                           <div className="text-3xl text-white">
-                            {movie.currency === 'NGN' ? '₦' : movie.currency === 'USDC' ? 'USDC ' : '$'}
+                            {movie.currency ? getCurrencySymbol(movie.currency) : '$'}
                             {movie.buyPrice.toLocaleString()}
                           </div>
                         </div>

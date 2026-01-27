@@ -90,27 +90,16 @@ export function Settings() {
                 <div className="space-y-4 pt-4">
                   <div>
                     <Label className="text-neutral-300">Payment Provider</Label>
-                    <Select defaultValue="paystack">
-                      <SelectTrigger className="mt-2 bg-neutral-950 border-neutral-800 text-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-neutral-900 border-neutral-800">
-                        <SelectItem value="paystack">Paystack</SelectItem>
-                        <SelectItem value="flutterwave">Flutterwave</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="mt-2 rounded-md border border-neutral-800 bg-neutral-950 px-3 py-2 text-white">
+                      Flutterwave (Global)
+                    </div>
                   </div>
 
                   <div>
                     <Label className="text-neutral-300">Currency</Label>
-                    <Select defaultValue="ngn">
-                      <SelectTrigger className="mt-2 bg-neutral-950 border-neutral-800 text-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-neutral-900 border-neutral-800">
-                        <SelectItem value="ngn">Nigerian Naira (NGN)</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="mt-2 rounded-md border border-neutral-800 bg-neutral-950 px-3 py-2 text-neutral-300">
+                      Auto (based on viewer country)
+                    </div>
                   </div>
 
                   <div>
@@ -133,7 +122,7 @@ export function Settings() {
 
                   <div className="p-4 bg-neutral-950 border border-neutral-800 rounded-lg">
                     <p className="text-sm text-neutral-400">
-                      <strong className="text-[#fd7e14]">Note:</strong> All payments are processed in NGN through traditional card methods. No cryptocurrency or digital wallet support.
+                      <strong className="text-[#fd7e14]">Note:</strong> PPV pricing is converted automatically based on viewer location and processed via Flutterwave.
                     </p>
                   </div>
 

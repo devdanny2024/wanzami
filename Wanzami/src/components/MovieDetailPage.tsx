@@ -7,6 +7,7 @@ import { ImageWithFallback } from './figma/ImageWithFallback';
 import { MovieCard, MovieData } from './MovieCard';
 import { isInMyList, toggleMyList } from '@/lib/myList';
 import { fetchTitles, type Title } from '@/lib/contentClient';
+import { formatMoney } from '@/lib/currency';
 
 interface MovieDetailPageProps {
   movie: any;
@@ -282,7 +283,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
                 >
                   <Play className="w-5 h-5 md:w-6 md:h-6 fill-current" />
                   <span className="text-sm md:text-base">
-                    Buy now {ppvInfo?.priceNaira ? `₦${ppvInfo.priceNaira}` : ''} {ppvInfo?.currency ?? 'NGN'}
+                    Buy now {formatMoney(ppvInfo?.priceNaira ?? undefined, ppvInfo?.currency ?? undefined)}
                   </span>
                 </button>
               ) : (
