@@ -32,7 +32,6 @@ function SuccessContent() {
       search?.get('reference') ??
       search?.get('ref') ??
       search?.get('trxref') ??
-      search?.get('transaction_id') ??
       '';
     const match = ref.match(/PPV-[A-Z]+-(\d+)-/i);
     return {
@@ -54,20 +53,34 @@ function SuccessContent() {
       }
       try {
         const ref = reference || trxref;
+        const resolveTitleId = (value?: string | null) => {
+          if (!value) return '';
+          const match = value.match(/PPV-[A-Z]+-(\d+)-/i);
+          return match?.[1] ?? '';
+        };
+
+        let resolvedTitleId = titleId;
         if (ref?.startsWith('PPV-PAY-')) {
           await verifyPaystackPurchase({ accessToken, reference: ref });
+          if (!resolvedTitleId) resolvedTitleId = resolveTitleId(ref);
         } else if (ref || transactionId) {
-          await verifyFlutterwavePurchase({
+          const verified = await verifyFlutterwavePurchase({
             accessToken,
             txRef: ref || undefined,
             transactionId: transactionId || undefined,
           });
+          const verifiedRef =
+            (verified as any)?.data?.data?.tx_ref ??
+            (verified as any)?.data?.data?.reference ??
+            ref ??
+            '';
+          if (!resolvedTitleId) resolvedTitleId = resolveTitleId(verifiedRef);
         }
-        if (titleId) {
-          const access = await fetchPpvAccess({ titleId, accessToken });
-          if (access?.hasAccess) markOwned(titleId);
+        if (resolvedTitleId) {
+          const access = await fetchPpvAccess({ titleId: resolvedTitleId, accessToken });
+          if (access?.hasAccess) markOwned(resolvedTitleId);
         }
-        const target = titleId ? `/title/${titleId}` : '/mymovies';
+        const target = resolvedTitleId ? `/title/${resolvedTitleId}` : '/mymovies';
         router.replace(target);
       } catch (err: any) {
         setMessage('Verification failed.');
