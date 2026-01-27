@@ -288,6 +288,9 @@ export const initiateOrchestratedPurchase = async (req: AuthenticatedRequest, re
       customer,
       bankTransfer,
       ussd,
+      opay,
+      googlepay,
+      applepay,
     } = req.body as {
       titleId?: number;
       method?: "card" | "bank_transfer" | "ussd" | "opay" | "googlepay" | "applepay";
