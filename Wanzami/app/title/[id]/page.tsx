@@ -106,6 +106,21 @@ export default function TitlePage({ params }: { params: { id: string } }) {
       document.body.appendChild(script);
     });
 
+  const markOwned = (titleId: string) => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem('wanzami:ppvOwned') ?? '[]';
+      const list = JSON.parse(raw) as Array<string>;
+      const key = String(titleId);
+      if (!list.includes(key)) {
+        list.push(key);
+        window.localStorage.setItem('wanzami:ppvOwned', JSON.stringify(list));
+      }
+    } catch {
+      // Ignore storage errors (private mode, quota, etc).
+    }
+  };
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const stored = window.localStorage.getItem('countryCode');
@@ -148,6 +163,7 @@ export default function TitlePage({ params }: { params: { id: string } }) {
         });
         setPpvAccess(access);
         if (access?.hasAccess) {
+          markOwned(id);
           router.push(`/player/${id}`);
         }
       } catch (err: any) {
@@ -327,6 +343,7 @@ export default function TitlePage({ params }: { params: { id: string } }) {
                       });
                       setPpvAccess(access);
                       if (access?.hasAccess) {
+                        markOwned(id);
                         router.push(`/player/${id}`);
                       }
                     } catch (err: any) {
@@ -369,6 +386,7 @@ export default function TitlePage({ params }: { params: { id: string } }) {
                 });
                 setPpvAccess(access);
                 if (access?.hasAccess) {
+                  markOwned(id);
                   router.push(`/player/${id}`);
                 }
               }

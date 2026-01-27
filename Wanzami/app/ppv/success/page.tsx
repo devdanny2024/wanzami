@@ -12,12 +12,33 @@ function SuccessContent() {
     'We are refreshing your access and will open your title automatically.'
   );
 
-  const { reference, trxref, titleId } = useMemo(() => {
-    const ref = search?.get('reference') ?? search?.get('ref') ?? search?.get('trxref') ?? '';
+  const markOwned = (ownedTitleId: string) => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem('wanzami:ppvOwned') ?? '[]';
+      const list = JSON.parse(raw) as Array<string>;
+      const key = String(ownedTitleId);
+      if (!list.includes(key)) {
+        list.push(key);
+        window.localStorage.setItem('wanzami:ppvOwned', JSON.stringify(list));
+      }
+    } catch {
+      // Ignore storage errors.
+    }
+  };
+
+  const { reference, trxref, transactionId, titleId } = useMemo(() => {
+    const ref =
+      search?.get('reference') ??
+      search?.get('ref') ??
+      search?.get('trxref') ??
+      search?.get('transaction_id') ??
+      '';
     const match = ref.match(/PPV-[A-Z]+-(\d+)-/i);
     return {
       reference: search?.get('reference') ?? search?.get('ref') ?? '',
       trxref: search?.get('trxref') ?? '',
+      transactionId: search?.get('transaction_id') ?? '',
       titleId: match?.[1] ?? '',
     };
   }, [search]);
@@ -35,11 +56,16 @@ function SuccessContent() {
         const ref = reference || trxref;
         if (ref?.startsWith('PPV-PAY-')) {
           await verifyPaystackPurchase({ accessToken, reference: ref });
-        } else if (ref) {
-          await verifyFlutterwavePurchase({ accessToken, txRef: ref });
+        } else if (ref || transactionId) {
+          await verifyFlutterwavePurchase({
+            accessToken,
+            txRef: ref || undefined,
+            transactionId: transactionId || undefined,
+          });
         }
         if (titleId) {
-          await fetchPpvAccess({ titleId, accessToken });
+          const access = await fetchPpvAccess({ titleId, accessToken });
+          if (access?.hasAccess) markOwned(titleId);
         }
         const target = titleId ? `/title/${titleId}` : '/mymovies';
         router.replace(target);
@@ -54,12 +80,13 @@ function SuccessContent() {
           url.searchParams.delete('trxref');
           url.searchParams.delete('reference');
           url.searchParams.delete('status');
+          url.searchParams.delete('transaction_id');
           window.history.replaceState({}, '', url.toString());
         }
       }
     };
     void run();
-  }, [router, titleId, reference, trxref]);
+  }, [router, titleId, reference, trxref, transactionId]);
 
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center px-6">

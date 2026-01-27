@@ -41,6 +41,17 @@ interface MovieCardProps {
 export function MovieCard({ movie, onClick }: MovieCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const isFree = (movie as any)?.isPpv === false;
+  const ownedByCache = (() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const raw = window.localStorage.getItem('wanzami:ppvOwned') ?? '[]';
+      const list = JSON.parse(raw) as Array<string>;
+      const key = String((movie as any)?.backendId ?? movie.id);
+      return list.includes(key);
+    } catch {
+      return false;
+    }
+  })();
   const owned =
     isFree ||
     Boolean(
@@ -51,7 +62,8 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
       (movie as any)?.purchaseStatus === 'OWNED' ||
       (movie as any)?.purchaseStatus === 'ACTIVE' ||
       typeof movie.completionPercent === 'number',
-    );
+    ) ||
+    ownedByCache;
 
   return (
     <motion.div
