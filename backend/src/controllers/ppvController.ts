@@ -6,6 +6,7 @@ import { sendEmail } from "../utils/mailer.js";
 import { buildPpvThankYouEmail } from "../templates/ppvThankYouTemplate.js";
 import { resolveCountry } from "../utils/country.js";
 import { localizePrice } from "../utils/pricing.js";
+import { getFlutterwaveAccessToken } from "../utils/flutterwaveV4.js";
 
 const now = () => new Date();
 
@@ -228,10 +229,11 @@ export const initiatePurchase = async (req: AuthenticatedRequest, res: Response)
         country,
       },
     };
+    const accessToken = await getFlutterwaveAccessToken();
     const resp = await fetch(`${config.flutterwave.baseUrl}/v3/payments`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${config.flutterwave.secretKey}`,
+        Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(initPayload),

@@ -37,6 +37,7 @@ export const config = {
     webhookSecret: process.env.PAYSTACK_WEBHOOK_SECRET ?? "",
   },
   flutterwave: {
+    // V4 keys: Client ID + Client Secret
     publicKey: process.env.FLW_PUBLIC_KEY ?? "",
     secretKey: process.env.FLW_SECRET_KEY ?? "",
     encryptionKey: process.env.FLW_ENCRYPTION_KEY ?? "",
