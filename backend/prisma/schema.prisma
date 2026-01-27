@@ -46,6 +46,7 @@ model User {
   ppvViolations PpvViolation[]
   supportTickets SupportTicket[]
   supportTicketMessages SupportTicketMessage[]
+  liveEventsCreated LiveEvent[] @relation("LiveEventCreatedBy")
 }
 
 model Session {
@@ -334,7 +335,7 @@ model LiveEvent {
   startedAt        DateTime?
   endedAt          DateTime?
 
-  createdBy User? @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdBy User? @relation("LiveEventCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   @@index([status])
 }
