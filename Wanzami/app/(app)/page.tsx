@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { HomePage } from "@/components/HomePage";
 import { HomeSkeleton } from "@/components/Skeletons";
 import {
@@ -10,6 +10,7 @@ import {
   fetchBecauseYouWatched,
   fetchForYou,
   fetchLiveEvents,
+  fetchMyPpvTitles,
 } from "@/lib/contentClient";
 import { MovieData } from "@/components/MovieCard";
 
@@ -32,6 +33,7 @@ export default function HomeRoute() {
   const [recsLoading, setRecsLoading] = useState(false);
   const [recsError, setRecsError] = useState<string | null>(null);
   const [liveEvents, setLiveEvents] = useState<any[]>([]);
+  const ownedSyncKey = useRef<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -92,6 +94,53 @@ export default function HomeRoute() {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    const accessToken = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    const profileId = typeof window !== "undefined" ? localStorage.getItem("activeProfileId") : null;
+    if (!accessToken || catalogMovies.length === 0) return;
+    const key = `${accessToken}:${profileId ?? ""}`;
+    if (ownedSyncKey.current === key) return;
+    ownedSyncKey.current = key;
+
+    const syncOwned = async () => {
+      try {
+        const data = await fetchMyPpvTitles({ accessToken, profileId });
+        const ownedIds = new Set<string>(
+          (data?.activePurchases ?? []).map((p) => String(p.title?.id ?? p.titleId))
+        );
+
+        if (typeof window !== "undefined") {
+          try {
+            const existing = JSON.parse(
+              window.localStorage.getItem("wanzami:ppvOwned") ?? "[]"
+            ) as string[];
+            const merged = Array.from(new Set([...existing, ...ownedIds]));
+            window.localStorage.setItem("wanzami:ppvOwned", JSON.stringify(merged));
+          } catch {
+            // ignore storage errors
+          }
+        }
+
+        setCatalogMovies((prev) => {
+          let changed = false;
+          const next = prev.map((m) => {
+            const keyId = String(m.backendId ?? m.id);
+            if (ownedIds.has(keyId) && !m.hasAccess) {
+              changed = true;
+              return { ...m, hasAccess: true, isOwned: true };
+            }
+            return m;
+          });
+          return changed ? next : prev;
+        });
+      } catch (err) {
+        // non-blocking; keep catalog as-is
+      }
+    };
+
+    void syncOwned();
+  }, [catalogMovies.length]);
 
   useEffect(() => {
     let isMounted = true;
