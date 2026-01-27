@@ -22,6 +22,8 @@ const app = express();
 const allowedOrigins = [
   "https://wanzami.vercel.app",
   "https://wanzami-admin.vercel.app",
+  "https://wanzami.tv",
+  "https://www.wanzami.tv",
   "https://api.carlylehub.org",
   "https://wanzami.duckdns.org",
   "http://localhost:3000",

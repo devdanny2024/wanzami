@@ -205,7 +205,7 @@ export const getAccess = async (req: AuthenticatedRequest, res: Response) => {
 };
 
 const frontendBase =
-  process.env.APP_ORIGIN || process.env.FRONTEND_URL || "https://wanzami.vercel.app";
+  process.env.APP_ORIGIN || process.env.FRONTEND_URL || "https://www.wanzami.tv";
 
 const sendPpvThankYou = async (opts: {
   userEmail?: string | null;

@@ -3,7 +3,7 @@ type Rec = { title: string; priceNaira?: number | null; url?: string };
 const frontendBase =
   process.env.APP_ORIGIN ||
   process.env.FRONTEND_URL ||
-  "https://wanzami.vercel.app";
+  "https://www.wanzami.tv";
 
 export function buildPpvThankYouEmail(params: {
   userName?: string | null;

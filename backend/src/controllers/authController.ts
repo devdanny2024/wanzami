@@ -242,7 +242,7 @@ export const signup = async (req: Request, res: Response) => {
     },
   });
 
-  const verifyUrl = `${process.env.APP_ORIGIN ?? "http://localhost:3000"}/verify-email?token=${verificationToken}&email=${encodeURIComponent(
+  const verifyUrl = `${process.env.APP_ORIGIN ?? "https://www.wanzami.tv"}/verify-email?token=${verificationToken}&email=${encodeURIComponent(
     email
   )}`;
   await sendEmail({
@@ -706,7 +706,7 @@ export const resendVerification = async (req: Request, res: Response) => {
     },
   });
 
-  const verifyUrl = `${process.env.APP_ORIGIN ?? "http://localhost:3000"}/verify-email?token=${newToken}&email=${encodeURIComponent(
+  const verifyUrl = `${process.env.APP_ORIGIN ?? "https://www.wanzami.tv"}/verify-email?token=${newToken}&email=${encodeURIComponent(
     email
   )}`;
   await sendEmail({
