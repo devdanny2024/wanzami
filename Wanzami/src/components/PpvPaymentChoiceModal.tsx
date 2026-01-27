@@ -17,7 +17,10 @@ type Props = {
 export function PpvPaymentChoiceModal({ open, onOpenChange, onSelect }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md w-full !left-1/2 !top-1/2 !-translate-x-1/2 !-translate-y-1/2 bg-[#0d0d0d] border border-white/10 text-white">
+      <DialogContent
+        className="max-w-md w-full bg-[#0d0d0d] border border-white/10 text-white"
+        style={{ left: "50%", top: "50%", transform: "translate(-50%, -50%)" }}
+      >
         <DialogHeader>
           <DialogTitle className="text-lg">Choose Payment Method</DialogTitle>
           <DialogDescription className="text-sm text-white/60">
