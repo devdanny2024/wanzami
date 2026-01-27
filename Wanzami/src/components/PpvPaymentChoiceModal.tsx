@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import {
   Dialog,
   DialogContent,
@@ -30,16 +31,32 @@ export function PpvPaymentChoiceModal({ open, onOpenChange, onSelect }: Props) {
         <div className="grid gap-3">
           <button
             type="button"
-            className="w-full px-4 py-3 rounded-lg bg-[#fd7e14] text-black font-semibold"
+            className="w-full px-4 py-3 rounded-lg bg-[#fd7e14] text-black font-semibold flex items-center justify-center gap-3"
             onClick={() => onSelect("paystack")}
           >
+            <span className="bg-white rounded-full p-1 flex items-center justify-center">
+              <Image
+                src="/brands/paystack.png"
+                alt="Paystack"
+                width={20}
+                height={20}
+              />
+            </span>
             Pay using Paystack
           </button>
           <button
             type="button"
-            className="w-full px-4 py-3 rounded-lg border border-white/20 text-white"
+            className="w-full px-4 py-3 rounded-lg border border-white/20 text-white flex items-center justify-center gap-3"
             onClick={() => onSelect("flutterwave")}
           >
+            <span className="bg-white rounded-full p-1 flex items-center justify-center">
+              <Image
+                src="/brands/flutterwave.png"
+                alt="Flutterwave"
+                width={20}
+                height={20}
+              />
+            </span>
             Pay using Flutterwave
           </button>
         </div>
