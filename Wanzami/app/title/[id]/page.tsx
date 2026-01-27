@@ -125,6 +125,47 @@ export default function TitlePage({ params }: { params: { id: string } }) {
   }, [router]);
 
   useEffect(() => {
+    if (!accessToken) return;
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    const txRef = url.searchParams.get('tx_ref');
+    const transactionId = url.searchParams.get('transaction_id');
+    const status = url.searchParams.get('status');
+    if (!txRef && !transactionId) return;
+
+    const finalize = async () => {
+      try {
+        await verifyFlutterwavePurchase({
+          accessToken,
+          transactionId: transactionId ?? undefined,
+          txRef: txRef ?? undefined,
+        });
+        const access = await fetchPpvAccess({
+          titleId: id,
+          accessToken,
+          profileId,
+          country,
+        });
+        setPpvAccess(access);
+        if (access?.hasAccess) {
+          router.push(`/player/${id}`);
+        }
+      } catch (err: any) {
+        console.warn('Flutterwave verify after redirect failed', err?.message ?? err);
+      } finally {
+        url.searchParams.delete('tx_ref');
+        url.searchParams.delete('transaction_id');
+        url.searchParams.delete('status');
+        window.history.replaceState({}, '', url.toString());
+      }
+    };
+
+    if (!status || status.toLowerCase() === 'successful') {
+      void finalize();
+    }
+  }, [accessToken, id, profileId, country, router]);
+
+  useEffect(() => {
     let cancelled = false;
     const load = async () => {
       setLoading(true);
