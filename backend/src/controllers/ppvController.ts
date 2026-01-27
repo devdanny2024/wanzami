@@ -80,6 +80,15 @@ const encryptCardPayload = (card: {
   return encryptedCard;
 };
 
+const readFlutterwaveResponse = async (resp: Response) => {
+  const text = await resp.text();
+  try {
+    return { json: JSON.parse(text), text };
+  } catch {
+    return { json: null, text };
+  }
+};
+
 export const getAccess = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const titleId = req.params.titleId ? BigInt(req.params.titleId) : null;
@@ -675,9 +684,15 @@ export const initiateGeneralPurchase = async (req: AuthenticatedRequest, res: Re
       },
       body: JSON.stringify(customerPayload),
     });
-    const customerJson = await customerResp.json().catch(() => ({}));
+    const customerParsed = await readFlutterwaveResponse(customerResp);
+    const customerJson = customerParsed.json ?? {};
     if (!customerResp.ok || customerJson.status !== "success") {
-      return res.status(502).json({ message: "Flutterwave customer failed", details: customerJson });
+      return res.status(502).json({
+        message: "Flutterwave customer failed",
+        status: customerResp.status,
+        details: customerJson,
+        raw: customerParsed.text,
+      });
     }
     const customerId = customerJson?.data?.id;
 
@@ -722,9 +737,15 @@ export const initiateGeneralPurchase = async (req: AuthenticatedRequest, res: Re
       },
       body: JSON.stringify(paymentMethodPayload),
     });
-    const pmdJson = await pmdResp.json().catch(() => ({}));
+    const pmdParsed = await readFlutterwaveResponse(pmdResp);
+    const pmdJson = pmdParsed.json ?? {};
     if (!pmdResp.ok || pmdJson.status !== "success") {
-      return res.status(502).json({ message: "Flutterwave payment method failed", details: pmdJson });
+      return res.status(502).json({
+        message: "Flutterwave payment method failed",
+        status: pmdResp.status,
+        details: pmdJson,
+        raw: pmdParsed.text,
+      });
     }
     const paymentMethodId = pmdJson?.data?.id;
 
@@ -747,9 +768,15 @@ export const initiateGeneralPurchase = async (req: AuthenticatedRequest, res: Re
       },
       body: JSON.stringify(chargePayload),
     });
-    const chargeJson = await chargeResp.json().catch(() => ({}));
+    const chargeParsed = await readFlutterwaveResponse(chargeResp);
+    const chargeJson = chargeParsed.json ?? {};
     if (!chargeResp.ok || chargeJson.status !== "success") {
-      return res.status(502).json({ message: "Flutterwave charge failed", details: chargeJson });
+      return res.status(502).json({
+        message: "Flutterwave charge failed",
+        status: chargeResp.status,
+        details: chargeJson,
+        raw: chargeParsed.text,
+      });
     }
 
     await prisma.ppvPurchase.create({

@@ -71,17 +71,7 @@ export function FlutterwaveCheckoutModal({
   const [otp, setOtp] = useState("");
   const [additionalJson, setAdditionalJson] = useState("");
 
-  const [customer, setCustomer] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    country: "",
-    line1: "",
-    city: "",
-    state: "",
-    postalCode: "",
-  });
+  const [customerPhone, setCustomerPhone] = useState("");
 
   const [card, setCard] = useState({
     number: "",
@@ -124,21 +114,7 @@ export function FlutterwaveCheckoutModal({
     setError(null);
     try {
       const customerPayload = {
-        firstName: customer.firstName || undefined,
-        lastName: customer.lastName || undefined,
-        email: customer.email || undefined,
-        phone: customer.phone ? normalizePhone(customer.phone) : undefined,
-        country: customer.country || undefined,
-        address:
-          customer.line1 || customer.city || customer.state || customer.postalCode
-            ? {
-                line1: customer.line1 || undefined,
-                city: customer.city || undefined,
-                state: customer.state || undefined,
-                postalCode: customer.postalCode || undefined,
-                country: customer.country || undefined,
-              }
-            : undefined,
+        phone: customerPhone ? normalizePhone(customerPhone) : undefined,
       };
 
       const res = await initiatePpvV4General({
@@ -177,7 +153,7 @@ export function FlutterwaveCheckoutModal({
         opay:
           method === "opay"
             ? {
-                phoneNumber: normalizePhone(customer.phone || ""),
+                phoneNumber: normalizePhone(customerPhone || ""),
               }
             : undefined,
         customer: customerPayload,
@@ -281,71 +257,14 @@ export function FlutterwaveCheckoutModal({
             ))}
           </div>
 
-          <div className="grid gap-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input
-                className="bg-black/40 border border-white/10 rounded px-3 py-2 text-sm"
-                placeholder="First name"
-                value={customer.firstName}
-                onChange={(e) => setCustomer((prev) => ({ ...prev, firstName: e.target.value }))}
-              />
-              <input
-                className="bg-black/40 border border-white/10 rounded px-3 py-2 text-sm"
-                placeholder="Last name"
-                value={customer.lastName}
-                onChange={(e) => setCustomer((prev) => ({ ...prev, lastName: e.target.value }))}
-              />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input
-                className="bg-black/40 border border-white/10 rounded px-3 py-2 text-sm"
-                placeholder="Email"
-                type="email"
-                value={customer.email}
-                onChange={(e) => setCustomer((prev) => ({ ...prev, email: e.target.value }))}
-              />
-              <input
-                className="bg-black/40 border border-white/10 rounded px-3 py-2 text-sm"
-                placeholder="Phone"
-                value={customer.phone}
-                onChange={(e) => setCustomer((prev) => ({ ...prev, phone: e.target.value }))}
-              />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input
-                className="bg-black/40 border border-white/10 rounded px-3 py-2 text-sm"
-                placeholder="Country code (e.g. NG, US)"
-                value={customer.country}
-                onChange={(e) => setCustomer((prev) => ({ ...prev, country: e.target.value }))}
-              />
-              <input
-                className="bg-black/40 border border-white/10 rounded px-3 py-2 text-sm"
-                placeholder="Address line"
-                value={customer.line1}
-                onChange={(e) => setCustomer((prev) => ({ ...prev, line1: e.target.value }))}
-              />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <input
-                className="bg-black/40 border border-white/10 rounded px-3 py-2 text-sm"
-                placeholder="City"
-                value={customer.city}
-                onChange={(e) => setCustomer((prev) => ({ ...prev, city: e.target.value }))}
-              />
-              <input
-                className="bg-black/40 border border-white/10 rounded px-3 py-2 text-sm"
-                placeholder="State"
-                value={customer.state}
-                onChange={(e) => setCustomer((prev) => ({ ...prev, state: e.target.value }))}
-              />
-              <input
-                className="bg-black/40 border border-white/10 rounded px-3 py-2 text-sm"
-                placeholder="Postal code"
-                value={customer.postalCode}
-                onChange={(e) => setCustomer((prev) => ({ ...prev, postalCode: e.target.value }))}
-              />
-            </div>
-          </div>
+          {(method === "opay" || method === "ussd") ? (
+            <input
+              className="bg-black/40 border border-white/10 rounded px-3 py-2 text-sm"
+              placeholder="Phone number"
+              value={customerPhone}
+              onChange={(e) => setCustomerPhone(e.target.value)}
+            />
+          ) : null}
 
           {method === "card" ? (
             <div className="grid gap-3">
