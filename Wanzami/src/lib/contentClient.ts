@@ -191,6 +191,91 @@ export async function initiatePpvPurchase(params: {
   return data as { authorizationUrl?: string; reference?: string };
 }
 
+export async function initiatePpvOrchestrated(params: {
+  titleId: string;
+  accessToken: string;
+  method: "card" | "bank_transfer" | "ussd" | "opay" | "googlepay" | "applepay";
+  card?: { number: string; cvv: string; expiryMonth: string; expiryYear: string; pin?: string };
+  customer?: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    country?: string;
+    address?: {
+      line1?: string;
+      city?: string;
+      state?: string;
+      postalCode?: string;
+      country?: string;
+    };
+  };
+  bankTransfer?: Record<string, any>;
+  ussd?: { bankCode?: string; phoneNumber?: string };
+  opay?: { phoneNumber?: string };
+  googlepay?: { cardHolderName?: string };
+  applepay?: { cardHolderName?: string };
+}): Promise<{
+  reference?: string;
+  chargeId?: string;
+  status?: string;
+  nextAction?: any;
+  paymentInstruction?: any;
+}> {
+  const res = await fetchWithTimeout(`${API_BASE}/ppv/orchestrate/initiate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${params.accessToken}`,
+    },
+    body: JSON.stringify({
+      titleId: params.titleId,
+      method: params.method,
+      card: params.card,
+      customer: params.customer,
+      bankTransfer: params.bankTransfer,
+      ussd: params.ussd,
+      opay: params.opay,
+      googlepay: params.googlepay,
+      applepay: params.applepay,
+    }),
+  });
+  return (await handleJsonResponse(res)) as any;
+}
+
+export async function authorizePpvOrchestrated(params: {
+  accessToken: string;
+  chargeId: string;
+  authorization: Record<string, any>;
+}) {
+  const res = await fetchWithTimeout(`${API_BASE}/ppv/orchestrate/authorize`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${params.accessToken}`,
+    },
+    body: JSON.stringify({
+      chargeId: params.chargeId,
+      authorization: params.authorization,
+    }),
+  });
+  return (await handleJsonResponse(res)) as any;
+}
+
+export async function verifyPpvOrchestrated(params: {
+  accessToken: string;
+  chargeId: string;
+}) {
+  const url = new URL(`${API_BASE}/ppv/orchestrate/verify`);
+  url.searchParams.set("chargeId", params.chargeId);
+  const res = await fetchWithTimeout(url.toString(), {
+    headers: {
+      Authorization: `Bearer ${params.accessToken}`,
+    },
+  });
+  return (await handleJsonResponse(res)) as any;
+}
+
 export async function fetchMyPpvTitles(params: {
   accessToken: string;
   profileId?: string | null;

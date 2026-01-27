@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MovieDetailPage } from '@/components/MovieDetailPage';
-import { fetchPpvAccess, fetchTitleWithEpisodes, initiatePpvPurchase, type PpvAccess } from '@/lib/contentClient';
+import { FlutterwaveCheckoutModal } from '@/components/FlutterwaveCheckoutModal';
+import { fetchPpvAccess, fetchTitleWithEpisodes, type PpvAccess } from '@/lib/contentClient';
 
 type Title = Awaited<ReturnType<typeof fetchTitleWithEpisodes>>;
 
@@ -73,6 +74,7 @@ export default function TitlePage({ params }: { params: { id: string } }) {
   const [ppvAccess, setPpvAccess] = useState<PpvAccess | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [profileId, setProfileId] = useState<string | null>(null);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -166,49 +168,53 @@ export default function TitlePage({ params }: { params: { id: string } }) {
     );
   }
 
+  const priceValue = title?.ppvPriceNaira ?? ppvAccess?.priceNaira ?? null;
+  const currency = title?.ppvCurrency ?? ppvAccess?.currency ?? 'NGN';
+  const amountLabel = priceValue ? priceValue.toLocaleString() : '';
+
   return (
-    <MovieDetailPage
-      movie={detailMovie}
-      ppvInfo={{
-        isPpv: Boolean(title?.isPpv),
-        hasAccess: ppvAccess?.hasAccess ?? !title?.isPpv,
-        priceNaira: title?.ppvPriceNaira ?? ppvAccess?.priceNaira,
-        currency: title?.ppvCurrency ?? ppvAccess?.currency ?? 'NGN',
-        userPpvBanned: ppvAccess?.userPpvBanned ?? false,
-      }}
-      onClose={() => router.push('/')}
-      onPlayClick={(movie) => {
-        const targetId = movie?.backendId ?? movie?.id ?? id;
-        const episodeId =
-          movie?.currentEpisode?.id ??
-          (movie?.type === 'SERIES' && Array.isArray(movie?.episodes) ? movie.episodes[0]?.id : undefined);
-        const url = episodeId ? `/player/${targetId}?episodeId=${encodeURIComponent(episodeId)}` : `/player/${targetId}`;
-        router.push(url);
-      }}
-      onBuyClick={async () => {
-        if (!accessToken) {
-          router.push('/login');
-          return;
-        }
-        try {
-          if (ppvAccess?.hasAccess) {
-            // Already purchased; just play
-            const url = `/player/${id}`;
-            router.push(url);
+    <>
+      <MovieDetailPage
+        movie={detailMovie}
+        ppvInfo={{
+          isPpv: Boolean(title?.isPpv),
+          hasAccess: ppvAccess?.hasAccess ?? !title?.isPpv,
+          priceNaira: priceValue,
+          currency,
+          userPpvBanned: ppvAccess?.userPpvBanned ?? false,
+        }}
+        onClose={() => router.push('/')}
+        onPlayClick={(movie) => {
+          const targetId = movie?.backendId ?? movie?.id ?? id;
+          const episodeId =
+            movie?.currentEpisode?.id ??
+            (movie?.type === 'SERIES' && Array.isArray(movie?.episodes) ? movie.episodes[0]?.id : undefined);
+          const url = episodeId ? `/player/${targetId}?episodeId=${encodeURIComponent(episodeId)}` : `/player/${targetId}`;
+          router.push(url);
+        }}
+        onBuyClick={() => {
+          if (!accessToken) {
+            router.push('/login');
             return;
           }
-          const { authorizationUrl } = await initiatePpvPurchase({
-            titleId: id,
-            accessToken,
-            profileId,
-          });
-          if (authorizationUrl) {
-            window.location.href = authorizationUrl;
+          if (ppvAccess?.hasAccess) {
+            router.push(`/player/${id}`);
+            return;
           }
-        } catch (e: any) {
-          alert(e?.message ?? 'Unable to start purchase');
-        }
-      }}
-    />
+          setCheckoutOpen(true);
+        }}
+      />
+      {accessToken ? (
+        <FlutterwaveCheckoutModal
+          open={checkoutOpen}
+          onOpenChange={setCheckoutOpen}
+          titleId={id}
+          accessToken={accessToken}
+          amountLabel={amountLabel}
+          currency={currency}
+          onSuccess={() => router.push(`/player/${id}`)}
+        />
+      ) : null}
+    </>
   );
 }

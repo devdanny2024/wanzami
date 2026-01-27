@@ -1,10 +1,22 @@
 import { Router } from "express";
-import { initiatePurchase, getAccess, myTitles, flutterwaveWebhook, adminListPurchases } from "../controllers/ppvController.js";
+import {
+  initiatePurchase,
+  initiateOrchestratedPurchase,
+  authorizeOrchestratedCharge,
+  verifyOrchestratedCharge,
+  getAccess,
+  myTitles,
+  flutterwaveWebhook,
+  adminListPurchases,
+} from "../controllers/ppvController.js";
 import { requireAuth, requireAdmin } from "../middleware/auth.js";
 
 const router = Router();
 
 router.post("/ppv/initiate", requireAuth, initiatePurchase);
+router.post("/ppv/orchestrate/initiate", requireAuth, initiateOrchestratedPurchase);
+router.post("/ppv/orchestrate/authorize", requireAuth, authorizeOrchestratedCharge);
+router.get("/ppv/orchestrate/verify", requireAuth, verifyOrchestratedCharge);
 router.get("/ppv/access/:titleId", requireAuth, getAccess);
 router.get("/ppv/my-titles", requireAuth, myTitles);
 router.get("/admin/ppv/purchases", requireAuth, requireAdmin, adminListPurchases);
