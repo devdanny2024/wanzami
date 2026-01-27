@@ -4,7 +4,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MovieDetailPage } from '@/components/MovieDetailPage';
 import { FlutterwaveCheckoutModal } from '@/components/FlutterwaveCheckoutModal';
-import { fetchPpvAccess, fetchTitleWithEpisodes, type PpvAccess } from '@/lib/contentClient';
+import {
+  fetchPpvAccess,
+  fetchTitleWithEpisodes,
+  initiatePpvPurchase,
+  verifyFlutterwavePurchase,
+  type PpvAccess,
+} from '@/lib/contentClient';
 
 type Title = Awaited<ReturnType<typeof fetchTitleWithEpisodes>>;
 
@@ -75,6 +81,25 @@ export default function TitlePage({ params }: { params: { id: string } }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [profileId, setProfileId] = useState<string | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const useV4 = process.env.NEXT_PUBLIC_PPV_FLOW === 'v4';
+
+  const loadFlutterwaveScript = () =>
+    new Promise<void>((resolve, reject) => {
+      if (typeof window === 'undefined') return resolve();
+      if ((window as any).FlutterwaveCheckout) return resolve();
+      const existing = document.getElementById('flutterwave-v3-js');
+      if (existing) {
+        existing.addEventListener('load', () => resolve());
+        return;
+      }
+      const script = document.createElement('script');
+      script.id = 'flutterwave-v3-js';
+      script.src = 'https://checkout.flutterwave.com/v3.js';
+      script.async = true;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('Unable to load Flutterwave'));
+      document.body.appendChild(script);
+    });
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -192,19 +217,74 @@ export default function TitlePage({ params }: { params: { id: string } }) {
           const url = episodeId ? `/player/${targetId}?episodeId=${encodeURIComponent(episodeId)}` : `/player/${targetId}`;
           router.push(url);
         }}
-        onBuyClick={() => {
-          if (!accessToken) {
-            router.push('/login');
-            return;
-          }
-          if (ppvAccess?.hasAccess) {
-            router.push(`/player/${id}`);
-            return;
-          }
+      onBuyClick={() => {
+        if (!accessToken) {
+          router.push('/login');
+          return;
+        }
+        if (ppvAccess?.hasAccess) {
+          router.push(`/player/${id}`);
+          return;
+        }
+        if (useV4) {
           setCheckoutOpen(true);
-        }}
-      />
-      {accessToken ? (
+          return;
+        }
+        (async () => {
+          try {
+            const init = await initiatePpvPurchase({
+              titleId: id,
+              accessToken,
+              profileId,
+            });
+            await loadFlutterwaveScript();
+            const flutterwave = (window as any).FlutterwaveCheckout;
+            if (!flutterwave) throw new Error('Flutterwave unavailable');
+            flutterwave({
+              public_key: init.publicKey,
+              tx_ref: init.txRef,
+              amount: init.amount,
+              currency: init.currency,
+              payment_options: 'card,banktransfer,ussd,opay,googlepay,applepay',
+              customer: {
+                email: init.customer?.email,
+                name: init.customer?.name,
+              },
+              customizations: {
+                title: init.title?.name ?? 'Wanzami',
+                description: 'Wanzami PPV purchase',
+              },
+              redirect_url: init.redirectUrl,
+              callback: async (data: any) => {
+                try {
+                  await verifyFlutterwavePurchase({
+                    accessToken,
+                    transactionId: data?.transaction_id,
+                    txRef: data?.tx_ref,
+                  });
+                  const access = await fetchPpvAccess({
+                    titleId: id,
+                    accessToken,
+                    profileId,
+                    country,
+                  });
+                  setPpvAccess(access);
+                  if (access?.hasAccess) {
+                    router.push(`/player/${id}`);
+                  }
+                } catch (err: any) {
+                  alert(err?.message ?? 'Payment verification failed');
+                }
+              },
+              onclose: () => {},
+            });
+          } catch (err: any) {
+            alert(err?.message ?? 'Unable to start purchase');
+          }
+        })();
+      }}
+    />
+      {accessToken && useV4 ? (
         <FlutterwaveCheckoutModal
           open={checkoutOpen}
           onOpenChange={setCheckoutOpen}

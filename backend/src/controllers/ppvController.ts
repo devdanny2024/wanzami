@@ -80,7 +80,7 @@ const encryptCardPayload = (card: {
   return encryptedCard;
 };
 
-const readFlutterwaveResponse = async (resp: Response) => {
+const readFlutterwaveResponse = async (resp: any) => {
   const text = await resp.text();
   try {
     return { json: JSON.parse(text), text };
@@ -267,7 +267,6 @@ export const initiatePurchase = async (req: AuthenticatedRequest, res: Response)
 
     const countryOverride = (req.body as any)?.country;
     const country = (countryOverride ? String(countryOverride) : resolveCountry(req))?.toUpperCase();
-    const reference = `PPV-${titleId}-${Date.now()}`;
     const amountNaira = title.ppvPriceNaira;
     const baseCurrency = title.ppvCurrency ?? "NGN";
     const localized = await safeLocalizePrice({
@@ -278,8 +277,33 @@ export const initiatePurchase = async (req: AuthenticatedRequest, res: Response)
     const gateway = "FLUTTERWAVE";
     const txRef = `PPV-FLW-${titleId}-${Date.now()}`;
 
-    return res.status(400).json({
-      message: "Use orchestrator endpoint for Flutterwave v4 payments.",
+    await prisma.ppvPurchase.create({
+      data: {
+        userId: req.user.userId,
+        titleId: BigInt(titleId),
+        amountNaira,
+        currency: localized.currency,
+        gateway,
+        paystackRef: txRef,
+        status: "PENDING",
+      },
+    });
+
+    return res.json({
+      flow: "v3-inline",
+      publicKey: config.flutterwave.publicKey,
+      txRef,
+      amount: localized.amount,
+      currency: localized.currency,
+      customer: {
+        email: user.email,
+        name: user.name ?? user.email ?? "Customer",
+      },
+      title: {
+        id: titleId,
+        name: title.name,
+      },
+      redirectUrl: config.flutterwave.callbackUrl || undefined,
     });
 
   } catch (err) {
@@ -930,6 +954,78 @@ export const flutterwaveWebhook = async (req: Request, res: Response) => {
   } catch (err) {
     console.error("flutterwave webhook error", err);
     return res.status(500).json({ message: "Webhook processing failed" });
+  }
+};
+
+export const verifyFlutterwavePurchase = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { transactionId, txRef } = req.body as { transactionId?: string | number; txRef?: string };
+    if (!transactionId && !txRef) {
+      return res.status(400).json({ message: "transactionId or txRef required" });
+    }
+    if (!config.flutterwave.secretKey) {
+      return res.status(500).json({ message: "Flutterwave secret key not configured" });
+    }
+
+    const verifyUrl = transactionId
+      ? `${config.flutterwave.baseUrl}/v3/transactions/${encodeURIComponent(String(transactionId))}/verify`
+      : `${config.flutterwave.baseUrl}/v3/transactions/verify_by_reference?tx_ref=${encodeURIComponent(
+          String(txRef)
+        )}`;
+
+    const resp = await fetch(verifyUrl, {
+      headers: {
+        Authorization: `Bearer ${config.flutterwave.secretKey}`,
+      },
+    });
+    const parsed = await readFlutterwaveResponse(resp);
+    const data = parsed.json ?? {};
+    if (!resp.ok || data.status !== "success") {
+      return res.status(502).json({ message: "Flutterwave verify failed", details: data, raw: parsed.text });
+    }
+
+    const payload = data?.data ?? {};
+    const ref = payload?.tx_ref ?? txRef;
+    if (!ref) {
+      return res.status(400).json({ message: "Missing tx_ref in verification response" });
+    }
+
+    const purchase = await prisma.ppvPurchase.findUnique({
+      where: { paystackRef: ref },
+      include: { user: true, title: true },
+    });
+    if (!purchase) return res.status(404).json({ message: "Purchase not found" });
+
+    if (String(payload?.status).toLowerCase() === "successful") {
+      const expiresAt = new Date(Date.now() + ppvAccessDays * 24 * 60 * 60 * 1000);
+      await prisma.ppvPurchase.update({
+        where: { paystackRef: ref },
+        data: {
+          status: "SUCCESS",
+          paystackTrxId: String(payload?.id ?? ""),
+          rawPayload: data,
+          accessExpiresAt: expiresAt,
+        },
+      });
+      if (purchase.status !== "SUCCESS") {
+        await sendPpvThankYou({
+          userEmail: purchase.user?.email,
+          userName: purchase.user?.name,
+          titleId: purchase.titleId,
+          titleName: purchase.title?.name,
+        });
+      }
+    } else if (payload?.status) {
+      await prisma.ppvPurchase.update({
+        where: { paystackRef: ref },
+        data: { status: "FAILED", rawPayload: data },
+      });
+    }
+
+    return res.json({ verified: true, data });
+  } catch (err) {
+    console.error("flutterwave verify error", err);
+    return res.status(500).json({ message: "Verification failed" });
   }
 };
 

@@ -171,7 +171,16 @@ export async function initiatePpvPurchase(params: {
   titleId: string;
   accessToken: string;
   profileId?: string | null;
-}): Promise<{ authorizationUrl?: string; reference?: string }> {
+}): Promise<{
+  flow?: string;
+  publicKey?: string;
+  txRef?: string;
+  amount?: number;
+  currency?: string;
+  customer?: { email?: string; name?: string };
+  title?: { id?: number; name?: string };
+  redirectUrl?: string;
+}> {
   const res = await fetchWithTimeout(`${API_BASE}/ppv/initiate`, {
     method: "POST",
     headers: {
@@ -188,7 +197,26 @@ export async function initiatePpvPurchase(params: {
     }),
   });
   const data = await handleJsonResponse(res);
-  return data as { authorizationUrl?: string; reference?: string };
+  return data as any;
+}
+
+export async function verifyFlutterwavePurchase(params: {
+  accessToken: string;
+  transactionId?: string | number;
+  txRef?: string;
+}) {
+  const res = await fetchWithTimeout(`${API_BASE}/ppv/flutterwave/verify`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${params.accessToken}`,
+    },
+    body: JSON.stringify({
+      transactionId: params.transactionId,
+      txRef: params.txRef,
+    }),
+  });
+  return (await handleJsonResponse(res)) as any;
 }
 
 export async function initiatePpvV4General(params: {
