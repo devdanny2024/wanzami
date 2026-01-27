@@ -31,33 +31,29 @@ export function PpvPaymentChoiceModal({ open, onOpenChange, onSelect }: Props) {
         <div className="grid gap-3">
           <button
             type="button"
-            className="w-full px-4 py-3 rounded-lg bg-[#fd7e14] text-black font-semibold flex items-center justify-center gap-3"
+            className="w-full px-4 py-3 rounded-lg bg-[#fd7e14] text-black font-semibold flex items-center justify-center"
             onClick={() => onSelect("paystack")}
           >
-            <span className="bg-white rounded-full p-1 flex items-center justify-center">
-              <Image
-                src="/brands/paystack.png"
-                alt="Paystack"
-                width={20}
-                height={20}
-              />
-            </span>
-            Pay using Paystack
+            <Image
+              src="/brands/paystack.svg"
+              alt="Paystack"
+              width={140}
+              height={32}
+              className="h-6 w-auto"
+            />
           </button>
           <button
             type="button"
-            className="w-full px-4 py-3 rounded-lg border border-white/20 text-white flex items-center justify-center gap-3"
+            className="w-full px-4 py-3 rounded-lg border border-white/20 text-white flex items-center justify-center"
             onClick={() => onSelect("flutterwave")}
           >
-            <span className="bg-white rounded-full p-1 flex items-center justify-center">
-              <Image
-                src="/brands/flutterwave.png"
-                alt="Flutterwave"
-                width={20}
-                height={20}
-              />
-            </span>
-            Pay using Flutterwave
+            <Image
+              src="/brands/flutterwave.svg"
+              alt="Flutterwave"
+              width={160}
+              height={32}
+              className="h-6 w-auto"
+            />
           </button>
         </div>
       </DialogContent>
