@@ -1,0 +1,63 @@
+aws_region = "eu-north-1"
+
+vpc_id = "vpc-057d9f5b5e1dc1f57"
+public_subnets = [
+  "subnet-0dd351dff9755e591",
+  "subnet-0ad34b67f04ebba46",
+]
+private_subnets = [
+  "subnet-09cb4e00742acb469",
+  "subnet-06aa0f23b008bddab",
+]
+
+alb_sg_id = "sg-019f6b04a49296260"
+ecs_sg_id = "sg-0f550f0702b1dd9a0"
+
+# IAM role names you created earlier
+ecs_execution_role_name = "ecsTaskExecutionRole"
+ecs_task_role_name      = "ecsTaskRole"
+
+# Optional: API domain + Route53 zone
+api_domain = ""
+api_zone_id = ""
+
+# Optional: media bucket + CloudFront
+media_bucket_name = ""
+
+# Application environment variables (DO NOT COMMIT SECRETS)
+# Copy this file to terraform.tfvars and fill in values securely.
+
+env_vars = {
+  APP_ORIGIN            = "https://www.wanzami.tv"
+  ADMIN_APP_ORIGIN      = "https://wanzami-admin.vercel.app"
+  PORT                  = "4000"
+  AWS_REGION            = "eu-north-1"
+  AWS_DEFAULT_REGION    = "eu-north-1"
+  DATABASE_URL          = "postgresql://postgres:REPLACE_ME@database-1.cxy88uogafmp.eu-north-1.rds.amazonaws.com:5432/wanzami"
+
+  # TODO: Replace with EU S3 + CDN if migrating assets
+  S3_BUCKET             = "wanzami-bucket-east"
+  S3_REGION             = "us-east-2"
+  MEDIA_CDN_BASE        = "https://dylsoq281d2uy.cloudfront.net"
+
+  # Secrets placeholders
+  S3_ACCESS_KEY         = "REPLACE_ME"
+  S3_SECRET_KEY         = "REPLACE_ME"
+  FLW_PUBLIC_KEY        = "REPLACE_ME"
+  FLW_SECRET_KEY        = "REPLACE_ME"
+  FLW_ENCRYPTION_KEY    = "REPLACE_ME"
+  FLW_WEBHOOK_SECRET    = "REPLACE_ME"
+  PAYSTACK_PUBLIC_KEY   = "REPLACE_ME"
+  PAYSTACK_SECRET_KEY   = "REPLACE_ME"
+  PAYSTACK_CALLBACK_URL = "https://wanzami.tv/ppv/success"
+  PAYSTACK_WEBHOOK_SECRET = "REPLACE_ME"
+  JWT_ACCESS_SECRET     = "REPLACE_ME"
+  JWT_REFRESH_SECRET    = "REPLACE_ME"
+  REDIS_URL             = "REPLACE_ME"
+  SMTP_HOST             = "smtp.zoho.com"
+  SMTP_USER             = "mail@wanzami.tv"
+  SMTP_PASS             = "REPLACE_ME"
+  SMTP_FROM             = "Wanzami <mail@wanzami.tv>"
+  DEVICE_LIMIT          = "4"
+  PPV_ACCESS_DAYS        = "3"
+}
