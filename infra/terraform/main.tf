@@ -15,19 +15,37 @@ provider "aws" {
 # --------------------
 # ECR
 # --------------------
+data "aws_ecr_repository" "backend" {
+  count = var.use_existing_ecr ? 1 : 0
+  name  = "wanzami-backend"
+}
+
+data "aws_ecr_repository" "worker_transcode" {
+  count = var.use_existing_ecr ? 1 : 0
+  name  = "wanzami-worker-transcode"
+}
+
+data "aws_ecr_repository" "worker_cron" {
+  count = var.use_existing_ecr ? 1 : 0
+  name  = "wanzami-worker-cron"
+}
+
 resource "aws_ecr_repository" "backend" {
+  count                = var.use_existing_ecr ? 0 : 1
   name                 = "wanzami-backend"
   image_scanning_configuration { scan_on_push = true }
   force_delete         = true
 }
 
 resource "aws_ecr_repository" "worker_transcode" {
+  count                = var.use_existing_ecr ? 0 : 1
   name                 = "wanzami-worker-transcode"
   image_scanning_configuration { scan_on_push = true }
   force_delete         = true
 }
 
 resource "aws_ecr_repository" "worker_cron" {
+  count                = var.use_existing_ecr ? 0 : 1
   name                 = "wanzami-worker-cron"
   image_scanning_configuration { scan_on_push = true }
   force_delete         = true
@@ -36,17 +54,35 @@ resource "aws_ecr_repository" "worker_cron" {
 # --------------------
 # CloudWatch Logs
 # --------------------
+data "aws_cloudwatch_log_group" "backend" {
+  count = var.use_existing_log_groups ? 1 : 0
+  name  = "/ecs/wanzami-backend"
+}
+
+data "aws_cloudwatch_log_group" "worker_transcode" {
+  count = var.use_existing_log_groups ? 1 : 0
+  name  = "/ecs/wanzami-worker-transcode"
+}
+
+data "aws_cloudwatch_log_group" "worker_cron" {
+  count = var.use_existing_log_groups ? 1 : 0
+  name  = "/ecs/wanzami-worker-cron"
+}
+
 resource "aws_cloudwatch_log_group" "backend" {
+  count             = var.use_existing_log_groups ? 0 : 1
   name              = "/ecs/wanzami-backend"
   retention_in_days = 14
 }
 
 resource "aws_cloudwatch_log_group" "worker_transcode" {
+  count             = var.use_existing_log_groups ? 0 : 1
   name              = "/ecs/wanzami-worker-transcode"
   retention_in_days = 14
 }
 
 resource "aws_cloudwatch_log_group" "worker_cron" {
+  count             = var.use_existing_log_groups ? 0 : 1
   name              = "/ecs/wanzami-worker-cron"
   retention_in_days = 14
 }
@@ -62,10 +98,11 @@ resource "aws_ecs_cluster" "main" {
 # SSM Parameters (Env Vars)
 # --------------------
 resource "aws_ssm_parameter" "env" {
-  for_each = var.env_vars
-  name     = "/wanzami/${each.key}"
-  type     = "String"
-  value    = each.value
+  for_each  = var.env_vars
+  name      = "/wanzami/${each.key}"
+  type      = "String"
+  value     = each.value
+  overwrite = true
 }
 
 # --------------------
@@ -86,6 +123,16 @@ locals {
       value = v
     }
   ]
+  backend_repo_url = var.use_existing_ecr ? data.aws_ecr_repository.backend[0].repository_url : aws_ecr_repository.backend[0].repository_url
+  worker_transcode_repo_url = var.use_existing_ecr ? data.aws_ecr_repository.worker_transcode[0].repository_url : aws_ecr_repository.worker_transcode[0].repository_url
+  worker_cron_repo_url = var.use_existing_ecr ? data.aws_ecr_repository.worker_cron[0].repository_url : aws_ecr_repository.worker_cron[0].repository_url
+  backend_log_group = var.use_existing_log_groups ? data.aws_cloudwatch_log_group.backend[0].name : aws_cloudwatch_log_group.backend[0].name
+  worker_transcode_log_group = var.use_existing_log_groups ? data.aws_cloudwatch_log_group.worker_transcode[0].name : aws_cloudwatch_log_group.worker_transcode[0].name
+  worker_cron_log_group = var.use_existing_log_groups ? data.aws_cloudwatch_log_group.worker_cron[0].name : aws_cloudwatch_log_group.worker_cron[0].name
+  alb_arn = var.use_existing_alb ? data.aws_lb.alb[0].arn : aws_lb.alb[0].arn
+  tg_arn  = var.use_existing_target_group ? data.aws_lb_target_group.backend[0].arn : aws_lb_target_group.backend[0].arn
+  alb_dns_name = var.use_existing_alb ? data.aws_lb.alb[0].dns_name : aws_lb.alb[0].dns_name
+  alb_zone_id  = var.use_existing_alb ? data.aws_lb.alb[0].zone_id : aws_lb.alb[0].zone_id
 }
 
 # --------------------
@@ -103,7 +150,7 @@ resource "aws_ecs_task_definition" "backend" {
   container_definitions = jsonencode([
     {
       name      = "backend"
-      image     = "${aws_ecr_repository.backend.repository_url}:latest"
+      image     = "${local.backend_repo_url}:latest"
       essential = true
       portMappings = [
         { containerPort = 4000, hostPort = 4000, protocol = "tcp" }
@@ -112,7 +159,7 @@ resource "aws_ecs_task_definition" "backend" {
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          awslogs-group         = aws_cloudwatch_log_group.backend.name
+          awslogs-group         = local.backend_log_group
           awslogs-region        = var.aws_region
           awslogs-stream-prefix = "ecs"
         }
@@ -133,13 +180,13 @@ resource "aws_ecs_task_definition" "worker_transcode" {
   container_definitions = jsonencode([
     {
       name      = "worker-transcode"
-      image     = "${aws_ecr_repository.worker_transcode.repository_url}:latest"
+      image     = "${local.worker_transcode_repo_url}:latest"
       essential = true
       environment = local.backend_env
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          awslogs-group         = aws_cloudwatch_log_group.worker_transcode.name
+          awslogs-group         = local.worker_transcode_log_group
           awslogs-region        = var.aws_region
           awslogs-stream-prefix = "ecs"
         }
@@ -160,13 +207,13 @@ resource "aws_ecs_task_definition" "worker_cron" {
   container_definitions = jsonencode([
     {
       name      = "worker-cron"
-      image     = "${aws_ecr_repository.worker_cron.repository_url}:latest"
+      image     = "${local.worker_cron_repo_url}:latest"
       essential = true
       environment = local.backend_env
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          awslogs-group         = aws_cloudwatch_log_group.worker_cron.name
+          awslogs-group         = local.worker_cron_log_group
           awslogs-region        = var.aws_region
           awslogs-stream-prefix = "ecs"
         }
@@ -178,14 +225,26 @@ resource "aws_ecs_task_definition" "worker_cron" {
 # --------------------
 # ALB + Target Group
 # --------------------
+data "aws_lb" "alb" {
+  count = var.use_existing_alb ? 1 : 0
+  name  = "wanzami-backend-alb"
+}
+
 resource "aws_lb" "alb" {
+  count              = var.use_existing_alb ? 0 : 1
   name               = "wanzami-backend-alb"
   load_balancer_type = "application"
   subnets            = var.public_subnets
   security_groups    = [var.alb_sg_id]
 }
 
+data "aws_lb_target_group" "backend" {
+  count = var.use_existing_target_group ? 1 : 0
+  name  = "wanzami-backend-tg"
+}
+
 resource "aws_lb_target_group" "backend" {
+  count    = var.use_existing_target_group ? 0 : 1
   name     = "wanzami-backend-tg"
   port     = 4000
   protocol = "HTTP"
@@ -202,13 +261,14 @@ resource "aws_lb_target_group" "backend" {
 }
 
 resource "aws_lb_listener" "http" {
-  load_balancer_arn = aws_lb.alb.arn
+  count             = var.use_existing_alb ? 0 : 1
+  load_balancer_arn = local.alb_arn
   port              = 80
   protocol          = "HTTP"
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.backend.arn
+    target_group_arn = local.tg_arn
   }
 }
 
@@ -243,7 +303,7 @@ resource "aws_acm_certificate_validation" "api" {
 
 resource "aws_lb_listener" "https" {
   count             = var.api_domain != "" ? 1 : 0
-  load_balancer_arn = aws_lb.alb.arn
+  load_balancer_arn = local.alb_arn
   port              = 443
   protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-Res-PQ-2025-09"
@@ -251,7 +311,7 @@ resource "aws_lb_listener" "https" {
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.backend.arn
+    target_group_arn = local.tg_arn
   }
 }
 
@@ -263,8 +323,8 @@ resource "aws_route53_record" "api" {
   type    = "A"
 
   alias {
-    name                   = aws_lb.alb.dns_name
-    zone_id                = aws_lb.alb.zone_id
+    name                   = local.alb_dns_name
+    zone_id                = local.alb_zone_id
     evaluate_target_health = true
   }
 }
@@ -286,12 +346,10 @@ resource "aws_ecs_service" "backend" {
   }
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.backend.arn
+    target_group_arn = local.tg_arn
     container_name   = "backend"
     container_port   = 4000
   }
-
-  depends_on = [aws_lb_listener.http]
 }
 
 resource "aws_ecs_service" "worker_transcode" {

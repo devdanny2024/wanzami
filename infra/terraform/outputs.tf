@@ -1,5 +1,5 @@
 output "alb_dns" {
-  value = aws_lb.alb.dns_name
+  value = local.alb_dns_name
 }
 
 output "cloudfront_domain" {
@@ -7,13 +7,13 @@ output "cloudfront_domain" {
 }
 
 output "ecr_backend" {
-  value = aws_ecr_repository.backend.repository_url
+  value = local.backend_repo_url
 }
 
 output "ecr_worker_transcode" {
-  value = aws_ecr_repository.worker_transcode.repository_url
+  value = local.worker_transcode_repo_url
 }
 
 output "ecr_worker_cron" {
-  value = aws_ecr_repository.worker_cron.repository_url
+  value = local.worker_cron_repo_url
 }
