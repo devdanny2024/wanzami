@@ -240,12 +240,12 @@ resource "aws_lb" "alb" {
 
 data "aws_lb_target_group" "backend" {
   count = var.use_existing_target_group ? 1 : 0
-  name  = "wanzami-backend-tg"
+  name  = var.backend_tg_name
 }
 
 resource "aws_lb_target_group" "backend" {
   count    = var.use_existing_target_group ? 0 : 1
-  name     = "wanzami-backend-tg"
+  name     = var.backend_tg_name
   port     = 4000
   protocol = "HTTP"
   vpc_id   = var.vpc_id
@@ -333,7 +333,7 @@ resource "aws_route53_record" "api" {
 # ECS Services
 # --------------------
 resource "aws_ecs_service" "backend" {
-  name            = "wanzami-backend-service"
+  name            = var.backend_service_name
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.backend.arn
   desired_count   = 1
@@ -353,7 +353,7 @@ resource "aws_ecs_service" "backend" {
 }
 
 resource "aws_ecs_service" "worker_transcode" {
-  name            = "wanzami-worker-transcode-svc"
+  name            = var.worker_transcode_service_name
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.worker_transcode.arn
   desired_count   = 1
@@ -367,7 +367,7 @@ resource "aws_ecs_service" "worker_transcode" {
 }
 
 resource "aws_ecs_service" "worker_cron" {
-  name            = "wanzami-worker-cron-service"
+  name            = var.worker_cron_service_name
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.worker_cron.arn
   desired_count   = 1

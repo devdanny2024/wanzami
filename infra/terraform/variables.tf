@@ -8,6 +8,27 @@ variable "ecs_execution_role_name" { type = string }
 variable "ecs_task_role_name" { type = string }
 variable "env_vars" { type = map(string) }
 
+# Allow renaming resources if prior partial creates exist
+variable "backend_tg_name" {
+  type    = string
+  default = "wanzami-backend-tg"
+}
+
+variable "backend_service_name" {
+  type    = string
+  default = "wanzami-backend-service"
+}
+
+variable "worker_transcode_service_name" {
+  type    = string
+  default = "wanzami-worker-transcode-svc"
+}
+
+variable "worker_cron_service_name" {
+  type    = string
+  default = "wanzami-worker-cron-service"
+}
+
 # Reuse existing resources if they were already created (e.g. after a partial apply)
 variable "use_existing_ecr" {
   type    = bool
