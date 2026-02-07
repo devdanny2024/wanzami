@@ -23,10 +23,18 @@ interface SidebarProps {
   onNavigate: (page: string) => void;
 }
 
+// Temporarily hide the Movies/Series nav links while keeping the pages/routes in place.
+// Flip to `true` when you're ready to expose them again.
+const ENABLE_MOVIES_AND_SERIES_NAV = false;
+
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'movies', label: 'Movies', icon: Film },
-  { id: 'series', label: 'Series', icon: Tv },
+  ...(ENABLE_MOVIES_AND_SERIES_NAV
+    ? [
+        { id: 'movies', label: 'Movies', icon: Film },
+        { id: 'series', label: 'Series', icon: Tv },
+      ]
+    : []),
   { id: 'ppv', label: 'PPV', icon: CreditCard },
   { id: 'blog', label: 'Blog', icon: FileText },
   { id: 'users', label: 'Users', icon: Users },
