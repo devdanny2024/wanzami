@@ -66,12 +66,16 @@ export function MoviesManagement() {
       const res = await authFetch("/admin/titles", {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-      if (res.ok) {
-        const onlyMovies = ((res.data as any)?.titles ?? []).filter((t: any) => t.type === "MOVIE");
-        setMovies(onlyMovies);
+      if (!res.ok) {
+        toast.error((res.data as any)?.message || `Failed to load titles (${res.status})`);
+        setMovies([]);
+        return;
       }
+      const onlyMovies = ((res.data as any)?.titles ?? []).filter((t: any) => t.type === "MOVIE");
+      setMovies(onlyMovies);
     } catch {
-      // ignore reload errors; UI will show empty
+      toast.error("Failed to load titles (network error)");
+      setMovies([]);
     }
   };
 
