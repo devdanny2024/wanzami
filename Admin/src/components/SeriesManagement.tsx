@@ -46,12 +46,20 @@ export function SeriesManagement() {
   const filtered = series.filter((s) => s.name?.toLowerCase().includes(search.toLowerCase()));
 
   const loadSeries = async () => {
-    const res = await authFetch("/admin/titles", {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (res.ok) {
+    try {
+      const res = await authFetch("/admin/titles", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) {
+        toast.error((res.data as any)?.message || `Failed to load titles (${res.status})`);
+        setSeries([]);
+        return;
+      }
       const onlySeries = ((res.data as any)?.titles ?? []).filter((t: any) => t.type === "SERIES");
       setSeries(onlySeries);
+    } catch {
+      toast.error("Failed to load titles (network error)");
+      setSeries([]);
     }
   };
 
