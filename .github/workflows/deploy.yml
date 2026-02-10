@@ -42,7 +42,8 @@ jobs:
 
       - name: Write terraform.tfvars from secret
         env:
-          TERRAFORM_TFVARS: ${{ secrets.TERRAFORM_TFVARS }}
+          # Use a separate tfvars secret for the testing branch so we can iterate safely.
+          TERRAFORM_TFVARS: ${{ github.ref_name == 'new-backend-testing' && secrets.TERRAFORM_TFVARS_TESTING || secrets.TERRAFORM_TFVARS }}
         run: |
           mkdir -p infra/terraform
           printf "%s" "$TERRAFORM_TFVARS" > infra/terraform/terraform.tfvars
