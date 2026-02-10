@@ -50,7 +50,7 @@ output "ecs_sg_id" {
   value = var.ecs_sg_id
 }
 
-output "private_subnets_json" {
-  # Use JSON so GitHub Actions can feed it directly into aws ecs run-task.
-  value = jsonencode(var.private_subnets)
+output "private_subnets_csv" {
+  # Easier/safer to pass through GitHub Actions env vars than JSON.
+  value = join(",", var.private_subnets)
 }

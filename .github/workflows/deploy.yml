@@ -25,7 +25,7 @@ jobs:
       taskdef_worker_transcode_family: ${{ steps.tfout.outputs.taskdef_worker_transcode_family }}
       taskdef_worker_cron_family: ${{ steps.tfout.outputs.taskdef_worker_cron_family }}
       ecs_sg_id: ${{ steps.tfout.outputs.ecs_sg_id }}
-      private_subnets_json: ${{ steps.tfout.outputs.private_subnets_json }}
+      private_subnets_csv: ${{ steps.tfout.outputs.private_subnets_csv }}
 
     steps:
       - name: Checkout
@@ -68,7 +68,7 @@ jobs:
           echo "taskdef_worker_transcode_family=$(terraform output -raw taskdef_worker_transcode_family)" >> "$GITHUB_OUTPUT"
           echo "taskdef_worker_cron_family=$(terraform output -raw taskdef_worker_cron_family)" >> "$GITHUB_OUTPUT"
           echo "ecs_sg_id=$(terraform output -raw ecs_sg_id)" >> "$GITHUB_OUTPUT"
-          echo "private_subnets_json=$(terraform output -raw private_subnets_json)" >> "$GITHUB_OUTPUT"
+          echo "private_subnets_csv=$(terraform output -raw private_subnets_csv)" >> "$GITHUB_OUTPUT"
 
   build-and-deploy:
     needs: terraform-apply
@@ -86,7 +86,7 @@ jobs:
       TASKDEF_TRANSCODE: ${{ needs.terraform-apply.outputs.taskdef_worker_transcode_family }}
       TASKDEF_CRON: ${{ needs.terraform-apply.outputs.taskdef_worker_cron_family }}
       ECS_SG_ID: ${{ needs.terraform-apply.outputs.ecs_sg_id }}
-      PRIVATE_SUBNETS_JSON: ${{ needs.terraform-apply.outputs.private_subnets_json }}
+      PRIVATE_SUBNETS_CSV: ${{ needs.terraform-apply.outputs.private_subnets_csv }}
 
     steps:
       - name: Checkout
@@ -133,9 +133,9 @@ jobs:
 
           # Build network config JSON for Fargate run-task.
           NETWORK=$(jq -n \
-            --argjson subnets "$PRIVATE_SUBNETS_JSON" \
+            --arg csv "$PRIVATE_SUBNETS_CSV" \
             --arg sg "$ECS_SG_ID" \
-            '{awsvpcConfiguration:{subnets:$subnets,securityGroups:[$sg],assignPublicIp:"DISABLED"}}')
+            '{awsvpcConfiguration:{subnets:($csv|split(",")),securityGroups:[$sg],assignPublicIp:"DISABLED"}}')
 
           # Run migrations using the backend container in the new task definition revision.
           OVERRIDES=$(jq -n \
