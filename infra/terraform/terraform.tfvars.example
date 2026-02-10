@@ -36,8 +36,9 @@ env_vars = {
   DATABASE_URL          = "postgresql://postgres:REPLACE_ME@database-1.cxy88uogafmp.eu-north-1.rds.amazonaws.com:5432/wanzami"
 
   # TODO: Replace with EU S3 + CDN if migrating assets
-  S3_BUCKET             = "wanzami-bucket-east"
-  S3_REGION             = "us-east-2"
+  # Media bucket (new account / eu-north-1)
+  S3_BUCKET             = "wanzami-media-eu"
+  S3_REGION             = "eu-north-1"
   MEDIA_CDN_BASE        = "https://dylsoq281d2uy.cloudfront.net"
 
   # Secrets placeholders
@@ -54,10 +55,12 @@ env_vars = {
   JWT_ACCESS_SECRET     = "REPLACE_ME"
   JWT_REFRESH_SECRET    = "REPLACE_ME"
   REDIS_URL             = "REPLACE_ME"
-  SMTP_HOST             = "smtp.zoho.com"
-  SMTP_USER             = "mail@wanzami.tv"
-  SMTP_PASS             = "REPLACE_ME"
-  SMTP_FROM             = "Wanzami <mail@wanzami.tv>"
+  # Gmail SMTP (App Password)
+  SMTP_HOST             = "smtp.gmail.com"
+  SMTP_PORT             = "465"
+  SMTP_USER             = "your_gmail_address@gmail.com"
+  SMTP_PASS             = "REPLACE_ME_GMAIL_APP_PASSWORD"
+  SMTP_FROM             = "Wanzami <wanzamitv@gmail.com>"
   DEVICE_LIMIT          = "4"
   PPV_ACCESS_DAYS        = "3"
 }

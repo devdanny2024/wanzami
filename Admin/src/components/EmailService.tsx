@@ -47,8 +47,15 @@ const normalizeHeader = (key: string) => key.toLowerCase().replace(/\s+/g, "");
 const EMAIL_HEADERS = ["email", "e-mail", "mail", "address", "emailaddress"];
 const NAME_HEADERS = ["name", "fullname", "full_name", "full name"];
 
-// Use the production logo from the us-east-2 bucket (public HTTP URL).
-const LOGO_SRC = "https://wanzami-bucket-east.s3.us-east-2.amazonaws.com/wanzami_assets/wanzami_logo.png";
+// Prefer serving logo via CDN if configured (CloudFront, etc.).
+const MEDIA_BASE =
+  process.env.NEXT_PUBLIC_MEDIA_CDN_BASE || process.env.NEXT_PUBLIC_MEDIA_BASE;
+const FALLBACK_BUCKET = process.env.NEXT_PUBLIC_S3_BUCKET || "wanzami-bucket";
+const FALLBACK_REGION = process.env.NEXT_PUBLIC_S3_REGION || "eu-north-1";
+const LOGO_KEY = "wanzami_assets/wanzami_logo.png";
+const LOGO_SRC = MEDIA_BASE
+  ? `${MEDIA_BASE.replace(/\/+$/, "")}/${LOGO_KEY}`
+  : `https://${FALLBACK_BUCKET}.s3.${FALLBACK_REGION}.amazonaws.com/${LOGO_KEY}`;
 
 const pickRecipientFromRow = (row: Record<string, any>): Recipient | null => {
   const entries = Object.entries(row).filter(([, v]) => v !== null && v !== undefined && String(v).trim().length > 0);
