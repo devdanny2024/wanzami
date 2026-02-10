@@ -41,6 +41,11 @@ env_vars = {
   S3_REGION             = "eu-north-1"
   MEDIA_CDN_BASE        = "https://dylsoq281d2uy.cloudfront.net"
 
+  # Google OAuth (required for /api/auth/google/*)
+  GOOGLE_CLIENT_ID      = "REPLACE_ME"
+  GOOGLE_CLIENT_SECRET  = "REPLACE_ME"
+  GOOGLE_REDIRECT_URI   = "https://www.wanzami.tv/oauth/google/callback"
+
   # Secrets placeholders
   S3_ACCESS_KEY         = "REPLACE_ME"
   S3_SECRET_KEY         = "REPLACE_ME"

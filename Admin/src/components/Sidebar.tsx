@@ -23,9 +23,8 @@ interface SidebarProps {
   onNavigate: (page: string) => void;
 }
 
-// Temporarily hide the Movies/Series nav links while keeping the pages/routes in place.
-// Flip to `true` when you're ready to expose them again.
-const ENABLE_MOVIES_AND_SERIES_NAV = false;
+// Movies/Series management is part of the admin surface.
+const ENABLE_MOVIES_AND_SERIES_NAV = true;
 
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
