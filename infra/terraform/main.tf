@@ -356,6 +356,7 @@ resource "aws_route53_record" "api" {
 # ECS Services
 # --------------------
 resource "aws_ecs_service" "backend" {
+  count           = var.use_existing_backend_service ? 0 : 1
   name            = var.backend_service_name
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.backend.arn
@@ -376,6 +377,7 @@ resource "aws_ecs_service" "backend" {
 }
 
 resource "aws_ecs_service" "worker_transcode" {
+  count           = var.use_existing_worker_transcode_service ? 0 : 1
   name            = var.worker_transcode_service_name
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.worker_transcode.arn
@@ -390,6 +392,7 @@ resource "aws_ecs_service" "worker_transcode" {
 }
 
 resource "aws_ecs_service" "worker_cron" {
+  count           = var.use_existing_worker_cron_service ? 0 : 1
   name            = var.worker_cron_service_name
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.worker_cron.arn

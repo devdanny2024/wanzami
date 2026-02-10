@@ -29,6 +29,22 @@ variable "worker_cron_service_name" {
   default = "wanzami-worker-cron-service"
 }
 
+# Skip ECS service creation if they already exist (useful after partial applies without state)
+variable "use_existing_backend_service" {
+  type    = bool
+  default = false
+}
+
+variable "use_existing_worker_transcode_service" {
+  type    = bool
+  default = false
+}
+
+variable "use_existing_worker_cron_service" {
+  type    = bool
+  default = false
+}
+
 # Reuse existing resources if they were already created (e.g. after a partial apply)
 variable "use_existing_ecr" {
   type    = bool

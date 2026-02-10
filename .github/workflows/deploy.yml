@@ -7,14 +7,6 @@ on:
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION }}
-  ECR_REPO: ${{ vars.ECR_REPO }}
-  CLUSTER: ${{ vars.CLUSTER }}
-  SERVICE_API: ${{ vars.SERVICE_API }}
-  SERVICE_TRANSCODE: ${{ vars.SERVICE_TRANSCODE }}
-  SERVICE_CRON: ${{ vars.SERVICE_CRON }}
-  TASKDEF_API: ${{ vars.TASKDEF_API }}
-  TASKDEF_TRANSCODE: ${{ vars.TASKDEF_TRANSCODE }}
-  TASKDEF_CRON: ${{ vars.TASKDEF_CRON }}
   DATABASE_URL: ${{ secrets.DATABASE_URL || '' }}
 
 jobs:
@@ -23,6 +15,15 @@ jobs:
     permissions:
       id-token: write
       contents: read
+    outputs:
+      ecr_backend: ${{ steps.tfout.outputs.ecr_backend }}
+      cluster_name: ${{ steps.tfout.outputs.cluster_name }}
+      backend_service_name: ${{ steps.tfout.outputs.backend_service_name }}
+      worker_transcode_service_name: ${{ steps.tfout.outputs.worker_transcode_service_name }}
+      worker_cron_service_name: ${{ steps.tfout.outputs.worker_cron_service_name }}
+      taskdef_api_family: ${{ steps.tfout.outputs.taskdef_api_family }}
+      taskdef_worker_transcode_family: ${{ steps.tfout.outputs.taskdef_worker_transcode_family }}
+      taskdef_worker_cron_family: ${{ steps.tfout.outputs.taskdef_worker_cron_family }}
 
     steps:
       - name: Checkout
@@ -52,12 +53,34 @@ jobs:
         working-directory: infra/terraform
         run: terraform apply -auto-approve
 
+      - name: Terraform Outputs
+        id: tfout
+        working-directory: infra/terraform
+        run: |
+          echo "ecr_backend=$(terraform output -raw ecr_backend)" >> "$GITHUB_OUTPUT"
+          echo "cluster_name=$(terraform output -raw cluster_name)" >> "$GITHUB_OUTPUT"
+          echo "backend_service_name=$(terraform output -raw backend_service_name)" >> "$GITHUB_OUTPUT"
+          echo "worker_transcode_service_name=$(terraform output -raw worker_transcode_service_name)" >> "$GITHUB_OUTPUT"
+          echo "worker_cron_service_name=$(terraform output -raw worker_cron_service_name)" >> "$GITHUB_OUTPUT"
+          echo "taskdef_api_family=$(terraform output -raw taskdef_api_family)" >> "$GITHUB_OUTPUT"
+          echo "taskdef_worker_transcode_family=$(terraform output -raw taskdef_worker_transcode_family)" >> "$GITHUB_OUTPUT"
+          echo "taskdef_worker_cron_family=$(terraform output -raw taskdef_worker_cron_family)" >> "$GITHUB_OUTPUT"
+
   build-and-deploy:
     needs: terraform-apply
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
+    env:
+      ECR_REPO: ${{ needs.terraform-apply.outputs.ecr_backend }}
+      CLUSTER: ${{ needs.terraform-apply.outputs.cluster_name }}
+      SERVICE_API: ${{ needs.terraform-apply.outputs.backend_service_name }}
+      SERVICE_TRANSCODE: ${{ needs.terraform-apply.outputs.worker_transcode_service_name }}
+      SERVICE_CRON: ${{ needs.terraform-apply.outputs.worker_cron_service_name }}
+      TASKDEF_API: ${{ needs.terraform-apply.outputs.taskdef_api_family }}
+      TASKDEF_TRANSCODE: ${{ needs.terraform-apply.outputs.taskdef_worker_transcode_family }}
+      TASKDEF_CRON: ${{ needs.terraform-apply.outputs.taskdef_worker_cron_family }}
 
     steps:
       - name: Checkout
