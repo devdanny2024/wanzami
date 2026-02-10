@@ -93,7 +93,10 @@ export default function SeriesPage() {
       try {
         const data = await fetchMyPpvTitles({ accessToken, profileId });
         const ownedIds = new Set<string>(
-          (data?.activePurchases ?? []).map((p) => String(p.title?.id ?? p.titleId))
+          (data?.activePurchases ?? [])
+            .map((p) => p.title?.id)
+            .filter((id): id is NonNullable<typeof id> => id !== null && id !== undefined)
+            .map((id) => String(id))
         );
 
         if (typeof window !== "undefined") {
