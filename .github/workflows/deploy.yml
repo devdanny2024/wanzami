@@ -24,6 +24,8 @@ jobs:
       taskdef_api_family: ${{ steps.tfout.outputs.taskdef_api_family }}
       taskdef_worker_transcode_family: ${{ steps.tfout.outputs.taskdef_worker_transcode_family }}
       taskdef_worker_cron_family: ${{ steps.tfout.outputs.taskdef_worker_cron_family }}
+      ecs_sg_id: ${{ steps.tfout.outputs.ecs_sg_id }}
+      private_subnets_json: ${{ steps.tfout.outputs.private_subnets_json }}
 
     steps:
       - name: Checkout
@@ -65,6 +67,8 @@ jobs:
           echo "taskdef_api_family=$(terraform output -raw taskdef_api_family)" >> "$GITHUB_OUTPUT"
           echo "taskdef_worker_transcode_family=$(terraform output -raw taskdef_worker_transcode_family)" >> "$GITHUB_OUTPUT"
           echo "taskdef_worker_cron_family=$(terraform output -raw taskdef_worker_cron_family)" >> "$GITHUB_OUTPUT"
+          echo "ecs_sg_id=$(terraform output -raw ecs_sg_id)" >> "$GITHUB_OUTPUT"
+          echo "private_subnets_json=$(terraform output -raw private_subnets_json)" >> "$GITHUB_OUTPUT"
 
   build-and-deploy:
     needs: terraform-apply
@@ -81,28 +85,12 @@ jobs:
       TASKDEF_API: ${{ needs.terraform-apply.outputs.taskdef_api_family }}
       TASKDEF_TRANSCODE: ${{ needs.terraform-apply.outputs.taskdef_worker_transcode_family }}
       TASKDEF_CRON: ${{ needs.terraform-apply.outputs.taskdef_worker_cron_family }}
+      ECS_SG_ID: ${{ needs.terraform-apply.outputs.ecs_sg_id }}
+      PRIVATE_SUBNETS_JSON: ${{ needs.terraform-apply.outputs.private_subnets_json }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Node (for Prisma)
-        if: ${{ env.DATABASE_URL != '' }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install deps (backend)
-        if: ${{ env.DATABASE_URL != '' }}
-        working-directory: ./backend
-        run: npm ci
-
-      - name: Run Prisma migrate + generate
-        if: ${{ env.DATABASE_URL != '' }}
-        working-directory: ./backend
-        run: |
-          npx prisma migrate deploy
-          npx prisma generate
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
@@ -122,7 +110,8 @@ jobs:
           docker push $ECR_REPO:latest
           docker push $ECR_REPO:$IMAGE_TAG
 
-      - name: Update API task definition and service
+      - name: Register API task definition revision
+        id: reg_api_td
         run: |
           IMAGE="$ECR_REPO:${GITHUB_SHA}"
           TASKDEF_API_USE=${TASKDEF_API:-wanzami-backend-task}
@@ -134,7 +123,56 @@ jobs:
           ')
           echo "$UPDATED" > /tmp/td-api.json
           REV_ARN=$(aws ecs register-task-definition --cli-input-json file:///tmp/td-api.json --query 'taskDefinition.taskDefinitionArn' --output text)
-          aws ecs update-service --cluster $CLUSTER --service $SERVICE_API --task-definition "$REV_ARN" --force-new-deployment
+          echo "api_td_arn=$REV_ARN" >> "$GITHUB_OUTPUT"
+
+      - name: Run Prisma migrations inside ECS (private RDS)
+        run: |
+          set -euo pipefail
+
+          TD_ARN="${{ steps.reg_api_td.outputs.api_td_arn }}"
+
+          # Build network config JSON for Fargate run-task.
+          NETWORK=$(jq -n \
+            --argjson subnets "$PRIVATE_SUBNETS_JSON" \
+            --arg sg "$ECS_SG_ID" \
+            '{awsvpcConfiguration:{subnets:$subnets,securityGroups:[$sg],assignPublicIp:"DISABLED"}}')
+
+          # Run migrations using the backend container in the new task definition revision.
+          OVERRIDES=$(jq -n \
+            '{containerOverrides:[{name:"backend",command:["sh","-lc","npx prisma migrate deploy && npx prisma generate"]}]}')
+
+          TASK_ARN=$(aws ecs run-task \
+            --cluster "$CLUSTER" \
+            --launch-type FARGATE \
+            --task-definition "$TD_ARN" \
+            --network-configuration "$NETWORK" \
+            --overrides "$OVERRIDES" \
+            --query 'tasks[0].taskArn' \
+            --output text)
+
+          echo "Migration task: $TASK_ARN"
+          aws ecs wait tasks-stopped --cluster "$CLUSTER" --tasks "$TASK_ARN"
+
+          # Fail the workflow if the migration container failed.
+          EXIT_CODE=$(aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$TASK_ARN" \
+            | jq -r '.tasks[0].containers[] | select(.name=="backend") | .exitCode // empty')
+
+          if [ -z "$EXIT_CODE" ]; then
+            echo "Could not read exit code for migration task"
+            aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$TASK_ARN"
+            exit 1
+          fi
+
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "Migration task failed with exit code: $EXIT_CODE"
+            aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$TASK_ARN"
+            exit 1
+          fi
+
+      - name: Update API service
+        run: |
+          TD_ARN="${{ steps.reg_api_td.outputs.api_td_arn }}"
+          aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE_API" --task-definition "$TD_ARN" --force-new-deployment
 
       - name: Update Transcode worker
         run: |

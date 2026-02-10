@@ -45,3 +45,12 @@ output "ecr_worker_transcode" {
 output "ecr_worker_cron" {
   value = local.worker_cron_repo_url
 }
+
+output "ecs_sg_id" {
+  value = var.ecs_sg_id
+}
+
+output "private_subnets_json" {
+  # Use JSON so GitHub Actions can feed it directly into aws ecs run-task.
+  value = jsonencode(var.private_subnets)
+}
