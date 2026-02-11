@@ -17,12 +17,25 @@ type ViewerDraft = {
   viewerCount: string;
 };
 
+type LiveSource = {
+  id: string;
+  eventId?: string;
+  type: "CAMERA" | "SCREEN" | "RTMP" | "CONTROL_DECK";
+  label: string;
+  status: "READY" | "OFFLINE" | "ERROR";
+  playbackUrl?: string | null;
+  previewUrl?: string | null;
+  metadata?: Record<string, any> | null;
+  isActiveOutput: boolean;
+};
+
 type LiveEvent = {
   id: string;
   title: string;
   description?: string | null;
   thumbnailUrl?: string | null;
   status: "SCHEDULED" | "LIVE" | "ENDED";
+  isPublished?: boolean;
   ingestEndpoint?: string | null;
   playbackUrl?: string | null;
   streamKey?: string | null;
@@ -31,6 +44,9 @@ type LiveEvent = {
   startedAt?: string | null;
   endedAt?: string | null;
   viewerCount?: number;
+  activeSourceId?: string | null;
+  activeSource?: LiveSource | null;
+  sources?: LiveSource[];
   replay?: {
     status?: ReplayStatus;
     playbackUrl?: string | null;
@@ -39,17 +55,17 @@ type LiveEvent = {
   };
 };
 
-const statusBadge = (status: LiveEvent["status"]) => {
-  switch (status) {
-    case "SCHEDULED":
-      return "bg-blue-500/20 text-blue-300";
-    case "LIVE":
-      return "bg-emerald-500/20 text-emerald-300";
-    case "ENDED":
-      return "bg-neutral-600/30 text-neutral-300";
-    default:
-      return "bg-neutral-700 text-neutral-200";
+const liveStateBadge = (event: LiveEvent) => {
+  if (event.status === "LIVE") {
+    return { label: "Live", className: "bg-emerald-500/20 text-emerald-300" };
   }
+  if (event.status === "ENDED") {
+    return { label: "Ended", className: "bg-neutral-600/30 text-neutral-300" };
+  }
+  if (event.isPublished) {
+    return { label: "Published", className: "bg-blue-500/20 text-blue-300" };
+  }
+  return { label: "Draft", className: "bg-amber-500/20 text-amber-300" };
 };
 
 const replayStatuses: ReplayStatus[] = ["NONE", "PENDING_INFRA", "PROCESSING", "READY", "FAILED"];
@@ -98,6 +114,11 @@ export function CreatorHub() {
   const [replaySavingId, setReplaySavingId] = useState<string | null>(null);
   const [viewerDrafts, setViewerDrafts] = useState<Record<string, ViewerDraft>>({});
   const [viewerSavingId, setViewerSavingId] = useState<string | null>(null);
+  const [sourceDrafts, setSourceDrafts] = useState<
+    Record<string, { label: string; type: LiveSource["type"]; playbackUrl: string; previewUrl: string }>
+  >({});
+  const [sourceBusyId, setSourceBusyId] = useState<string | null>(null);
+  const [goLiveSelectorEvent, setGoLiveSelectorEvent] = useState<LiveEvent | null>(null);
 
   const loadEvents = async () => {
     try {
@@ -123,6 +144,18 @@ export function CreatorHub() {
         for (const event of nextEvents) {
           next[event.id] = {
             viewerCount: String(event.viewerCount ?? 0),
+          };
+        }
+        return next;
+      });
+      setSourceDrafts(() => {
+        const next: Record<string, { label: string; type: LiveSource["type"]; playbackUrl: string; previewUrl: string }> = {};
+        for (const event of nextEvents) {
+          next[event.id] = {
+            label: "",
+            type: "CAMERA",
+            playbackUrl: "",
+            previewUrl: "",
           };
         }
         return next;
@@ -216,14 +249,138 @@ export function CreatorHub() {
     }
   };
 
-  const updateStatus = async (id: string, action: "start" | "end") => {
+  const updateStatus = async (id: string, action: "start" | "end", sourceId?: string) => {
+    const previousEvents = events;
+    if (action === "end") {
+      setEvents((prev) =>
+        prev.map((event) =>
+          event.id === id
+            ? {
+                ...event,
+                status: "ENDED",
+                endedAt: new Date().toISOString(),
+              }
+            : event
+        )
+      );
+    }
+
     try {
       setError(null);
-      const res = await adminApiFetch(`/api/admin/live/events/${id}/${action}`, { method: "POST" });
+      const res = await adminApiFetch(`/api/admin/live/events/${id}/${action}`, {
+        method: "POST",
+        body: action === "start" && sourceId ? JSON.stringify({ sourceId }) : undefined,
+      });
       if (!res.ok) throw new Error((res.data as any)?.message || "Failed to update event");
+      if ((res.data as any)?.event) {
+        const nextEvent = (res.data as any).event as LiveEvent;
+        setEvents((prev) => prev.map((event) => (event.id === id ? nextEvent : event)));
+      }
+      await loadEvents();
+      if (action === "start") setGoLiveSelectorEvent(null);
+    } catch (err: any) {
+      setEvents(previousEvents);
+      setError(err?.message ?? "Failed to update event");
+    }
+  };
+
+  const togglePublish = async (event: LiveEvent) => {
+    const targetPublished = !Boolean(event.isPublished);
+    const previousEvents = events;
+
+    setEvents((prev) =>
+      prev.map((item) => (item.id === event.id ? { ...item, isPublished: targetPublished } : item))
+    );
+
+    try {
+      setError(null);
+      const res = await adminApiFetch(`/api/admin/live/events/${event.id}/publish`, {
+        method: "PATCH",
+        body: JSON.stringify({ isPublished: targetPublished }),
+      });
+      if (!res.ok) throw new Error((res.data as any)?.message || "Failed to update publish status");
+      if ((res.data as any)?.event) {
+        const nextEvent = (res.data as any).event as LiveEvent;
+        setEvents((prev) => prev.map((item) => (item.id === event.id ? nextEvent : item)));
+      }
+    } catch (err: any) {
+      setEvents(previousEvents);
+      setError(err?.message ?? "Failed to update publish status");
+    }
+  };
+
+  const updateSourceDraft = (
+    eventId: string,
+    patch: Partial<{ label: string; type: LiveSource["type"]; playbackUrl: string; previewUrl: string }>
+  ) => {
+    setSourceDrafts((prev) => ({
+      ...prev,
+      [eventId]: {
+        label: prev[eventId]?.label ?? "",
+        type: prev[eventId]?.type ?? "CAMERA",
+        playbackUrl: prev[eventId]?.playbackUrl ?? "",
+        previewUrl: prev[eventId]?.previewUrl ?? "",
+        ...patch,
+      },
+    }));
+  };
+
+  const addSource = async (eventId: string) => {
+    const draft = sourceDrafts[eventId];
+    if (!draft?.label?.trim()) {
+      setError("Source label is required");
+      return;
+    }
+    try {
+      setError(null);
+      setSourceBusyId(eventId);
+      const res = await adminApiFetch(`/api/admin/live/events/${eventId}/sources`, {
+        method: "POST",
+        body: JSON.stringify({
+          type: draft.type,
+          label: draft.label.trim(),
+          playbackUrl: draft.playbackUrl.trim() || undefined,
+          previewUrl: draft.previewUrl.trim() || undefined,
+        }),
+      });
+      if (!res.ok) throw new Error((res.data as any)?.message || "Failed to add source");
+      updateSourceDraft(eventId, { label: "", playbackUrl: "", previewUrl: "" });
       await loadEvents();
     } catch (err: any) {
-      setError(err?.message ?? "Failed to update event");
+      setError(err?.message ?? "Failed to add source");
+    } finally {
+      setSourceBusyId(null);
+    }
+  };
+
+  const deleteSource = async (eventId: string, sourceId: string) => {
+    try {
+      setError(null);
+      setSourceBusyId(eventId);
+      const res = await adminApiFetch(`/api/admin/live/events/${eventId}/sources/${sourceId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error((res.data as any)?.message || "Failed to remove source");
+      await loadEvents();
+    } catch (err: any) {
+      setError(err?.message ?? "Failed to remove source");
+    } finally {
+      setSourceBusyId(null);
+    }
+  };
+
+  const switchSourceLive = async (eventId: string, sourceId: string) => {
+    try {
+      setError(null);
+      setSourceBusyId(eventId);
+      const res = await adminApiFetch(`/api/admin/live/events/${eventId}/sources/switch`, {
+        method: "POST",
+        body: JSON.stringify({ sourceId }),
+      });
+      if (!res.ok) throw new Error((res.data as any)?.message || "Failed to switch source");
+      await loadEvents();
+    } catch (err: any) {
+      setError(err?.message ?? "Failed to switch source");
+    } finally {
+      setSourceBusyId(null);
     }
   };
 
@@ -409,6 +566,7 @@ export function CreatorHub() {
             <div className="space-y-4">
               {events.map((event) => {
                 const ingestUrl = event.ingestEndpoint ? `rtmps://${event.ingestEndpoint}:443/app/` : "";
+                const stateBadge = liveStateBadge(event);
                 return (
                   <div key={event.id} className="border border-neutral-800 rounded-xl p-4 bg-neutral-950 space-y-3">
                     <div className="flex items-start justify-between gap-4">
@@ -434,7 +592,7 @@ export function CreatorHub() {
                         )}
                       </div>
                       <div className="flex flex-col items-end gap-2">
-                        <Badge className={statusBadge(event.status)}>{event.status}</Badge>
+                        <Badge className={stateBadge.className}>{stateBadge.label}</Badge>
                         <Badge className={replayBadge(event.replay?.status)}>
                           Replay: {event.replay?.status ?? "NONE"}
                         </Badge>
@@ -581,17 +739,82 @@ export function CreatorHub() {
                       </Button>
                     </div>
 
+                    <div className="border border-neutral-800 rounded-lg p-3 space-y-3 bg-neutral-900/40">
+                      <p className="text-xs uppercase tracking-wide text-neutral-400">Source Deck</p>
+                      <div className="grid gap-2 md:grid-cols-4">
+                        <Input
+                          value={sourceDrafts[event.id]?.label ?? ""}
+                          onChange={(e) => updateSourceDraft(event.id, { label: e.target.value })}
+                          placeholder="Source label"
+                          className="bg-neutral-950 border-neutral-800 text-white"
+                        />
+                        <select
+                          value={sourceDrafts[event.id]?.type ?? "CAMERA"}
+                          onChange={(e) => updateSourceDraft(event.id, { type: e.target.value as LiveSource["type"] })}
+                          className="rounded-md border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-white"
+                        >
+                          <option value="CAMERA">Camera</option>
+                          <option value="SCREEN">Screen</option>
+                          <option value="RTMP">RTMP</option>
+                          <option value="CONTROL_DECK">Control Deck</option>
+                        </select>
+                        <Input
+                          value={sourceDrafts[event.id]?.playbackUrl ?? ""}
+                          onChange={(e) => updateSourceDraft(event.id, { playbackUrl: e.target.value })}
+                          placeholder="Playback URL (optional)"
+                          className="bg-neutral-950 border-neutral-800 text-white"
+                        />
+                        <Button
+                          size="sm"
+                          onClick={() => addSource(event.id)}
+                          disabled={sourceBusyId === event.id}
+                          className="bg-neutral-800 hover:bg-neutral-700 text-white"
+                        >
+                          Add Source
+                        </Button>
+                      </div>
+
+                      <div className="space-y-2">
+                        {(event.sources ?? []).length === 0 ? (
+                          <p className="text-xs text-neutral-500">No sources configured. Legacy single-stream playback fallback remains active.</p>
+                        ) : (
+                          (event.sources ?? []).map((source) => (
+                            <div key={source.id} className="flex items-center justify-between rounded-md border border-neutral-800 bg-neutral-950 px-3 py-2">
+                              <div>
+                                <p className="text-sm text-white">
+                                  {source.label} <span className="text-xs text-neutral-500">({source.type})</span>
+                                </p>
+                                <p className="text-xs text-neutral-400">
+                                  {source.isActiveOutput ? "ACTIVE OUTPUT" : source.status}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {event.status === "LIVE" && !source.isActiveOutput && (
+                                  <Button size="sm" variant="outline" className="border-neutral-700 text-neutral-200" onClick={() => switchSourceLive(event.id, source.id)}>
+                                    Take Live
+                                  </Button>
+                                )}
+                                <Button size="sm" variant="outline" className="border-neutral-700 text-neutral-200" onClick={() => deleteSource(event.id, source.id)}>
+                                  Remove
+                                </Button>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
                     <div className="mt-2 flex flex-wrap gap-2">
                       {event.status === "SCHEDULED" && (
                         <Button
                           size="sm"
-                          onClick={() => updateStatus(event.id, "start")}
+                          onClick={() => setGoLiveSelectorEvent(event)}
                           className="bg-[#fd7e14] hover:bg-[#ff9940] text-white"
                         >
                           Go Live
                         </Button>
                       )}
-                      {event.status === "LIVE" && (
+                      {event.status !== "ENDED" && (
                         <Button
                           size="sm"
                           onClick={() => updateStatus(event.id, "end")}
@@ -600,6 +823,14 @@ export function CreatorHub() {
                           End Live
                         </Button>
                       )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => togglePublish(event)}
+                        className="border-neutral-700 text-neutral-200 hover:bg-neutral-800"
+                      >
+                        {event.isPublished ? "Unpublish" : "Publish"}
+                      </Button>
                     </div>
                   </div>
                 );
@@ -608,6 +839,38 @@ export function CreatorHub() {
           )}
         </CardContent>
       </Card>
+
+      {goLiveSelectorEvent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-xl rounded-xl border border-neutral-800 bg-neutral-950 p-4 space-y-4">
+            <h3 className="text-white text-lg">What device/source do you want to stream from?</h3>
+            <p className="text-sm text-neutral-400">Select your starting output source for this live event.</p>
+            <div className="space-y-2 max-h-72 overflow-auto">
+              {(goLiveSelectorEvent.sources ?? []).map((source) => (
+                <button
+                  key={source.id}
+                  onClick={() => updateStatus(goLiveSelectorEvent.id, "start", source.id)}
+                  className="w-full text-left rounded-lg border border-neutral-800 px-3 py-2 hover:border-[#fd7e14]"
+                >
+                  <p className="text-white">{source.label}</p>
+                  <p className="text-xs text-neutral-400">{source.type} {source.playbackUrl ? "• Playback ready" : "• No explicit playback URL"}</p>
+                </button>
+              ))}
+              {(goLiveSelectorEvent.sources ?? []).length === 0 && (
+                <p className="text-xs text-neutral-500">No sources yet. You can still go live using the legacy event playback stream.</p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" className="border-neutral-700 text-neutral-200" onClick={() => setGoLiveSelectorEvent(null)}>
+                Cancel
+              </Button>
+              <Button className="bg-[#fd7e14] hover:bg-[#ff9940] text-white" onClick={() => updateStatus(goLiveSelectorEvent.id, "start")}>
+                Start without source
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

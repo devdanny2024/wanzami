@@ -168,6 +168,7 @@ export const createLiveEvent = async (req: AuthenticatedRequest, res: Response) 
         description,
         thumbnailUrl,
         status: LiveEventStatus.SCHEDULED,
+        isPublished: false,
         ivsChannelArn: ivs?.channelArn ?? null,
         ivsStreamKeyArn: ivs?.streamKeyArn ?? null,
         ivsStreamKeyValue: ivs?.streamKeyValue ?? null,
@@ -234,7 +235,7 @@ export const getLiveEventPublic = async (req: Request, res: Response) => {
   const event = await prisma.liveEvent.findFirst({
     where: {
       id: eventId,
-      OR: [{ status: LiveEventStatus.LIVE }, { isPublished: true }],
+      isPublished: true,
     },
     include: liveEventInclude,
   });
@@ -247,13 +248,8 @@ export const listLiveEventsPublic = async (_req: Request, res: Response) => {
   const events = await prisma.liveEvent.findMany({
     include: liveEventInclude,
     where: {
-      OR: [
-        { status: LiveEventStatus.LIVE },
-        {
-          isPublished: true,
-          status: { in: [LiveEventStatus.SCHEDULED, LiveEventStatus.ENDED] },
-        },
-      ],
+      isPublished: true,
+      status: { in: [LiveEventStatus.SCHEDULED, LiveEventStatus.LIVE, LiveEventStatus.ENDED] },
     },
     orderBy: [{ status: "asc" }, { scheduledStartAt: "asc" }, { createdAt: "desc" }],
     take: 30,

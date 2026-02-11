@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authFetch } from "@/lib/authClient";
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const authorization = req.headers.get("authorization") ?? "";
-  const body = await req.json().catch(() => undefined);
-  const result = await authFetch(`/admin/live/events/${params.id}/start`, {
-    method: "POST",
+  const body = await req.json().catch(() => ({}));
+  const result = await authFetch(`/admin/live/events/${params.id}/publish`, {
+    method: "PATCH",
     headers: { Authorization: authorization },
-    body: body ? JSON.stringify(body) : undefined,
+    body: JSON.stringify(body),
   });
   return NextResponse.json(result.data, { status: result.status });
 }
