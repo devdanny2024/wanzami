@@ -72,18 +72,26 @@ export const createLiveEvent = async (req: AuthenticatedRequest, res: Response) 
   const safeName = `wanzami-${title.slice(0, 50).replace(/[^a-zA-Z0-9-_]/g, "-")}-${Date.now()}`;
 
   try {
-    const ivs = await createIvsChannel({ name: safeName });
+    let ivs: Awaited<ReturnType<typeof createIvsChannel>> | null = null;
+    try {
+      ivs = await createIvsChannel({ name: safeName });
+    } catch (ivsErr: any) {
+      console.error("createLiveEvent ivs provisioning warning", ivsErr);
+      // Do not block event creation when IVS provisioning is temporarily unavailable.
+      ivs = null;
+    }
+
     const created = await prisma.liveEvent.create({
       data: {
         title,
         description,
         thumbnailUrl,
         status: LiveEventStatus.SCHEDULED,
-        ivsChannelArn: ivs.channelArn,
-        ivsStreamKeyArn: ivs.streamKeyArn,
-        ivsStreamKeyValue: ivs.streamKeyValue,
-        ingestEndpoint: ivs.ingestEndpoint,
-        playbackUrl: ivs.playbackUrl,
+        ivsChannelArn: ivs?.channelArn ?? null,
+        ivsStreamKeyArn: ivs?.streamKeyArn ?? null,
+        ivsStreamKeyValue: ivs?.streamKeyValue ?? null,
+        ingestEndpoint: ivs?.ingestEndpoint ?? null,
+        playbackUrl: ivs?.playbackUrl ?? null,
         scheduledStartAt: scheduledAt,
         createdByUserId: req.user?.userId ?? null,
       },
