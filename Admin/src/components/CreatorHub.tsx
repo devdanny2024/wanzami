@@ -88,6 +88,7 @@ export function CreatorHub() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [scheduledStartAt, setScheduledStartAt] = useState("");
   const [replayDrafts, setReplayDrafts] = useState<Record<string, ReplayDraft>>({});
   const [replaySavingId, setReplaySavingId] = useState<string | null>(null);
@@ -124,6 +125,35 @@ export function CreatorHub() {
     void loadEvents();
   }, []);
 
+  const uploadThumbnailAsset = async (file: File): Promise<string> => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    const presignRes = await fetch("/api/admin/assets/presign", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ contentType: file.type || "application/octet-stream", kind: "thumbnail" }),
+    });
+
+    const presignData = await presignRes.json().catch(() => ({}));
+    if (!presignRes.ok || !presignData.url || !presignData.key) {
+      throw new Error(presignData?.message || "Failed to prepare thumbnail upload");
+    }
+
+    const putRes = await fetch(presignData.url, {
+      method: "PUT",
+      headers: { "Content-Type": file.type || "application/octet-stream" },
+      body: file,
+    });
+
+    if (!putRes.ok) {
+      throw new Error("Thumbnail upload failed");
+    }
+
+    return (presignData.publicUrl as string) || (presignData.key as string);
+  };
+
   const handleCreate = async () => {
     if (!title.trim()) return;
     try {
@@ -139,12 +169,23 @@ export function CreatorHub() {
         throw new Error("Scheduled start time is invalid");
       }
 
+      let resolvedThumbnailUrl = thumbnailUrl.trim() || undefined;
+      if (thumbnailFile) {
+        resolvedThumbnailUrl = await uploadThumbnailAsset(thumbnailFile);
+      } else if (resolvedThumbnailUrl) {
+        try {
+          new URL(resolvedThumbnailUrl);
+        } catch {
+          throw new Error("Thumbnail URL must be a valid URL, or upload a thumbnail file instead.");
+        }
+      }
+
       const res = await adminApiFetch("/api/admin/live/events", {
         method: "POST",
         body: JSON.stringify({
           title: title.trim(),
           description: description.trim() || undefined,
-          thumbnailUrl: thumbnailUrl.trim() || undefined,
+          thumbnailUrl: resolvedThumbnailUrl,
           scheduledStartAt: normalizedScheduledStart,
         }),
       });
@@ -152,6 +193,7 @@ export function CreatorHub() {
       setTitle("");
       setDescription("");
       setThumbnailUrl("");
+      setThumbnailFile(null);
       setScheduledStartAt("");
       await loadEvents();
     } catch (err: any) {
@@ -263,9 +305,19 @@ export function CreatorHub() {
           <Input
             value={thumbnailUrl}
             onChange={(e) => setThumbnailUrl(e.target.value)}
-            placeholder="Thumbnail URL"
+            placeholder="Thumbnail URL (optional if file uploaded)"
             className="bg-neutral-950 border-neutral-800 text-white"
           />
+          <div className="space-y-1">
+            <label className="text-xs text-neutral-500">Or upload thumbnail file</label>
+            <Input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setThumbnailFile(e.target.files?.[0] ?? null)}
+              className="bg-neutral-950 border-neutral-800 text-white"
+            />
+            {thumbnailFile && <p className="text-xs text-neutral-400">Selected: {thumbnailFile.name}</p>}
+          </div>
           <div>
             <label className="text-sm text-neutral-400">Scheduled start (optional)</label>
             <Input
