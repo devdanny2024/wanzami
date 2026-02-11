@@ -24,7 +24,15 @@ const countryAndMaturityFilter = (country, kidMode) => ({
 export const continueWatching = async (req, res) => {
     if (!req.user?.userId)
         return res.status(401).json({ message: "Unauthorized" });
-    const profileIdParam = req.query.profileId ? BigInt(String(req.query.profileId)) : undefined;
+    let profileIdParam;
+    if (req.query.profileId !== undefined) {
+        try {
+            profileIdParam = BigInt(String(req.query.profileId));
+        }
+        catch {
+            profileIdParam = undefined;
+        }
+    }
     const profile = await ensureProfileForUser(req.user.userId, profileIdParam);
     if (!profile)
         return res.status(400).json({ message: "No profile found" });
@@ -128,7 +136,15 @@ export const continueWatching = async (req, res) => {
 export const becauseYouWatched = async (req, res) => {
     if (!req.user?.userId)
         return res.status(401).json({ message: "Unauthorized" });
-    const profileIdParam = req.query.profileId ? BigInt(String(req.query.profileId)) : undefined;
+    let profileIdParam;
+    if (req.query.profileId !== undefined) {
+        try {
+            profileIdParam = BigInt(String(req.query.profileId));
+        }
+        catch {
+            profileIdParam = undefined;
+        }
+    }
     const profile = await ensureProfileForUser(req.user.userId, profileIdParam);
     if (!profile)
         return res.status(400).json({ message: "No profile found" });
@@ -274,7 +290,15 @@ export const becauseYouWatched = async (req, res) => {
 export const forYou = async (req, res) => {
     if (!req.user?.userId)
         return res.status(401).json({ message: "Unauthorized" });
-    const profileIdParam = req.query.profileId ? BigInt(String(req.query.profileId)) : undefined;
+    let profileIdParam;
+    if (req.query.profileId !== undefined) {
+        try {
+            profileIdParam = BigInt(String(req.query.profileId));
+        }
+        catch {
+            profileIdParam = undefined;
+        }
+    }
     const profile = await ensureProfileForUser(req.user.userId, profileIdParam);
     if (!profile)
         return res.status(400).json({ message: "No profile found" });

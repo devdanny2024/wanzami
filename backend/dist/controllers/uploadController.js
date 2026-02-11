@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { z } from "zod";
 import { prisma } from "../prisma.js";
-import { createMultipartUpload, presignPartUrls, completeMultipartUpload, partSizeBytes } from "../upload/s3.js";
+import { createMultipartUpload, presignPartUrls, presignPartUrlsForNumbers, completeMultipartUpload, partSizeBytes, listMultipartParts, } from "../upload/s3.js";
 import { config } from "../config.js";
 import { UploadStatus, Rendition, TitleType, AssetStatus } from "@prisma/client";
 import { transcodeQueue } from "../queues/transcodeQueue.js";
@@ -31,6 +31,7 @@ const completeSchema = z.object({
     renditions: z.array(z.nativeEnum(Rendition)).optional(),
 });
 const defaultRenditions = [
+    Rendition.R4K,
     Rendition.R1080,
     Rendition.R720,
     Rendition.R360,
@@ -105,6 +106,7 @@ export const initUpload = async (req, res) => {
                     key,
                     uploadId,
                     fileName,
+                    partSize: partSizeBytes,
                     renditions: renditions && renditions.length ? renditions : defaultRenditions,
                 },
             },
@@ -227,15 +229,172 @@ export const listUploads = async (_req, res) => {
         orderBy: { createdAt: "desc" },
         take: 50,
     });
+    const jobsWithProgress = await Promise.all(jobs.map(async (j) => {
+        const payload = j.payload || {};
+        const renditions = Array.isArray(payload.renditions) ? payload.renditions : [];
+        let processingPercent = null;
+        if (renditions.length > 0 && (j.titleId || j.episodeId)) {
+            const versions = await prisma.assetVersion.findMany({
+                where: {
+                    ...(j.titleId ? { titleId: j.titleId } : {}),
+                    ...(j.episodeId ? { episodeId: j.episodeId } : {}),
+                    rendition: { in: renditions },
+                },
+                select: { status: true },
+            });
+            const total = versions.length;
+            const ready = versions.filter((v) => v.status === AssetStatus.READY).length;
+            processingPercent = total > 0 ? Math.round((ready / total) * 100) : null;
+        }
+        return { job: j, processingPercent };
+    }));
     return res.json({
-        uploads: jobs.map((j) => ({
+        uploads: jobsWithProgress.map(({ job: j, processingPercent }) => ({
             id: j.id.toString(),
             status: j.status,
             bytesUploaded: Number(j.bytesUploaded ?? 0),
             bytesTotal: j.bytesTotal ? Number(j.bytesTotal) : null,
+            fileName: j.payload?.fileName ?? null,
+            kind: j.payload?.kind ?? null,
             error: j.error,
             createdAt: j.createdAt,
             updatedAt: j.updatedAt,
+            processingPercent,
         })),
     });
+};
+export const retryTranscode = async (req, res) => {
+    const jobId = req.params.id ? BigInt(req.params.id) : null;
+    if (!jobId)
+        return res.status(400).json({ message: "Missing job id" });
+    const job = await prisma.uploadJob.findUnique({ where: { id: jobId } });
+    if (!job)
+        return res.status(404).json({ message: "Job not found" });
+    if (job.status !== UploadStatus.FAILED && job.status !== UploadStatus.PROCESSING) {
+        return res.status(400).json({ message: "Only failed or processing jobs can be retried" });
+    }
+    const payload = job.payload;
+    const key = payload?.key;
+    const renditions = payload?.renditions ?? defaultRenditions;
+    if (!key) {
+        return res.status(400).json({ message: "Job payload missing key; cannot retry" });
+    }
+    const updated = await prisma.uploadJob.update({
+        where: { id: jobId },
+        data: {
+            status: UploadStatus.PROCESSING,
+            error: null,
+        },
+    });
+    await transcodeQueue.add("transcode", {
+        uploadJobId: updated.id.toString(),
+        key,
+        renditions,
+        titleId: job.titleId ? job.titleId.toString() : null,
+        episodeId: job.episodeId ? job.episodeId.toString() : null,
+    });
+    return res.json({ message: "Transcode requeued", jobId: updated.id.toString() });
+};
+export const backfillTranscodes = async (req, res) => {
+    const rawLimit = req.body?.limit ?? req.query.limit;
+    const parsedLimit = Number(rawLimit);
+    const take = Number.isFinite(parsedLimit) && parsedLimit > 0 && parsedLimit <= 50 ? parsedLimit : 10;
+    const candidates = await prisma.uploadJob.findMany({
+        where: { status: UploadStatus.COMPLETED },
+        orderBy: { updatedAt: "asc" },
+        take,
+    });
+    const queued = [];
+    for (const job of candidates) {
+        const payload = job.payload || {};
+        const key = payload?.key;
+        const renditions = payload?.renditions ?? defaultRenditions;
+        if (!key || !renditions.length) {
+            continue;
+        }
+        const versionWhere = {
+            ...(job.titleId ? { titleId: job.titleId } : {}),
+            ...(job.episodeId ? { episodeId: job.episodeId } : {}),
+            rendition: { in: renditions },
+        };
+        // Skip jobs that already have a master playlist wired.
+        const versions = await prisma.assetVersion.findMany({
+            where: versionWhere,
+            select: { url: true },
+        });
+        const hasMaster = versions.some((v) => (v.url ?? "").includes("/master.m3u8"));
+        if (hasMaster) {
+            continue;
+        }
+        // Reset asset versions for this title/episode back to PROCESSING so
+        // dashboard progress reflects the new backfill run (0% -> 100%).
+        await prisma.assetVersion.updateMany({
+            where: versionWhere,
+            data: { status: AssetStatus.PROCESSING },
+        });
+        const updated = await prisma.uploadJob.update({
+            where: { id: job.id },
+            data: {
+                status: UploadStatus.PROCESSING,
+                error: null,
+            },
+        });
+        await transcodeQueue.add("transcode", {
+            uploadJobId: updated.id.toString(),
+            key,
+            renditions,
+            titleId: job.titleId ? job.titleId.toString() : null,
+            episodeId: job.episodeId ? job.episodeId.toString() : null,
+        });
+        queued.push(updated.id.toString());
+    }
+    return res.json({
+        message: "Backfill transcodes enqueued",
+        queuedCount: queued.length,
+        jobIds: queued,
+    });
+};
+export const resumeUpload = async (req, res) => {
+    const jobId = req.params.id ? BigInt(req.params.id) : null;
+    if (!jobId)
+        return res.status(400).json({ message: "Missing job id" });
+    const job = await prisma.uploadJob.findUnique({ where: { id: jobId } });
+    if (!job)
+        return res.status(404).json({ message: "Job not found" });
+    if (job.status === UploadStatus.COMPLETED) {
+        return res.status(409).json({ message: "Upload already completed" });
+    }
+    const payload = job.payload;
+    const uploadId = payload?.uploadId;
+    const key = payload?.key;
+    const partSize = Number(payload?.partSize) || partSizeBytes;
+    if (!uploadId || !key) {
+        return res.status(400).json({ message: "Upload cannot be resumed" });
+    }
+    try {
+        const parts = await listMultipartParts(key, uploadId);
+        const uploadedParts = parts.map((p) => p.partNumber);
+        const uploadedBytes = parts.reduce((sum, p) => sum + p.size, 0);
+        const partCount = Math.max(1, Math.ceil(Number(job.bytesTotal ?? 0) / partSize));
+        const remaining = [];
+        for (let i = 1; i <= partCount; i += 1) {
+            if (!uploadedParts.includes(i))
+                remaining.push(i);
+        }
+        const presignedParts = await presignPartUrlsForNumbers(key, uploadId, remaining);
+        return res.json({
+            jobId: job.id.toString(),
+            uploadId,
+            key,
+            partSize,
+            partCount,
+            uploadedParts: parts,
+            uploadedBytes,
+            presignedParts,
+        });
+    }
+    catch (err) {
+        const code = err?.name === "NoSuchUpload" ? 410 : 500;
+        return res.status(code).json({ message: "Failed to resume upload", error: err?.message });
+    }
 };

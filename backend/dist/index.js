@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import bcrypt from "bcryptjs";
 import { config } from "./config.js";
 import authRoutes from "./routes/authRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
@@ -9,13 +10,19 @@ import eventRoutes from "./routes/eventRoutes.js";
 import popularityRoutes from "./routes/popularityRoutes.js";
 import recommendationRoutes from "./routes/recommendationRoutes.js";
 import logRoutes from "./routes/logRoutes.js";
+import dashboardRoutes from "./routes/dashboardRoutes.js";
 import ppvRoutes from "./routes/ppvRoutes.js";
 import emailRoutes from "./routes/emailRoutes.js";
+import supportRoutes from "./routes/supportRoutes.js";
+import liveRoutes from "./routes/liveRoutes.js";
 import { recordError } from "./utils/errorLogger.js";
+import { prisma } from "./prisma.js";
 const app = express();
 const allowedOrigins = [
     "https://wanzami.vercel.app",
     "https://wanzami-admin.vercel.app",
+    "https://wanzami.tv",
+    "https://www.wanzami.tv",
     "https://api.carlylehub.org",
     "https://wanzami.duckdns.org",
     "http://localhost:3000",
@@ -54,6 +61,9 @@ app.use("/api", recommendationRoutes);
 app.use("/api", logRoutes);
 app.use("/api", ppvRoutes);
 app.use("/api", emailRoutes);
+app.use("/api", dashboardRoutes);
+app.use("/api", supportRoutes);
+app.use("/api", liveRoutes);
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.use((_, res) => res.status(404).json({ message: "Not found" }));
 app.use((err, req, res, _next) => {
@@ -61,6 +71,40 @@ app.use((err, req, res, _next) => {
     void recordError(err, { path: req.originalUrl, userId: req.user?.userId });
     return res.status(500).json({ message: "Internal server error" });
 });
-app.listen(config.port, () => {
-    console.log(`Auth service running on http://localhost:${config.port}`);
-});
+async function bootstrapSuperAdmin() {
+    const email = process.env.BOOTSTRAP_SUPER_ADMIN_EMAIL;
+    const password = process.env.BOOTSTRAP_SUPER_ADMIN_PASSWORD;
+    const name = process.env.BOOTSTRAP_SUPER_ADMIN_NAME ?? "Super Admin";
+    if (!email || !password)
+        return;
+    const passwordHash = await bcrypt.hash(password, 10);
+    const user = await prisma.user.upsert({
+        where: { email: email.toLowerCase() },
+        update: {
+            password: passwordHash,
+            role: "SUPER_ADMIN",
+            emailVerified: true,
+            name,
+        },
+        create: {
+            email: email.toLowerCase(),
+            password: passwordHash,
+            name,
+            role: "SUPER_ADMIN",
+            emailVerified: true,
+        },
+    });
+    console.log("Bootstrapped SUPER_ADMIN:", { id: user.id.toString(), email: user.email });
+}
+void (async () => {
+    try {
+        await bootstrapSuperAdmin();
+    }
+    catch (err) {
+        // Don't block service startup if bootstrap fails.
+        console.error("bootstrapSuperAdmin failed:", err);
+    }
+    app.listen(config.port, () => {
+        console.log(`Auth service running on http://localhost:${config.port}`);
+    });
+})();

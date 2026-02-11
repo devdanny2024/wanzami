@@ -6,7 +6,7 @@ import { prisma } from "../prisma.js";
 import { config } from "../config.js";
 import { AssetStatus, UploadStatus } from "@prisma/client";
 import { downloadToFile, uploadFile } from "../upload/s3.js";
-import { mkdtemp, rm, stat } from "fs/promises";
+import { mkdtemp, rm, readdir, stat, writeFile } from "fs/promises";
 import path from "path";
 import os from "os";
 const require = createRequire(import.meta.url);
@@ -46,20 +46,112 @@ const renditionToHeight = (r) => {
             return 360;
     }
 };
-async function transcodeToHeight(src, dest, height) {
-    return new Promise((resolve, reject) => {
+const renditionInfo = (r) => {
+    switch (r) {
+        case "R4K":
+            return { height: 2160, width: 3840, bandwidth: 12000000 };
+        case "R2K":
+            return { height: 1440, width: 2560, bandwidth: 8000000 };
+        case "R1080":
+            return { height: 1080, width: 1920, bandwidth: 5000000 };
+        case "R720":
+            return { height: 720, width: 1280, bandwidth: 3000000 };
+        case "R360":
+        default:
+            return { height: 360, width: 640, bandwidth: 800000 };
+    }
+};
+async function safeUpdateUploadJob(uploadJobId, data) {
+    const result = await prisma.uploadJob.updateMany({
+        where: { id: uploadJobId },
+        data,
+    });
+    if (result.count === 0) {
+        console.warn("uploadJob missing for update", { uploadJobId, status: data.status });
+    }
+}
+async function transcodeToHlsRendition(src, tmpDir, uploadJobId, rendition, height, durationSec, audioChannels, titleId, episodeId) {
+    const playlistPath = path.join(tmpDir, `${rendition}.m3u8`);
+    const segmentPattern = path.join(tmpDir, `${rendition}_%03d.ts`);
+    const isSurround = audioChannels >= 6;
+    const audioOptions = isSurround
+        ? ["-ac 6", "-b:a 384k"]
+        : ["-ac 2", "-b:a 160k"];
+    await new Promise((resolve, reject) => {
         ffmpeg(src)
             .outputOptions([
             "-c:v libx264",
             `-vf scale=-2:${height}`,
             "-preset veryfast",
             "-c:a aac",
-            "-b:a 128k",
+            ...audioOptions,
+            "-f hls",
+            "-hls_time 6",
+            "-hls_playlist_type vod",
+            "-hls_segment_type mpegts",
+            `-hls_segment_filename ${segmentPattern}`,
         ])
-            .output(dest)
+            .output(playlistPath)
             .on("end", () => resolve())
             .on("error", (err) => reject(err))
             .run();
+    });
+    // Upload playlist + segments to S3 under vod/{uploadJobId}/
+    const files = await readdir(tmpDir);
+    let totalSize = 0;
+    for (const file of files) {
+        if (!file.startsWith(rendition))
+            continue;
+        const fullPath = path.join(tmpDir, file);
+        const key = `vod/${uploadJobId}/${file}`;
+        const contentType = file.endsWith(".m3u8")
+            ? "application/vnd.apple.mpegurl"
+            : "video/MP2T";
+        const uploaded = await uploadFile(key, fullPath, contentType);
+        totalSize += uploaded.size ?? (await stat(fullPath)).size;
+    }
+    const playlistKey = `vod/${uploadJobId}/${rendition}.m3u8`;
+    const where = { rendition };
+    if (titleId != null)
+        where.titleId = titleId;
+    if (episodeId != null)
+        where.episodeId = episodeId;
+    await prisma.assetVersion.updateMany({
+        where,
+        data: {
+            status: AssetStatus.READY,
+            url: `s3://${config.s3.bucket ?? ""}/${playlistKey}`,
+            sizeBytes: BigInt(totalSize),
+            durationSec,
+        },
+    });
+}
+async function writeAndUploadMasterPlaylist(tmpDir, uploadJobId, renditions, titleId, episodeId) {
+    if (!config.s3.bucket)
+        return;
+    if (!renditions.length)
+        return;
+    const sorted = renditions.slice().sort((a, b) => renditionToHeight(a) - renditionToHeight(b));
+    const lines = ["#EXTM3U", "#EXT-X-VERSION:3"];
+    for (const r of sorted) {
+        const { height, width, bandwidth } = renditionInfo(r);
+        lines.push(`#EXT-X-STREAM-INF:BANDWIDTH=${bandwidth},RESOLUTION=${width}x${height}`);
+        lines.push(`${r}.m3u8`);
+    }
+    const masterPath = path.join(tmpDir, "master.m3u8");
+    await writeFile(masterPath, lines.join("\n"), "utf8");
+    const key = `vod/${uploadJobId}/master.m3u8`;
+    await uploadFile(key, masterPath, "application/vnd.apple.mpegurl");
+    const where = { rendition: { in: renditions } };
+    if (titleId != null)
+        where.titleId = titleId;
+    if (episodeId != null)
+        where.episodeId = episodeId;
+    await prisma.assetVersion.updateMany({
+        where,
+        data: {
+            url: `s3://${config.s3.bucket}/${key}`,
+        },
     });
 }
 const worker = new Worker("transcode", async (job) => {
@@ -72,44 +164,32 @@ const worker = new Worker("transcode", async (job) => {
     try {
         await downloadToFile(data.key, srcPath);
         let durationSec = 0;
+        let audioChannels = 2;
         try {
             const probe = await new Promise((resolve, reject) => ffmpeg.ffprobe(srcPath, (err, meta) => (err ? reject(err) : resolve(meta))));
             durationSec = Math.round(probe.format?.duration ?? 0);
+            const audioStream = (probe.streams ?? []).find((s) => s.codec_type === "audio");
+            if (audioStream?.channels && typeof audioStream.channels === "number") {
+                audioChannels = audioStream.channels;
+            }
         }
         catch {
             // If ffprobe is unavailable, continue without duration to avoid failing the whole job.
             durationSec = 0;
         }
         for (const rendition of data.renditions) {
-            const outPath = path.join(tmpDir, `${rendition}.mp4`);
             const height = renditionToHeight(rendition);
-            await transcodeToHeight(srcPath, outPath, height);
-            const s3Key = `vod/${data.uploadJobId}/${rendition}.mp4`;
-            const uploaded = await uploadFile(s3Key, outPath, "video/mp4");
-            const size = uploaded.size ?? (await stat(outPath)).size;
-            await prisma.assetVersion.updateMany({
-                where: {
-                    titleId,
-                    episodeId,
-                    rendition,
-                },
-                data: {
-                    status: AssetStatus.READY,
-                    url: `s3://${config.s3.bucket ?? ""}/${s3Key}`,
-                    sizeBytes: BigInt(size),
-                    durationSec,
-                },
-            });
+            await transcodeToHlsRendition(srcPath, tmpDir, data.uploadJobId, rendition, height, durationSec, audioChannels, titleId, episodeId);
         }
-        await prisma.uploadJob.update({
-            where: { id: uploadJobId },
-            data: { status: UploadStatus.COMPLETED },
-        });
+        // After all renditions are created, generate a master HLS
+        // playlist so the client player can use adaptive streaming.
+        await writeAndUploadMasterPlaylist(tmpDir, data.uploadJobId, data.renditions, titleId, episodeId);
+        await safeUpdateUploadJob(uploadJobId, { status: UploadStatus.COMPLETED });
     }
     catch (err) {
-        await prisma.uploadJob.update({
-            where: { id: uploadJobId },
-            data: { status: UploadStatus.FAILED, error: err?.message ?? "Transcode failed" },
+        await safeUpdateUploadJob(uploadJobId, {
+            status: UploadStatus.FAILED,
+            error: err?.message ?? "Transcode failed",
         });
         throw err;
     }
@@ -118,16 +198,22 @@ const worker = new Worker("transcode", async (job) => {
     }
 }, {
     connection,
-    concurrency: 1,
+    // Allow multiple ffmpeg jobs per worker, controlled via env.
+    concurrency: Math.max(config.transcodeConcurrency || 1, 1),
     prefix,
+    // Transcodes for large files can legitimately run for a long time.
+    // Increase the lock duration and stalled threshold so BullMQ
+    // does not mark long-running jobs as "stalled" and fail them.
+    lockDuration: 1000 * 60 * 60, // 1 hour lock per job
+    maxStalledCount: 5,
 });
 worker.on("failed", async (job, err) => {
     if (!job?.data)
         return;
     const data = job.data;
-    await prisma.uploadJob.update({
-        where: { id: BigInt(data.uploadJobId) },
-        data: { status: UploadStatus.FAILED, error: err?.message ?? "Transcode failed" },
+    await safeUpdateUploadJob(BigInt(data.uploadJobId), {
+        status: UploadStatus.FAILED,
+        error: err?.message ?? "Transcode failed",
     });
 });
 worker.on("completed", () => {

@@ -55,7 +55,7 @@ export const welcomeEmailTemplate = (params) => `
           </tr>
           <tr>
             <td align="center" style="padding:20px 0 8px 0;">
-              <a href="${process.env.APP_ORIGIN ?? "https://wanzami.vercel.app"}" style="background:#fd7e14;color:#fff;text-decoration:none;padding:14px 24px;border-radius:10px;font-weight:700;display:inline-block;">Start watching</a>
+              <a href="${process.env.APP_ORIGIN ?? "https://www.wanzami.tv"}" style="background:#fd7e14;color:#fff;text-decoration:none;padding:14px 24px;border-radius:10px;font-weight:700;display:inline-block;">Start watching</a>
             </td>
           </tr>
           <tr>

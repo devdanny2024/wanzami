@@ -4,8 +4,10 @@ import { presignPutObject, presignGetObject } from "../upload/s3.js";
 import { config } from "../config.js";
 import { resolveCountry } from "../utils/country.js";
 import { auditLog } from "../utils/audit.js";
+import { localizePrice } from "../utils/pricing.js";
 import { AssetStatus } from "@prisma/client";
 import { DeleteObjectsCommand, S3Client } from "@aws-sdk/client-s3";
+import { verifyAccessToken } from "../auth/jwt.js";
 const kidSafeRatings = ["G", "PG", "TV-Y", "TV-G", "TV-PG", "PG-13"];
 const teenSafeRatings = ["PG-13", "TV-14"];
 const parseOptionalNumber = (val) => {
@@ -43,6 +45,7 @@ export const listTitles = async (_req, res) => {
             posterUrl: t.posterUrl,
             thumbnailUrl: t.thumbnailUrl,
             trailerUrl: t.trailerUrl,
+            shortTrailerUrl: t.shortTrailerUrl,
             previewSpriteUrl: t.previewSpriteUrl,
             previewVttUrl: t.previewVttUrl,
             introStartSec: t.introStartSec,
@@ -57,6 +60,7 @@ export const listTitles = async (_req, res) => {
             updatedAt: t.updatedAt,
             episodeCount: t.episodes.length,
             seasonCount: t.seasons.length,
+            releaseDate: t.releaseDate,
             releaseYear: t.releaseDate ? t.releaseDate.getUTCFullYear() : undefined,
         })),
     });
@@ -108,13 +112,50 @@ const maturityClause = (kidMode, age) => {
     }
     return undefined;
 };
+const extractS3KeyFromUrl = (url) => {
+    if (!url)
+        return null;
+    try {
+        if (url.startsWith("s3://")) {
+            const withoutScheme = url.replace("s3://", "");
+            const [, ...rest] = withoutScheme.split("/");
+            const key = rest.join("/");
+            return key || null;
+        }
+        if (url.startsWith("http://") || url.startsWith("https://")) {
+            const u = new URL(url);
+            const path = u.pathname.startsWith("/") ? u.pathname.slice(1) : u.pathname;
+            if (config.s3.bucket && u.hostname.startsWith(`${config.s3.bucket}.`)) {
+                return decodeURIComponent(path);
+            }
+        }
+        if (!url.includes("://")) {
+            return url;
+        }
+    }
+    catch {
+        return null;
+    }
+    return null;
+};
+const safeLocalizePrice = async (opts) => {
+    try {
+        return await localizePrice(opts);
+    }
+    catch (err) {
+        console.error("price localization failed", err);
+        return { amount: opts.amount, currency: opts.baseCurrency, rate: 1 };
+    }
+};
 const resolvePlaybackUrl = async (url) => {
     if (!url)
         return url;
-    if (url.startsWith("s3://")) {
-        const withoutScheme = url.replace("s3://", "");
-        const [, ...rest] = withoutScheme.split("/");
-        const key = rest.join("/");
+    const key = extractS3KeyFromUrl(url);
+    if (key) {
+        // Prefer CDN if configured; otherwise presign S3
+        if (config.mediaCdnBase) {
+            return `${config.mediaCdnBase}/${key}`;
+        }
         try {
             return await presignGetObject(key, 3600);
         }
@@ -153,8 +194,19 @@ export const listPublicTitles = async (req, res) => {
             },
         },
     });
-    return res.json({
-        titles: titles.map((t) => ({
+    const localized = await Promise.all(titles.map(async (t) => {
+        let ppvPriceNaira = t.ppvPriceNaira;
+        let ppvCurrency = t.ppvCurrency ?? "NGN";
+        if (t.isPpv && ppvPriceNaira) {
+            const localizedPrice = await safeLocalizePrice({
+                amount: ppvPriceNaira,
+                baseCurrency: ppvCurrency,
+                country,
+            });
+            ppvPriceNaira = localizedPrice.amount;
+            ppvCurrency = localizedPrice.currency;
+        }
+        return {
             id: t.id.toString(),
             name: t.name,
             type: t.type,
@@ -170,21 +222,24 @@ export const listPublicTitles = async (req, res) => {
             posterUrl: t.posterUrl,
             thumbnailUrl: t.thumbnailUrl,
             trailerUrl: t.trailerUrl,
+            shortTrailerUrl: t.shortTrailerUrl,
             introStartSec: t.introStartSec,
             introEndSec: t.introEndSec,
             archived: t.archived,
             pendingReview: t.pendingReview,
             isPpv: t.isPpv,
-            ppvPriceNaira: t.ppvPriceNaira,
-            ppvCurrency: t.ppvCurrency,
+            ppvPriceNaira,
+            ppvCurrency,
             ppvDescription: t.ppvDescription,
             createdAt: t.createdAt,
             updatedAt: t.updatedAt,
             episodeCount: t.episodes.length,
             seasonCount: t.seasons.length,
+            releaseDate: t.releaseDate,
             releaseYear: t.releaseDate ? t.releaseDate.getUTCFullYear() : undefined,
-        })),
-    });
+        };
+    }));
+    return res.json({ titles: localized });
 };
 export const getTitleWithEpisodes = async (req, res) => {
     const titleId = req.params.id ? BigInt(req.params.id) : null;
@@ -195,6 +250,18 @@ export const getTitleWithEpisodes = async (req, res) => {
     const country = countryOverride || resolveCountry(req);
     const kidMode = parseKidMode(req);
     const age = deriveAge(req);
+    let userId = null;
+    try {
+        const header = req.headers.authorization;
+        if (header?.startsWith("Bearer ")) {
+            const token = header.replace("Bearer ", "");
+            const payload = verifyAccessToken(token);
+            userId = payload.userId;
+        }
+    }
+    catch {
+        userId = null;
+    }
     const title = await prisma.title.findFirst({
         where: {
             id: titleId,
@@ -230,11 +297,41 @@ export const getTitleWithEpisodes = async (req, res) => {
     if (!title) {
         return res.status(404).json({ message: "Title not found" });
     }
+    let ppvStreamAllowed = true;
+    if (title.isPpv) {
+        ppvStreamAllowed = false;
+        if (userId) {
+            const user = await prisma.user.findUnique({ where: { id: userId } });
+            if (user && !user.ppvBanned) {
+                const active = await prisma.ppvPurchase.findFirst({
+                    where: {
+                        userId,
+                        titleId,
+                        status: "SUCCESS",
+                        accessExpiresAt: { gt: new Date() },
+                    },
+                    orderBy: { createdAt: "desc" },
+                });
+                if (active) {
+                    ppvStreamAllowed = true;
+                }
+            }
+        }
+    }
     const trailerUrl = await resolvePlaybackUrl(title.trailerUrl);
+    const shortTrailerUrl = await resolvePlaybackUrl(title.shortTrailerUrl);
+    let localizedPrice = null;
+    if (title.isPpv && title.ppvPriceNaira) {
+        localizedPrice = await safeLocalizePrice({
+            amount: title.ppvPriceNaira,
+            baseCurrency: title.ppvCurrency ?? "NGN",
+            country,
+        });
+    }
     const assetVersions = await Promise.all(title.assetVersions.map(async (a) => ({
         id: a.id.toString(),
         rendition: a.rendition,
-        url: await resolvePlaybackUrl(a.url),
+        url: ppvStreamAllowed ? await resolvePlaybackUrl(a.url) : null,
         sizeBytes: a.sizeBytes ? Number(a.sizeBytes) : undefined,
         durationSec: a.durationSec ?? undefined,
         status: a.status,
@@ -257,7 +354,7 @@ export const getTitleWithEpisodes = async (req, res) => {
         assetVersions: await Promise.all(e.assetVersions?.map(async (a) => ({
             id: a.id.toString(),
             rendition: a.rendition,
-            url: await resolvePlaybackUrl(a.url),
+            url: ppvStreamAllowed ? await resolvePlaybackUrl(a.url) : null,
             sizeBytes: a.sizeBytes ? Number(a.sizeBytes) : undefined,
             durationSec: a.durationSec ?? undefined,
             status: a.status,
@@ -280,6 +377,7 @@ export const getTitleWithEpisodes = async (req, res) => {
             posterUrl: title.posterUrl,
             thumbnailUrl: title.thumbnailUrl,
             trailerUrl,
+            shortTrailerUrl,
             introStartSec: title.introStartSec,
             introEndSec: title.introEndSec,
             previewSpriteUrl: title.previewSpriteUrl,
@@ -289,8 +387,9 @@ export const getTitleWithEpisodes = async (req, res) => {
             updatedAt: title.updatedAt,
             releaseYear: title.releaseDate ? title.releaseDate.getUTCFullYear() : undefined,
             isPpv: title.isPpv,
-            ppvPriceNaira: title.ppvPriceNaira,
-            ppvCurrency: title.ppvCurrency,
+            ppvStreamAllowed,
+            ppvPriceNaira: localizedPrice ? localizedPrice.amount : title.ppvPriceNaira,
+            ppvCurrency: localizedPrice ? localizedPrice.currency : title.ppvCurrency,
             ppvDescription: title.ppvDescription,
             episodeCount: title.episodes.length,
             assetVersions,
@@ -359,12 +458,16 @@ export const listEpisodesForTitle = async (req, res) => {
     });
 };
 export const createTitle = async (req, res) => {
-    const { name, type, description, posterUrl, thumbnailUrl, trailerUrl, previewSpriteUrl, previewVttUrl, releaseYear, genres, cast, crew, language, maturityRating, runtimeMinutes, countryAvailability, isOriginal, pendingReview, introStartSec, introEndSec, isPpv, ppvPriceNaira, ppvCurrency, seasons, } = req.body;
+    const { name, type, description, posterUrl, thumbnailUrl, trailerUrl, shortTrailerUrl, previewSpriteUrl, previewVttUrl, releaseYear, genres, cast, crew, language, maturityRating, runtimeMinutes, countryAvailability, isOriginal, pendingReview, introStartSec, introEndSec, isPpv, ppvPriceNaira, ppvCurrency, seasons, } = req.body;
     if (!name || !type) {
         return res.status(400).json({ message: "name and type are required" });
     }
     const parsedReleaseDate = releaseYear && !Number.isNaN(Number(releaseYear)) ? new Date(`${releaseYear}-01-01T00:00:00.000Z`) : undefined;
     const parsedRuntime = runtimeMinutes !== undefined && !Number.isNaN(Number(runtimeMinutes)) ? Number(runtimeMinutes) : undefined;
+    const normalizedCurrency = isPpv ? ppvCurrency ?? "NGN" : "NGN";
+    const normalizedPrice = isPpv && ppvPriceNaira !== undefined && ppvPriceNaira !== null && !Number.isNaN(Number(ppvPriceNaira))
+        ? Number(ppvPriceNaira)
+        : null;
     const title = await prisma.title.create({
         data: {
             name,
@@ -373,6 +476,7 @@ export const createTitle = async (req, res) => {
             posterUrl,
             thumbnailUrl,
             trailerUrl,
+            shortTrailerUrl,
             previewSpriteUrl,
             previewVttUrl,
             introStartSec: parseOptionalNumber(introStartSec),
@@ -389,10 +493,8 @@ export const createTitle = async (req, res) => {
             archived: false,
             pendingReview: pendingReview ?? false,
             isPpv: isPpv ?? false,
-            ppvPriceNaira: ppvPriceNaira !== undefined && ppvPriceNaira !== null && !Number.isNaN(Number(ppvPriceNaira))
-                ? Number(ppvPriceNaira)
-                : null,
-            ppvCurrency: ppvCurrency ?? null,
+            ppvPriceNaira: normalizedPrice,
+            ppvCurrency: normalizedCurrency,
             seasons: type === "SERIES" && Array.isArray(seasons)
                 ? {
                     create: seasons.map((s) => ({
@@ -423,7 +525,7 @@ export const updateTitle = async (req, res) => {
     const id = req.params.id ? BigInt(req.params.id) : null;
     if (!id)
         return res.status(400).json({ message: "Missing title id" });
-    const { name, description, posterUrl, thumbnailUrl, trailerUrl, previewSpriteUrl, previewVttUrl, archived, releaseYear, genres, cast, crew, language, maturityRating, runtimeMinutes, countryAvailability, isOriginal, pendingReview, introStartSec, introEndSec, isPpv, ppvPriceNaira, ppvCurrency, } = req.body;
+    const { name, description, posterUrl, thumbnailUrl, trailerUrl, shortTrailerUrl, previewSpriteUrl, previewVttUrl, archived, releaseYear, genres, cast, crew, language, maturityRating, runtimeMinutes, countryAvailability, isOriginal, pendingReview, introStartSec, introEndSec, isPpv, ppvPriceNaira, ppvCurrency, } = req.body;
     const data = {};
     if (name !== undefined)
         data.name = name;
@@ -435,6 +537,8 @@ export const updateTitle = async (req, res) => {
         data.thumbnailUrl = thumbnailUrl;
     if (trailerUrl !== undefined)
         data.trailerUrl = trailerUrl;
+    if (shortTrailerUrl !== undefined)
+        data.shortTrailerUrl = shortTrailerUrl;
     if (previewSpriteUrl !== undefined)
         data.previewSpriteUrl = previewSpriteUrl;
     if (previewVttUrl !== undefined)
@@ -468,14 +572,19 @@ export const updateTitle = async (req, res) => {
         data.isOriginal = isOriginal;
     if (pendingReview !== undefined)
         data.pendingReview = pendingReview;
-    if (isPpv !== undefined)
+    if (isPpv !== undefined) {
         data.isPpv = isPpv;
+        if (!isPpv) {
+            data.ppvPriceNaira = null;
+            data.ppvCurrency = "NGN";
+        }
+    }
     if (ppvPriceNaira !== undefined) {
         data.ppvPriceNaira =
             ppvPriceNaira !== null && !Number.isNaN(Number(ppvPriceNaira)) ? Number(ppvPriceNaira) : null;
     }
     if (ppvCurrency !== undefined)
-        data.ppvCurrency = ppvCurrency;
+        data.ppvCurrency = ppvCurrency ?? "NGN";
     try {
         const title = await prisma.title.update({ where: { id }, data });
         void auditLog({
@@ -925,6 +1034,7 @@ export const purgeAllTitles = async (_req, res) => {
                 posterUrl: true,
                 thumbnailUrl: true,
                 trailerUrl: true,
+                shortTrailerUrl: true,
                 previewSpriteUrl: true,
                 previewVttUrl: true,
             },
@@ -935,6 +1045,8 @@ export const purgeAllTitles = async (_req, res) => {
                 t.posterUrl,
                 t.thumbnailUrl,
                 t.trailerUrl,
+                t.shortTrailerUrl,
+                t.shortTrailerUrl,
                 t.previewSpriteUrl,
                 t.previewVttUrl,
             ]),

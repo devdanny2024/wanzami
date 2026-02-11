@@ -16,7 +16,9 @@
     "jobs:export-events": "tsx scripts/exportEvents.ts",
     "jobs:check-guardrails": "tsx scripts/checkGuardrails.ts",
     "jobs:compute-embeddings": "tsx scripts/computeEmbeddings.ts",
-    "jobs:compute-similarities": "tsx scripts/computeSimilarTitles.ts"
+    "jobs:compute-similarities": "tsx scripts/computeSimilarTitles.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node -e \"console.log('No tests defined')\""
   },
   "dependencies": {
     "@aws-sdk/client-ivs": "^3.975.0",

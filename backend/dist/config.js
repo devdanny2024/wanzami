@@ -17,11 +17,15 @@ export const config = {
         bucket: process.env.S3_BUCKET,
         accessKeyId: process.env.S3_ACCESS_KEY,
         secretAccessKey: process.env.S3_SECRET_KEY,
+        accelerate: process.env.S3_ACCELERATE === "true",
     },
     redisUrl: process.env.REDIS_URL ?? "redis://localhost:6379",
     ffmpegPath: process.env.FFMPEG_PATH,
     uploadMaxConcurrency: numberOrDefault(process.env.UPLOAD_MAX_CONCURRENCY, 10),
     downloadMaxConcurrency: numberOrDefault(process.env.DOWNLOAD_MAX_CONCURRENCY, 10),
+    // Allow multiple ffmpeg workers per process; default to 3 so
+    // large batches do not get stuck behind a single long-running job.
+    transcodeConcurrency: numberOrDefault(process.env.TRANSCODE_CONCURRENCY, 3),
     paystack: {
         secretKey: process.env.PAYSTACK_SECRET_KEY ?? "",
         publicKey: process.env.PAYSTACK_PUBLIC_KEY ?? "",
@@ -29,11 +33,25 @@ export const config = {
         webhookSecret: process.env.PAYSTACK_WEBHOOK_SECRET ?? "",
     },
     flutterwave: {
+        // V4 keys: Client ID + Client Secret
         publicKey: process.env.FLW_PUBLIC_KEY ?? "",
         secretKey: process.env.FLW_SECRET_KEY ?? "",
         encryptionKey: process.env.FLW_ENCRYPTION_KEY ?? "",
         baseUrl: process.env.FLW_BASE_URL ?? "https://api.flutterwave.com",
         webhookSecret: process.env.FLW_WEBHOOK_SECRET ?? "",
+        callbackUrl: process.env.FLW_CALLBACK_URL ?? process.env.PAYSTACK_CALLBACK_URL ?? "",
     },
-    ppvAccessDays: numberOrDefault(process.env.PPV_ACCESS_DAYS, 30),
+    fx: {
+        apiBase: process.env.FX_API_BASE ?? "https://api.exchangerate.host/latest",
+        cacheTtlMs: numberOrDefault(process.env.FX_CACHE_TTL_MS, 6 * 60 * 60 * 1000),
+    },
+    // Optional CDN base for media playback (e.g., CloudFront): https://cdn.yourdomain.com
+    mediaCdnBase: process.env.MEDIA_CDN_BASE?.replace(/\/+$/, ""),
+    // PPV access should last at least 30 days; allow higher via env but never lower.
+    ppvAccessDays: Math.max(numberOrDefault(process.env.PPV_ACCESS_DAYS, 30), 30),
+    supportEmail: process.env.SUPPORT_EMAIL ?? "support@wanzami.com",
+    ivs: {
+        region: process.env.IVS_REGION ?? process.env.AWS_REGION ?? "us-east-1",
+        recordingEnabled: process.env.IVS_RECORDING_ENABLED === "true",
+    },
 };

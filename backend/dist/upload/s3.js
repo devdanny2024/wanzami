@@ -1,16 +1,18 @@
-import { S3Client, CreateMultipartUploadCommand, CompleteMultipartUploadCommand, AbortMultipartUploadCommand, PutObjectCommand, GetObjectCommand, UploadPartCommand, } from "@aws-sdk/client-s3";
+import { S3Client, CreateMultipartUploadCommand, CompleteMultipartUploadCommand, AbortMultipartUploadCommand, PutObjectCommand, GetObjectCommand, UploadPartCommand, ListPartsCommand, } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { config } from "../config.js";
 import { createWriteStream } from "fs";
 import { stat } from "fs/promises";
 import { pipeline } from "stream/promises";
-const PART_SIZE = 10 * 1024 * 1024; // 10MB
+const partSizeMb = Number(process.env.S3_MULTIPART_PART_SIZE_MB ?? "64");
+const PART_SIZE = Math.max(5, Number.isFinite(partSizeMb) ? partSizeMb : 64) * 1024 * 1024; // >= 5MB
 const endpoint = config.s3.endpoint && config.s3.endpoint.trim() !== "" ? config.s3.endpoint : undefined;
 const region = (config.s3.region && config.s3.region.trim()) || (process.env.AWS_REGION && process.env.AWS_REGION.trim()) || "eu-north-1";
 const s3Client = () => {
     const base = {
         region,
         forcePathStyle: !!endpoint,
+        useAccelerateEndpoint: config.s3.accelerate && !endpoint,
     };
     if (endpoint) {
         base.endpoint = endpoint;
@@ -48,10 +50,52 @@ export const presignPartUrls = async (key, uploadId, partCount) => {
             Key: key,
             UploadId: uploadId,
             PartNumber: partNumber,
-        }), { expiresIn: 3600 });
+        }), { expiresIn: 21600 });
         presigned.push({ partNumber, url });
     }
     return presigned;
+};
+export const presignPartUrlsForNumbers = async (key, uploadId, partNumbers) => {
+    if (!config.s3.bucket) {
+        throw new Error("S3 bucket not configured");
+    }
+    const client = s3Client();
+    const presigned = [];
+    for (const partNumber of partNumbers) {
+        const url = await getSignedUrl(client, new UploadPartCommand({
+            Bucket: config.s3.bucket,
+            Key: key,
+            UploadId: uploadId,
+            PartNumber: partNumber,
+        }), { expiresIn: 21600 });
+        presigned.push({ partNumber, url });
+    }
+    return presigned;
+};
+export const listMultipartParts = async (key, uploadId) => {
+    if (!config.s3.bucket) {
+        throw new Error("S3 bucket not configured");
+    }
+    const client = s3Client();
+    const parts = [];
+    let marker;
+    while (true) {
+        const res = await client.send(new ListPartsCommand({
+            Bucket: config.s3.bucket,
+            Key: key,
+            UploadId: uploadId,
+            PartNumberMarker: marker,
+        }));
+        for (const part of res.Parts ?? []) {
+            if (!part.PartNumber)
+                continue;
+            parts.push({ partNumber: part.PartNumber, size: part.Size ?? 0, etag: part.ETag ?? undefined });
+        }
+        if (!res.IsTruncated)
+            break;
+        marker = res.NextPartNumberMarker;
+    }
+    return parts;
 };
 export const completeMultipartUpload = async (key, uploadId, parts) => {
     if (!config.s3.bucket) {

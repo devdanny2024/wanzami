@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { sendEmail } from "../utils/mailer.js";
 import { emailQueue } from "../queues/emailQueue.js";
+import { prisma } from "../prisma.js";
 const RecipientSchema = z.object({
     email: z.string().email(),
     name: z.string().optional(),
@@ -82,21 +83,55 @@ export const sendCampaignEmails = async (req, res) => {
         return res.status(400).json({ message: "No valid recipients" });
     }
     const startIndex = Math.max(0, parsed.data.startIndex ?? 0);
-    const batchSize = Math.max(1, parsed.data.batchSize ?? 50);
-    const slice = recipients.slice(startIndex, startIndex + batchSize);
-    const job = await emailQueue.add("send", {
-        subject: parsed.data.subject,
-        html: parsed.data.html,
-        recipients: slice,
-        startIndex,
-        batchSize,
-    });
+    const requestedBatchSize = Math.max(1, parsed.data.batchSize ?? 50);
+    const batchSize = Math.min(requestedBatchSize, 50);
+    const jobs = [];
+    let offset = startIndex;
+    let batchIndex = 0;
+    while (offset < recipients.length) {
+        const slice = recipients.slice(offset, offset + batchSize);
+        if (!slice.length)
+            break;
+        const delayMs = batchIndex * 60 * 60 * 1000; // space batches hourly
+        const job = await emailQueue.add("send", {
+            subject: parsed.data.subject,
+            html: parsed.data.html,
+            recipients: slice,
+            startIndex: offset,
+            batchSize,
+        }, {
+            delay: delayMs,
+        });
+        jobs.push({ id: job.id, startIndex: offset, count: slice.length, delayMs });
+        offset += batchSize;
+        batchIndex += 1;
+    }
     return res.json({
-        message: "Emails enqueued for delivery",
-        jobId: job.id,
-        queuedCount: slice.length,
+        message: "Emails enqueued for delivery in hourly batches",
+        jobs,
+        queuedCount: recipients.length,
         totalRecipients: recipients.length,
         startIndex,
         batchSize,
+    });
+};
+export const listUserRecipients = async (_req, res) => {
+    const users = await prisma.user.findMany({
+        where: { role: "USER" },
+        orderBy: { createdAt: "asc" },
+        select: {
+            email: true,
+            name: true,
+        },
+    });
+    const recipients = users
+        .filter((u) => !!u.email)
+        .map((u) => ({
+        email: u.email,
+        name: u.name ?? undefined,
+    }));
+    return res.json({
+        recipients,
+        total: recipients.length,
     });
 };

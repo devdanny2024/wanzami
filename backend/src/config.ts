@@ -56,5 +56,6 @@ export const config = {
   supportEmail: process.env.SUPPORT_EMAIL ?? "support@wanzami.com",
   ivs: {
     region: process.env.IVS_REGION ?? process.env.AWS_REGION ?? "us-east-1",
+    recordingEnabled: process.env.IVS_RECORDING_ENABLED === "true",
   },
 };

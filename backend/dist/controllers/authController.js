@@ -196,7 +196,7 @@ export const signup = async (req, res) => {
             verificationTokenExpires: verificationExpires,
         },
     });
-    const verifyUrl = `${process.env.APP_ORIGIN ?? "http://localhost:3000"}/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}`;
+    const verifyUrl = `${process.env.APP_ORIGIN ?? "https://www.wanzami.tv"}/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}`;
     await sendEmail({
         to: email,
         subject: "Verify your Wanzami account",
@@ -602,7 +602,7 @@ export const resendVerification = async (req, res) => {
             verificationTokenExpires: verificationExpires,
         },
     });
-    const verifyUrl = `${process.env.APP_ORIGIN ?? "http://localhost:3000"}/verify-email?token=${newToken}&email=${encodeURIComponent(email)}`;
+    const verifyUrl = `${process.env.APP_ORIGIN ?? "https://www.wanzami.tv"}/verify-email?token=${newToken}&email=${encodeURIComponent(email)}`;
     await sendEmail({
         to: email,
         subject: "Verify your Wanzami account",
@@ -656,54 +656,77 @@ const ensureNotLastSuperAdmin = async (userId) => {
     }
 };
 export const inviteAdmin = async (req, res) => {
-    const parsed = inviteSchema.safeParse(req.body);
-    if (!parsed.success) {
-        return res.status(400).json({ errors: parsed.error.flatten() });
+    try {
+        const parsed = inviteSchema.safeParse(req.body);
+        if (!parsed.success) {
+            return res.status(400).json({ errors: parsed.error.flatten() });
+        }
+        const { email, role } = parsed.data;
+        const emailLower = email.toLowerCase();
+        const token = crypto.randomUUID();
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        await prisma.invitation.create({
+            data: {
+                email: emailLower,
+                role,
+                token,
+                expiresAt,
+                createdBy: req.user?.userId ?? 0n,
+            },
+        });
+        const acceptUrl = `${process.env.ADMIN_APP_ORIGIN ?? "http://localhost:3001"}/admin/accept-invite?token=${token}&email=${encodeURIComponent(emailLower)}`;
+        try {
+            await sendEmail({
+                to: emailLower,
+                subject: "You're invited to Wanzami Admin",
+                html: verifyEmailTemplate({ name: emailLower, verifyUrl: acceptUrl }),
+            });
+        }
+        catch (err) {
+            console.error("inviteAdmin email send failed", err);
+        }
+        return res.status(201).json({ message: "Invite sent", token });
     }
-    const { email, role } = parsed.data;
-    const emailLower = email.toLowerCase();
-    const token = crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    await prisma.invitation.create({
-        data: {
-            email: emailLower,
-            role,
-            token,
-            expiresAt,
-            createdBy: req.user?.userId ?? 0n,
-        },
-    });
-    const acceptUrl = `${process.env.ADMIN_APP_ORIGIN ?? "http://localhost:3001"}/admin/accept-invite?token=${token}&email=${encodeURIComponent(emailLower)}`;
-    await sendEmail({
-        to: emailLower,
-        subject: "You're invited to Wanzami Admin",
-        html: verifyEmailTemplate({ name: emailLower, verifyUrl: acceptUrl }),
-    });
-    return res.status(201).json({ message: "Invite sent", token });
+    catch (err) {
+        console.error("inviteAdmin error", err);
+        return res.status(500).json({ message: "Failed to send invite" });
+    }
 };
 export const listInvites = async (_req, res) => {
-    const invites = await prisma.invitation.findMany({
-        orderBy: { createdAt: "desc" },
-    });
-    return res.json({
-        invites: invites.map((inv) => ({
-            id: inv.id.toString(),
-            email: inv.email,
-            role: inv.role,
-            token: inv.token,
-            expiresAt: inv.expiresAt,
-            acceptedAt: inv.acceptedAt,
-            createdAt: inv.createdAt,
-            createdBy: inv.createdBy?.toString(),
-        })),
-    });
+    try {
+        const invites = await prisma.invitation.findMany({
+            orderBy: { createdAt: "desc" },
+        });
+        return res.json({
+            invites: invites.map((inv) => ({
+                id: inv.id.toString(),
+                email: inv.email,
+                role: inv.role,
+                token: inv.token,
+                expiresAt: inv.expiresAt,
+                acceptedAt: inv.acceptedAt,
+                createdAt: inv.createdAt,
+                createdBy: inv.createdBy?.toString(),
+            })),
+        });
+    }
+    catch (err) {
+        console.error("listInvites error", err);
+        return res.status(500).json({ message: "Failed to load invites" });
+    }
 };
 export const revokeInvite = async (req, res) => {
-    const id = Number(req.params.id);
-    if (!id)
-        return res.status(400).json({ message: "Invalid id" });
-    await prisma.invitation.deleteMany({ where: { id } });
-    return res.json({ message: "Invite revoked" });
+    try {
+        const id = Number(req.params.id);
+        if (!id)
+            return res.status(400).json({ message: "Invalid id" });
+        await prisma.invitation.deleteMany({ where: { id } });
+        return res.json({ message: "Invite revoked" });
+    }
+    catch (err) {
+        console.error("revokeInvite error", err);
+        return res.status(500).json({ message: "Failed to revoke invite" });
+    }
 };
 export const acceptInvite = async (req, res) => {
     const parsed = acceptInviteSchema.safeParse(req.body);

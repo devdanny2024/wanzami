@@ -154,6 +154,14 @@ enum LiveEventStatus {
   ENDED
 }
 
+enum LiveReplayStatus {
+  NONE
+  PENDING_INFRA
+  PROCESSING
+  READY
+  FAILED
+}
+
 enum PopularityWindow {
   DAILY
   TRENDING
@@ -319,25 +327,33 @@ model UploadJob {
 }
 
 model LiveEvent {
-  id               BigInt          @id @default(autoincrement())
-  title            String
-  description      String?
-  thumbnailUrl     String?
-  status           LiveEventStatus @default(SCHEDULED)
-  ivsChannelArn    String?
-  ivsStreamKeyArn  String?
+  id                BigInt           @id @default(autoincrement())
+  title             String
+  description       String?
+  thumbnailUrl      String?
+  status            LiveEventStatus  @default(SCHEDULED)
+  ivsChannelArn     String?
+  ivsStreamKeyArn   String?
   ivsStreamKeyValue String?
-  ingestEndpoint   String?
-  playbackUrl      String?
-  createdByUserId  BigInt?
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-  startedAt        DateTime?
-  endedAt          DateTime?
+  ingestEndpoint    String?
+  playbackUrl       String?
+  scheduledStartAt  DateTime?
+  startedAt         DateTime?
+  endedAt           DateTime?
+  viewerCount       Int              @default(0)
+  replayStatus      LiveReplayStatus @default(NONE)
+  replayPlaybackUrl String?
+  replayAssetId     String?
+  replayReadyAt     DateTime?
+  replayNote        String?
+  createdByUserId   BigInt?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
   createdBy User? @relation("LiveEventCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   @@index([status])
+  @@index([scheduledStartAt])
 }
 
 model ErrorLog {

@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint app src --ext .js,.jsx,.ts,.tsx --no-inline-config",
+    "typecheck": "tsc --noEmit",
+    "test": "node -e \"console.log('No tests defined')\""
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.3",
