@@ -7,17 +7,17 @@ import { config } from "../config.js";
 import type { AuthenticatedRequest } from "../middleware/auth.js";
 
 const createSchema = z.object({
-  title: z.string().min(1).max(160),
-  description: z.string().max(5000).optional(),
-  thumbnailUrl: z.string().url().optional(),
+  title: z.string().trim().min(1).max(160),
+  description: z.string().trim().max(5000).optional(),
+  thumbnailUrl: z.string().trim().url().optional(),
   scheduledStartAt: z.string().datetime().optional(),
 });
 
 const replayUpdateSchema = z.object({
   status: z.nativeEnum(LiveReplayStatus),
-  playbackUrl: z.string().url().optional().nullable(),
+  playbackUrl: z.string().trim().url().optional().nullable(),
   replayAssetId: z.string().trim().min(1).max(255).optional().nullable(),
-  note: z.string().max(5000).optional().nullable(),
+  note: z.string().trim().max(5000).optional().nullable(),
   readyAt: z.string().datetime().optional().nullable(),
 });
 

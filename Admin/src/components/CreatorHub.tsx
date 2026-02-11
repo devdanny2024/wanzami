@@ -479,18 +479,22 @@ export function CreatorHub() {
                             min={0}
                             value={viewerDrafts[event.id]?.viewerCount ?? String(event.viewerCount ?? 0)}
                             onChange={(e) => updateViewerDraft(event.id, e.target.value)}
-                            className="w-48 bg-neutral-950 border-neutral-800 text-white"
+                            disabled={event.status !== "LIVE"}
+                            className="w-48 bg-neutral-950 border-neutral-800 text-white disabled:opacity-60"
                           />
                         </div>
                         <Button
                           size="sm"
                           onClick={() => saveViewerCount(event)}
-                          disabled={viewerSavingId === event.id}
+                          disabled={viewerSavingId === event.id || event.status !== "LIVE"}
                           className="bg-neutral-800 hover:bg-neutral-700 text-white"
                         >
                           {viewerSavingId === event.id ? "Saving viewers..." : "Save Viewers"}
                         </Button>
                       </div>
+                      {event.status !== "LIVE" && (
+                        <p className="text-xs text-neutral-500">Viewer count can only be edited while this event is live.</p>
+                      )}
                     </div>
 
                     <div className="border border-neutral-800 rounded-lg p-3 space-y-3 bg-neutral-900/40">
