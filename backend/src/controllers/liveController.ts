@@ -21,6 +21,10 @@ const replayUpdateSchema = z.object({
   readyAt: z.string().datetime().optional().nullable(),
 });
 
+const viewerCountUpdateSchema = z.object({
+  viewerCount: z.number().int().min(0).max(1_000_000),
+});
+
 const toPublicEvent = (e: any) => ({
   id: e.id.toString(),
   title: e.title,
@@ -187,10 +191,37 @@ export const endLiveEvent = async (req: Request, res: Response) => {
     data: {
       status: LiveEventStatus.ENDED,
       endedAt: new Date(),
+      viewerCount: 0,
       replayStatus,
       replayNote: config.ivs.recordingEnabled
         ? "Recording is being processed into replay/VOD."
         : "Replay recording pipeline is not configured yet (IVS recording + media processing).",
+    },
+  });
+
+  return res.json({ event: toAdminEvent(updated) });
+};
+
+export const updateLiveEventViewerCountAdmin = async (req: Request, res: Response) => {
+  const eventId = parseEventId(req.params.id);
+  if (!eventId) return res.status(400).json({ message: "Invalid event id" });
+
+  const parsed = viewerCountUpdateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ errors: parsed.error.flatten() });
+  }
+
+  const current = await prisma.liveEvent.findUnique({ where: { id: eventId } });
+  if (!current) return res.status(404).json({ message: "Live event not found" });
+
+  if (current.status !== LiveEventStatus.LIVE) {
+    return res.status(409).json({ message: "Viewer count can only be updated while event is live" });
+  }
+
+  const updated = await prisma.liveEvent.update({
+    where: { id: eventId },
+    data: {
+      viewerCount: parsed.data.viewerCount,
     },
   });
 
