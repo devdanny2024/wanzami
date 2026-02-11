@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { z } from "zod";
-import { LiveEventStatus, LiveReplayStatus } from "@prisma/client";
+import { LiveEventStatus, LiveReplayStatus, LiveSourceStatus, LiveSourceType } from "@prisma/client";
 import { prisma } from "../prisma.js";
 import { createIvsChannel } from "../services/ivsService.js";
 import { config } from "../config.js";
@@ -25,26 +25,100 @@ const viewerCountUpdateSchema = z.object({
   viewerCount: z.number().int().min(0).max(1_000_000),
 });
 
-const toPublicEvent = (e: any) => ({
-  id: e.id.toString(),
-  title: e.title,
-  description: e.description,
-  thumbnailUrl: e.thumbnailUrl,
-  status: e.status,
-  playbackUrl: e.playbackUrl,
-  scheduledStartAt: e.scheduledStartAt,
-  createdAt: e.createdAt,
-  startedAt: e.startedAt,
-  endedAt: e.endedAt,
-  viewerCount: e.viewerCount,
-  replay: {
-    status: e.replayStatus,
-    playbackUrl: e.replayPlaybackUrl,
-    assetId: e.replayAssetId,
-    readyAt: e.replayReadyAt,
-    note: e.replayNote,
-  },
+const publishUpdateSchema = z.object({
+  isPublished: z.boolean(),
 });
+
+const sourceCreateSchema = z.object({
+  type: z.nativeEnum(LiveSourceType),
+  label: z.string().trim().min(1).max(120),
+  status: z.nativeEnum(LiveSourceStatus).optional(),
+  playbackUrl: z.string().trim().url().optional().nullable(),
+  previewUrl: z.string().trim().url().optional().nullable(),
+  metadata: z.record(z.any()).optional(),
+  isActiveOutput: z.boolean().optional(),
+});
+
+const sourceUpdateSchema = z.object({
+  type: z.nativeEnum(LiveSourceType).optional(),
+  label: z.string().trim().min(1).max(120).optional(),
+  status: z.nativeEnum(LiveSourceStatus).optional(),
+  playbackUrl: z.string().trim().url().optional().nullable(),
+  previewUrl: z.string().trim().url().optional().nullable(),
+  metadata: z.record(z.any()).optional(),
+});
+
+const sourceSwitchSchema = z.object({
+  sourceId: z.string().trim().min(1),
+});
+
+const parseEventId = (value?: string): bigint | null => {
+  if (!value) return null;
+  if (!/^\d+$/.test(value)) return null;
+  try {
+    return BigInt(value);
+  } catch {
+    return null;
+  }
+};
+
+const parseSourceId = (value?: string): bigint | null => {
+  if (!value) return null;
+  if (!/^\d+$/.test(value)) return null;
+  try {
+    return BigInt(value);
+  } catch {
+    return null;
+  }
+};
+
+const normalizeSourceForResponse = (source: any) => ({
+  id: source.id.toString(),
+  eventId: source.liveEventId?.toString(),
+  type: source.type,
+  label: source.label,
+  status: source.status,
+  playbackUrl: source.playbackUrl,
+  previewUrl: source.previewUrl,
+  metadata: source.metadata,
+  isActiveOutput: Boolean(source.isActiveOutput),
+  createdAt: source.createdAt,
+  updatedAt: source.updatedAt,
+});
+
+const resolveActiveSource = (event: any) => {
+  const sources: any[] = Array.isArray(event.sources) ? event.sources : [];
+  return sources.find((source) => source.isActiveOutput) ?? null;
+};
+
+const toPublicEvent = (e: any) => {
+  const activeSource = resolveActiveSource(e);
+  const effectivePlaybackUrl = activeSource?.playbackUrl ?? e.playbackUrl;
+
+  return {
+    id: e.id.toString(),
+    title: e.title,
+    description: e.description,
+    thumbnailUrl: e.thumbnailUrl,
+    status: e.status,
+    isPublished: Boolean(e.isPublished),
+    playbackUrl: effectivePlaybackUrl,
+    scheduledStartAt: e.scheduledStartAt,
+    createdAt: e.createdAt,
+    startedAt: e.startedAt,
+    endedAt: e.endedAt,
+    viewerCount: e.viewerCount,
+    activeSourceId: activeSource?.id ? activeSource.id.toString() : null,
+    activeSource: activeSource ? normalizeSourceForResponse(activeSource) : null,
+    replay: {
+      status: e.replayStatus,
+      playbackUrl: e.replayPlaybackUrl,
+      assetId: e.replayAssetId,
+      readyAt: e.replayReadyAt,
+      note: e.replayNote,
+    },
+  };
+};
 
 const toAdminEvent = (e: any) => ({
   ...toPublicEvent(e),
@@ -52,7 +126,14 @@ const toAdminEvent = (e: any) => ({
   streamKey: e.ivsStreamKeyValue,
   ivsChannelArn: e.ivsChannelArn,
   ivsStreamKeyArn: e.ivsStreamKeyArn,
+  sources: (e.sources ?? []).map(normalizeSourceForResponse),
 });
+
+const liveEventInclude = {
+  sources: {
+    orderBy: [{ isActiveOutput: "desc" as const }, { createdAt: "asc" as const }],
+  },
+};
 
 export const createLiveEvent = async (req: AuthenticatedRequest, res: Response) => {
   const parsed = createSchema.safeParse(req.body);
@@ -95,6 +176,7 @@ export const createLiveEvent = async (req: AuthenticatedRequest, res: Response) 
         scheduledStartAt: scheduledAt,
         createdByUserId: req.user?.userId ?? null,
       },
+      include: liveEventInclude,
     });
 
     return res.json({ event: toAdminEvent(created) });
@@ -104,21 +186,11 @@ export const createLiveEvent = async (req: AuthenticatedRequest, res: Response) 
   }
 };
 
-const parseEventId = (value?: string): bigint | null => {
-  if (!value) return null;
-  if (!/^\d+$/.test(value)) return null;
-  try {
-    return BigInt(value);
-  } catch {
-    return null;
-  }
-};
-
 export const getLiveEventAdmin = async (req: Request, res: Response) => {
   const eventId = parseEventId(req.params.id);
   if (!eventId) return res.status(400).json({ message: "Invalid event id" });
 
-  const event = await prisma.liveEvent.findUnique({ where: { id: eventId } });
+  const event = await prisma.liveEvent.findUnique({ where: { id: eventId }, include: liveEventInclude });
   if (!event) return res.status(404).json({ message: "Live event not found" });
 
   return res.json({ event: toAdminEvent(event) });
@@ -126,6 +198,7 @@ export const getLiveEventAdmin = async (req: Request, res: Response) => {
 
 export const listLiveEventsAdmin = async (_req: Request, res: Response) => {
   const events = await prisma.liveEvent.findMany({
+    include: liveEventInclude,
     orderBy: [{ createdAt: "desc" }],
     take: 100,
   });
@@ -133,11 +206,38 @@ export const listLiveEventsAdmin = async (_req: Request, res: Response) => {
   return res.json({ events: events.map(toAdminEvent) });
 };
 
+export const updateLiveEventPublishAdmin = async (req: Request, res: Response) => {
+  const eventId = parseEventId(req.params.id);
+  if (!eventId) return res.status(400).json({ message: "Invalid event id" });
+
+  const parsed = publishUpdateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ errors: parsed.error.flatten() });
+  }
+
+  const event = await prisma.liveEvent.findUnique({ where: { id: eventId }, include: liveEventInclude });
+  if (!event) return res.status(404).json({ message: "Live event not found" });
+
+  const updated = await prisma.liveEvent.update({
+    where: { id: eventId },
+    data: { isPublished: parsed.data.isPublished },
+    include: liveEventInclude,
+  });
+
+  return res.json({ event: toAdminEvent(updated) });
+};
+
 export const getLiveEventPublic = async (req: Request, res: Response) => {
   const eventId = parseEventId(req.params.id);
   if (!eventId) return res.status(400).json({ message: "Invalid event id" });
 
-  const event = await prisma.liveEvent.findUnique({ where: { id: eventId } });
+  const event = await prisma.liveEvent.findFirst({
+    where: {
+      id: eventId,
+      OR: [{ status: LiveEventStatus.LIVE }, { isPublished: true }],
+    },
+    include: liveEventInclude,
+  });
   if (!event) return res.status(404).json({ message: "Live event not found" });
 
   return res.json({ event: toPublicEvent(event) });
@@ -145,7 +245,16 @@ export const getLiveEventPublic = async (req: Request, res: Response) => {
 
 export const listLiveEventsPublic = async (_req: Request, res: Response) => {
   const events = await prisma.liveEvent.findMany({
-    where: { status: { in: [LiveEventStatus.SCHEDULED, LiveEventStatus.LIVE, LiveEventStatus.ENDED] } },
+    include: liveEventInclude,
+    where: {
+      OR: [
+        { status: LiveEventStatus.LIVE },
+        {
+          isPublished: true,
+          status: { in: [LiveEventStatus.SCHEDULED, LiveEventStatus.ENDED] },
+        },
+      ],
+    },
     orderBy: [{ status: "asc" }, { scheduledStartAt: "asc" }, { createdAt: "desc" }],
     take: 30,
   });
@@ -157,7 +266,13 @@ export const startLiveEvent = async (req: Request, res: Response) => {
   const eventId = parseEventId(req.params.id);
   if (!eventId) return res.status(400).json({ message: "Invalid event id" });
 
-  const current = await prisma.liveEvent.findUnique({ where: { id: eventId } });
+  const initialSourceIdRaw = typeof req.body?.sourceId === "string" ? req.body.sourceId : undefined;
+  const initialSourceId = initialSourceIdRaw ? parseSourceId(initialSourceIdRaw) : null;
+  if (initialSourceIdRaw && !initialSourceId) {
+    return res.status(400).json({ message: "Invalid source id" });
+  }
+
+  const current = await prisma.liveEvent.findUnique({ where: { id: eventId }, include: liveEventInclude });
   if (!current) return res.status(404).json({ message: "Live event not found" });
 
   if (current.status === LiveEventStatus.LIVE) {
@@ -167,13 +282,34 @@ export const startLiveEvent = async (req: Request, res: Response) => {
     return res.status(409).json({ message: "Cannot start an ended event" });
   }
 
-  const updated = await prisma.liveEvent.update({
-    where: { id: eventId },
-    data: {
-      status: LiveEventStatus.LIVE,
-      startedAt: new Date(),
-      endedAt: null,
-    },
+  if (initialSourceId) {
+    const selected = current.sources.find((source) => source.id === initialSourceId);
+    if (!selected) {
+      return res.status(404).json({ message: "Selected source not found for this event" });
+    }
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    if (initialSourceId) {
+      await tx.liveEventSource.updateMany({
+        where: { liveEventId: eventId, isActiveOutput: true },
+        data: { isActiveOutput: false },
+      });
+      await tx.liveEventSource.update({
+        where: { id: initialSourceId },
+        data: { isActiveOutput: true },
+      });
+    }
+
+    return tx.liveEvent.update({
+      where: { id: eventId },
+      data: {
+        status: LiveEventStatus.LIVE,
+        startedAt: new Date(),
+        endedAt: null,
+      },
+      include: liveEventInclude,
+    });
   });
 
   return res.json({ event: toAdminEvent(updated) });
@@ -183,11 +319,21 @@ export const endLiveEvent = async (req: Request, res: Response) => {
   const eventId = parseEventId(req.params.id);
   if (!eventId) return res.status(400).json({ message: "Invalid event id" });
 
-  const current = await prisma.liveEvent.findUnique({ where: { id: eventId } });
+  const current = await prisma.liveEvent.findUnique({ where: { id: eventId }, include: liveEventInclude });
   if (!current) return res.status(404).json({ message: "Live event not found" });
 
-  if (current.status !== LiveEventStatus.LIVE) {
-    return res.status(409).json({ message: "Only live events can be ended" });
+  if (current.status === LiveEventStatus.ENDED) {
+    return res.json({ event: toAdminEvent(current), alreadyEnded: true });
+  }
+
+  if (current.status !== LiveEventStatus.LIVE && current.status !== LiveEventStatus.SCHEDULED) {
+    return res.status(409).json({
+      message: `Event in state ${current.status} cannot be ended`,
+      code: "INVALID_LIVE_EVENT_STATE",
+      currentState: current.status,
+      allowedStates: [LiveEventStatus.LIVE, LiveEventStatus.SCHEDULED],
+      targetState: LiveEventStatus.ENDED,
+    });
   }
 
   const replayStatus = config.ivs.recordingEnabled
@@ -204,9 +350,16 @@ export const endLiveEvent = async (req: Request, res: Response) => {
         ? "Recording is being processed into replay/VOD."
         : "Replay recording pipeline is not configured yet (IVS recording + media processing).",
     },
+    include: liveEventInclude,
   });
 
-  return res.json({ event: toAdminEvent(updated) });
+  return res.json({
+    event: toAdminEvent(updated),
+    transition: {
+      from: current.status,
+      to: LiveEventStatus.ENDED,
+    },
+  });
 };
 
 export const updateLiveEventViewerCountAdmin = async (req: Request, res: Response) => {
@@ -230,6 +383,7 @@ export const updateLiveEventViewerCountAdmin = async (req: Request, res: Respons
     data: {
       viewerCount: parsed.data.viewerCount,
     },
+    include: liveEventInclude,
   });
 
   return res.json({ event: toAdminEvent(updated) });
@@ -286,7 +440,152 @@ export const updateLiveEventReplayAdmin = async (req: Request, res: Response) =>
       replayReadyAt,
       replayNote: note !== undefined ? note : current.replayNote,
     },
+    include: liveEventInclude,
   });
 
   return res.json({ event: toAdminEvent(updated) });
 };
+
+export const listLiveEventSourcesAdmin = async (req: Request, res: Response) => {
+  const eventId = parseEventId(req.params.id);
+  if (!eventId) return res.status(400).json({ message: "Invalid event id" });
+
+  const event = await prisma.liveEvent.findUnique({
+    where: { id: eventId },
+    include: liveEventInclude,
+  });
+
+  if (!event) return res.status(404).json({ message: "Live event not found" });
+
+  return res.json({
+    eventId: event.id.toString(),
+    activeSourceId: resolveActiveSource(event)?.id?.toString() ?? null,
+    sources: event.sources.map(normalizeSourceForResponse),
+  });
+};
+
+export const createLiveEventSourceAdmin = async (req: Request, res: Response) => {
+  const eventId = parseEventId(req.params.id);
+  if (!eventId) return res.status(400).json({ message: "Invalid event id" });
+
+  const parsed = sourceCreateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ errors: parsed.error.flatten() });
+  }
+
+  const event = await prisma.liveEvent.findUnique({ where: { id: eventId } });
+  if (!event) return res.status(404).json({ message: "Live event not found" });
+
+  const { type, label, status, playbackUrl, previewUrl, metadata, isActiveOutput } = parsed.data;
+
+  const created = await prisma.$transaction(async (tx) => {
+    if (isActiveOutput) {
+      await tx.liveEventSource.updateMany({
+        where: { liveEventId: eventId, isActiveOutput: true },
+        data: { isActiveOutput: false },
+      });
+    }
+
+    return tx.liveEventSource.create({
+      data: {
+        liveEventId: eventId,
+        type,
+        label,
+        status: status ?? LiveSourceStatus.READY,
+        playbackUrl: playbackUrl ?? null,
+        previewUrl: previewUrl ?? null,
+        metadata: metadata ?? undefined,
+        isActiveOutput: Boolean(isActiveOutput),
+      },
+    });
+  });
+
+  return res.status(201).json({ source: normalizeSourceForResponse(created) });
+};
+
+export const updateLiveEventSourceAdmin = async (req: Request, res: Response) => {
+  const eventId = parseEventId(req.params.id);
+  const sourceId = parseSourceId(req.params.sourceId);
+  if (!eventId) return res.status(400).json({ message: "Invalid event id" });
+  if (!sourceId) return res.status(400).json({ message: "Invalid source id" });
+
+  const parsed = sourceUpdateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ errors: parsed.error.flatten() });
+  }
+
+  const source = await prisma.liveEventSource.findUnique({ where: { id: sourceId } });
+  if (!source || source.liveEventId !== eventId) {
+    return res.status(404).json({ message: "Live source not found" });
+  }
+
+  const updated = await prisma.liveEventSource.update({
+    where: { id: sourceId },
+    data: {
+      type: parsed.data.type,
+      label: parsed.data.label,
+      status: parsed.data.status,
+      playbackUrl: parsed.data.playbackUrl,
+      previewUrl: parsed.data.previewUrl,
+      metadata: parsed.data.metadata,
+    },
+  });
+
+  return res.json({ source: normalizeSourceForResponse(updated) });
+};
+
+export const deleteLiveEventSourceAdmin = async (req: Request, res: Response) => {
+  const eventId = parseEventId(req.params.id);
+  const sourceId = parseSourceId(req.params.sourceId);
+  if (!eventId) return res.status(400).json({ message: "Invalid event id" });
+  if (!sourceId) return res.status(400).json({ message: "Invalid source id" });
+
+  const source = await prisma.liveEventSource.findUnique({ where: { id: sourceId } });
+  if (!source || source.liveEventId !== eventId) {
+    return res.status(404).json({ message: "Live source not found" });
+  }
+
+  await prisma.liveEventSource.delete({ where: { id: sourceId } });
+
+  return res.status(204).send();
+};
+
+export const switchLiveEventSourceAdmin = async (req: Request, res: Response) => {
+  const eventId = parseEventId(req.params.id);
+  if (!eventId) return res.status(400).json({ message: "Invalid event id" });
+
+  const parsed = sourceSwitchSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ errors: parsed.error.flatten() });
+  }
+
+  const sourceId = parseSourceId(parsed.data.sourceId);
+  if (!sourceId) return res.status(400).json({ message: "Invalid source id" });
+
+  const source = await prisma.liveEventSource.findUnique({ where: { id: sourceId } });
+  if (!source || source.liveEventId !== eventId) {
+    return res.status(404).json({ message: "Live source not found" });
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.liveEventSource.updateMany({
+      where: { liveEventId: eventId, isActiveOutput: true },
+      data: { isActiveOutput: false },
+    });
+
+    await tx.liveEventSource.update({
+      where: { id: sourceId },
+      data: { isActiveOutput: true },
+    });
+  });
+
+  const event = await prisma.liveEvent.findUnique({ where: { id: eventId }, include: liveEventInclude });
+  return res.json({
+    eventId: eventId.toString(),
+    activeSourceId: sourceId.toString(),
+    event: event ? toAdminEvent(event) : null,
+  });
+};
+
+
+

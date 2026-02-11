@@ -162,6 +162,19 @@ enum LiveReplayStatus {
   FAILED
 }
 
+enum LiveSourceType {
+  CAMERA
+  SCREEN
+  RTMP
+  CONTROL_DECK
+}
+
+enum LiveSourceStatus {
+  READY
+  OFFLINE
+  ERROR
+}
+
 enum PopularityWindow {
   DAILY
   TRENDING
@@ -346,14 +359,36 @@ model LiveEvent {
   replayAssetId     String?
   replayReadyAt     DateTime?
   replayNote        String?
+  isPublished       Boolean          @default(false)
   createdByUserId   BigInt?
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 
-  createdBy User? @relation("LiveEventCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdBy User?              @relation("LiveEventCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  sources   LiveEventSource[]
 
   @@index([status])
+  @@index([isPublished, status])
   @@index([scheduledStartAt])
+}
+
+model LiveEventSource {
+  id             BigInt           @id @default(autoincrement())
+  liveEventId    BigInt
+  type           LiveSourceType
+  label          String
+  status         LiveSourceStatus @default(READY)
+  playbackUrl    String?
+  previewUrl     String?
+  metadata       Json?
+  isActiveOutput Boolean          @default(false)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  liveEvent LiveEvent @relation(fields: [liveEventId], references: [id], onDelete: Cascade)
+
+  @@index([liveEventId, createdAt])
+  @@index([liveEventId, isActiveOutput])
 }
 
 model ErrorLog {
