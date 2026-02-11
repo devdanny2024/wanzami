@@ -91,6 +91,14 @@ const resolveActiveSource = (event: any) => {
   return sources.find((source) => source.isActiveOutput) ?? null;
 };
 
+const hasPlayableSource = (event: any) => {
+  const activeSource = resolveActiveSource(event);
+  if (activeSource?.playbackUrl) return true;
+
+  const sources: any[] = Array.isArray(event?.sources) ? event.sources : [];
+  return sources.some((source) => Boolean(source?.playbackUrl));
+};
+
 const toPublicEvent = (e: any) => {
   const activeSource = resolveActiveSource(e);
   const effectivePlaybackUrl = activeSource?.playbackUrl ?? e.playbackUrl;
@@ -219,6 +227,16 @@ export const updateLiveEventPublishAdmin = async (req: Request, res: Response) =
   const event = await prisma.liveEvent.findUnique({ where: { id: eventId }, include: liveEventInclude });
   if (!event) return res.status(404).json({ message: "Live event not found" });
 
+  if (parsed.data.isPublished) {
+    const canPublish = Boolean(event.playbackUrl) || hasPlayableSource(event);
+    if (!canPublish) {
+      return res.status(409).json({
+        message: "Cannot publish event without a playback URL. Configure IVS channel playback or add a source playback URL first.",
+        code: "LIVE_EVENT_PUBLISH_BLOCKED",
+      });
+    }
+  }
+
   const updated = await prisma.liveEvent.update({
     where: { id: eventId },
     data: { isPublished: parsed.data.isPublished },
@@ -270,6 +288,13 @@ export const startLiveEvent = async (req: Request, res: Response) => {
 
   const current = await prisma.liveEvent.findUnique({ where: { id: eventId }, include: liveEventInclude });
   if (!current) return res.status(404).json({ message: "Live event not found" });
+
+  if (!current.isPublished) {
+    return res.status(409).json({
+      message: "Event must be published before going live",
+      code: "LIVE_EVENT_NOT_PUBLISHED",
+    });
+  }
 
   if (current.status === LiveEventStatus.LIVE) {
     return res.status(409).json({ message: "Event is already live" });
