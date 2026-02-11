@@ -52,6 +52,9 @@ export const createLiveEvent = async (req: AuthenticatedRequest, res: Response) 
   if (scheduledAt && Number.isNaN(scheduledAt.getTime())) {
     return res.status(400).json({ message: "Invalid scheduledStartAt" });
   }
+  if (scheduledAt && scheduledAt.getTime() < Date.now() - 60_000) {
+    return res.status(400).json({ message: "scheduledStartAt must be in the future" });
+  }
 
   const safeName = `wanzami-${title.slice(0, 50).replace(/[^a-zA-Z0-9-_]/g, "-")}-${Date.now()}`;
 
