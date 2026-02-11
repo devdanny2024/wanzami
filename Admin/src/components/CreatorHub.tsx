@@ -107,27 +107,23 @@ export function CreatorHub() {
       if (!res.ok) throw new Error((res.data as any)?.message || "Failed to load live events");
       const nextEvents = (((res.data as any)?.events ?? []) as LiveEvent[]);
       setEvents(nextEvents);
-      setReplayDrafts((prev) => {
-        const next: Record<string, ReplayDraft> = { ...prev };
+      setReplayDrafts(() => {
+        const next: Record<string, ReplayDraft> = {};
         for (const event of nextEvents) {
-          if (!next[event.id]) {
-            next[event.id] = {
-              status: event.replay?.status ?? "NONE",
-              playbackUrl: event.replay?.playbackUrl ?? "",
-              note: event.replay?.note ?? "",
-            };
-          }
+          next[event.id] = {
+            status: event.replay?.status ?? "NONE",
+            playbackUrl: event.replay?.playbackUrl ?? "",
+            note: event.replay?.note ?? "",
+          };
         }
         return next;
       });
-      setViewerDrafts((prev) => {
-        const next: Record<string, ViewerDraft> = { ...prev };
+      setViewerDrafts(() => {
+        const next: Record<string, ViewerDraft> = {};
         for (const event of nextEvents) {
-          if (!next[event.id]) {
-            next[event.id] = {
-              viewerCount: String(event.viewerCount ?? 0),
-            };
-          }
+          next[event.id] = {
+            viewerCount: String(event.viewerCount ?? 0),
+          };
         }
         return next;
       });
