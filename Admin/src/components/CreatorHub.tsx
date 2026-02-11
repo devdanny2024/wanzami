@@ -7,6 +7,12 @@ import { Textarea } from "./ui/textarea";
 
 type ReplayStatus = "NONE" | "PENDING_INFRA" | "PROCESSING" | "READY" | "FAILED";
 
+type ReplayDraft = {
+  status: ReplayStatus;
+  playbackUrl: string;
+  note: string;
+};
+
 type LiveEvent = {
   id: string;
   title: string;
@@ -41,6 +47,8 @@ const statusBadge = (status: LiveEvent["status"]) => {
       return "bg-neutral-700 text-neutral-200";
   }
 };
+
+const replayStatuses: ReplayStatus[] = ["NONE", "PENDING_INFRA", "PROCESSING", "READY", "FAILED"];
 
 const replayBadge = (status?: ReplayStatus) => {
   switch (status) {
@@ -81,6 +89,8 @@ export function CreatorHub() {
   const [description, setDescription] = useState("");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [scheduledStartAt, setScheduledStartAt] = useState("");
+  const [replayDrafts, setReplayDrafts] = useState<Record<string, ReplayDraft>>({});
+  const [replaySavingId, setReplaySavingId] = useState<string | null>(null);
 
   const loadEvents = async () => {
     try {
@@ -88,7 +98,21 @@ export function CreatorHub() {
       setError(null);
       const res = await adminApiFetch("/api/admin/live/events");
       if (!res.ok) throw new Error((res.data as any)?.message || "Failed to load live events");
-      setEvents(((res.data as any)?.events ?? []) as LiveEvent[]);
+      const nextEvents = (((res.data as any)?.events ?? []) as LiveEvent[]);
+      setEvents(nextEvents);
+      setReplayDrafts((prev) => {
+        const next: Record<string, ReplayDraft> = { ...prev };
+        for (const event of nextEvents) {
+          if (!next[event.id]) {
+            next[event.id] = {
+              status: event.replay?.status ?? "NONE",
+              playbackUrl: event.replay?.playbackUrl ?? "",
+              note: event.replay?.note ?? "",
+            };
+          }
+        }
+        return next;
+      });
     } catch (err: any) {
       setError(err?.message ?? "Failed to load live events");
     } finally {
@@ -145,6 +169,53 @@ export function CreatorHub() {
       await loadEvents();
     } catch (err: any) {
       setError(err?.message ?? "Failed to update event");
+    }
+  };
+
+  const updateReplayDraft = (eventId: string, patch: Partial<ReplayDraft>) => {
+    setReplayDrafts((prev) => ({
+      ...prev,
+      [eventId]: {
+        status: prev[eventId]?.status ?? "NONE",
+        playbackUrl: prev[eventId]?.playbackUrl ?? "",
+        note: prev[eventId]?.note ?? "",
+        ...patch,
+      },
+    }));
+  };
+
+  const saveReplay = async (event: LiveEvent) => {
+    const draft = replayDrafts[event.id] ?? {
+      status: event.replay?.status ?? "NONE",
+      playbackUrl: event.replay?.playbackUrl ?? "",
+      note: event.replay?.note ?? "",
+    };
+
+    const playbackUrl = draft.playbackUrl.trim();
+    const note = draft.note.trim();
+
+    if (draft.status === "READY" && !playbackUrl) {
+      setError("Replay playback URL is required when status is READY");
+      return;
+    }
+
+    try {
+      setError(null);
+      setReplaySavingId(event.id);
+      const res = await adminApiFetch(`/api/admin/live/events/${event.id}/replay`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          status: draft.status,
+          playbackUrl: playbackUrl || undefined,
+          note: note || undefined,
+        }),
+      });
+      if (!res.ok) throw new Error((res.data as any)?.message || "Failed to update replay metadata");
+      await loadEvents();
+    } catch (err: any) {
+      setError(err?.message ?? "Failed to update replay metadata");
+    } finally {
+      setReplaySavingId(null);
     }
   };
 
@@ -289,6 +360,53 @@ export function CreatorHub() {
                         )}
                       </div>
                       {event.replay?.note && <p className="text-xs text-orange-300">{event.replay.note}</p>}
+                    </div>
+
+                    <div className="border border-neutral-800 rounded-lg p-3 space-y-3 bg-neutral-900/40">
+                      <p className="text-xs uppercase tracking-wide text-neutral-400">Replay Controls</p>
+                      <div className="grid gap-3 md:grid-cols-3">
+                        <div className="space-y-1">
+                          <label className="text-xs text-neutral-500">Status</label>
+                          <select
+                            value={(replayDrafts[event.id]?.status ?? event.replay?.status ?? "NONE") as ReplayStatus}
+                            onChange={(e) => updateReplayDraft(event.id, { status: e.target.value as ReplayStatus })}
+                            className="w-full rounded-md border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-white"
+                          >
+                            {replayStatuses.map((status) => (
+                              <option key={status} value={status}>
+                                {status}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-1 md:col-span-2">
+                          <label className="text-xs text-neutral-500">Replay playback URL</label>
+                          <Input
+                            value={replayDrafts[event.id]?.playbackUrl ?? event.replay?.playbackUrl ?? ""}
+                            onChange={(e) => updateReplayDraft(event.id, { playbackUrl: e.target.value })}
+                            placeholder="https://...m3u8"
+                            className="bg-neutral-950 border-neutral-800 text-white"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-neutral-500">Replay note</label>
+                        <Textarea
+                          rows={2}
+                          value={replayDrafts[event.id]?.note ?? event.replay?.note ?? ""}
+                          onChange={(e) => updateReplayDraft(event.id, { note: e.target.value })}
+                          placeholder="Internal note about replay state"
+                          className="bg-neutral-950 border-neutral-800 text-white"
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => saveReplay(event)}
+                        disabled={replaySavingId === event.id}
+                        className="bg-neutral-800 hover:bg-neutral-700 text-white"
+                      >
+                        {replaySavingId === event.id ? "Saving replay..." : "Save Replay"}
+                      </Button>
                     </div>
 
                     <div className="mt-2 flex flex-wrap gap-2">
