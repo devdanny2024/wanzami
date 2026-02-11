@@ -13,6 +13,10 @@ type ReplayDraft = {
   note: string;
 };
 
+type ViewerDraft = {
+  viewerCount: string;
+};
+
 type LiveEvent = {
   id: string;
   title: string;
@@ -92,6 +96,8 @@ export function CreatorHub() {
   const [scheduledStartAt, setScheduledStartAt] = useState("");
   const [replayDrafts, setReplayDrafts] = useState<Record<string, ReplayDraft>>({});
   const [replaySavingId, setReplaySavingId] = useState<string | null>(null);
+  const [viewerDrafts, setViewerDrafts] = useState<Record<string, ViewerDraft>>({});
+  const [viewerSavingId, setViewerSavingId] = useState<string | null>(null);
 
   const loadEvents = async () => {
     try {
@@ -109,6 +115,17 @@ export function CreatorHub() {
               status: event.replay?.status ?? "NONE",
               playbackUrl: event.replay?.playbackUrl ?? "",
               note: event.replay?.note ?? "",
+            };
+          }
+        }
+        return next;
+      });
+      setViewerDrafts((prev) => {
+        const next: Record<string, ViewerDraft> = { ...prev };
+        for (const event of nextEvents) {
+          if (!next[event.id]) {
+            next[event.id] = {
+              viewerCount: String(event.viewerCount ?? 0),
             };
           }
         }
@@ -258,6 +275,44 @@ export function CreatorHub() {
       setError(err?.message ?? "Failed to update replay metadata");
     } finally {
       setReplaySavingId(null);
+    }
+  };
+
+  const updateViewerDraft = (eventId: string, viewerCount: string) => {
+    setViewerDrafts((prev) => ({
+      ...prev,
+      [eventId]: {
+        viewerCount,
+      },
+    }));
+  };
+
+  const saveViewerCount = async (event: LiveEvent) => {
+    const rawValue = (viewerDrafts[event.id]?.viewerCount ?? String(event.viewerCount ?? 0)).trim();
+    if (!rawValue) {
+      setError("Viewer count is required");
+      return;
+    }
+
+    const viewerCount = Number(rawValue);
+    if (!Number.isInteger(viewerCount) || viewerCount < 0) {
+      setError("Viewer count must be a non-negative whole number");
+      return;
+    }
+
+    try {
+      setError(null);
+      setViewerSavingId(event.id);
+      const res = await adminApiFetch(`/api/admin/live/events/${event.id}/viewers`, {
+        method: "PATCH",
+        body: JSON.stringify({ viewerCount }),
+      });
+      if (!res.ok) throw new Error((res.data as any)?.message || "Failed to update viewer count");
+      await loadEvents();
+    } catch (err: any) {
+      setError(err?.message ?? "Failed to update viewer count");
+    } finally {
+      setViewerSavingId(null);
     }
   };
 
@@ -411,7 +466,35 @@ export function CreatorHub() {
                           <button onClick={() => copyText(event.replay?.playbackUrl)} className="text-[#fd7e14]">Copy</button>
                         )}
                       </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-neutral-500">Current Viewers:</span>
+                        <span className="text-white/80">{event.viewerCount ?? 0}</span>
+                      </div>
                       {event.replay?.note && <p className="text-xs text-orange-300">{event.replay.note}</p>}
+                    </div>
+
+                    <div className="border border-neutral-800 rounded-lg p-3 space-y-3 bg-neutral-900/40">
+                      <p className="text-xs uppercase tracking-wide text-neutral-400">Viewer Controls</p>
+                      <div className="flex flex-wrap items-end gap-2">
+                        <div className="space-y-1">
+                          <label className="text-xs text-neutral-500">Manual viewer count</label>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={viewerDrafts[event.id]?.viewerCount ?? String(event.viewerCount ?? 0)}
+                            onChange={(e) => updateViewerDraft(event.id, e.target.value)}
+                            className="w-48 bg-neutral-950 border-neutral-800 text-white"
+                          />
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => saveViewerCount(event)}
+                          disabled={viewerSavingId === event.id}
+                          className="bg-neutral-800 hover:bg-neutral-700 text-white"
+                        >
+                          {viewerSavingId === event.id ? "Saving viewers..." : "Save Viewers"}
+                        </Button>
+                      </div>
                     </div>
 
                     <div className="border border-neutral-800 rounded-lg p-3 space-y-3 bg-neutral-900/40">
