@@ -191,7 +191,6 @@ export const endLiveEvent = async (req: Request, res: Response) => {
     data: {
       status: LiveEventStatus.ENDED,
       endedAt: new Date(),
-      viewerCount: 0,
       replayStatus,
       replayNote: config.ivs.recordingEnabled
         ? "Recording is being processed into replay/VOD."
