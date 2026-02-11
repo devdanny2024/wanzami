@@ -16,6 +16,7 @@ const createSchema = z.object({
 const replayUpdateSchema = z.object({
   status: z.nativeEnum(LiveReplayStatus),
   playbackUrl: z.string().url().optional().nullable(),
+  replayAssetId: z.string().trim().min(1).max(255).optional().nullable(),
   note: z.string().max(5000).optional().nullable(),
   readyAt: z.string().datetime().optional().nullable(),
 });
@@ -35,6 +36,7 @@ const toPublicEvent = (e: any) => ({
   replay: {
     status: e.replayStatus,
     playbackUrl: e.replayPlaybackUrl,
+    assetId: e.replayAssetId,
     readyAt: e.replayReadyAt,
     note: e.replayNote,
   },
@@ -207,13 +209,14 @@ export const updateLiveEventReplayAdmin = async (req: Request, res: Response) =>
   const current = await prisma.liveEvent.findUnique({ where: { id: eventId } });
   if (!current) return res.status(404).json({ message: "Live event not found" });
 
-  const { status, playbackUrl, note, readyAt } = parsed.data;
+  const { status, playbackUrl, replayAssetId, note, readyAt } = parsed.data;
 
   if (current.status !== LiveEventStatus.ENDED) {
     return res.status(409).json({ message: "Replay metadata can only be updated after event has ended" });
   }
 
-  if (status === LiveReplayStatus.READY && !playbackUrl) {
+  const nextPlaybackUrl = playbackUrl !== undefined ? playbackUrl : current.replayPlaybackUrl;
+  if (status === LiveReplayStatus.READY && !nextPlaybackUrl) {
     return res.status(400).json({ message: "playbackUrl is required when replay status is READY" });
   }
 
@@ -221,18 +224,29 @@ export const updateLiveEventReplayAdmin = async (req: Request, res: Response) =>
     return res.status(400).json({ message: "readyAt is only allowed when replay status is READY" });
   }
 
-  const replayReadyAt = status === LiveReplayStatus.READY ? (readyAt ? new Date(readyAt) : new Date()) : null;
-  if (replayReadyAt && Number.isNaN(replayReadyAt.getTime())) {
-    return res.status(400).json({ message: "Invalid readyAt" });
+  let replayReadyAt: Date | null = null;
+  if (status === LiveReplayStatus.READY) {
+    if (readyAt === undefined) {
+      replayReadyAt = current.replayReadyAt ?? new Date();
+    } else if (readyAt === null) {
+      replayReadyAt = new Date();
+    } else {
+      replayReadyAt = new Date(readyAt);
+    }
+
+    if (Number.isNaN(replayReadyAt.getTime())) {
+      return res.status(400).json({ message: "Invalid readyAt" });
+    }
   }
 
   const updated = await prisma.liveEvent.update({
     where: { id: eventId },
     data: {
       replayStatus: status,
-      replayPlaybackUrl: playbackUrl ?? null,
+      replayPlaybackUrl: nextPlaybackUrl,
+      replayAssetId: replayAssetId !== undefined ? replayAssetId : current.replayAssetId,
       replayReadyAt,
-      replayNote: note ?? null,
+      replayNote: note !== undefined ? note : current.replayNote,
     },
   });
 
