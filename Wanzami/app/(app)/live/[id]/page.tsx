@@ -1,6 +1,7 @@
 'use client';
 
 import Hls from "hls.js";
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { LiveEvent, fetchLiveEventById } from "@/lib/contentClient";
@@ -176,6 +177,13 @@ export default function LiveDetailPage({ params }: { params: { id: string } }) {
                   <p className="text-sm text-neutral-400">
                     {event.replay?.note || "Replay metadata is created. Recording/processing infra is still pending."}
                   </p>
+                </div>
+              </div>
+            ) : event.thumbnailUrl ? (
+              <div className="relative w-full h-full">
+                <Image src={event.thumbnailUrl} alt={event.title} fill className="object-cover" unoptimized />
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-neutral-200 text-sm">
+                  Stream is not available yet.
                 </div>
               </div>
             ) : (

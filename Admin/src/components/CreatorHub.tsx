@@ -325,12 +325,10 @@ export function CreatorHub() {
     }));
   };
 
-  const addSource = async (eventId: string) => {
-    const draft = sourceDrafts[eventId];
-    if (!draft?.label?.trim()) {
-      setError("Source label is required");
-      return;
-    }
+  const addSource = async (event: LiveEvent) => {
+    const eventId = event.id;
+    const draft = sourceDrafts[eventId] ?? { label: "", type: "CAMERA" as LiveSource["type"], playbackUrl: "", previewUrl: "" };
+    const label = draft.label.trim() || `${draft.type} Source ${(event.sources?.length ?? 0) + 1}`;
     try {
       setError(null);
       setSourceBusyId(eventId);
@@ -338,7 +336,7 @@ export function CreatorHub() {
         method: "POST",
         body: JSON.stringify({
           type: draft.type,
-          label: draft.label.trim(),
+          label,
           playbackUrl: draft.playbackUrl.trim() || undefined,
           previewUrl: draft.previewUrl.trim() || undefined,
         }),
@@ -766,7 +764,7 @@ export function CreatorHub() {
                         />
                         <Button
                           size="sm"
-                          onClick={() => addSource(event.id)}
+                          onClick={() => addSource(event)}
                           disabled={sourceBusyId === event.id}
                           className="bg-neutral-800 hover:bg-neutral-700 text-white"
                         >
@@ -809,9 +807,11 @@ export function CreatorHub() {
                         <Button
                           size="sm"
                           onClick={() => setGoLiveSelectorEvent(event)}
-                          className="bg-[#fd7e14] hover:bg-[#ff9940] text-white"
+                          disabled={!event.isPublished}
+                          className="bg-[#fd7e14] hover:bg-[#ff9940] text-white disabled:opacity-60"
+                          title={!event.isPublished ? "Publish this event first to go live" : "Go live"}
                         >
-                          Go Live
+                          {event.isPublished ? "Go Live" : "Publish to Go Live"}
                         </Button>
                       )}
                       {event.status !== "ENDED" && (

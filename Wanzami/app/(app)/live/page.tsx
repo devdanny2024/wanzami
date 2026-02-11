@@ -1,5 +1,6 @@
 'use client';
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { fetchLiveEvents, LiveEvent } from "@/lib/contentClient";
@@ -121,6 +122,14 @@ export default function LivePage() {
                 >
                   {isLive ? "LIVE" : isScheduled ? "SCHEDULED" : "ENDED"}
                 </span>
+              </div>
+
+              <div className="mt-3 relative w-full aspect-video rounded-lg overflow-hidden bg-neutral-900">
+                {event.thumbnailUrl ? (
+                  <Image src={event.thumbnailUrl} alt={event.title} fill className="object-cover" unoptimized />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-xs text-neutral-500">No thumbnail</div>
+                )}
               </div>
 
               {event.description && <p className="text-xs text-neutral-400 mt-2 line-clamp-2">{event.description}</p>}
