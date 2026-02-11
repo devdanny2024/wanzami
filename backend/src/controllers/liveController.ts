@@ -13,6 +13,13 @@ const createSchema = z.object({
   scheduledStartAt: z.string().datetime().optional(),
 });
 
+const replayUpdateSchema = z.object({
+  status: z.nativeEnum(LiveReplayStatus),
+  playbackUrl: z.string().url().optional().nullable(),
+  note: z.string().max(5000).optional().nullable(),
+  readyAt: z.string().datetime().optional().nullable(),
+});
+
 const toPublicEvent = (e: any) => ({
   id: e.id.toString(),
   title: e.title,
@@ -182,6 +189,42 @@ export const endLiveEvent = async (req: Request, res: Response) => {
       replayNote: config.ivs.recordingEnabled
         ? "Recording is being processed into replay/VOD."
         : "Replay recording pipeline is not configured yet (IVS recording + media processing).",
+    },
+  });
+
+  return res.json({ event: toAdminEvent(updated) });
+};
+
+export const updateLiveEventReplayAdmin = async (req: Request, res: Response) => {
+  const eventId = parseEventId(req.params.id);
+  if (!eventId) return res.status(400).json({ message: "Invalid event id" });
+
+  const parsed = replayUpdateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ errors: parsed.error.flatten() });
+  }
+
+  const current = await prisma.liveEvent.findUnique({ where: { id: eventId } });
+  if (!current) return res.status(404).json({ message: "Live event not found" });
+
+  const { status, playbackUrl, note, readyAt } = parsed.data;
+
+  if (status === LiveReplayStatus.READY && !playbackUrl) {
+    return res.status(400).json({ message: "playbackUrl is required when replay status is READY" });
+  }
+
+  const replayReadyAt = readyAt ? new Date(readyAt) : status === LiveReplayStatus.READY ? new Date() : null;
+  if (replayReadyAt && Number.isNaN(replayReadyAt.getTime())) {
+    return res.status(400).json({ message: "Invalid readyAt" });
+  }
+
+  const updated = await prisma.liveEvent.update({
+    where: { id: eventId },
+    data: {
+      replayStatus: status,
+      replayPlaybackUrl: playbackUrl ?? null,
+      replayReadyAt,
+      replayNote: note ?? null,
     },
   });
 
