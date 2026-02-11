@@ -283,6 +283,14 @@ export function CreatorHub() {
     }));
   };
 
+  const bumpViewerDraft = (event: LiveEvent, delta: number) => {
+    const rawValue = viewerDrafts[event.id]?.viewerCount ?? String(event.viewerCount ?? 0);
+    const parsed = Number(rawValue);
+    const currentValue = Number.isFinite(parsed) ? parsed : event.viewerCount ?? 0;
+    const nextValue = Math.max(0, Math.round(currentValue + delta));
+    updateViewerDraft(event.id, String(nextValue));
+  };
+
   const saveViewerCount = async (event: LiveEvent) => {
     const rawValue = (viewerDrafts[event.id]?.viewerCount ?? String(event.viewerCount ?? 0)).trim();
     if (!rawValue) {
@@ -482,6 +490,35 @@ export function CreatorHub() {
                             disabled={event.status !== "LIVE"}
                             className="w-48 bg-neutral-950 border-neutral-800 text-white disabled:opacity-60"
                           />
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => bumpViewerDraft(event, -10)}
+                            disabled={event.status !== "LIVE"}
+                            className="border-neutral-700 text-neutral-200 hover:bg-neutral-800"
+                          >
+                            -10
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => bumpViewerDraft(event, 10)}
+                            disabled={event.status !== "LIVE"}
+                            className="border-neutral-700 text-neutral-200 hover:bg-neutral-800"
+                          >
+                            +10
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => bumpViewerDraft(event, 100)}
+                            disabled={event.status !== "LIVE"}
+                            className="border-neutral-700 text-neutral-200 hover:bg-neutral-800"
+                          >
+                            +100
+                          </Button>
                         </div>
                         <Button
                           size="sm"
