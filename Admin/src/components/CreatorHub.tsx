@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
@@ -54,6 +54,22 @@ type LiveEvent = {
     note?: string | null;
   };
 };
+
+type BrowserLiveSession = {
+  stream: MediaStream;
+  client: any;
+  sourceId?: string;
+};
+
+declare global {
+  interface Window {
+    IVSBroadcastClient?: {
+      create: (config: { streamConfig: { maxResolution: { width: number; height: number }; maxFramerate: number; maxBitrate: number } }) => any;
+      BASIC_LANDSCAPE: { maxResolution: { width: number; height: number }; maxFramerate: number; maxBitrate: number };
+    };
+  }
+}
+
 
 const liveStateBadge = (event: LiveEvent) => {
   if (event.status === "LIVE") {
@@ -118,7 +134,12 @@ export function CreatorHub() {
     Record<string, { label: string; type: LiveSource["type"]; playbackUrl: string; previewUrl: string }>
   >({});
   const [sourceBusyId, setSourceBusyId] = useState<string | null>(null);
-  const [goLiveSelectorEvent, setGoLiveSelectorEvent] = useState<LiveEvent | null>(null);
+  const [cameraGoLiveEvent, setCameraGoLiveEvent] = useState<LiveEvent | null>(null);
+  const [cameraBusy, setCameraBusy] = useState(false);
+  const [cameraMuted, setCameraMuted] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const previewRef = useRef<HTMLVideoElement | null>(null);
+  const browserLiveRef = useRef<BrowserLiveSession | null>(null);
 
   const loadEvents = async () => {
     try {
@@ -169,6 +190,12 @@ export function CreatorHub() {
 
   useEffect(() => {
     void loadEvents();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      cleanupBrowserLive();
+    };
   }, []);
 
   const uploadThumbnailAsset = async (file: File): Promise<string> => {
@@ -277,7 +304,6 @@ export function CreatorHub() {
         setEvents((prev) => prev.map((event) => (event.id === id ? nextEvent : event)));
       }
       await loadEvents();
-      if (action === "start") setGoLiveSelectorEvent(null);
     } catch (err: any) {
       setEvents(previousEvents);
       setError(err?.message ?? "Failed to update event");
@@ -484,6 +510,159 @@ export function CreatorHub() {
     }
   };
 
+  const ensureBroadcastSdk = async () => {
+    if (typeof window === "undefined") throw new Error("Browser environment required");
+    if (window.IVSBroadcastClient) return window.IVSBroadcastClient;
+
+    await new Promise<void>((resolve, reject) => {
+      const existing = document.querySelector('script[data-ivs-broadcast="1"]') as HTMLScriptElement | null;
+      if (existing) {
+        existing.addEventListener("load", () => resolve(), { once: true });
+        existing.addEventListener("error", () => reject(new Error("Failed to load IVS broadcast SDK")), { once: true });
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = "https://web-broadcast.live-video.net/1.29.0/amazon-ivs-web-broadcast.js";
+      script.async = true;
+      script.dataset.ivsBroadcast = "1";
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error("Failed to load IVS broadcast SDK"));
+      document.head.appendChild(script);
+    });
+
+    if (!window.IVSBroadcastClient) throw new Error("IVS broadcast SDK unavailable after loading");
+    return window.IVSBroadcastClient;
+  };
+
+  const cleanupBrowserLive = () => {
+    const session = browserLiveRef.current;
+    if (session?.client) {
+      try {
+        session.client.stopBroadcast?.();
+      } catch {
+        // ignore
+      }
+    }
+    session?.stream?.getTracks().forEach((track) => track.stop());
+    browserLiveRef.current = null;
+    if (previewRef.current) {
+      previewRef.current.srcObject = null;
+    }
+    setCameraMuted(false);
+  };
+
+  const openCameraGoLive = async (event: LiveEvent) => {
+    try {
+      setCameraError(null);
+      setCameraBusy(true);
+      cleanupBrowserLive();
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      browserLiveRef.current = { stream, client: null };
+      setCameraGoLiveEvent(event);
+      setTimeout(() => {
+        if (previewRef.current) {
+          previewRef.current.srcObject = stream;
+          previewRef.current.muted = true;
+          void previewRef.current.play().catch(() => undefined);
+        }
+      }, 0);
+    } catch (err: any) {
+      setCameraError(err?.message ?? "Unable to access camera/microphone.");
+    } finally {
+      setCameraBusy(false);
+    }
+  };
+
+  const startCameraBroadcast = async () => {
+    if (!cameraGoLiveEvent) return;
+    if (!cameraGoLiveEvent.isPublished) {
+      setCameraError("Publish this event first before going live.");
+      return;
+    }
+    if (!cameraGoLiveEvent.ingestEndpoint || !cameraGoLiveEvent.streamKey) {
+      setCameraError("Ingest endpoint or stream key is missing for this event.");
+      return;
+    }
+
+    const stream = browserLiveRef.current?.stream;
+    if (!stream) {
+      setCameraError("Camera preview is not ready.");
+      return;
+    }
+
+    try {
+      setCameraError(null);
+      setCameraBusy(true);
+
+      const sdk = await ensureBroadcastSdk();
+      const client = sdk.create({ streamConfig: sdk.BASIC_LANDSCAPE });
+
+      const videoTrack = stream.getVideoTracks()[0];
+      const audioTrack = stream.getAudioTracks()[0];
+      if (videoTrack) client.addVideoInputDevice(videoTrack, "camera", { index: 0 });
+      if (audioTrack) client.addAudioInputDevice(audioTrack, "mic");
+
+      await client.startBroadcast(cameraGoLiveEvent.streamKey, cameraGoLiveEvent.ingestEndpoint);
+
+      let sourceId: string | undefined;
+      const existingSource = (cameraGoLiveEvent.sources ?? []).find((source) => source.label === "Browser Camera" && source.type === "CAMERA");
+      if (existingSource) {
+        sourceId = existingSource.id;
+        await adminApiFetch(`/api/admin/live/events/${cameraGoLiveEvent.id}/sources/${existingSource.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            status: "READY",
+            playbackUrl: cameraGoLiveEvent.playbackUrl ?? undefined,
+            isActiveOutput: true,
+          }),
+        });
+      } else {
+        const createdSourceRes = await adminApiFetch(`/api/admin/live/events/${cameraGoLiveEvent.id}/sources`, {
+          method: "POST",
+          body: JSON.stringify({
+            type: "CAMERA",
+            label: "Browser Camera",
+            status: "READY",
+            playbackUrl: cameraGoLiveEvent.playbackUrl ?? undefined,
+            isActiveOutput: true,
+          }),
+        });
+        sourceId = (createdSourceRes.data as any)?.source?.id;
+      }
+
+      browserLiveRef.current = { stream, client, sourceId };
+      await updateStatus(cameraGoLiveEvent.id, "start", sourceId);
+    } catch (err: any) {
+      setCameraError(err?.message ?? "Failed to start browser camera live stream.");
+    } finally {
+      setCameraBusy(false);
+    }
+  };
+
+  const toggleCameraMute = () => {
+    const stream = browserLiveRef.current?.stream;
+    if (!stream) return;
+    const nextMuted = !cameraMuted;
+    stream.getAudioTracks().forEach((track) => {
+      track.enabled = !nextMuted;
+    });
+    setCameraMuted(nextMuted);
+  };
+
+  const stopCameraBroadcast = async () => {
+    const targetEvent = cameraGoLiveEvent;
+    try {
+      setCameraBusy(true);
+      if (targetEvent?.status === "LIVE") {
+        await updateStatus(targetEvent.id, "end");
+      }
+    } finally {
+      cleanupBrowserLive();
+      setCameraGoLiveEvent(null);
+      setCameraBusy(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -600,18 +779,8 @@ export function CreatorHub() {
                     {event.description && <p className="text-sm text-neutral-300">{event.description}</p>}
 
                     <div className="grid gap-2 text-xs text-neutral-400">
-                      <div className="flex items-center gap-2">
-                        <span className="text-neutral-500">RTMPS URL:</span>
-                        <span className="text-white/80 break-all">{ingestUrl || "Not available"}</span>
-                        {ingestUrl && <button onClick={() => copyText(ingestUrl)} className="text-[#fd7e14]">Copy</button>}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-neutral-500">Stream Key:</span>
-                        <span className="text-white/80 break-all">{event.streamKey || "Hidden"}</span>
-                        {event.streamKey && (
-                          <button onClick={() => copyText(event.streamKey)} className="text-[#fd7e14]">Copy</button>
-                        )}
-                      </div>
+                      {/* RTMPS details moved into Advanced */}
+                      {/* Stream key hidden from default simple flow */}
                       <div className="flex items-center gap-2">
                         <span className="text-neutral-500">Playback URL:</span>
                         <span className="text-white/80 break-all">{event.playbackUrl || "Not available"}</span>
@@ -737,8 +906,24 @@ export function CreatorHub() {
                       </Button>
                     </div>
 
-                    <div className="border border-neutral-800 rounded-lg p-3 space-y-3 bg-neutral-900/40">
-                      <p className="text-xs uppercase tracking-wide text-neutral-400">Source Deck</p>
+                    <details className="border border-neutral-800 rounded-lg p-3 space-y-3 bg-neutral-900/40">
+                      <summary className="text-xs uppercase tracking-wide text-neutral-300 cursor-pointer">Advanced</summary>
+                      <div className="mt-3 space-y-3">
+                        <div className="grid gap-2 text-xs text-neutral-400">
+                          <div className="flex items-center gap-2">
+                            <span className="text-neutral-500">RTMPS URL:</span>
+                            <span className="text-white/80 break-all">{ingestUrl || "Not available"}</span>
+                            {ingestUrl && <button onClick={() => copyText(ingestUrl)} className="text-[#fd7e14]">Copy</button>}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-neutral-500">Stream Key:</span>
+                            <span className="text-white/80 break-all">{event.streamKey || "Hidden"}</span>
+                            {event.streamKey && (
+                              <button onClick={() => copyText(event.streamKey)} className="text-[#fd7e14]">Copy</button>
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-xs uppercase tracking-wide text-neutral-400">Source Deck</p>
                       <div className="grid gap-2 md:grid-cols-4">
                         <Input
                           value={sourceDrafts[event.id]?.label ?? ""}
@@ -800,18 +985,19 @@ export function CreatorHub() {
                           ))
                         )}
                       </div>
-                    </div>
+                      </div>
+                    </details>
 
                     <div className="mt-2 flex flex-wrap gap-2">
                       {event.status === "SCHEDULED" && (
                         <Button
                           size="sm"
-                          onClick={() => setGoLiveSelectorEvent(event)}
-                          disabled={!event.isPublished}
+                          onClick={() => void openCameraGoLive(event)}
+                          disabled={!event.isPublished || cameraBusy}
                           className="bg-[#fd7e14] hover:bg-[#ff9940] text-white disabled:opacity-60"
-                          title={!event.isPublished ? "Publish this event first to go live" : "Go live"}
+                          title={!event.isPublished ? "Publish this event first to go live" : "Start browser camera flow"}
                         >
-                          {event.isPublished ? "Go Live" : "Publish to Go Live"}
+                          {event.isPublished ? "Go Live with Camera" : "Publish to Go Live"}
                         </Button>
                       )}
                       {event.status !== "ENDED" && (
@@ -840,32 +1026,43 @@ export function CreatorHub() {
         </CardContent>
       </Card>
 
-      {goLiveSelectorEvent && (
+      {cameraGoLiveEvent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-xl rounded-xl border border-neutral-800 bg-neutral-950 p-4 space-y-4">
-            <h3 className="text-white text-lg">What device/source do you want to stream from?</h3>
-            <p className="text-sm text-neutral-400">Select your starting output source for this live event.</p>
-            <div className="space-y-2 max-h-72 overflow-auto">
-              {(goLiveSelectorEvent.sources ?? []).map((source) => (
-                <button
-                  key={source.id}
-                  onClick={() => updateStatus(goLiveSelectorEvent.id, "start", source.id)}
-                  className="w-full text-left rounded-lg border border-neutral-800 px-3 py-2 hover:border-[#fd7e14]"
-                >
-                  <p className="text-white">{source.label}</p>
-                  <p className="text-xs text-neutral-400">{source.type} {source.playbackUrl ? "• Playback ready" : "• No explicit playback URL"}</p>
-                </button>
-              ))}
-              {(goLiveSelectorEvent.sources ?? []).length === 0 && (
-                <p className="text-xs text-neutral-500">No sources yet. You can still go live using the legacy event playback stream.</p>
-              )}
+          <div className="w-full max-w-2xl rounded-xl border border-neutral-800 bg-neutral-950 p-4 space-y-4">
+            <h3 className="text-white text-lg">Go Live with Camera</h3>
+            <p className="text-sm text-neutral-400">Preview your camera, then start. No OBS or RTMP setup needed.</p>
+
+            <div className="overflow-hidden rounded-lg border border-neutral-800 bg-black aspect-video">
+              <video ref={previewRef} className="h-full w-full object-cover" playsInline autoPlay muted />
             </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" className="border-neutral-700 text-neutral-200" onClick={() => setGoLiveSelectorEvent(null)}>
+
+            {cameraError && <p className="text-sm text-red-400">{cameraError}</p>}
+
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button
+                variant="outline"
+                className="border-neutral-700 text-neutral-200"
+                onClick={() => {
+                  cleanupBrowserLive();
+                  setCameraGoLiveEvent(null);
+                }}
+                disabled={cameraBusy}
+              >
                 Cancel
               </Button>
-              <Button className="bg-[#fd7e14] hover:bg-[#ff9940] text-white" onClick={() => updateStatus(goLiveSelectorEvent.id, "start")}>
-                Start without source
+              <Button
+                variant="outline"
+                className="border-neutral-700 text-neutral-200"
+                onClick={toggleCameraMute}
+                disabled={cameraBusy || !browserLiveRef.current?.stream}
+              >
+                {cameraMuted ? "Unmute" : "Mute"}
+              </Button>
+              <Button className="bg-[#fd7e14] hover:bg-[#ff9940] text-white" onClick={startCameraBroadcast} disabled={cameraBusy}>
+                {cameraBusy ? "Starting..." : "Start"}
+              </Button>
+              <Button className="bg-neutral-800 hover:bg-neutral-700 text-white" onClick={() => void stopCameraBroadcast()} disabled={cameraBusy}>
+                Stop
               </Button>
             </div>
           </div>
