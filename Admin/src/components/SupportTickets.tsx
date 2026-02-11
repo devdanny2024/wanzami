@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 
@@ -52,7 +52,7 @@ export function SupportTickets() {
   const [days, setDays] = useState<string>("7");
   const [counts, setCounts] = useState<Record<string, number>>({});
 
-  const load = async (opts?: { status?: string; q?: string; days?: string }) => {
+  const load = useCallback(async (opts?: { status?: string; q?: string; days?: string }) => {
     setLoading(true);
     setError(null);
     try {
@@ -98,11 +98,11 @@ export function SupportTickets() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [days, query, statusFilter]);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
 
   const loadMessages = async (ticket: Ticket) => {
     try {
