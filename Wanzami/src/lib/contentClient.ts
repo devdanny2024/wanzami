@@ -469,8 +469,17 @@ export type LiveEvent = {
   thumbnailUrl?: string | null;
   status: "SCHEDULED" | "LIVE" | "ENDED";
   playbackUrl?: string | null;
+  scheduledStartAt?: string | null;
   createdAt?: string;
   startedAt?: string | null;
+  endedAt?: string | null;
+  viewerCount?: number;
+  replay?: {
+    status?: "NONE" | "PENDING_INFRA" | "PROCESSING" | "READY" | "FAILED";
+    playbackUrl?: string | null;
+    readyAt?: string | null;
+    note?: string | null;
+  };
 };
 
 export async function fetchLiveEvents(accessToken: string) {
@@ -482,6 +491,17 @@ export async function fetchLiveEvents(accessToken: string) {
   });
   const data = await handleJsonResponse(res);
   return (data?.events as LiveEvent[]) ?? [];
+}
+
+export async function fetchLiveEventById(id: string, accessToken: string) {
+  const res = await fetchWithTimeout(`${API_BASE}/live/events/${id}`, {
+    cache: "no-store",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+  const data = await handleJsonResponse(res);
+  return (data?.event as LiveEvent) ?? null;
 }
 
 export async function postEvents(events: EngagementEventInput[], accessToken: string) {
