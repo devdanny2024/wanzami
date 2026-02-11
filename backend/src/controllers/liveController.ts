@@ -209,11 +209,19 @@ export const updateLiveEventReplayAdmin = async (req: Request, res: Response) =>
 
   const { status, playbackUrl, note, readyAt } = parsed.data;
 
+  if (current.status !== LiveEventStatus.ENDED) {
+    return res.status(409).json({ message: "Replay metadata can only be updated after event has ended" });
+  }
+
   if (status === LiveReplayStatus.READY && !playbackUrl) {
     return res.status(400).json({ message: "playbackUrl is required when replay status is READY" });
   }
 
-  const replayReadyAt = readyAt ? new Date(readyAt) : status === LiveReplayStatus.READY ? new Date() : null;
+  if (status !== LiveReplayStatus.READY && readyAt) {
+    return res.status(400).json({ message: "readyAt is only allowed when replay status is READY" });
+  }
+
+  const replayReadyAt = status === LiveReplayStatus.READY ? (readyAt ? new Date(readyAt) : new Date()) : null;
   if (replayReadyAt && Number.isNaN(replayReadyAt.getTime())) {
     return res.status(400).json({ message: "Invalid readyAt" });
   }
