@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { z } from "zod";
-import { LiveEventStatus, LiveReplayStatus, LiveSourceStatus, LiveSourceType } from "@prisma/client";
+import { LiveEventStatus, LiveReplayStatus, LiveSourceStatus, LiveSourceType, Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
 import { createIvsChannel } from "../services/ivsService.js";
 import { config } from "../config.js";
@@ -207,6 +207,22 @@ export const listLiveEventsAdmin = async (_req: Request, res: Response) => {
   });
 
   return res.json({ events: events.map(toAdminEvent) });
+};
+
+export const deleteLiveEventAdmin = async (req: Request, res: Response) => {
+  const eventId = parseEventId(req.params.id);
+  if (!eventId) return res.status(400).json({ message: "Invalid event id" });
+
+  try {
+    await prisma.liveEvent.delete({ where: { id: eventId } });
+    return res.status(200).json({ message: "Live event deleted" });
+  } catch (err: any) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
+      return res.status(404).json({ message: "Live event not found" });
+    }
+    console.error("deleteLiveEventAdmin error", err);
+    return res.status(500).json({ message: "Failed to delete live event", error: err?.message });
+  }
 };
 
 export const updateLiveEventPublishAdmin = async (req: Request, res: Response) => {

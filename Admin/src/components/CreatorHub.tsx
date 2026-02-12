@@ -4,6 +4,17 @@ import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "./ui/alert-dialog";
+import { toast } from "sonner";
 
 type ReplayStatus = "NONE" | "PENDING_INFRA" | "PROCESSING" | "READY" | "FAILED";
 
@@ -145,6 +156,8 @@ export function CreatorHub() {
   >({});
   const [sourceBusyId, setSourceBusyId] = useState<string | null>(null);
   const [cameraGoLiveEvent, setCameraGoLiveEvent] = useState<LiveEvent | null>(null);
+  const [deleteTargetEvent, setDeleteTargetEvent] = useState<LiveEvent | null>(null);
+  const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
   const [cameraBusy, setCameraBusy] = useState(false);
   const [cameraMuted, setCameraMuted] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -350,6 +363,29 @@ export function CreatorHub() {
     } catch (err: any) {
       setEvents(previousEvents);
       setError(err?.message ?? "Failed to update publish status");
+    }
+  };
+
+  const deleteEvent = async (event: LiveEvent) => {
+    const previousEvents = events;
+    setDeletingEventId(event.id);
+    setDeleteTargetEvent(null);
+    setEvents((prev) => prev.filter((item) => item.id !== event.id));
+
+    try {
+      setError(null);
+      const res = await adminApiFetch(`/api/admin/live/events/${event.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        throw new Error((res.data as any)?.message || "Failed to delete live event");
+      }
+      toast.success((res.data as any)?.message || `Deleted "${event.title}"`);
+    } catch (err: any) {
+      setEvents(previousEvents);
+      const message = err?.message ?? "Failed to delete live event";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setDeletingEventId(null);
     }
   };
 
@@ -1048,6 +1084,15 @@ export function CreatorHub() {
                       >
                         {event.isPublished ? "Unpublish" : "Publish"}
                       </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setDeleteTargetEvent(event)}
+                        disabled={deletingEventId === event.id}
+                        className="border-red-900/80 text-red-300 hover:bg-red-950/40"
+                      >
+                        {deletingEventId === event.id ? "Deleting..." : "Delete Event"}
+                      </Button>
                     </div>
                   </div>
                 );
@@ -1056,6 +1101,40 @@ export function CreatorHub() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={Boolean(deleteTargetEvent)} onOpenChange={(open) => !open && setDeleteTargetEvent(null)}>
+        <AlertDialogContent className="bg-neutral-950 border-neutral-800 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete live event?</AlertDialogTitle>
+            <AlertDialogDescription className="text-neutral-300">
+              This action is irreversible. Deleting this live event will permanently remove its metadata, source deck, and replay settings.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {deleteTargetEvent && (
+            <div className="rounded-md border border-red-900/60 bg-red-950/30 p-3 text-sm text-red-200">
+              You are about to delete <span className="font-semibold">{deleteTargetEvent.title}</span>.
+              This cannot be undone.
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-neutral-700 bg-transparent text-neutral-200 hover:bg-neutral-900">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 text-white hover:bg-red-500"
+              disabled={!deleteTargetEvent || deletingEventId === deleteTargetEvent?.id}
+              onClick={(e) => {
+                e.preventDefault();
+                if (deleteTargetEvent) {
+                  void deleteEvent(deleteTargetEvent);
+                }
+              }}
+            >
+              {deleteTargetEvent && deletingEventId === deleteTargetEvent.id ? "Deleting..." : "Delete permanently"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {cameraGoLiveEvent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">

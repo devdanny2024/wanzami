@@ -9,3 +9,12 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   });
   return NextResponse.json(result.data, { status: result.status });
 }
+
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+  const authorization = req.headers.get("authorization") ?? "";
+  const result = await authFetch(`/admin/live/events/${params.id}`, {
+    method: "DELETE",
+    headers: { Authorization: authorization },
+  });
+  return NextResponse.json(result.data, { status: result.status });
+}
