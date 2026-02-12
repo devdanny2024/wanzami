@@ -1044,7 +1044,14 @@ export function CreatorHub() {
                                     Take Live
                                   </Button>
                                 )}
-                                <Button size="sm" variant="outline" className="border-neutral-700 text-neutral-200" onClick={() => deleteSource(event.id, source.id)}>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="border-neutral-700 text-neutral-200"
+                                  onClick={() => deleteSource(event.id, source.id)}
+                                  disabled={event.status === "LIVE" && source.isActiveOutput}
+                                  title={event.status === "LIVE" && source.isActiveOutput ? "Switch to another source or end stream before removing the active output." : "Remove source"}
+                                >
                                   Remove
                                 </Button>
                               </div>

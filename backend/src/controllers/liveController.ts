@@ -623,9 +623,24 @@ export const deleteLiveEventSourceAdmin = async (req: Request, res: Response) =>
   if (!eventId) return res.status(400).json({ message: "Invalid event id" });
   if (!sourceId) return res.status(400).json({ message: "Invalid source id" });
 
-  const source = await prisma.liveEventSource.findUnique({ where: { id: sourceId } });
+  const [event, source] = await Promise.all([
+    prisma.liveEvent.findUnique({ where: { id: eventId } }),
+    prisma.liveEventSource.findUnique({ where: { id: sourceId } }),
+  ]);
+
+  if (!event) {
+    return res.status(404).json({ message: "Live event not found" });
+  }
+
   if (!source || source.liveEventId !== eventId) {
     return res.status(404).json({ message: "Live source not found" });
+  }
+
+  if (event.status === LiveEventStatus.LIVE && source.isActiveOutput) {
+    return res.status(409).json({
+      message: "Cannot remove the active source while event is live. Switch source or end stream first.",
+      code: "LIVE_SOURCE_DELETE_BLOCKED",
+    });
   }
 
   await prisma.liveEventSource.delete({ where: { id: sourceId } });
