@@ -191,7 +191,10 @@ export function EmailService() {
     return Array.from(seen.values());
   }, [recipients]);
   const readyToSend = dedupedRecipients.length > 0 && templateSubject.trim().length > 0 && templateBody.trim().length > 0;
-  const sampleRecipient = dedupedRecipients[0] ?? { name: "Subscriber", email: "user@example.com" };
+  const sampleRecipient = useMemo(
+    () => dedupedRecipients[0] ?? { name: "Subscriber", email: "user@example.com" },
+    [dedupedRecipients]
+  );
   const authHeaders = useMemo(() => (token ? { Authorization: `Bearer ${token}` } : {}), [token]);
   const isHtmlTemplate = useMemo(() => /<\s*[\w!]/.test(templateBody), [templateBody]);
 

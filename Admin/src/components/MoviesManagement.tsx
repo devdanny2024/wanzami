@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -57,11 +57,7 @@ export function MoviesManagement() {
 
   const token = useMemo(() => (typeof window !== "undefined" ? localStorage.getItem("accessToken") : null), []);
 
-  useEffect(() => {
-    void reloadMovies();
-  }, [token]);
-
-  const reloadMovies = async () => {
+  const reloadMovies = useCallback(async () => {
     try {
       const res = await authFetch("/admin/titles", {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -77,7 +73,11 @@ export function MoviesManagement() {
       toast.error("Failed to load titles (network error)");
       setMovies([]);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    void reloadMovies();
+  }, [reloadMovies]);
 
   const startUploadForMovie = (movieId: number, file: File) => {
     startUpload("MOVIE", movieId, file);
@@ -413,7 +413,7 @@ function AddEditMovieForm({
     setPpvEnabled(!!(movie as any)?.isPpv);
     setPpvPrice((movie as any)?.ppvPriceNaira ? String((movie as any).ppvPriceNaira) : "");
     setPpvCurrency((movie as any)?.ppvCurrency ?? "NGN");
-  }, [movie?.id]);
+  }, [movie]);
 
   const handleSave = async () => {
     try {

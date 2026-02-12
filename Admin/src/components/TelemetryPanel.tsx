@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { RefreshCw } from "lucide-react";
@@ -13,12 +13,12 @@ export function TelemetryPanel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const authHeaders = () => {
+  const authHeaders = useCallback(() => {
     const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
     return token ? { Authorization: `Bearer ${token}` } : {};
-  };
+  }, []);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -55,12 +55,11 @@ export function TelemetryPanel() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [authHeaders, hours]);
 
   useEffect(() => {
     void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hours]);
+  }, [load]);
 
   return (
     <Card className="bg-neutral-900 border-neutral-800">
