@@ -18,7 +18,7 @@
     "jobs:compute-embeddings": "tsx scripts/computeEmbeddings.ts",
     "jobs:compute-similarities": "tsx scripts/computeSimilarTitles.ts",
     "typecheck": "tsc --noEmit",
-    "test": "node -e \"console.log('No tests defined')\""
+    "test": "node --import tsx --test src/**/*.test.ts"
   },
   "dependencies": {
     "@aws-sdk/client-ivs": "^3.975.0",

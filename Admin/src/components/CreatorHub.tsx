@@ -86,6 +86,16 @@ const liveStateBadge = (event: LiveEvent) => {
 
 const replayStatuses: ReplayStatus[] = ["NONE", "PENDING_INFRA", "PROCESSING", "READY", "FAILED"];
 
+const pickPlayablePlaybackUrl = (event?: LiveEvent | null): string => {
+  if (!event) return "";
+  const activeSourceUrl = event.sources?.find((source) => source.isActiveOutput)?.playbackUrl?.trim();
+  if (activeSourceUrl) return activeSourceUrl;
+  const eventUrl = event.playbackUrl?.trim();
+  if (eventUrl) return eventUrl;
+  const fallbackSourceUrl = event.sources?.find((source) => source.playbackUrl?.trim())?.playbackUrl?.trim();
+  return fallbackSourceUrl ?? "";
+};
+
 const replayBadge = (status?: ReplayStatus) => {
   switch (status) {
     case "READY":
@@ -325,11 +335,13 @@ export function CreatorHub() {
         body: JSON.stringify({ isPublished: targetPublished }),
       });
       if (!res.ok) {
-        const backendError = (res.data as any)?.code;
-        if (backendError === "LIVE_EVENT_PUBLISH_BLOCKED") {
-          throw new Error("Event cannot be published without a playable stream source. Please add an RTMP or browser camera source.");
-        }
-        throw new Error((res.data as any)?.message || "Failed to update publish status");
+        const backendMessage = (res.data as any)?.message;
+        const backendCode = (res.data as any)?.code;
+        throw new Error(
+          backendCode && backendMessage
+            ? `${backendMessage} (${backendCode})`
+            : backendMessage || "Failed to update publish status"
+        );
       }
       if ((res.data as any)?.event) {
         const nextEvent = (res.data as any).event as LiveEvent;
@@ -610,18 +622,28 @@ export function CreatorHub() {
 
       await client.startBroadcast(cameraGoLiveEvent.streamKey, cameraGoLiveEvent.ingestEndpoint);
 
+      const latestEventRes = await adminApiFetch(`/api/admin/live/events/${cameraGoLiveEvent.id}`);
+      const latestEvent = latestEventRes.ok ? ((latestEventRes.data as any)?.event as LiveEvent | undefined) : cameraGoLiveEvent;
+      const playbackUrlForPublish = pickPlayablePlaybackUrl(latestEvent);
+      if (!playbackUrlForPublish) {
+        throw new Error("Cannot go live: no playback URL configured on this event. Ask backend to provision IVS playback first.");
+      }
+
       let sourceId: string | undefined;
-      const existingSource = (cameraGoLiveEvent.sources ?? []).find((source) => source.label === "Browser Camera" && source.type === "CAMERA");
+      const existingSource = (latestEvent?.sources ?? []).find((source) => source.label === "Browser Camera" && source.type === "CAMERA");
       if (existingSource) {
         sourceId = existingSource.id;
-        await adminApiFetch(`/api/admin/live/events/${cameraGoLiveEvent.id}/sources/${existingSource.id}`, {
+        const updateSourceRes = await adminApiFetch(`/api/admin/live/events/${cameraGoLiveEvent.id}/sources/${existingSource.id}`, {
           method: "PATCH",
           body: JSON.stringify({
             status: "READY",
-            playbackUrl: cameraGoLiveEvent.playbackUrl ?? undefined,
+            playbackUrl: playbackUrlForPublish,
             isActiveOutput: true,
           }),
         });
+        if (!updateSourceRes.ok) {
+          throw new Error((updateSourceRes.data as any)?.message || "Failed to prepare Browser Camera source");
+        }
       } else {
         const createdSourceRes = await adminApiFetch(`/api/admin/live/events/${cameraGoLiveEvent.id}/sources`, {
           method: "POST",
@@ -629,10 +651,13 @@ export function CreatorHub() {
             type: "CAMERA",
             label: "Browser Camera",
             status: "READY",
-            playbackUrl: cameraGoLiveEvent.playbackUrl ?? undefined,
+            playbackUrl: playbackUrlForPublish,
             isActiveOutput: true,
           }),
         });
+        if (!createdSourceRes.ok) {
+          throw new Error((createdSourceRes.data as any)?.message || "Failed to create Browser Camera source");
+        }
         sourceId = (createdSourceRes.data as any)?.source?.id;
       }
 
