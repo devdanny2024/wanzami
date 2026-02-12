@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { Prisma } from "@prisma/client";
+import { LiveEventStatus } from "@prisma/client";
 import { deleteLiveEventAdmin } from "./liveController.js";
 import { prisma } from "../prisma.js";
 
@@ -31,13 +31,8 @@ test("deleteLiveEventAdmin returns 400 for invalid event id", async () => {
 });
 
 test("deleteLiveEventAdmin returns 404 when event does not exist", async () => {
-  const originalDelete = prisma.liveEvent.delete;
-  (prisma.liveEvent as any).delete = async () => {
-    throw new Prisma.PrismaClientKnownRequestError("Record not found", {
-      code: "P2025",
-      clientVersion: "test",
-    });
-  };
+  const originalFindUnique = prisma.liveEvent.findUnique;
+  (prisma.liveEvent as any).findUnique = async () => null;
 
   const req: any = { params: { id: "999" } };
   const res = createMockResponse();
@@ -47,12 +42,33 @@ test("deleteLiveEventAdmin returns 404 when event does not exist", async () => {
     assert.equal(res.statusCode, 404);
     assert.deepEqual(res.body, { message: "Live event not found" });
   } finally {
-    (prisma.liveEvent as any).delete = originalDelete;
+    (prisma.liveEvent as any).findUnique = originalFindUnique;
+  }
+});
+
+test("deleteLiveEventAdmin returns 409 when event is live", async () => {
+  const originalFindUnique = prisma.liveEvent.findUnique;
+  (prisma.liveEvent as any).findUnique = async () => ({ id: BigInt(3), status: LiveEventStatus.LIVE });
+
+  const req: any = { params: { id: "3" } };
+  const res = createMockResponse();
+
+  try {
+    await deleteLiveEventAdmin(req, res);
+    assert.equal(res.statusCode, 409);
+    assert.deepEqual(res.body, {
+      message: "Cannot delete a live event. End it first before deleting.",
+      code: "LIVE_EVENT_DELETE_BLOCKED",
+    });
+  } finally {
+    (prisma.liveEvent as any).findUnique = originalFindUnique;
   }
 });
 
 test("deleteLiveEventAdmin deletes and returns success", async () => {
+  const originalFindUnique = prisma.liveEvent.findUnique;
   const originalDelete = prisma.liveEvent.delete;
+  (prisma.liveEvent as any).findUnique = async () => ({ id: BigInt(1), status: LiveEventStatus.ENDED });
   (prisma.liveEvent as any).delete = async () => ({ id: BigInt(1) });
 
   const req: any = { params: { id: "1" } };
@@ -63,6 +79,7 @@ test("deleteLiveEventAdmin deletes and returns success", async () => {
     assert.equal(res.statusCode, 200);
     assert.deepEqual(res.body, { message: "Live event deleted" });
   } finally {
+    (prisma.liveEvent as any).findUnique = originalFindUnique;
     (prisma.liveEvent as any).delete = originalDelete;
   }
 });

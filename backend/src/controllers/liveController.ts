@@ -214,6 +214,18 @@ export const deleteLiveEventAdmin = async (req: Request, res: Response) => {
   if (!eventId) return res.status(400).json({ message: "Invalid event id" });
 
   try {
+    const existing = await prisma.liveEvent.findUnique({ where: { id: eventId } });
+    if (!existing) {
+      return res.status(404).json({ message: "Live event not found" });
+    }
+
+    if (existing.status === LiveEventStatus.LIVE) {
+      return res.status(409).json({
+        message: "Cannot delete a live event. End it first before deleting.",
+        code: "LIVE_EVENT_DELETE_BLOCKED",
+      });
+    }
+
     await prisma.liveEvent.delete({ where: { id: eventId } });
     return res.status(200).json({ message: "Live event deleted" });
   } catch (err: any) {

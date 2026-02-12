@@ -1088,8 +1088,9 @@ export function CreatorHub() {
                         size="sm"
                         variant="outline"
                         onClick={() => setDeleteTargetEvent(event)}
-                        disabled={deletingEventId === event.id}
+                        disabled={deletingEventId === event.id || event.status === "LIVE"}
                         className="border-red-900/80 text-red-300 hover:bg-red-950/40"
+                        title={event.status === "LIVE" ? "End this live event before deleting it." : "Delete this event"}
                       >
                         {deletingEventId === event.id ? "Deleting..." : "Delete Event"}
                       </Button>
