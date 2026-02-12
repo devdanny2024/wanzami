@@ -324,7 +324,13 @@ export function CreatorHub() {
         method: "PATCH",
         body: JSON.stringify({ isPublished: targetPublished }),
       });
-      if (!res.ok) throw new Error((res.data as any)?.message || "Failed to update publish status");
+      if (!res.ok) {
+        const backendError = (res.data as any)?.code;
+        if (backendError === "LIVE_EVENT_PUBLISH_BLOCKED") {
+          throw new Error("Event cannot be published without a playable stream source. Please add an RTMP or browser camera source.");
+        }
+        throw new Error((res.data as any)?.message || "Failed to update publish status");
+      }
       if ((res.data as any)?.event) {
         const nextEvent = (res.data as any).event as LiveEvent;
         setEvents((prev) => prev.map((item) => (item.id === event.id ? nextEvent : item)));
