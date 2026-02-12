@@ -78,7 +78,7 @@ export function AddEditSeriesForm({
     setTrailerFile(null);
     setShortTrailerFile(null);
     setShortTrailerUrlText((series as any)?.shortTrailerUrl ?? "");
-  }, [series?.id]);
+  }, [series]);
 
   const handleSave = async () => {
     if (!title.trim() || !description.trim()) {

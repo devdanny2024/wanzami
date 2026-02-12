@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { UploadTask } from "@/components/UploadDock";
 import { initUpload, uploadMultipart } from "@/lib/uploadClient";
 import { authFetch } from "@/lib/authClient";
@@ -50,6 +50,10 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
   const MAX_CONCURRENCY = 3;
   const STORAGE_KEY = "wanzami-upload-queue";
 
+  const removeTask = useCallback((id: string) => {
+    setTasks((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
   // Restore queue (without file blobs) so the dock stays visible across navigation/reloads.
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -91,9 +95,9 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
       activeCount.current -= 1;
       setTimeout(() => setRunning(true), 0);
     });
-  }, [running, tasks]);
+  }, [handleUpload, running, tasks]);
 
-  const handleUpload = async (task: QueueTask) => {
+  async function handleUpload(task: QueueTask) {
     try {
       if (!task.file) throw new Error("Missing file");
       if (task.assetKind && task.assetField) {
@@ -154,9 +158,9 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
         )
       );
     }
-  };
+  }
 
-  const handleAssetUpload = async (task: QueueTask) => {
+  async function handleAssetUpload(task: QueueTask) {
     const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
     if (!task.targetId) throw new Error("Missing target id");
     if (!task.assetKind || !task.assetField) throw new Error("Missing asset metadata");
@@ -188,7 +192,7 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
     setTasks((prev) =>
       prev.map((t) => (t.id === task.id ? { ...t, status: "completed", progress: 100 } : t))
     );
-  };
+  }
 
   const startUpload = (kind: QueueTask["kind"], targetId: number, file: File, rendition?: string) => {
     const task: QueueTask = {
@@ -228,10 +232,6 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
     };
     setTasks((prev) => [...prev, task]);
     setRunning(true);
-  };
-
-  const removeTask = (id: string) => {
-    setTasks((prev) => prev.filter((t) => t.id !== id));
   };
 
   const clearTasks = () => {
@@ -382,3 +382,6 @@ export function useUploadQueue() {
   }
   return ctx;
 }
+
+
+

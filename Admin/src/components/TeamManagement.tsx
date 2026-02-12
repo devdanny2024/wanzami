@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -53,7 +53,7 @@ export function TeamManagement() {
     return token ? { Authorization: `Bearer ${token}` } : {};
   };
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoadingList(true);
     try {
       const [invRes, userRes] = await Promise.all([
@@ -72,11 +72,11 @@ export function TeamManagement() {
     } finally {
       setLoadingList(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    void fetchData();
+  }, [fetchData]);
 
   const createInvite = async (): Promise<string | null> => {
     if (!isValidEmail(inviteEmail)) {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -45,7 +45,7 @@ export function SeriesManagement() {
 
   const filtered = series.filter((s) => s.name?.toLowerCase().includes(search.toLowerCase()));
 
-  const loadSeries = async () => {
+  const loadSeries = useCallback(async () => {
     try {
       const res = await authFetch("/admin/titles", {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -61,11 +61,11 @@ export function SeriesManagement() {
       toast.error("Failed to load titles (network error)");
       setSeries([]);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     void loadSeries();
-  }, [token]);
+  }, [loadSeries]);
 
   const openAddSeries = () => {
     setEditingSeries(null);
@@ -406,9 +406,9 @@ function AddEpisodesDialog({
     if (series) {
       setWeeklyEp((prev) => ({ ...prev, titleId: series.id }));
     }
-  }, [series?.id]);
+  }, [series]);
 
-  const loadEpisodes = async () => {
+  const loadEpisodes = useCallback(async () => {
     if (!series) return;
     setLoadingEpisodes(true);
     try {
@@ -421,9 +421,9 @@ function AddEpisodesDialog({
     } finally {
       setLoadingEpisodes(false);
     }
-  };
+  }, [series, token]);
 
-  const loadSeasons = async () => {
+  const loadSeasons = useCallback(async () => {
     if (!series) return;
     setLoadingSeasons(true);
     try {
@@ -436,7 +436,7 @@ function AddEpisodesDialog({
     } finally {
       setLoadingSeasons(false);
     }
-  };
+  }, [series, token]);
 
   useEffect(() => {
     if (open && series) {
@@ -448,7 +448,7 @@ function AddEpisodesDialog({
       setBulkRows([]);
       setDragIndex(null);
     }
-  }, [open, series?.id]);
+  }, [loadEpisodes, loadSeasons, open, series]);
 
   const handleDeleteEpisode = async (epId: string | number | undefined) => {
     if (!epId) return;
@@ -1198,3 +1198,4 @@ function QualityInput({
     </div>
   );
 }
+
