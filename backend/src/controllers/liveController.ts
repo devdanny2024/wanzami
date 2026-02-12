@@ -583,6 +583,18 @@ export const updateLiveEventSourceAdmin = async (req: Request, res: Response) =>
     return res.status(404).json({ message: "Live source not found" });
   }
 
+  if (parsed.data.isActiveOutput === false && source.isActiveOutput) {
+    const event = await prisma.liveEvent.findUnique({ where: { id: eventId } });
+    if (!event) return res.status(404).json({ message: "Live event not found" });
+
+    if (event.status === LiveEventStatus.LIVE) {
+      return res.status(409).json({
+        message: "Cannot deactivate the active source while event is live. Switch to another source or end stream first.",
+        code: "LIVE_SOURCE_DEACTIVATE_BLOCKED",
+      });
+    }
+  }
+
   const updated = await prisma.$transaction(async (tx) => {
     if (parsed.data.isActiveOutput) {
       await tx.liveEventSource.updateMany({
