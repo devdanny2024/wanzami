@@ -33,6 +33,9 @@ env_vars = {
   PORT                  = "4000"
   AWS_REGION            = "eu-north-1"
   AWS_DEFAULT_REGION    = "eu-north-1"
+
+  # IVS must be created in a supported region (separate from the ECS region)
+  IVS_REGION            = "eu-west-1"
   DATABASE_URL          = "postgresql://postgres:REPLACE_ME@database-1.cxy88uogafmp.eu-north-1.rds.amazonaws.com:5432/wanzami"
 
   # TODO: Replace with EU S3 + CDN if migrating assets
