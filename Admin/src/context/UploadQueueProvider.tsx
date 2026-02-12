@@ -85,19 +85,41 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable));
   }, [tasks]);
 
-  useEffect(() => {
-    if (!running) return;
-    const next = tasks.find((t) => t.status === "pending");
-    if (!next || activeCount.current >= MAX_CONCURRENCY) return;
-    activeCount.current += 1;
-    setTasks((prev) => prev.map((t) => (t.id === next.id ? { ...t, status: "uploading" } : t)));
-    void handleUpload(next).finally(() => {
-      activeCount.current -= 1;
-      setTimeout(() => setRunning(true), 0);
+  const handleAssetUpload = useCallback(async (task: QueueTask) => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    if (!task.targetId) throw new Error("Missing target id");
+    if (!task.assetKind || !task.assetField) throw new Error("Missing asset metadata");
+    const presign = await authFetch("/admin/assets/presign", {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: JSON.stringify({
+        contentType: task.file?.type || "application/octet-stream",
+        kind: task.assetKind,
+      }),
     });
-  }, [handleUpload, running, tasks]);
+    if (!presign.ok || !(presign.data as any)?.url || !(presign.data as any)?.key) {
+      throw new Error((presign.data as any)?.message || "Failed to presign upload");
+    }
+    const uploadUrl = (presign.data as any).url as string;
+    const publicUrl = (presign.data as any).publicUrl || (presign.data as any).key;
+    const putRes = await fetch(uploadUrl, {
+      method: "PUT",
+      headers: { "Content-Type": task.file?.type || "application/octet-stream" },
+      body: task.file,
+    });
+    if (!putRes.ok) throw new Error("Upload failed");
+    const patch = await authFetch(`/admin/titles/${task.targetId}`, {
+      method: "PATCH",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: JSON.stringify({ [task.assetField]: publicUrl }),
+    });
+    if (!patch.ok) throw new Error((patch.data as any)?.message || "Failed to attach asset");
+    setTasks((prev) =>
+      prev.map((t) => (t.id === task.id ? { ...t, status: "completed", progress: 100 } : t))
+    );
+  }, []);
 
-  async function handleUpload(task: QueueTask) {
+  const handleUpload = useCallback(async (task: QueueTask) => {
     try {
       if (!task.file) throw new Error("Missing file");
       if (task.assetKind && task.assetField) {
@@ -158,41 +180,19 @@ export function UploadQueueProvider({ children }: { children: React.ReactNode })
         )
       );
     }
-  }
+  }, [handleAssetUpload, removeTask]);
 
-  async function handleAssetUpload(task: QueueTask) {
-    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-    if (!task.targetId) throw new Error("Missing target id");
-    if (!task.assetKind || !task.assetField) throw new Error("Missing asset metadata");
-    const presign = await authFetch("/admin/assets/presign", {
-      method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: JSON.stringify({
-        contentType: task.file?.type || "application/octet-stream",
-        kind: task.assetKind,
-      }),
+  useEffect(() => {
+    if (!running) return;
+    const next = tasks.find((t) => t.status === "pending");
+    if (!next || activeCount.current >= MAX_CONCURRENCY) return;
+    activeCount.current += 1;
+    setTasks((prev) => prev.map((t) => (t.id === next.id ? { ...t, status: "uploading" } : t)));
+    void handleUpload(next).finally(() => {
+      activeCount.current -= 1;
+      setTimeout(() => setRunning(true), 0);
     });
-    if (!presign.ok || !(presign.data as any)?.url || !(presign.data as any)?.key) {
-      throw new Error((presign.data as any)?.message || "Failed to presign upload");
-    }
-    const uploadUrl = (presign.data as any).url as string;
-    const publicUrl = (presign.data as any).publicUrl || (presign.data as any).key;
-    const putRes = await fetch(uploadUrl, {
-      method: "PUT",
-      headers: { "Content-Type": task.file?.type || "application/octet-stream" },
-      body: task.file,
-    });
-    if (!putRes.ok) throw new Error("Upload failed");
-    const patch = await authFetch(`/admin/titles/${task.targetId}`, {
-      method: "PATCH",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: JSON.stringify({ [task.assetField]: publicUrl }),
-    });
-    if (!patch.ok) throw new Error((patch.data as any)?.message || "Failed to attach asset");
-    setTasks((prev) =>
-      prev.map((t) => (t.id === task.id ? { ...t, status: "completed", progress: 100 } : t))
-    );
-  }
+  }, [handleUpload, running, tasks]);
 
   const startUpload = (kind: QueueTask["kind"], targetId: number, file: File, rendition?: string) => {
     const task: QueueTask = {
