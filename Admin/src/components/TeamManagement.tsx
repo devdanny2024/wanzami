@@ -276,6 +276,9 @@ export function TeamManagement() {
                   type="email"
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
+                  // Some browsers/extensions trigger input events without change (e.g. autofill/paste).
+                  // Keep state in sync so the Send/Share buttons enable reliably.
+                  onInput={(e) => setInviteEmail((e.target as HTMLInputElement).value)}
                   placeholder="name@company.com"
                   className={`mt-1 bg-white text-black placeholder:text-neutral-600 border-neutral-800 focus:border-[#fd7e14] focus:ring-[#fd7e14] ${inputError ? "border-red-500 ring-red-500" : ""}`}
                   style={{
@@ -302,7 +305,7 @@ export function TeamManagement() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
                 <Button
-                  disabled={loading || !inviteEmail}
+                  disabled={loading || !inviteEmail.trim()}
                   onClick={() => sendInvite(true, false)}
                   className="w-full bg-[#fd7e14] hover:bg-[#ff9940] text-white"
                 >
@@ -317,7 +320,7 @@ export function TeamManagement() {
                 <Button
                   type="button"
                   variant="outline"
-                  disabled={loading || !inviteEmail}
+                  disabled={loading || !inviteEmail.trim()}
                   onClick={() => sendInvite(false, true)}
                   className="border-neutral-700 text-white w-full"
                 >
