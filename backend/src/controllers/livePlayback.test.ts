@@ -23,6 +23,18 @@ test("pickPlayablePlaybackUrl falls back to event playback when active source is
   assert.equal(playbackUrl, "https://event.example/master.m3u8");
 });
 
+test("pickPlayablePlaybackUrl falls back to first source with a playback url", () => {
+  const playbackUrl = pickPlayablePlaybackUrl({
+    playbackUrl: null,
+    sources: [
+      { isActiveOutput: false, playbackUrl: "   " },
+      { isActiveOutput: false, playbackUrl: "https://source-fallback.example/master.m3u8" },
+    ],
+  });
+
+  assert.equal(playbackUrl, "https://source-fallback.example/master.m3u8");
+});
+
 test("canPublishLiveEvent blocks publish when neither event nor sources have playback url", () => {
   assert.equal(
     canPublishLiveEvent({
@@ -30,5 +42,15 @@ test("canPublishLiveEvent blocks publish when neither event nor sources have pla
       sources: [{ isActiveOutput: true, playbackUrl: null }],
     }),
     false
+  );
+});
+
+test("canPublishLiveEvent allows publish when event playback url is present but padded", () => {
+  assert.equal(
+    canPublishLiveEvent({
+      playbackUrl: "  https://event.example/master.m3u8  ",
+      sources: [],
+    }),
+    true
   );
 });
