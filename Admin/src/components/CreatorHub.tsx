@@ -648,10 +648,12 @@ export function CreatorHub() {
       const sdk = await ensureBroadcastSdk();
       const client = sdk.create({ streamConfig: sdk.BASIC_LANDSCAPE });
 
-      const videoTrack = stream.getVideoTracks()[0];
-      const audioTrack = stream.getAudioTracks()[0];
-      if (videoTrack) client.addVideoInputDevice(videoTrack, "camera", { index: 0 });
-      if (audioTrack) client.addAudioInputDevice(audioTrack, "mic");
+      // IVS Web Broadcast expects a MediaStream (not a single MediaStreamTrack).
+      // Passing a track causes runtime errors like: getVideoTracks/getAudioTracks is not a function.
+      const hasVideo = stream.getVideoTracks().length > 0;
+      const hasAudio = stream.getAudioTracks().length > 0;
+      if (hasVideo) client.addVideoInputDevice(stream, "camera", { index: 0 });
+      if (hasAudio) client.addAudioInputDevice(stream, "mic");
 
       await client.startBroadcast(cameraGoLiveEvent.streamKey, cameraGoLiveEvent.ingestEndpoint);
 
