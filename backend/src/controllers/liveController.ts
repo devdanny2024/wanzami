@@ -250,7 +250,40 @@ export const updateLiveEventPublishAdmin = async (req: Request, res: Response) =
   if (!event) return res.status(404).json({ message: "Live event not found" });
 
   if (parsed.data.isPublished) {
-    const canPublish = canPublishLiveEvent(event);
+    let publishCandidate = event;
+    let canPublish = canPublishLiveEvent(publishCandidate);
+
+    if (!canPublish) {
+      const hasIvsProvisioning = Boolean(
+        publishCandidate.ivsChannelArn ||
+          publishCandidate.ivsStreamKeyArn ||
+          publishCandidate.ivsStreamKeyValue ||
+          publishCandidate.ingestEndpoint,
+      );
+
+      if (!hasIvsProvisioning) {
+        const safeName = `wanzami-${publishCandidate.title.slice(0, 50).replace(/[^a-zA-Z0-9-_]/g, "-")}-${Date.now()}`;
+        try {
+          const ivs = await createIvsChannel({ name: safeName });
+          publishCandidate = await prisma.liveEvent.update({
+            where: { id: eventId },
+            data: {
+              ivsChannelArn: ivs.channelArn,
+              ivsStreamKeyArn: ivs.streamKeyArn,
+              ivsStreamKeyValue: ivs.streamKeyValue,
+              ingestEndpoint: ivs.ingestEndpoint,
+              playbackUrl: ivs.playbackUrl,
+            },
+            include: liveEventInclude,
+          });
+        } catch (ivsErr: any) {
+          console.error("updateLiveEventPublishAdmin ivs provisioning warning", ivsErr);
+        }
+      }
+
+      canPublish = canPublishLiveEvent(publishCandidate);
+    }
+
     if (!canPublish) {
       return res.status(409).json({
         message: "Cannot publish event without a playback URL. Configure IVS channel playback or add a source playback URL first.",
