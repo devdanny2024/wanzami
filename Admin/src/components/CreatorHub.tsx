@@ -629,10 +629,7 @@ export function CreatorHub() {
 
   const startCameraBroadcast = async () => {
     if (!cameraGoLiveEvent) return;
-    if (!cameraGoLiveEvent.isPublished) {
-      setCameraError("Publish this event first before going live.");
-      return;
-    }
+    // Publishing is attempted automatically before start if needed.
     if (!cameraGoLiveEvent.ingestEndpoint || !cameraGoLiveEvent.streamKey) {
       setCameraError("Ingest endpoint or stream key is missing for this event.");
       return;
@@ -661,9 +658,6 @@ export function CreatorHub() {
       const latestEventRes = await adminApiFetch(`/api/admin/live/events/${cameraGoLiveEvent.id}`);
       const latestEvent = latestEventRes.ok ? ((latestEventRes.data as any)?.event as LiveEvent | undefined) : cameraGoLiveEvent;
       const playbackUrlForPublish = pickPlayablePlaybackUrl(latestEvent);
-      if (!playbackUrlForPublish) {
-        throw new Error("Cannot go live: no playback URL configured on this event. Ask backend to provision IVS playback first.");
-      }
 
       let sourceId: string | undefined;
       const existingSource = (latestEvent?.sources ?? []).find((source) => source.label === "Browser Camera" && source.type === "CAMERA");
@@ -673,7 +667,7 @@ export function CreatorHub() {
           method: "PATCH",
           body: JSON.stringify({
             status: "READY",
-            playbackUrl: playbackUrlForPublish,
+            playbackUrl: playbackUrlForPublish || undefined,
             isActiveOutput: true,
           }),
         });
@@ -687,7 +681,7 @@ export function CreatorHub() {
             type: "CAMERA",
             label: "Browser Camera",
             status: "READY",
-            playbackUrl: playbackUrlForPublish,
+            playbackUrl: playbackUrlForPublish || undefined,
             isActiveOutput: true,
           }),
         });
@@ -695,6 +689,16 @@ export function CreatorHub() {
           throw new Error((createdSourceRes.data as any)?.message || "Failed to create Browser Camera source");
         }
         sourceId = (createdSourceRes.data as any)?.source?.id;
+      }
+
+      if (!latestEvent?.isPublished) {
+        const publishRes = await adminApiFetch(`/api/admin/live/events/${cameraGoLiveEvent.id}/publish`, {
+          method: "PATCH",
+          body: JSON.stringify({ isPublished: true }),
+        });
+        if (!publishRes.ok) {
+          throw new Error((publishRes.data as any)?.message || "Failed to publish event before going live");
+        }
       }
 
       browserLiveRef.current = { stream, client, sourceId };
@@ -1067,11 +1071,11 @@ export function CreatorHub() {
                         <Button
                           size="sm"
                           onClick={() => void openCameraGoLive(event)}
-                          disabled={!event.isPublished || cameraBusy}
+                          disabled={cameraBusy}
                           className="bg-[#fd7e14] hover:bg-[#ff9940] text-white disabled:opacity-60"
-                          title={!event.isPublished ? "Publish this event first to go live" : "Start browser camera flow"}
+                          title="Start browser camera flow"
                         >
-                          {event.isPublished ? "Go Live with Camera" : "Publish to Go Live"}
+                          Go Live with Camera
                         </Button>
                       )}
                       {event.status !== "ENDED" && (

@@ -1,4 +1,4 @@
-import { CreateChannelCommand, CreateStreamKeyCommand, IvsClient } from "@aws-sdk/client-ivs";
+import { CreateChannelCommand, CreateStreamKeyCommand, GetChannelCommand, IvsClient } from "@aws-sdk/client-ivs";
 import { config } from "../config.js";
 
 const ivsClient = new IvsClient({
@@ -40,4 +40,14 @@ export async function createIvsChannel(params: { name: string }) {
     streamKeyArn: streamKey.arn,
     streamKeyValue: streamKey.value,
   };
+}
+
+export async function getIvsChannelPlaybackUrl(channelArn: string): Promise<string | null> {
+  const channel = await ivsClient.send(
+    new GetChannelCommand({
+      arn: channelArn,
+    })
+  );
+
+  return channel.channel?.playbackUrl ?? null;
 }
