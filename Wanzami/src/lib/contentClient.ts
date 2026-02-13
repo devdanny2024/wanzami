@@ -467,7 +467,11 @@ export type LiveEvent = {
   title: string;
   description?: string | null;
   thumbnailUrl?: string | null;
+  category?: string | null;
   status: "SCHEDULED" | "LIVE" | "ENDED";
+  isPublished?: boolean;
+  visibility?: "PRIVATE" | "UNLISTED" | "PUBLIC";
+  unlistedSlug?: string | null;
   playbackUrl?: string | null;
   scheduledStartAt?: string | null;
   createdAt?: string;
@@ -495,6 +499,18 @@ export async function fetchLiveEvents(accessToken: string) {
 
 export async function fetchLiveEventById(id: string, accessToken: string) {
   const res = await fetchWithTimeout(`${API_BASE}/live/events/${id}`, {
+    cache: "no-store",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+  const data = await handleJsonResponse(res);
+  return (data?.event as LiveEvent) ?? null;
+}
+
+export async function fetchLiveEventByUnlistedSlug(slug: string, accessToken: string) {
+  const safeSlug = slug.trim();
+  const res = await fetchWithTimeout(`${API_BASE}/live/events/unlisted/${encodeURIComponent(safeSlug)}`, {
     cache: "no-store",
     headers: {
       Authorization: `Bearer ${accessToken}`,

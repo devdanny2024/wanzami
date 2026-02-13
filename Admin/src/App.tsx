@@ -20,6 +20,7 @@ import { EmailService } from './components/EmailService';
 import { SupportTickets } from './components/SupportTickets';
 import { ProcessManagement } from './components/ProcessManagement';
 import { CreatorHub } from './components/CreatorHub';
+import { LiveStudio } from './components/LiveStudio';
 
 export default function App() {
   return (
@@ -143,6 +144,8 @@ function AppContent() {
         return <SupportTickets />;
       case 'processes':
         return <ProcessManagement />;
+      case 'livestudio':
+        return <LiveStudio />;
       case 'creatorhub':
         return <CreatorHub />;
       default:

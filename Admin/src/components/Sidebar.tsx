@@ -40,6 +40,7 @@ const navItems = [
   { id: 'team', label: 'Team', icon: ShieldQuestion },
   { id: 'email', label: 'Email Service', icon: Mail },
   { id: 'support', label: 'Support', icon: MessageCircle },
+  { id: 'livestudio', label: 'Live Studio', icon: Video },
   { id: 'creatorhub', label: 'Creator Hub', icon: Video },
   { id: 'payments', label: 'Payments', icon: Wallet },
   { id: 'invoices', label: 'Invoices', icon: CreditCard },

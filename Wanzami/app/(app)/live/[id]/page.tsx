@@ -4,7 +4,7 @@ import Hls from "hls.js";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { LiveEvent, fetchLiveEventById } from "@/lib/contentClient";
+import { LiveEvent, fetchLiveEventById, fetchLiveEventByUnlistedSlug } from "@/lib/contentClient";
 
 function formatCountdown(targetIso?: string | null) {
   if (!targetIso) return null;
@@ -47,7 +47,10 @@ export default function LiveDetailPage({ params }: { params: { id: string } }) {
         if (!background) setLoading(true);
         if (!background) setError(null);
 
-        const found = await fetchLiveEventById(params.id, token);
+        const isNumericId = /^\d+$/.test(params.id);
+        const found = isNumericId
+          ? await fetchLiveEventById(params.id, token)
+          : await fetchLiveEventByUnlistedSlug(params.id, token);
         if (cancelled) return;
 
         if (!found) {
@@ -140,19 +143,40 @@ export default function LiveDetailPage({ params }: { params: { id: string } }) {
           <div className="flex items-start justify-between gap-3 mb-3">
             <div>
               <h1 className="text-3xl font-semibold">{event.title}</h1>
+              {event.category ? <p className="text-xs text-neutral-400 mt-1">Category: {event.category}</p> : null}
               {event.description && <p className="text-neutral-400 mt-2">{event.description}</p>}
             </div>
-            <span
-              className={`text-xs px-2 py-1 rounded-full border ${
-                event.status === "LIVE"
-                  ? "border-red-500/40 text-red-300 bg-red-500/10"
-                  : event.status === "SCHEDULED"
-                  ? "border-blue-500/40 text-blue-300 bg-blue-500/10"
-                  : "border-neutral-500/40 text-neutral-300 bg-neutral-500/10"
-              }`}
-            >
-              {event.status}
-            </span>
+            <div className="flex items-center gap-2">
+              <button
+                className="text-xs px-3 py-1.5 rounded-md border border-neutral-700 text-neutral-200 hover:bg-neutral-900"
+                onClick={async () => {
+                  const url = `${window.location.origin}/live/${event.id}`;
+                  try {
+                    if (navigator.share) {
+                      await navigator.share({ title: event.title, url });
+                    } else {
+                      await navigator.clipboard.writeText(url);
+                      alert("Link copied");
+                    }
+                  } catch {
+                    // ignore
+                  }
+                }}
+              >
+                Share
+              </button>
+              <span
+                className={`text-xs px-2 py-1 rounded-full border ${
+                  event.status === "LIVE"
+                    ? "border-red-500/40 text-red-300 bg-red-500/10"
+                    : event.status === "SCHEDULED"
+                    ? "border-blue-500/40 text-blue-300 bg-blue-500/10"
+                    : "border-neutral-500/40 text-neutral-300 bg-neutral-500/10"
+                }`}
+              >
+                {event.status}
+              </span>
+            </div>
           </div>
 
           {event.status === "SCHEDULED" && (
@@ -171,14 +195,28 @@ export default function LiveDetailPage({ params }: { params: { id: string } }) {
             {primaryPlaybackUrl ? (
               <video ref={videoRef} controls autoPlay playsInline className="w-full h-full bg-black" />
             ) : event.status === "ENDED" ? (
-              <div className="w-full h-full flex items-center justify-center text-center px-8">
-                <div>
-                  <p className="text-lg text-white mb-2">Replay not ready yet</p>
-                  <p className="text-sm text-neutral-400">
-                    {event.replay?.note || "Replay metadata is created. Recording/processing infra is still pending."}
-                  </p>
+              event.thumbnailUrl ? (
+                <div className="relative w-full h-full">
+                  <Image src={event.thumbnailUrl} alt={event.title} fill className="object-cover" unoptimized />
+                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-center px-8">
+                    <div>
+                      <p className="text-lg text-white mb-2">Live has ended</p>
+                      <p className="text-sm text-neutral-200">
+                        {event.replay?.note || "Replay is not ready yet."}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-center px-8">
+                  <div>
+                    <p className="text-lg text-white mb-2">Live has ended</p>
+                    <p className="text-sm text-neutral-400">
+                      {event.replay?.note || "Replay metadata is created. Recording/processing infra is still pending."}
+                    </p>
+                  </div>
+                </div>
+              )
             ) : event.thumbnailUrl ? (
               <div className="relative w-full h-full">
                 <Image src={event.thumbnailUrl} alt={event.title} fill className="object-cover" unoptimized />

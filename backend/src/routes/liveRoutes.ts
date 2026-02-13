@@ -8,11 +8,13 @@ import {
   endLiveEvent,
   getLiveEventAdmin,
   getLiveEventPublic,
+  getLiveEventUnlistedPublic,
   listLiveEventSourcesAdmin,
   listLiveEventsAdmin,
   listLiveEventsPublic,
   startLiveEvent,
   switchLiveEventSourceAdmin,
+  updateLiveEventAdmin,
   updateLiveEventPublishAdmin,
   updateLiveEventReplayAdmin,
   updateLiveEventSourceAdmin,
@@ -25,6 +27,7 @@ router.post("/admin/live/events", requireAuth, requireAdmin, createLiveEvent);
 router.get("/admin/live/events", requireAuth, requireAdmin, listLiveEventsAdmin);
 router.get("/admin/live/events/:id", requireAuth, requireAdmin, getLiveEventAdmin);
 router.delete("/admin/live/events/:id", requireAuth, requireAdmin, deleteLiveEventAdmin);
+router.patch("/admin/live/events/:id", requireAuth, requireAdmin, updateLiveEventAdmin);
 router.post("/admin/live/events/:id/start", requireAuth, requireAdmin, startLiveEvent);
 router.post("/admin/live/events/:id/end", requireAuth, requireAdmin, endLiveEvent);
 router.patch("/admin/live/events/:id/viewers", requireAuth, requireAdmin, updateLiveEventViewerCountAdmin);
@@ -37,6 +40,7 @@ router.delete("/admin/live/events/:id/sources/:sourceId", requireAuth, requireAd
 router.post("/admin/live/events/:id/sources/switch", requireAuth, requireAdmin, switchLiveEventSourceAdmin);
 
 router.get("/live/events", requireAuth, listLiveEventsPublic);
+router.get("/live/events/unlisted/:slug", requireAuth, getLiveEventUnlistedPublic);
 router.get("/live/events/:id", requireAuth, getLiveEventPublic);
 
 export default router;

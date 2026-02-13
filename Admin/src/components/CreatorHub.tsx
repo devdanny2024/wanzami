@@ -3,6 +3,15 @@ import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 import { Textarea } from "./ui/textarea";
 import {
   AlertDialog,
@@ -45,8 +54,10 @@ type LiveEvent = {
   title: string;
   description?: string | null;
   thumbnailUrl?: string | null;
+  category?: string | null;
   status: "SCHEDULED" | "LIVE" | "ENDED";
   isPublished?: boolean;
+  visibility?: "PUBLIC" | "UNLISTED" | "PRIVATE";
   ingestEndpoint?: string | null;
   playbackUrl?: string | null;
   streamKey?: string | null;
@@ -137,6 +148,93 @@ async function adminApiFetch(path: string, init?: RequestInit) {
   return { ok: res.ok, status: res.status, data };
 }
 
+function LivePlaybackPlayer({ src, title }: { src: string; title: string }) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const hlsRef = useRef<any>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const cleanup = () => {
+      if (hlsRef.current) {
+        try {
+          hlsRef.current.destroy?.();
+        } catch {
+          // ignore
+        }
+        hlsRef.current = null;
+      }
+    };
+
+    cleanup();
+
+    if (!src) {
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
+      return cleanup;
+    }
+
+    const isHls = src.toLowerCase().includes(".m3u8");
+
+    // Safari can play HLS natively; Chromium needs hls.js.
+    if (isHls && typeof window !== "undefined") {
+      const canNativePlay = video.canPlayType("application/vnd.apple.mpegurl") !== "";
+      if (canNativePlay) {
+        video.src = src;
+        void video.play().catch(() => undefined);
+        return cleanup;
+      }
+
+      let cancelled = false;
+      (async () => {
+        const mod = await import("hls.js");
+        if (cancelled) return;
+        const Hls = (mod as any).default;
+        if (!Hls?.isSupported?.()) {
+          video.src = src;
+          return;
+        }
+        const hls = new Hls({ lowLatencyMode: true });
+        hls.loadSource(src);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          void video.play().catch(() => undefined);
+        });
+        hlsRef.current = hls;
+      })().catch(() => {
+        video.src = src;
+      });
+
+      return () => {
+        cancelled = true;
+        cleanup();
+      };
+    }
+
+    video.src = src;
+    void video.play().catch(() => undefined);
+    return cleanup;
+  }, [src]);
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-neutral-800 bg-black aspect-video">
+      <video
+        ref={videoRef}
+        className="h-full w-full object-contain"
+        controls
+        playsInline
+        preload="metadata"
+        muted
+        autoPlay
+        crossOrigin="anonymous"
+        aria-label={title}
+      />
+    </div>
+  );
+}
+
 export function CreatorHub() {
   const [events, setEvents] = useState<LiveEvent[]>([]);
   const [loading, setLoading] = useState(false);
@@ -146,6 +244,7 @@ export function CreatorHub() {
   const [description, setDescription] = useState("");
   const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [category, setCategory] = useState("");
   const [scheduledStartAt, setScheduledStartAt] = useState("");
   const [replayDrafts, setReplayDrafts] = useState<Record<string, ReplayDraft>>({});
   const [replaySavingId, setReplaySavingId] = useState<string | null>(null);
@@ -161,6 +260,18 @@ export function CreatorHub() {
   const [cameraBusy, setCameraBusy] = useState(false);
   const [cameraMuted, setCameraMuted] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+
+  const [cameraWizardStep, setCameraWizardStep] = useState<0 | 1 | 2>(0);
+  const [privacy, setPrivacy] = useState<"public" | "unlisted" | "private">("public");
+  const [scheduleEnabled, setScheduleEnabled] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState("");
+  const [scheduleTime, setScheduleTime] = useState("");
+
+  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
+  const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedVideoDeviceId, setSelectedVideoDeviceId] = useState<string>("");
+  const [selectedAudioDeviceId, setSelectedAudioDeviceId] = useState<string>("");
+
   const previewRef = useRef<HTMLVideoElement | null>(null);
   const browserLiveRef = useRef<BrowserLiveSession | null>(null);
 
@@ -282,6 +393,7 @@ export function CreatorHub() {
           title: title.trim(),
           description: description.trim() || undefined,
           thumbnailUrl: resolvedThumbnailUrl,
+          category: category.trim() || undefined,
           scheduledStartAt: normalizedScheduledStart,
         }),
       });
@@ -290,6 +402,7 @@ export function CreatorHub() {
       setDescription("");
       setThumbnailUrl("");
       setThumbnailFile(null);
+      setCategory("");
       setScheduledStartAt("");
       await loadEvents();
     } catch (err: any) {
@@ -605,26 +718,148 @@ export function CreatorHub() {
     setCameraMuted(false);
   };
 
+  const loadMediaDevices = async () => {
+    if (!navigator.mediaDevices?.enumerateDevices) return;
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const nextVideo = devices.filter((d) => d.kind === "videoinput");
+    const nextAudio = devices.filter((d) => d.kind === "audioinput");
+    setVideoDevices(nextVideo);
+    setAudioDevices(nextAudio);
+    if (!selectedVideoDeviceId && nextVideo[0]?.deviceId) setSelectedVideoDeviceId(nextVideo[0].deviceId);
+    if (!selectedAudioDeviceId && nextAudio[0]?.deviceId) setSelectedAudioDeviceId(nextAudio[0].deviceId);
+  };
+
+  const startPreviewStream = async (opts?: { videoDeviceId?: string; audioDeviceId?: string }) => {
+    const videoDeviceId = opts?.videoDeviceId ?? selectedVideoDeviceId;
+    const audioDeviceId = opts?.audioDeviceId ?? selectedAudioDeviceId;
+
+    cleanupBrowserLive();
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: videoDeviceId
+        ? { deviceId: { exact: videoDeviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
+        : { width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: audioDeviceId ? { deviceId: { exact: audioDeviceId } } : true,
+    });
+
+    browserLiveRef.current = { stream, client: null };
+
+    setTimeout(() => {
+      if (previewRef.current) {
+        previewRef.current.srcObject = stream;
+        previewRef.current.muted = true;
+        void previewRef.current.play().catch(() => undefined);
+      }
+    }, 0);
+
+    return stream;
+  };
+
   const openCameraGoLive = async (event: LiveEvent) => {
     try {
       setCameraError(null);
       setCameraBusy(true);
-      cleanupBrowserLive();
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      browserLiveRef.current = { stream, client: null };
-      setCameraGoLiveEvent(event);
-      setTimeout(() => {
-        if (previewRef.current) {
-          previewRef.current.srcObject = stream;
-          previewRef.current.muted = true;
-          void previewRef.current.play().catch(() => undefined);
+      setCameraWizardStep(0);
+
+      const nextPrivacy: "public" | "unlisted" | "private" =
+        event.visibility === "PRIVATE" ? "private" : event.visibility === "UNLISTED" ? "unlisted" : "public";
+      setPrivacy(nextPrivacy);
+
+      if (event.scheduledStartAt) {
+        const d = new Date(event.scheduledStartAt);
+        if (!Number.isNaN(d.getTime())) {
+          const pad = (n: number) => String(n).padStart(2, "0");
+          setScheduleEnabled(true);
+          setScheduleDate(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
+          setScheduleTime(`${pad(d.getHours())}:${pad(d.getMinutes())}`);
+        } else {
+          setScheduleEnabled(false);
+          setScheduleDate("");
+          setScheduleTime("");
         }
-      }, 0);
+      } else {
+        setScheduleEnabled(false);
+        setScheduleDate("");
+        setScheduleTime("");
+      }
+
+      // Request permissions + start preview, then enumerate device labels.
+      await startPreviewStream();
+      await loadMediaDevices();
+
+      setCameraGoLiveEvent(event);
     } catch (err: any) {
       setCameraError(err?.message ?? "Unable to access camera/microphone.");
     } finally {
       setCameraBusy(false);
     }
+  };
+
+  const saveGoLiveSetup = async () => {
+    if (!cameraGoLiveEvent) return;
+
+    const visibility: LiveEvent["visibility"] =
+      privacy === "private" ? "PRIVATE" : privacy === "unlisted" ? "UNLISTED" : "PUBLIC";
+
+    const scheduledIso = scheduleEnabled ? (() => {
+      if (!scheduleDate || !scheduleTime) return null;
+      const [y, m, d] = scheduleDate.split("-").map((v) => Number(v));
+      const [hh, mm] = scheduleTime.split(":").map((v) => Number(v));
+      if (!y || !m || !d || Number.isNaN(hh) || Number.isNaN(mm)) return null;
+      const local = new Date(y, m - 1, d, hh, mm, 0, 0);
+      if (Number.isNaN(local.getTime())) return null;
+      return local.toISOString();
+    })() : null;
+
+    setCameraBusy(true);
+    try {
+      const res = await adminApiFetch(`/api/admin/live/events/${cameraGoLiveEvent.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          visibility,
+          scheduledStartAt: scheduledIso,
+        }),
+      });
+      if (!res.ok) {
+        throw new Error((res.data as any)?.message || "Failed to save go-live setup");
+      }
+      const nextEvent = (res.data as any)?.event as LiveEvent | undefined;
+      if (nextEvent) {
+        setCameraGoLiveEvent(nextEvent);
+        setEvents((prev) => prev.map((e) => (e.id === nextEvent.id ? nextEvent : e)));
+      }
+    } finally {
+      setCameraBusy(false);
+    }
+  };
+
+  const saveGoLiveSetup = async () => {
+    if (!cameraGoLiveEvent) return;
+
+    const desiredVisibility = privacy === "private" ? "PRIVATE" : privacy === "unlisted" ? "UNLISTED" : "PUBLIC";
+    const desiredSchedule = (() => {
+      if (!scheduleEnabled) return null;
+      if (!scheduleDate || !scheduleTime) return null;
+      const parsed = new Date(`${scheduleDate}T${scheduleTime}`);
+      return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+    })();
+
+    const res = await adminApiFetch(`/api/admin/live/events/${cameraGoLiveEvent.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        visibility: desiredVisibility,
+        // When scheduling is disabled, clear any prior schedule on the event.
+        scheduledStartAt: scheduleEnabled ? desiredSchedule : null,
+      }),
+    });
+
+    if (!res.ok) {
+      const msg = (res.data as any)?.message || "Failed to save go-live settings";
+      throw new Error(msg);
+    }
+
+    // Refresh local event cache.
+    await loadEvents();
   };
 
   const startCameraBroadcast = async () => {
@@ -644,6 +879,19 @@ export function CreatorHub() {
     try {
       setCameraError(null);
       setCameraBusy(true);
+
+      // Ensure event visibility matches the wizard choice before publishing/starting.
+      if (privacy !== "private") {
+        const desiredVisibility = privacy === "unlisted" ? "UNLISTED" : "PUBLIC";
+        try {
+          await adminApiFetch(`/api/admin/live/events/${cameraGoLiveEvent.id}`, {
+            method: "PATCH",
+            body: JSON.stringify({ visibility: desiredVisibility }),
+          });
+        } catch {
+          // best-effort; publishing step below will still run
+        }
+      }
 
       const sdk = await ensureBroadcastSdk();
       const client = sdk.create({ streamConfig: sdk.BASIC_LANDSCAPE });
@@ -774,6 +1022,12 @@ export function CreatorHub() {
             placeholder="Thumbnail URL (optional if file uploaded)"
             className="bg-neutral-950 border-neutral-800 text-white"
           />
+          <Input
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            placeholder="Category (e.g., Sports, News, Entertainment)"
+            className="bg-neutral-950 border-neutral-800 text-white"
+          />
           <div className="space-y-1">
             <label className="text-xs text-neutral-500">Or upload thumbnail file</label>
             <Input
@@ -861,6 +1115,13 @@ export function CreatorHub() {
                           <button onClick={() => copyText(event.playbackUrl)} className="text-[#fd7e14]">Copy</button>
                         )}
                       </div>
+
+                      {event.status === "LIVE" && pickPlayablePlaybackUrl(event) ? (
+                        <div className="mt-2">
+                          <p className="text-xs text-neutral-500 mb-2">Live Preview (Admin)</p>
+                          <LivePlaybackPlayer src={pickPlayablePlaybackUrl(event)} title={event.title} />
+                        </div>
+                      ) : null}
                       <div className="flex items-center gap-2">
                         <span className="text-neutral-500">Replay URL:</span>
                         <span className="text-white/80 break-all">{event.replay?.playbackUrl || "Not available"}</span>
@@ -1152,42 +1413,348 @@ export function CreatorHub() {
 
       {cameraGoLiveEvent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-2xl rounded-xl border border-neutral-800 bg-neutral-950 p-4 space-y-4">
-            <h3 className="text-white text-lg">Go Live with Camera</h3>
-            <p className="text-sm text-neutral-400">Preview your camera, then start. No OBS or RTMP setup needed.</p>
-
-            <div className="overflow-hidden rounded-lg border border-neutral-800 bg-black aspect-video">
-              <video ref={previewRef} className="h-full w-full object-cover" playsInline autoPlay muted />
-            </div>
-
-            {cameraError && <p className="text-sm text-red-400">{cameraError}</p>}
-
-            <div className="flex flex-wrap justify-end gap-2">
+          <div className="w-full max-w-4xl rounded-xl border border-neutral-800 bg-neutral-950 p-4 md:p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-white text-xl font-semibold">Create stream</h3>
+                <p className="text-sm text-neutral-400">Set up your camera, then choose visibility & scheduling.</p>
+              </div>
               <Button
                 variant="outline"
-                className="border-neutral-700 text-neutral-200"
+                className="border-neutral-700 bg-transparent text-neutral-200 hover:bg-neutral-900"
                 onClick={() => {
                   cleanupBrowserLive();
                   setCameraGoLiveEvent(null);
                 }}
                 disabled={cameraBusy}
               >
-                Cancel
+                Close
               </Button>
-              <Button
-                variant="outline"
-                className="border-neutral-700 text-neutral-200"
-                onClick={toggleCameraMute}
-                disabled={cameraBusy || !browserLiveRef.current?.stream}
-              >
-                {cameraMuted ? "Unmute" : "Mute"}
-              </Button>
-              <Button className="bg-[#fd7e14] hover:bg-[#ff9940] text-white" onClick={startCameraBroadcast} disabled={cameraBusy}>
-                {cameraBusy ? "Starting..." : "Start"}
-              </Button>
-              <Button className="bg-neutral-800 hover:bg-neutral-700 text-white" onClick={() => void stopCameraBroadcast()} disabled={cameraBusy}>
-                Stop
-              </Button>
+            </div>
+
+            <div className="mt-5 rounded-lg border border-neutral-800 bg-neutral-900/20 p-4">
+              <div className="flex items-center justify-between gap-3">
+                {(
+                  [
+                    { id: 0 as const, label: "Details" },
+                    { id: 1 as const, label: "Customization" },
+                    { id: 2 as const, label: "Visibility" },
+                  ]
+                ).map((s, idx, arr) => {
+                  const active = cameraWizardStep === s.id;
+                  const done = cameraWizardStep > s.id;
+                  return (
+                    <div key={s.id} className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={
+                            "h-6 w-6 rounded-full flex items-center justify-center text-xs border " +
+                            (done
+                              ? "bg-blue-500/20 border-blue-400 text-blue-200"
+                              : active
+                                ? "bg-white/10 border-white/40 text-white"
+                                : "bg-neutral-950 border-neutral-700 text-neutral-400")
+                          }
+                        >
+                          {done ? "✓" : idx + 1}
+                        </div>
+                        <p className={active ? "text-sm text-white" : "text-sm text-neutral-400"}>{s.label}</p>
+                      </div>
+                      {idx < arr.length - 1 ? (
+                        <div className="mt-3 h-px w-full bg-neutral-800" />
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-5 grid gap-4 md:grid-cols-5">
+                <div className="md:col-span-3">
+                  <div className="overflow-hidden rounded-lg border border-neutral-800 bg-black aspect-video">
+                    <video ref={previewRef} className="h-full w-full object-cover" playsInline autoPlay muted />
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs text-neutral-500">Event: <span className="text-neutral-200">{cameraGoLiveEvent.title}</span></p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-neutral-700 text-neutral-200"
+                      onClick={toggleCameraMute}
+                      disabled={cameraBusy || !browserLiveRef.current?.stream}
+                    >
+                      {cameraMuted ? "Unmute" : "Mute"}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="md:col-span-2">
+                  {cameraWizardStep === 0 ? (
+                    <div className="space-y-4">
+                      <div className="rounded-md border border-neutral-800 bg-neutral-950 p-4">
+                        <p className="text-sm text-white font-medium">Camera & microphone</p>
+                        <p className="text-xs text-neutral-500 mt-1">Choose the devices to use for this stream.</p>
+
+                        <div className="mt-4 space-y-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs text-neutral-400">Camera</Label>
+                            <Select
+                              value={selectedVideoDeviceId}
+                              onValueChange={(v) => {
+                                setSelectedVideoDeviceId(v);
+                                void startPreviewStream({ videoDeviceId: v });
+                              }}
+                            >
+                              <SelectTrigger className="bg-neutral-950 border-neutral-800 text-white">
+                                <SelectValue placeholder="Select camera" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-neutral-950 border-neutral-800 text-white">
+                                {videoDevices.length ? (
+                                  videoDevices.map((d, idx) => (
+                                    <SelectItem key={d.deviceId} value={d.deviceId}>
+                                      {d.label || `Camera ${idx + 1}`}
+                                    </SelectItem>
+                                  ))
+                                ) : (
+                                  <SelectItem value="__none" disabled>
+                                    No camera devices
+                                  </SelectItem>
+                                )}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-1">
+                            <Label className="text-xs text-neutral-400">Microphone</Label>
+                            <Select
+                              value={selectedAudioDeviceId}
+                              onValueChange={(v) => {
+                                setSelectedAudioDeviceId(v);
+                                void startPreviewStream({ audioDeviceId: v });
+                              }}
+                            >
+                              <SelectTrigger className="bg-neutral-950 border-neutral-800 text-white">
+                                <SelectValue placeholder="Select microphone" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-neutral-950 border-neutral-800 text-white">
+                                {audioDevices.length ? (
+                                  audioDevices.map((d, idx) => (
+                                    <SelectItem key={d.deviceId} value={d.deviceId}>
+                                      {d.label || `Microphone ${idx + 1}`}
+                                    </SelectItem>
+                                  ))
+                                ) : (
+                                  <SelectItem value="__none" disabled>
+                                    No microphone devices
+                                  </SelectItem>
+                                )}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-md border border-neutral-800 bg-neutral-950 p-4">
+                        <p className="text-sm text-white font-medium">Tips</p>
+                        <ul className="mt-2 space-y-1 text-xs text-neutral-400 list-disc pl-4">
+                          <li>Make sure your camera isn’t in use by another app.</li>
+                          <li>Use headphones to avoid feedback.</li>
+                        </ul>
+                      </div>
+                    </div>
+                  ) : cameraWizardStep === 1 ? (
+                    <div className="space-y-4">
+                      <div className="rounded-md border border-neutral-800 bg-neutral-950 p-4">
+                        <p className="text-sm text-white font-medium">Customization</p>
+                        <p className="text-xs text-neutral-500 mt-1">More customization options will be added here.</p>
+                        <div className="mt-4 rounded-md border border-neutral-800 bg-neutral-900/30 p-3">
+                          <p className="text-xs text-neutral-400">Current title</p>
+                          <p className="text-sm text-neutral-200 mt-1">{cameraGoLiveEvent.title}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="rounded-md border border-neutral-800 bg-neutral-950 p-4">
+                        <p className="text-sm text-white font-medium">Privacy</p>
+                        <p className="text-xs text-neutral-500 mt-1">Make your stream public, unlisted, or private.</p>
+
+                        <RadioGroup
+                          value={privacy}
+                          onValueChange={(v) => setPrivacy(v as "public" | "unlisted" | "private")}
+                          className="mt-4 space-y-2"
+                        >
+                          {(
+                            [
+                              {
+                                value: "private",
+                                label: "Private",
+                                desc: "Only you and people you choose can watch your stream",
+                              },
+                              {
+                                value: "unlisted",
+                                label: "Unlisted",
+                                desc: "Anyone with the stream link can watch your stream",
+                              },
+                              {
+                                value: "public",
+                                label: "Public",
+                                desc: "Everyone can watch your stream",
+                              },
+                            ] as const
+                          ).map((opt) => (
+                            <label
+                              key={opt.value}
+                              className={
+                                "flex items-start gap-3 rounded-md border p-3 cursor-pointer " +
+                                (privacy === opt.value ? "border-white/30 bg-white/5" : "border-neutral-800 bg-neutral-950")
+                              }
+                            >
+                              <RadioGroupItem value={opt.value} className="mt-1" />
+                              <div>
+                                <p className="text-sm text-white">{opt.label}</p>
+                                <p className="text-xs text-neutral-400 mt-0.5">{opt.desc}</p>
+                              </div>
+                            </label>
+                          ))}
+                        </RadioGroup>
+                      </div>
+
+                      <div className="rounded-md border border-neutral-800 bg-neutral-950 p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm text-white font-medium">Schedule</p>
+                            <p className="text-xs text-neutral-500 mt-1">Select the date and time you want to go live.</p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-neutral-700 text-neutral-200"
+                            onClick={() => setScheduleEnabled((p) => !p)}
+                          >
+                            {scheduleEnabled ? "Disable" : "Enable"}
+                          </Button>
+                        </div>
+
+                        <div className={"mt-4 grid grid-cols-2 gap-2 " + (scheduleEnabled ? "opacity-100" : "opacity-50 pointer-events-none")}>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-neutral-400">Date</Label>
+                            <Input
+                              type="date"
+                              value={scheduleDate}
+                              onChange={(e) => setScheduleDate(e.target.value)}
+                              className="bg-neutral-950 border-neutral-800 text-white"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-neutral-400">Time</Label>
+                            <Input
+                              type="time"
+                              value={scheduleTime}
+                              onChange={(e) => setScheduleTime(e.target.value)}
+                              className="bg-neutral-950 border-neutral-800 text-white"
+                            />
+                          </div>
+                        </div>
+                        {scheduleEnabled && (!scheduleDate || !scheduleTime) ? (
+                          <p className="text-xs text-amber-300 mt-2">Pick both a date and time to schedule.</p>
+                        ) : null}
+                      </div>
+                    </div>
+                  )}
+
+                  {cameraError && <p className="text-sm text-red-400">{cameraError}</p>}
+
+                  <div className="mt-4 flex items-center justify-between gap-2">
+                    <Button
+                      variant="outline"
+                      className="border-neutral-700 text-neutral-200"
+                      onClick={() =>
+                        setCameraWizardStep((s) => {
+                          if (s === 0) return 0;
+                          if (s === 1) return 0;
+                          return 1;
+                        })
+                      }
+                      disabled={cameraBusy || cameraWizardStep === 0}
+                    >
+                      Back
+                    </Button>
+
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        className="border-neutral-700 text-neutral-200"
+                        onClick={() => {
+                          cleanupBrowserLive();
+                          setCameraGoLiveEvent(null);
+                        }}
+                        disabled={cameraBusy}
+                      >
+                        Cancel
+                      </Button>
+
+                      {cameraWizardStep < 2 ? (
+                        <Button
+                          className="bg-[#fd7e14] hover:bg-[#ff9940] text-white"
+                          onClick={() =>
+                            setCameraWizardStep((s) => {
+                              if (s === 0) return 1;
+                              if (s === 1) return 2;
+                              return 2;
+                            })
+                          }
+                          disabled={cameraBusy}
+                        >
+                          Next
+                        </Button>
+                      ) : (
+                        <Button
+                          className="bg-[#fd7e14] hover:bg-[#ff9940] text-white"
+                          onClick={() => {
+                            if (scheduleEnabled && (!scheduleDate || !scheduleTime)) {
+                              toast.error("Please select both a schedule date and time.");
+                              return;
+                            }
+                            if (!scheduleEnabled && privacy === "private") {
+                              toast.error("Private live streams aren't supported yet. Choose Public or Unlisted to go live.");
+                              return;
+                            }
+
+                            void (async () => {
+                              try {
+                                await saveGoLiveSetup();
+                              } catch (err: any) {
+                                toast.error(err?.message || "Failed to save go-live setup");
+                                return;
+                              }
+
+                              if (scheduleEnabled) {
+                                toast.success("Live event scheduled.");
+                                cleanupBrowserLive();
+                                setCameraGoLiveEvent(null);
+                                return;
+                              }
+
+                              await startCameraBroadcast();
+                            })();
+                          }}
+                          disabled={cameraBusy}
+                        >
+                          {cameraBusy ? "Saving..." : scheduleEnabled ? "Done" : "Done"}
+                        </Button>
+                      )}
+
+                      <Button
+                        className="bg-neutral-800 hover:bg-neutral-700 text-white"
+                        onClick={() => void stopCameraBroadcast()}
+                        disabled={cameraBusy}
+                      >
+                        Stop
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

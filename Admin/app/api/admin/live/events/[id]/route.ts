@@ -18,3 +18,14 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   });
   return NextResponse.json(result.data, { status: result.status });
 }
+
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  const authorization = req.headers.get("authorization") ?? "";
+  const body = await req.json().catch(() => ({}));
+  const result = await authFetch(`/admin/live/events/${params.id}`, {
+    method: "PATCH",
+    headers: { Authorization: authorization },
+    body: JSON.stringify(body),
+  });
+  return NextResponse.json(result.data, { status: result.status });
+}

@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
+import crypto from "crypto";
 import { z } from "zod";
-import { LiveEventStatus, LiveReplayStatus, LiveSourceStatus, LiveSourceType, Prisma } from "@prisma/client";
+import { LiveEventStatus, LiveReplayStatus, LiveSourceStatus, LiveSourceType, LiveVisibility, Prisma } from "@prisma/client";
 import { prisma } from "../prisma.js";
 import { createIvsChannel, getIvsChannelPlaybackUrl } from "../services/ivsService.js";
 import { config } from "../config.js";
@@ -11,7 +12,9 @@ const createSchema = z.object({
   title: z.string().trim().min(1).max(160),
   description: z.string().trim().max(5000).optional(),
   thumbnailUrl: z.string().trim().url().optional(),
+  category: z.string().trim().max(120).optional(),
   scheduledStartAt: z.string().datetime().optional(),
+  visibility: z.nativeEnum(LiveVisibility).optional(),
 });
 
 const replayUpdateSchema = z.object({
@@ -28,6 +31,15 @@ const viewerCountUpdateSchema = z.object({
 
 const publishUpdateSchema = z.object({
   isPublished: z.boolean(),
+});
+
+const adminEventUpdateSchema = z.object({
+  visibility: z.nativeEnum(LiveVisibility).optional(),
+  scheduledStartAt: z.string().datetime().nullable().optional(),
+  category: z.string().trim().max(120).nullable().optional(),
+  thumbnailUrl: z.string().trim().url().nullable().optional(),
+  title: z.string().trim().min(1).max(160).optional(),
+  description: z.string().trim().max(5000).nullable().optional(),
 });
 
 const sourceCreateSchema = z.object({
@@ -74,6 +86,27 @@ const parseSourceId = (value?: string): bigint | null => {
   }
 };
 
+const generateUnlistedSlug = () => crypto.randomBytes(9).toString("base64url");
+
+const ensureUnlistedSlug = async (tx: Prisma.TransactionClient, eventId: bigint) => {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    const slug = generateUnlistedSlug();
+    try {
+      const updated = await tx.liveEvent.update({
+        where: { id: eventId },
+        data: { unlistedSlug: slug },
+      });
+      return updated.unlistedSlug;
+    } catch (err: any) {
+      if (err?.code === "P2002") {
+        continue; // unique collision
+      }
+      throw err;
+    }
+  }
+  throw new Error("Failed to generate unique unlisted slug");
+};
+
 const normalizeSourceForResponse = (source: any) => ({
   id: source.id.toString(),
   eventId: source.liveEventId?.toString(),
@@ -102,8 +135,11 @@ const toPublicEvent = (e: any) => {
     title: e.title,
     description: e.description,
     thumbnailUrl: e.thumbnailUrl,
+    category: e.category,
     status: e.status,
     isPublished: Boolean(e.isPublished),
+    visibility: e.visibility ?? (e.isPublished ? LiveVisibility.PUBLIC : LiveVisibility.PRIVATE),
+    unlistedSlug: e.unlistedSlug ?? null,
     playbackUrl: effectivePlaybackUrl,
     scheduledStartAt: e.scheduledStartAt,
     createdAt: e.createdAt,
@@ -218,7 +254,7 @@ export const createLiveEvent = async (req: AuthenticatedRequest, res: Response) 
     return res.status(400).json({ errors: parsed.error.flatten() });
   }
 
-  const { title, description, thumbnailUrl, scheduledStartAt } = parsed.data;
+  const { title, description, thumbnailUrl, category, scheduledStartAt, visibility } = parsed.data;
   const scheduledAt = scheduledStartAt ? new Date(scheduledStartAt) : null;
   if (scheduledAt && Number.isNaN(scheduledAt.getTime())) {
     return res.status(400).json({ message: "Invalid scheduledStartAt" });
@@ -239,22 +275,34 @@ export const createLiveEvent = async (req: AuthenticatedRequest, res: Response) 
       ivs = null;
     }
 
-    const created = await prisma.liveEvent.create({
-      data: {
-        title,
-        description,
-        thumbnailUrl,
-        status: LiveEventStatus.SCHEDULED,
-        isPublished: false,
-        ivsChannelArn: ivs?.channelArn ?? null,
-        ivsStreamKeyArn: ivs?.streamKeyArn ?? null,
-        ivsStreamKeyValue: ivs?.streamKeyValue ?? null,
-        ingestEndpoint: ivs?.ingestEndpoint ?? null,
-        playbackUrl: ivs?.playbackUrl ?? null,
-        scheduledStartAt: scheduledAt,
-        createdByUserId: req.user?.userId ?? null,
-      },
-      include: liveEventInclude,
+    const resolvedVisibility = visibility ?? LiveVisibility.PRIVATE;
+    const resolvedIsPublished = resolvedVisibility !== LiveVisibility.PRIVATE;
+
+    const created = await prisma.$transaction(async (tx) => {
+      const initial = await tx.liveEvent.create({
+        data: {
+          title,
+          description,
+          thumbnailUrl,
+          category,
+          status: LiveEventStatus.SCHEDULED,
+          isPublished: resolvedIsPublished,
+          visibility: resolvedVisibility,
+          ivsChannelArn: ivs?.channelArn ?? null,
+          ivsStreamKeyArn: ivs?.streamKeyArn ?? null,
+          ivsStreamKeyValue: ivs?.streamKeyValue ?? null,
+          ingestEndpoint: ivs?.ingestEndpoint ?? null,
+          playbackUrl: ivs?.playbackUrl ?? null,
+          scheduledStartAt: scheduledAt,
+          createdByUserId: req.user?.userId ?? null,
+        },
+      });
+
+      if (resolvedVisibility === LiveVisibility.UNLISTED && !initial.unlistedSlug) {
+        await ensureUnlistedSlug(tx, initial.id);
+      }
+
+      return tx.liveEvent.findUniqueOrThrow({ where: { id: initial.id }, include: liveEventInclude });
     });
 
     return res.json({ event: toAdminEvent(created) });
@@ -310,6 +358,82 @@ export const deleteLiveEventAdmin = async (req: Request, res: Response) => {
     console.error("deleteLiveEventAdmin error", err);
     return res.status(500).json({ message: "Failed to delete live event", error: err?.message });
   }
+};
+
+export const updateLiveEventAdmin = async (req: Request, res: Response) => {
+  const eventId = parseEventId(req.params.id);
+  if (!eventId) return res.status(400).json({ message: "Invalid event id" });
+
+  const parsed = adminEventUpdateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ errors: parsed.error.flatten() });
+  }
+
+  const event = await prisma.liveEvent.findUnique({ where: { id: eventId }, include: liveEventInclude });
+  if (!event) return res.status(404).json({ message: "Live event not found" });
+
+  // scheduledStartAt validation (allow null to clear)
+  let nextScheduled: Date | null | undefined = undefined;
+  if (Object.prototype.hasOwnProperty.call(parsed.data, "scheduledStartAt")) {
+    const raw = parsed.data.scheduledStartAt;
+    if (!raw) {
+      nextScheduled = null;
+    } else {
+      const d = new Date(raw);
+      if (Number.isNaN(d.getTime())) {
+        return res.status(400).json({ message: "Invalid scheduledStartAt" });
+      }
+      if (d.getTime() < Date.now() - 60_000) {
+        return res.status(400).json({ message: "scheduledStartAt must be in the future" });
+      }
+      nextScheduled = d;
+    }
+  }
+
+  let nextVisibility: LiveVisibility | undefined = undefined;
+  let nextIsPublished: boolean | undefined = undefined;
+
+  if (parsed.data.visibility) {
+    nextVisibility = parsed.data.visibility;
+    nextIsPublished = parsed.data.visibility !== LiveVisibility.PRIVATE;
+
+    // If we are moving into a published state, validate publish constraints (playback/url readiness).
+    if (nextIsPublished) {
+      const publishCandidate = await ensurePublishCandidatePlayback(event);
+      const canPublish = canPublishLiveEvent(publishCandidate);
+      if (!canPublish) {
+        return res.status(409).json({
+          message: "Cannot publish event without a playback URL. Configure IVS channel playback or add a source playback URL first.",
+          code: "LIVE_EVENT_PUBLISH_BLOCKED",
+        });
+      }
+    }
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const updatedEvent = await tx.liveEvent.update({
+      where: { id: eventId },
+      data: {
+        ...(nextScheduled !== undefined ? { scheduledStartAt: nextScheduled } : {}),
+        ...(nextVisibility !== undefined ? { visibility: nextVisibility } : {}),
+        ...(nextIsPublished !== undefined ? { isPublished: nextIsPublished } : {}),
+        ...(Object.prototype.hasOwnProperty.call(parsed.data, "category")
+          ? { category: parsed.data.category ? parsed.data.category.trim() : null }
+          : {}),
+        ...(Object.prototype.hasOwnProperty.call(parsed.data, "thumbnailUrl") ? { thumbnailUrl: parsed.data.thumbnailUrl } : {}),
+        ...(parsed.data.title ? { title: parsed.data.title } : {}),
+        ...(Object.prototype.hasOwnProperty.call(parsed.data, "description") ? { description: parsed.data.description } : {}),
+      },
+    });
+
+    if (updatedEvent.visibility === LiveVisibility.UNLISTED && !updatedEvent.unlistedSlug) {
+      await ensureUnlistedSlug(tx, eventId);
+    }
+
+    return tx.liveEvent.findUniqueOrThrow({ where: { id: eventId }, include: liveEventInclude });
+  });
+
+  return res.json({ event: toAdminEvent(updated) });
 };
 
 export const updateLiveEventPublishAdmin = async (req: Request, res: Response) => {
@@ -368,10 +492,24 @@ export const updateLiveEventPublishAdmin = async (req: Request, res: Response) =
     }
   }
 
-  const updated = await prisma.liveEvent.update({
-    where: { id: eventId },
-    data: { isPublished: parsed.data.isPublished },
-    include: liveEventInclude,
+  const nextVisibility = parsed.data.isPublished
+    ? (event.visibility === LiveVisibility.UNLISTED ? LiveVisibility.UNLISTED : LiveVisibility.PUBLIC)
+    : LiveVisibility.PRIVATE;
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const updatedEvent = await tx.liveEvent.update({
+      where: { id: eventId },
+      data: {
+        isPublished: parsed.data.isPublished,
+        visibility: nextVisibility,
+      },
+    });
+
+    if (updatedEvent.visibility === LiveVisibility.UNLISTED && !updatedEvent.unlistedSlug) {
+      await ensureUnlistedSlug(tx, eventId);
+    }
+
+    return tx.liveEvent.findUniqueOrThrow({ where: { id: eventId }, include: liveEventInclude });
   });
 
   return res.json({ event: toAdminEvent(updated) });
@@ -385,6 +523,24 @@ export const getLiveEventPublic = async (req: Request, res: Response) => {
     where: {
       id: eventId,
       isPublished: true,
+      visibility: LiveVisibility.PUBLIC,
+    },
+    include: liveEventInclude,
+  });
+  if (!event) return res.status(404).json({ message: "Live event not found" });
+
+  return res.json({ event: toPublicEvent(event) });
+};
+
+export const getLiveEventUnlistedPublic = async (req: Request, res: Response) => {
+  const slug = typeof req.params.slug === "string" ? req.params.slug.trim() : "";
+  if (!slug) return res.status(400).json({ message: "Invalid unlisted slug" });
+
+  const event = await prisma.liveEvent.findFirst({
+    where: {
+      unlistedSlug: slug,
+      isPublished: true,
+      visibility: LiveVisibility.UNLISTED,
     },
     include: liveEventInclude,
   });
@@ -398,6 +554,7 @@ export const listLiveEventsPublic = async (_req: Request, res: Response) => {
     include: liveEventInclude,
     where: {
       isPublished: true,
+      visibility: LiveVisibility.PUBLIC,
       status: { in: [LiveEventStatus.SCHEDULED, LiveEventStatus.LIVE, LiveEventStatus.ENDED] },
     },
     orderBy: [{ status: "asc" }, { scheduledStartAt: "asc" }, { createdAt: "desc" }],
