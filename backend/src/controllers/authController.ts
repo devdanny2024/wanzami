@@ -874,15 +874,29 @@ export const acceptInvite = async (req: Request, res: Response) => {
 
   const passwordHash = await hashPassword(password);
 
-  const user = await prisma.user.create({
-    data: {
-      email: emailLower,
-      password: passwordHash,
-      name,
-      role: invite.role,
-      emailVerified: true,
-    },
-  });
+  // If the user already exists (often as a normal USER), promote/update them instead of failing.
+  // This prevents "Invalid or expired invite" UX when the email already signed up previously.
+  const existingUser = await prisma.user.findUnique({ where: { email: emailLower } });
+
+  const user = existingUser
+    ? await prisma.user.update({
+        where: { id: existingUser.id },
+        data: {
+          password: passwordHash,
+          name,
+          role: invite.role,
+          emailVerified: true,
+        },
+      })
+    : await prisma.user.create({
+        data: {
+          email: emailLower,
+          password: passwordHash,
+          name,
+          role: invite.role,
+          emailVerified: true,
+        },
+      });
 
   await prisma.invitation.update({
     where: { id: invite.id },
