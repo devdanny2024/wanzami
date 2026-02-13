@@ -833,35 +833,6 @@ export function CreatorHub() {
     }
   };
 
-  const saveGoLiveSetup = async () => {
-    if (!cameraGoLiveEvent) return;
-
-    const desiredVisibility = privacy === "private" ? "PRIVATE" : privacy === "unlisted" ? "UNLISTED" : "PUBLIC";
-    const desiredSchedule = (() => {
-      if (!scheduleEnabled) return null;
-      if (!scheduleDate || !scheduleTime) return null;
-      const parsed = new Date(`${scheduleDate}T${scheduleTime}`);
-      return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
-    })();
-
-    const res = await adminApiFetch(`/api/admin/live/events/${cameraGoLiveEvent.id}`, {
-      method: "PATCH",
-      body: JSON.stringify({
-        visibility: desiredVisibility,
-        // When scheduling is disabled, clear any prior schedule on the event.
-        scheduledStartAt: scheduleEnabled ? desiredSchedule : null,
-      }),
-    });
-
-    if (!res.ok) {
-      const msg = (res.data as any)?.message || "Failed to save go-live settings";
-      throw new Error(msg);
-    }
-
-    // Refresh local event cache.
-    await loadEvents();
-  };
-
   const startCameraBroadcast = async () => {
     if (!cameraGoLiveEvent) return;
     // Publishing is attempted automatically before start if needed.
