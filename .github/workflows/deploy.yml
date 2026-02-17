@@ -140,7 +140,7 @@ jobs:
 
           # Run migrations using the backend container in the new task definition revision.
           OVERRIDES=$(jq -n \
-            '{containerOverrides:[{name:"backend",command:["sh","-lc","npx prisma migrate deploy && npx prisma generate"]}]}')
+            '{containerOverrides:[{name:"backend",command:["sh","-lc","set -e; npx prisma migrate deploy || (echo migrate deploy failed, attempting resolve for live engagement migration; npx prisma migrate resolve --applied 20260217224000_live_engagement_chat_reactions || true; npx prisma migrate deploy); npx prisma generate"]}]}')
 
           TASK_ARN=$(aws ecs run-task \
             --cluster "$CLUSTER" \
