@@ -49,7 +49,7 @@ export const listLiveChatMessages = async (req: Request, res: Response) => {
   if (!eventId) return res.status(400).json({ message: "Invalid event id" });
 
   const guard = await ensureLiveEventViewable(eventId);
-  if ("status" in guard) return res.status(guard.status).json({ message: guard.message });
+  if ("status" in guard) { const g = guard as { status: number; message: string }; return res.status(g.status).json({ message: g.message }); }
 
   const cursor = req.query.cursor ? parseBigIntId(String(req.query.cursor)) : null;
   const limit = Math.max(1, Math.min(Number(req.query.limit ?? 40) || 40, 100));
@@ -71,7 +71,7 @@ export const listLiveChatMessages = async (req: Request, res: Response) => {
   });
 
   return res.json({
-    messages: messages.reverse().map((m) => ({
+    messages: messages.reverse().map((m: any) => ({
       id: m.id.toString(),
       eventId: m.liveEventId.toString(),
       userId: m.userId.toString(),
@@ -101,7 +101,7 @@ export const listLiveChatMessagesAdmin = async (req: Request, res: Response) => 
   });
 
   return res.json({
-    messages: messages.map((m) => ({
+    messages: messages.map((m: any) => ({
       id: m.id.toString(),
       eventId: m.liveEventId.toString(),
       userId: m.userId.toString(),
@@ -124,7 +124,7 @@ export const createLiveChatMessage = async (req: AuthenticatedRequest, res: Resp
   if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
   const guard = await ensureLiveEventViewable(eventId);
-  if ("status" in guard) return res.status(guard.status).json({ message: guard.message });
+  if ("status" in guard) { const g = guard as { status: number; message: string }; return res.status(g.status).json({ message: g.message }); }
 
   const parsed = chatCreateSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ errors: parsed.error.flatten() });
@@ -170,7 +170,7 @@ export const sendLiveReaction = async (req: AuthenticatedRequest, res: Response)
   if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
   const guard = await ensureLiveEventViewable(eventId);
-  if ("status" in guard) return res.status(guard.status).json({ message: guard.message });
+  if ("status" in guard) { const g = guard as { status: number; message: string }; return res.status(g.status).json({ message: g.message }); }
 
   const parsed = reactionCreateSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ errors: parsed.error.flatten() });
@@ -205,7 +205,7 @@ export const listLiveReactions = async (req: Request, res: Response) => {
   if (!eventId) return res.status(400).json({ message: "Invalid event id" });
 
   const guard = await ensureLiveEventViewable(eventId);
-  if ("status" in guard) return res.status(guard.status).json({ message: guard.message });
+  if ("status" in guard) { const g = guard as { status: number; message: string }; return res.status(g.status).json({ message: g.message }); }
 
   const [totals, latest] = await Promise.all([
     liveDb.liveReactionAggregate.findMany({ where: { liveEventId: eventId }, orderBy: { count: "desc" } }),
@@ -218,8 +218,8 @@ export const listLiveReactions = async (req: Request, res: Response) => {
   ]);
 
   return res.json({
-    totals: totals.map((item) => ({ type: item.reactionType, count: item.count })),
-    latest: latest.map((item) => ({
+    totals: totals.map((item: any) => ({ type: item.reactionType, count: item.count })),
+    latest: latest.map((item: any) => ({
       id: item.id.toString(),
       type: item.reactionType,
       createdAt: item.createdAt,
@@ -233,7 +233,7 @@ export const getLiveEngagementSnapshot = async (req: Request, res: Response) => 
   if (!eventId) return res.status(400).json({ message: "Invalid event id" });
 
   const guard = await ensureLiveEventViewable(eventId);
-  if ("status" in guard) return res.status(guard.status).json({ message: guard.message });
+  if ("status" in guard) { const g = guard as { status: number; message: string }; return res.status(g.status).json({ message: g.message }); }
 
   const sinceRaw = typeof req.query.since === "string" ? req.query.since : undefined;
   const since = sinceRaw ? new Date(sinceRaw) : null;
@@ -265,7 +265,7 @@ export const getLiveEngagementSnapshot = async (req: Request, res: Response) => 
 
   return res.json({
     serverTime: new Date().toISOString(),
-    messages: messages.map((m) => ({
+    messages: messages.map((m: any) => ({
       id: m.id.toString(),
       eventId: m.liveEventId.toString(),
       userId: m.userId.toString(),
@@ -275,8 +275,8 @@ export const getLiveEngagementSnapshot = async (req: Request, res: Response) => 
       isPinned: m.isPinned,
       createdAt: m.createdAt,
     })),
-    reactionTotals: totals.map((item) => ({ type: item.reactionType, count: item.count })),
-    recentReactions: latestReactions.map((item) => ({
+    reactionTotals: totals.map((item: any) => ({ type: item.reactionType, count: item.count })),
+    recentReactions: latestReactions.map((item: any) => ({
       id: item.id.toString(),
       type: item.reactionType,
       createdAt: item.createdAt,
@@ -367,4 +367,6 @@ export const muteLiveChatUser = async (req: AuthenticatedRequest, res: Response)
     },
   });
 };
+
+
 
