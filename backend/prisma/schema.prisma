@@ -47,6 +47,9 @@ model User {
   supportTickets SupportTicket[]
   supportTicketMessages SupportTicketMessage[]
   liveEventsCreated LiveEvent[] @relation("LiveEventCreatedBy")
+  liveChatMessages LiveChatMessage[]
+  liveReactionsSent LiveReactionEvent[]
+  liveChatModerationsAuthored LiveChatModeration[] @relation("LiveChatModerationBy")
 }
 
 model Session {
@@ -375,6 +378,10 @@ model LiveEvent {
 
   createdBy User?              @relation("LiveEventCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
   sources   LiveEventSource[]
+  chatMessages LiveChatMessage[]
+  reactions LiveReactionEvent[]
+  reactionAggregates LiveReactionAggregate[]
+  chatModerations LiveChatModeration[]
 
   @@index([status])
   @@index([isPublished, status])
@@ -398,6 +405,69 @@ model LiveEventSource {
 
   @@index([liveEventId, createdAt])
   @@index([liveEventId, isActiveOutput])
+}
+
+model LiveChatMessage {
+  id          BigInt   @id @default(autoincrement())
+  liveEventId BigInt
+  userId      BigInt
+  message     String
+  isHidden    Boolean  @default(false)
+  isPinned    Boolean  @default(false)
+  isDeleted   Boolean  @default(false)
+  moderatedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  liveEvent LiveEvent @relation(fields: [liveEventId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([liveEventId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model LiveReactionEvent {
+  id           BigInt   @id @default(autoincrement())
+  liveEventId  BigInt
+  userId       BigInt
+  reactionType String
+  createdAt    DateTime @default(now())
+
+  liveEvent LiveEvent @relation(fields: [liveEventId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([liveEventId, createdAt])
+  @@index([reactionType, createdAt])
+}
+
+model LiveReactionAggregate {
+  id           BigInt   @id @default(autoincrement())
+  liveEventId  BigInt
+  reactionType String
+  count        Int      @default(0)
+  updatedAt    DateTime @updatedAt
+
+  liveEvent LiveEvent @relation(fields: [liveEventId], references: [id], onDelete: Cascade)
+
+  @@unique([liveEventId, reactionType])
+  @@index([liveEventId, count])
+}
+
+model LiveChatModeration {
+  id          BigInt   @id @default(autoincrement())
+  liveEventId BigInt
+  userId      BigInt
+  reason      String?
+  mutedUntil  DateTime
+  moderatedBy BigInt?
+  createdAt   DateTime @default(now())
+
+  liveEvent      LiveEvent @relation(fields: [liveEventId], references: [id], onDelete: Cascade)
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  moderatorUser  User?     @relation("LiveChatModerationBy", fields: [moderatedBy], references: [id], onDelete: SetNull)
+
+  @@index([liveEventId, userId, mutedUntil])
+  @@index([moderatedBy, createdAt])
 }
 
 model ErrorLog {

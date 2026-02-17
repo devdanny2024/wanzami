@@ -20,6 +20,17 @@ import {
   updateLiveEventSourceAdmin,
   updateLiveEventViewerCountAdmin,
 } from "../controllers/liveController.js";
+import {
+  createLiveChatMessage,
+  deleteLiveChatMessage,
+  getLiveEngagementSnapshot,
+  listLiveChatMessages,
+  listLiveChatMessagesAdmin,
+  listLiveReactions,
+  moderateLiveChatMessage,
+  muteLiveChatUser,
+  sendLiveReaction,
+} from "../controllers/liveEngagementController.js";
 
 const router = Router();
 
@@ -42,6 +53,16 @@ router.post("/admin/live/events/:id/sources/switch", requireAuth, requireAdmin, 
 router.get("/live/events", requireAuth, listLiveEventsPublic);
 router.get("/live/events/unlisted/:slug", requireAuth, getLiveEventUnlistedPublic);
 router.get("/live/events/:id", requireAuth, getLiveEventPublic);
+router.get("/live/events/:id/chat", requireAuth, listLiveChatMessages);
+router.post("/live/events/:id/chat", requireAuth, createLiveChatMessage);
+router.get("/live/events/:id/reactions", requireAuth, listLiveReactions);
+router.post("/live/events/:id/reactions", requireAuth, sendLiveReaction);
+router.get("/live/events/:id/engagement", requireAuth, getLiveEngagementSnapshot);
+
+router.get("/admin/live/events/:id/chat", requireAuth, requireAdmin, listLiveChatMessagesAdmin);
+router.patch("/admin/live/events/:id/chat/:messageId", requireAuth, requireAdmin, moderateLiveChatMessage);
+router.delete("/admin/live/events/:id/chat/:messageId", requireAuth, requireAdmin, deleteLiveChatMessage);
+router.post("/admin/live/events/:id/chat/mute", requireAuth, requireAdmin, muteLiveChatUser);
 
 export default router;
 
