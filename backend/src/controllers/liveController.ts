@@ -503,13 +503,14 @@ export const updateLiveEventPublishAdmin = async (req: Request, res: Response) =
         isPublished: parsed.data.isPublished,
         visibility: nextVisibility,
       },
+      include: liveEventInclude,
     });
 
     if (updatedEvent.visibility === LiveVisibility.UNLISTED && !updatedEvent.unlistedSlug) {
       await ensureUnlistedSlug(tx, eventId);
     }
 
-    return tx.liveEvent.findUniqueOrThrow({ where: { id: eventId }, include: liveEventInclude });
+    return updatedEvent;
   });
 
   return res.json({ event: toAdminEvent(updated) });
