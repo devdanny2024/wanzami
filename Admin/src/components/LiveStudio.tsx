@@ -40,6 +40,18 @@ type LiveEvent = {
   };
 };
 
+type LiveChatMessage = {
+  id: string;
+  userId: string;
+  userName: string;
+  userRole?: string;
+  message: string;
+  isHidden?: boolean;
+  isDeleted?: boolean;
+  isPinned?: boolean;
+  createdAt: string;
+};
+
 async function adminApiFetch(path: string, init?: RequestInit) {
   const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
   const res = await fetch(path, {
@@ -212,6 +224,8 @@ export function LiveStudio() {
   const [error, setError] = useState<string | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<string>("");
   const [selectedSourceId, setSelectedSourceId] = useState<string>("");
+  const [chatMessages, setChatMessages] = useState<LiveChatMessage[]>([]);
+  const [chatBusy, setChatBusy] = useState(false);
 
   const selectedEvent = useMemo(() => events.find((e) => e.id === selectedEventId) ?? null, [events, selectedEventId]);
   const previewUrl = useMemo(() => pickPlayablePlaybackUrl(selectedEvent, selectedSourceId || undefined), [selectedEvent, selectedSourceId]);
@@ -247,6 +261,26 @@ export function LiveStudio() {
     if (selectedSourceId && !sources.some((s) => s.id === selectedSourceId)) {
       setSelectedSourceId("");
     }
+  }, [selectedEventId]);
+
+  const loadChatMessages = async () => {
+    if (!selectedEventId) return;
+    setChatBusy(true);
+    try {
+      const res = await adminApiFetch(`/api/admin/live/events/${selectedEventId}/chat?limit=80`);
+      if (!res.ok) throw new Error((res.data as any)?.message || "Failed to load chat");
+      setChatMessages(((res.data as any)?.messages ?? []) as LiveChatMessage[]);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to load chat");
+    } finally {
+      setChatBusy(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadChatMessages();
+    const t = setInterval(() => void loadChatMessages(), 8000);
+    return () => clearInterval(t);
   }, [selectedEventId]);
 
   const copyText = async (value?: string | null) => {
@@ -479,6 +513,105 @@ export function LiveStudio() {
             </Card>
           </div>
         </div>
+      ) : null}
+
+      {selectedEvent ? (
+        <Card className="bg-neutral-900 border-neutral-800 mb-6">
+          <CardHeader>
+            <CardTitle className="text-white">Chat moderation</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs text-neutral-400">Recent messages for selected event</p>
+              <Button variant="outline" className="border-neutral-700 text-neutral-200" onClick={loadChatMessages} disabled={chatBusy}>
+                {chatBusy ? "Refreshing..." : "Refresh chat"}
+              </Button>
+            </div>
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+              {chatMessages.length === 0 ? <p className="text-sm text-neutral-400">No messages yet.</p> : null}
+              {chatMessages.map((m) => (
+                <div key={m.id} className="rounded border border-neutral-800 bg-neutral-950 p-2">
+                  <p className="text-xs text-neutral-400">
+                    <span className="text-white font-medium">{m.userName}</span> ({m.userRole || "USER"})
+                  </p>
+                  <p className="text-sm text-neutral-200 mt-1 break-words">{m.message}</p>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    <Button
+                      variant="outline"
+                      className="border-neutral-700 text-neutral-200 h-8"
+                      onClick={async () => {
+                        const res = await adminApiFetch(`/api/admin/live/events/${selectedEvent.id}/chat/${m.id}`, {
+                          method: "PATCH",
+                          body: JSON.stringify({ isHidden: !m.isHidden }),
+                        });
+                        if (res.ok) {
+                          toast.success(!m.isHidden ? "Message hidden" : "Message restored");
+                          await loadChatMessages();
+                        } else {
+                          toast.error((res.data as any)?.message || "Failed");
+                        }
+                      }}
+                    >
+                      {m.isHidden ? "Unhide" : "Hide"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="border-neutral-700 text-neutral-200 h-8"
+                      onClick={async () => {
+                        const res = await adminApiFetch(`/api/admin/live/events/${selectedEvent.id}/chat/${m.id}`, {
+                          method: "PATCH",
+                          body: JSON.stringify({ isPinned: !m.isPinned }),
+                        });
+                        if (res.ok) {
+                          toast.success(!m.isPinned ? "Pinned" : "Unpinned");
+                          await loadChatMessages();
+                        } else {
+                          toast.error((res.data as any)?.message || "Failed");
+                        }
+                      }}
+                    >
+                      {m.isPinned ? "Unpin" : "Pin"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="border-amber-900/80 text-amber-300 h-8"
+                      onClick={async () => {
+                        const res = await adminApiFetch(`/api/admin/live/events/${selectedEvent.id}/chat/mute`, {
+                          method: "POST",
+                          body: JSON.stringify({ userId: m.userId, mutedMinutes: 30, reason: "Moderator action" }),
+                        });
+                        if (res.ok) {
+                          toast.success(`Muted ${m.userName} for 30 mins`);
+                        } else {
+                          toast.error((res.data as any)?.message || "Failed");
+                        }
+                      }}
+                    >
+                      Mute 30m
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="border-red-900/80 text-red-300 h-8"
+                      onClick={async () => {
+                        const res = await adminApiFetch(`/api/admin/live/events/${selectedEvent.id}/chat/${m.id}`, {
+                          method: "DELETE",
+                        });
+                        if (res.ok) {
+                          toast.success("Message removed");
+                          await loadChatMessages();
+                        } else {
+                          toast.error((res.data as any)?.message || "Failed");
+                        }
+                      }}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       ) : null}
 
       {section === "manage" ? (
