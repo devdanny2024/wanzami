@@ -1,6 +1,7 @@
 -- Live engagement: chat, reactions, moderation
+-- Idempotent migration for environments where some objects may already exist.
 
-CREATE TABLE "LiveChatMessage" (
+CREATE TABLE IF NOT EXISTS "LiveChatMessage" (
   "id" BIGSERIAL PRIMARY KEY,
   "liveEventId" BIGINT NOT NULL,
   "userId" BIGINT NOT NULL,
@@ -13,7 +14,7 @@ CREATE TABLE "LiveChatMessage" (
   "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE "LiveReactionEvent" (
+CREATE TABLE IF NOT EXISTS "LiveReactionEvent" (
   "id" BIGSERIAL PRIMARY KEY,
   "liveEventId" BIGINT NOT NULL,
   "userId" BIGINT NOT NULL,
@@ -21,7 +22,7 @@ CREATE TABLE "LiveReactionEvent" (
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE "LiveReactionAggregate" (
+CREATE TABLE IF NOT EXISTS "LiveReactionAggregate" (
   "id" BIGSERIAL PRIMARY KEY,
   "liveEventId" BIGINT NOT NULL,
   "reactionType" TEXT NOT NULL,
@@ -29,7 +30,7 @@ CREATE TABLE "LiveReactionAggregate" (
   "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE "LiveChatModeration" (
+CREATE TABLE IF NOT EXISTS "LiveChatModeration" (
   "id" BIGSERIAL PRIMARY KEY,
   "liveEventId" BIGINT NOT NULL,
   "userId" BIGINT NOT NULL,
@@ -39,27 +40,54 @@ CREATE TABLE "LiveChatModeration" (
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX "LiveChatMessage_liveEventId_createdAt_idx" ON "LiveChatMessage"("liveEventId", "createdAt");
-CREATE INDEX "LiveChatMessage_userId_createdAt_idx" ON "LiveChatMessage"("userId", "createdAt");
-CREATE INDEX "LiveReactionEvent_liveEventId_createdAt_idx" ON "LiveReactionEvent"("liveEventId", "createdAt");
-CREATE INDEX "LiveReactionEvent_reactionType_createdAt_idx" ON "LiveReactionEvent"("reactionType", "createdAt");
-CREATE UNIQUE INDEX "LiveReactionAggregate_liveEventId_reactionType_key" ON "LiveReactionAggregate"("liveEventId", "reactionType");
-CREATE INDEX "LiveReactionAggregate_liveEventId_count_idx" ON "LiveReactionAggregate"("liveEventId", "count");
-CREATE INDEX "LiveChatModeration_liveEventId_userId_mutedUntil_idx" ON "LiveChatModeration"("liveEventId", "userId", "mutedUntil");
-CREATE INDEX "LiveChatModeration_moderatedBy_createdAt_idx" ON "LiveChatModeration"("moderatedBy", "createdAt");
+CREATE INDEX IF NOT EXISTS "LiveChatMessage_liveEventId_createdAt_idx" ON "LiveChatMessage"("liveEventId", "createdAt");
+CREATE INDEX IF NOT EXISTS "LiveChatMessage_userId_createdAt_idx" ON "LiveChatMessage"("userId", "createdAt");
+CREATE INDEX IF NOT EXISTS "LiveReactionEvent_liveEventId_createdAt_idx" ON "LiveReactionEvent"("liveEventId", "createdAt");
+CREATE INDEX IF NOT EXISTS "LiveReactionEvent_reactionType_createdAt_idx" ON "LiveReactionEvent"("reactionType", "createdAt");
+CREATE UNIQUE INDEX IF NOT EXISTS "LiveReactionAggregate_liveEventId_reactionType_key" ON "LiveReactionAggregate"("liveEventId", "reactionType");
+CREATE INDEX IF NOT EXISTS "LiveReactionAggregate_liveEventId_count_idx" ON "LiveReactionAggregate"("liveEventId", "count");
+CREATE INDEX IF NOT EXISTS "LiveChatModeration_liveEventId_userId_mutedUntil_idx" ON "LiveChatModeration"("liveEventId", "userId", "mutedUntil");
+CREATE INDEX IF NOT EXISTS "LiveChatModeration_moderatedBy_createdAt_idx" ON "LiveChatModeration"("moderatedBy", "createdAt");
 
-ALTER TABLE "LiveChatMessage"
-  ADD CONSTRAINT "LiveChatMessage_liveEventId_fkey" FOREIGN KEY ("liveEventId") REFERENCES "LiveEvent"("id") ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT "LiveChatMessage_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'LiveChatMessage_liveEventId_fkey') THEN
+    ALTER TABLE "LiveChatMessage"
+      ADD CONSTRAINT "LiveChatMessage_liveEventId_fkey" FOREIGN KEY ("liveEventId") REFERENCES "LiveEvent"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
 
-ALTER TABLE "LiveReactionEvent"
-  ADD CONSTRAINT "LiveReactionEvent_liveEventId_fkey" FOREIGN KEY ("liveEventId") REFERENCES "LiveEvent"("id") ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT "LiveReactionEvent_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'LiveChatMessage_userId_fkey') THEN
+    ALTER TABLE "LiveChatMessage"
+      ADD CONSTRAINT "LiveChatMessage_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
 
-ALTER TABLE "LiveReactionAggregate"
-  ADD CONSTRAINT "LiveReactionAggregate_liveEventId_fkey" FOREIGN KEY ("liveEventId") REFERENCES "LiveEvent"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'LiveReactionEvent_liveEventId_fkey') THEN
+    ALTER TABLE "LiveReactionEvent"
+      ADD CONSTRAINT "LiveReactionEvent_liveEventId_fkey" FOREIGN KEY ("liveEventId") REFERENCES "LiveEvent"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
 
-ALTER TABLE "LiveChatModeration"
-  ADD CONSTRAINT "LiveChatModeration_liveEventId_fkey" FOREIGN KEY ("liveEventId") REFERENCES "LiveEvent"("id") ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT "LiveChatModeration_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT "LiveChatModeration_moderatedBy_fkey" FOREIGN KEY ("moderatedBy") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'LiveReactionEvent_userId_fkey') THEN
+    ALTER TABLE "LiveReactionEvent"
+      ADD CONSTRAINT "LiveReactionEvent_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'LiveReactionAggregate_liveEventId_fkey') THEN
+    ALTER TABLE "LiveReactionAggregate"
+      ADD CONSTRAINT "LiveReactionAggregate_liveEventId_fkey" FOREIGN KEY ("liveEventId") REFERENCES "LiveEvent"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'LiveChatModeration_liveEventId_fkey') THEN
+    ALTER TABLE "LiveChatModeration"
+      ADD CONSTRAINT "LiveChatModeration_liveEventId_fkey" FOREIGN KEY ("liveEventId") REFERENCES "LiveEvent"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'LiveChatModeration_userId_fkey') THEN
+    ALTER TABLE "LiveChatModeration"
+      ADD CONSTRAINT "LiveChatModeration_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'LiveChatModeration_moderatedBy_fkey') THEN
+    ALTER TABLE "LiveChatModeration"
+      ADD CONSTRAINT "LiveChatModeration_moderatedBy_fkey" FOREIGN KEY ("moderatedBy") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+END $$;
