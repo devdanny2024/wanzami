@@ -486,6 +486,34 @@ export type LiveEvent = {
   };
 };
 
+export type LiveChatMessage = {
+  id: string;
+  eventId: string;
+  userId: string;
+  userName: string;
+  userRole?: string;
+  message: string;
+  isPinned?: boolean;
+  createdAt: string;
+};
+
+export type LiveReactionTotal = {
+  type: string;
+  count: number;
+};
+
+export type LiveEngagementSnapshot = {
+  serverTime: string;
+  messages: LiveChatMessage[];
+  reactionTotals: LiveReactionTotal[];
+  recentReactions: Array<{
+    id: string;
+    type: string;
+    createdAt: string;
+    user?: { id: string; name: string } | null;
+  }>;
+};
+
 export async function fetchLiveEvents(accessToken: string) {
   const res = await fetchWithTimeout(`${API_BASE}/live/events`, {
     cache: "no-store",
@@ -518,6 +546,45 @@ export async function fetchLiveEventByUnlistedSlug(slug: string, accessToken: st
   });
   const data = await handleJsonResponse(res);
   return (data?.event as LiveEvent) ?? null;
+}
+
+export async function fetchLiveEngagementSnapshot(eventId: string, accessToken: string, since?: string | null) {
+  const query = new URLSearchParams();
+  if (since) query.set("since", since);
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  const res = await fetchWithTimeout(`${API_BASE}/live/events/${eventId}/engagement${suffix}`, {
+    cache: "no-store",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  }, 20000);
+  const data = await handleJsonResponse(res);
+  return data as LiveEngagementSnapshot;
+}
+
+export async function sendLiveChatMessage(eventId: string, accessToken: string, message: string) {
+  const res = await fetchWithTimeout(`${API_BASE}/live/events/${eventId}/chat`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ message }),
+  });
+  const data = await handleJsonResponse(res);
+  return (data?.message as LiveChatMessage) ?? null;
+}
+
+export async function sendLiveReaction(eventId: string, accessToken: string, type: string) {
+  const res = await fetchWithTimeout(`${API_BASE}/live/events/${eventId}/reactions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ type }),
+  });
+  return handleJsonResponse(res);
 }
 
 export async function postEvents(events: EngagementEventInput[], accessToken: string) {
