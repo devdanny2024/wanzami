@@ -43,8 +43,10 @@ export const config = {
     encryptionKey: process.env.FLW_ENCRYPTION_KEY ?? "",
     baseUrl: process.env.FLW_BASE_URL ?? "https://api.flutterwave.com",
     webhookSecret: process.env.FLW_WEBHOOK_SECRET ?? "",
-    callbackUrl: process.env.FLW_CALLBACK_URL ?? process.env.PAYSTACK_CALLBACK_URL ?? "",
+    callbackUrl: process.env.FLW_CALLBACK_URL ?? "",
+    appSessionReturnUrl: process.env.FLW_APP_SESSION_RETURN_URL ?? "",
   },
+  apiPublicUrl: process.env.API_PUBLIC_URL ?? process.env.BACKEND_URL ?? "",
   fx: {
     apiBase: process.env.FX_API_BASE ?? "https://api.exchangerate.host/latest",
     cacheTtlMs: numberOrDefault(process.env.FX_CACHE_TTL_MS, 6 * 60 * 60 * 1000),
@@ -57,5 +59,8 @@ export const config = {
   ivs: {
     region: process.env.IVS_REGION ?? process.env.AWS_REGION ?? "us-east-1",
     recordingEnabled: process.env.IVS_RECORDING_ENABLED === "true",
+  },
+  live: {
+    sourceHeartbeatTimeoutMs: numberOrDefault(process.env.LIVE_SOURCE_HEARTBEAT_TIMEOUT_MS, 45_000),
   },
 };

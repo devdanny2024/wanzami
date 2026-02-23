@@ -89,6 +89,33 @@ const readFlutterwaveResponse = async (resp: any) => {
   }
 };
 
+const resolveTxRefFromVerifiedTransaction = async (transactionId: string) => {
+  if (!config.flutterwave.secretKey) return undefined;
+  const resp = await fetch(`${config.flutterwave.baseUrl}/v3/transactions/${encodeURIComponent(transactionId)}/verify`, {
+    headers: {
+      Authorization: `Bearer ${config.flutterwave.secretKey}`,
+    },
+  });
+  const parsed = await readFlutterwaveResponse(resp);
+  if (!resp.ok || parsed.json?.status !== "success") return undefined;
+  const payload = parsed.json?.data ?? {};
+  const candidates = [
+    payload?.tx_ref,
+    payload?.meta?.tx_ref,
+    payload?.meta?.txRef,
+    payload?.meta?.appSessionId,
+    payload?.meta?.app_session_id,
+    payload?.meta_data?.tx_ref,
+    payload?.meta_data?.txRef,
+    payload?.meta_data?.appSessionId,
+    payload?.meta_data?.app_session_id,
+  ]
+    .map((v) => (v == null ? "" : String(v).trim()))
+    .filter((v) => v.length > 0);
+
+  return candidates[0];
+};
+
 export const getAccess = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const titleId = req.params.titleId ? BigInt(req.params.titleId) : null;
@@ -204,8 +231,46 @@ export const getAccess = async (req: AuthenticatedRequest, res: Response) => {
   }
 };
 
-const frontendBase =
-  process.env.APP_ORIGIN || process.env.FRONTEND_URL || "https://www.wanzami.tv";
+const frontendBase = process.env.APP_ORIGIN || process.env.FRONTEND_URL || "https://www.wanzami.tv";
+
+const joinUrl = (base: string, path: string) => {
+  const normalizedBase = base.replace(/\/+$/, "");
+  const normalizedPath = path.replace(/^\/+/, "");
+  return `${normalizedBase}/${normalizedPath}`;
+};
+
+const appendQuery = (base: string, params: Record<string, string | undefined>) => {
+  const url = new URL(base);
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && String(value).trim() !== "") {
+      url.searchParams.set(key, String(value));
+    }
+  });
+  return url.toString();
+};
+
+const resolvePublicApiBase = (req: Request) => {
+  if (config.apiPublicUrl) return config.apiPublicUrl.replace(/\/+$/, "");
+  const forwardedProto = ((req.headers["x-forwarded-proto"] as string | undefined) ?? "").split(",")[0]?.trim();
+  const proto = forwardedProto || req.protocol || "https";
+  const host = ((req.headers["x-forwarded-host"] as string | undefined) ?? req.get("host") ?? "").split(",")[0]?.trim();
+  if (!host) return "";
+  return `${proto}://${host}`;
+};
+
+const resolveFlutterwaveCallbackUrl = (req: Request, txRef: string, titleId: number | string) => {
+  const apiBase = resolvePublicApiBase(req);
+  const defaultReturnPath = "/api/app-session/ppv/flutterwave/return";
+  const defaultReturn = apiBase ? joinUrl(apiBase, defaultReturnPath) : "";
+  const callbackBase = config.flutterwave.callbackUrl || defaultReturn || undefined;
+  if (!callbackBase) return undefined;
+  return appendQuery(callbackBase, {
+    tx_ref: txRef,
+    appSessionId: txRef,
+    titleId: String(titleId),
+    source: "ppv",
+  });
+};
 
 const sendPpvThankYou = async (opts: {
   userEmail?: string | null;
@@ -275,7 +340,7 @@ export const initiatePurchase = async (req: AuthenticatedRequest, res: Response)
       country,
     });
     const gateway = "FLUTTERWAVE";
-    const txRef = `PPV-FLW-${titleId}-${Date.now()}`;
+    const txRef = `PPV-FLW-${titleId}-${Date.now()}-${crypto.randomBytes(6).toString("hex")}`;
 
     await prisma.ppvPurchase.create({
       data: {
@@ -289,10 +354,61 @@ export const initiatePurchase = async (req: AuthenticatedRequest, res: Response)
       },
     });
 
+    const callbackUrl = resolveFlutterwaveCallbackUrl(req, txRef, titleId);
+    console.info("[ppv][flutterwave][initiate] created pending purchase", {
+      userId: String(req.user.userId),
+      titleId: String(titleId),
+      txRef,
+      callbackConfigured: Boolean(callbackUrl),
+    });
+
+    let checkoutUrl: string | undefined;
+    if (config.flutterwave.secretKey) {
+      const initResp = await fetch(`${config.flutterwave.baseUrl}/v3/payments`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${config.flutterwave.secretKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tx_ref: txRef,
+          amount: localized.amount,
+          currency: localized.currency,
+          redirect_url: callbackUrl,
+          customer: {
+            email: user.email,
+            name: user.name ?? user.email ?? "Customer",
+          },
+          meta: {
+            appSessionId: txRef,
+            titleId: String(titleId),
+            userId: String(req.user.userId),
+            source: "ppv",
+          },
+          customizations: {
+            title: "Wanzami PPV",
+            description: `PPV purchase for ${title.name}`,
+          },
+        }),
+      });
+      const initParsed = await readFlutterwaveResponse(initResp);
+      const initJson = initParsed.json ?? {};
+      if (initResp.ok && initJson?.status === "success") {
+        checkoutUrl = initJson?.data?.link;
+      }
+    }
+
+    console.info("[ppv][flutterwave][initiate] returning checkout payload", {
+      txRef,
+      hasCheckoutUrl: Boolean(checkoutUrl),
+      verifyEndpoint: "/api/app-session/ppv/flutterwave/verify",
+    });
+
     return res.json({
-      flow: "v3-inline",
+      flow: "v3-inline", 
       publicKey: config.flutterwave.publicKey,
       txRef,
+      appSessionId: txRef,
       amount: localized.amount,
       currency: localized.currency,
       customer: {
@@ -303,7 +419,15 @@ export const initiatePurchase = async (req: AuthenticatedRequest, res: Response)
         id: titleId,
         name: title.name,
       },
-      redirectUrl: config.flutterwave.callbackUrl || undefined,
+      redirectUrl: callbackUrl,
+      checkoutUrl,
+      verifyEndpoint: "/api/app-session/ppv/flutterwave/verify",
+      metadata: {
+        txRef,
+        appSessionId: txRef,
+        titleId: String(titleId),
+        userId: String(req.user.userId),
+      },
     });
 
   } catch (err) {
@@ -565,13 +689,20 @@ export const initiateOrchestratedPurchase = async (req: AuthenticatedRequest, re
       return res.status(400).json({ message: "Unsupported payment method" });
     }
 
+    const callbackUrl = resolveFlutterwaveCallbackUrl(req, reference, titleId);
     const payload: any = {
       amount: localized.amount,
       currency: localized.currency,
       reference,
-      redirect_url: config.paystack.callbackUrl || config.flutterwave.callbackUrl || undefined,
+      redirect_url: callbackUrl,
       customer: customerPayload,
       payment_method: paymentMethod,
+      meta: {
+        appSessionId: reference,
+        titleId: String(titleId),
+        userId: String(req.user.userId),
+        source: "ppv",
+      },
     };
 
     const resp = await fetch(`${config.flutterwave.baseUrl}/orchestration/direct-charges`, {
@@ -605,13 +736,23 @@ export const initiateOrchestratedPurchase = async (req: AuthenticatedRequest, re
     const data = json.data ?? {};
     return res.json({
       reference,
+      txRef: reference,
+      appSessionId: reference,
       gateway,
       currency: localized.currency,
       amountNaira,
+      redirectUrl: callbackUrl,
       chargeId: data.id,
       status: data.status,
       nextAction: data.next_action ?? null,
       paymentInstruction: data.payment_instruction ?? data.payment_instructions ?? null,
+      verifyEndpoint: "/api/app-session/ppv/flutterwave/verify",
+      metadata: {
+        txRef: reference,
+        appSessionId: reference,
+        titleId: String(titleId),
+        userId: String(req.user.userId),
+      },
     });
   } catch (err: any) {
     console.error("ppv orchestrator error", err);
@@ -869,13 +1010,20 @@ export const initiateGeneralPurchase = async (req: AuthenticatedRequest, res: Re
     }
     const paymentMethodId = pmdJson?.data?.id;
 
+    const callbackUrl = resolveFlutterwaveCallbackUrl(req, reference, titleId);
     const chargePayload = {
       reference,
       currency: localized.currency,
       amount: localized.amount,
       customer_id: customerId,
       payment_method_id: paymentMethodId,
-      redirect_url: config.paystack.callbackUrl || config.flutterwave.callbackUrl || undefined,
+      redirect_url: callbackUrl,
+      meta: {
+        appSessionId: reference,
+        titleId: String(titleId),
+        userId: String(req.user.userId),
+        source: "ppv",
+      },
     };
 
     const chargeResp = await fetch(`${config.flutterwave.baseUrl}/charges`, {
@@ -915,15 +1063,25 @@ export const initiateGeneralPurchase = async (req: AuthenticatedRequest, res: Re
     const data = chargeJson?.data ?? {};
     return res.json({
       reference,
+      txRef: reference,
+      appSessionId: reference,
       gateway: "FLUTTERWAVE",
       currency: localized.currency,
       amountNaira,
+      redirectUrl: callbackUrl,
       chargeId: data.id,
       customerId,
       paymentMethodId,
       status: data.status,
       nextAction: data.next_action ?? null,
       paymentInstruction: data.payment_instruction ?? data.payment_instructions ?? null,
+      verifyEndpoint: "/api/app-session/ppv/flutterwave/verify",
+      metadata: {
+        txRef: reference,
+        appSessionId: reference,
+        titleId: String(titleId),
+        userId: String(req.user.userId),
+      },
     });
   } catch (err: any) {
     console.error("ppv general flow error", err);
@@ -1014,6 +1172,13 @@ export const flutterwaveWebhook = async (req: Request, res: Response) => {
     const refToFind = txRef || metaRef || directRef;
     if (!refToFind) return res.status(400).json({ message: "Missing tx_ref" });
 
+    console.info("[ppv][flutterwave][webhook] received", {
+      txRef,
+      reference: directRef,
+      resolvedRef: refToFind,
+      status: data?.status,
+    });
+
     const purchase = await prisma.ppvPurchase.findUnique({
       where: { paystackRef: refToFind },
       include: { user: true, title: true },
@@ -1053,44 +1218,209 @@ export const flutterwaveWebhook = async (req: Request, res: Response) => {
   }
 };
 
+export const flutterwaveAppSessionReturn = async (req: Request, res: Response) => {
+  try {
+    const txRefRaw =
+      (req.query.tx_ref as string | undefined) ??
+      (req.query.txRef as string | undefined) ??
+      (req.query.reference as string | undefined) ??
+      (req.query.appSessionId as string | undefined);
+    const transactionIdRaw =
+      (req.query.transaction_id as string | undefined) ??
+      (req.query.transactionId as string | undefined) ??
+      (req.query["transaction-id"] as string | undefined);
+    const statusRaw = (req.query.status as string | undefined) ?? undefined;
+
+    let txRef = txRefRaw ? String(txRefRaw).trim() : undefined;
+    const transactionId = transactionIdRaw ? String(transactionIdRaw).trim() : undefined;
+    const status = statusRaw ? String(statusRaw).trim() : undefined;
+
+    if (!txRef && transactionId) {
+      txRef = await resolveTxRefFromVerifiedTransaction(transactionId);
+    }
+
+    if (!txRef && !transactionId) {
+      return res.status(400).json({ message: "Missing tx_ref/transaction_id" });
+    }
+
+    console.info("[ppv][flutterwave][return] received callback", {
+      txRef,
+      transactionId,
+      status,
+      hasAppSessionReturnUrl: Boolean(config.flutterwave.appSessionReturnUrl),
+    });
+
+    if (config.flutterwave.appSessionReturnUrl) {
+      const redirectUrl = appendQuery(config.flutterwave.appSessionReturnUrl, {
+        tx_ref: txRef,
+        txRef,
+        appSessionId: txRef,
+        transaction_id: transactionId,
+        transactionId,
+        status,
+        source: "ppv",
+      });
+      return res.redirect(302, redirectUrl);
+    }
+
+    return res.status(200).json({
+      message: "Flutterwave return received",
+      txRef,
+      appSessionId: txRef,
+      transactionId,
+      status,
+      verifyEndpoint: "/api/app-session/ppv/flutterwave/verify",
+    });
+  } catch (err) {
+    console.error("flutterwave app-session return error", err);
+    return res.status(500).json({ message: "App-session return handling failed" });
+  }
+};
+
 export const verifyFlutterwavePurchase = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { transactionId, txRef } = req.body as { transactionId?: string | number; txRef?: string };
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const query = (req.query ?? {}) as Record<string, unknown>;
+
+    const transactionIdRaw =
+      body.transactionId ?? body.transaction_id ?? body["transaction-id"] ?? query.transactionId ?? query.transaction_id;
+    const txRefRaw =
+      body.txRef ??
+      body.tx_ref ??
+      body.reference ??
+      body.appSessionId ??
+      body.app_session_id ??
+      query.txRef ??
+      query.tx_ref ??
+      query.reference ??
+      query.appSessionId ??
+      query.app_session_id;
+
+    const transactionId =
+      transactionIdRaw === undefined || transactionIdRaw === null || String(transactionIdRaw).trim() === ""
+        ? undefined
+        : String(transactionIdRaw).trim();
+    const txRef =
+      txRefRaw === undefined || txRefRaw === null || String(txRefRaw).trim() === ""
+        ? undefined
+        : String(txRefRaw).trim();
+
     if (!transactionId && !txRef) {
-      return res.status(400).json({ message: "transactionId or txRef required" });
+      return res.status(400).json({
+        message:
+          "transactionId/transaction_id or txRef/tx_ref required (appSessionId/app_session_id also accepted as tx_ref)",
+      });
     }
+
+    console.info("[ppv][flutterwave][verify] request", {
+      userId: req.user ? String(req.user.userId) : undefined,
+      txRef,
+      transactionId,
+    });
+
     if (!config.flutterwave.secretKey) {
       return res.status(500).json({ message: "Flutterwave secret key not configured" });
     }
 
-    const verifyUrl = transactionId
-      ? `${config.flutterwave.baseUrl}/v3/transactions/${encodeURIComponent(String(transactionId))}/verify`
-      : `${config.flutterwave.baseUrl}/v3/transactions/verify_by_reference?tx_ref=${encodeURIComponent(
-          String(txRef)
-        )}`;
+    const verifyByTransaction = async (id: string) => {
+      const resp = await fetch(`${config.flutterwave.baseUrl}/v3/transactions/${encodeURIComponent(id)}/verify`, {
+        headers: {
+          Authorization: `Bearer ${config.flutterwave.secretKey}`,
+        },
+      });
+      const parsed = await readFlutterwaveResponse(resp);
+      const data = parsed.json ?? {};
+      return { resp, parsed, data };
+    };
 
-    const resp = await fetch(verifyUrl, {
-      headers: {
-        Authorization: `Bearer ${config.flutterwave.secretKey}`,
-      },
-    });
-    const parsed = await readFlutterwaveResponse(resp);
-    const data = parsed.json ?? {};
-    if (!resp.ok || data.status !== "success") {
-      return res.status(502).json({ message: "Flutterwave verify failed", details: data, raw: parsed.text });
+    const verifyByReference = async (reference: string) => {
+      const resp = await fetch(
+        `${config.flutterwave.baseUrl}/v3/transactions/verify_by_reference?tx_ref=${encodeURIComponent(reference)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${config.flutterwave.secretKey}`,
+          },
+        }
+      );
+      const parsed = await readFlutterwaveResponse(resp);
+      const data = parsed.json ?? {};
+      return { resp, parsed, data };
+    };
+
+    let verification:
+      | {
+          resp: any;
+          parsed: { json: any; text: string };
+          data: any;
+        }
+      | undefined;
+
+    if (transactionId) {
+      verification = await verifyByTransaction(transactionId);
+      if ((!verification.resp.ok || verification.data?.status !== "success") && txRef) {
+        verification = await verifyByReference(txRef);
+      }
+    } else if (txRef) {
+      verification = await verifyByReference(txRef);
     }
 
-    const payload = data?.data ?? {};
-    const ref = payload?.tx_ref ?? txRef;
-    if (!ref) {
+    if (!verification || !verification.resp.ok || verification.data?.status !== "success") {
+      return res.status(502).json({
+        message: "Flutterwave verify failed",
+        details: verification?.data ?? null,
+        raw: verification?.parsed?.text,
+      });
+    }
+
+    const payload = verification.data?.data ?? {};
+    const candidateRefs = [
+      txRef,
+      payload?.tx_ref,
+      payload?.meta?.tx_ref,
+      payload?.meta?.txRef,
+      payload?.meta?.appSessionId,
+      payload?.meta?.app_session_id,
+      payload?.meta_data?.tx_ref,
+      payload?.meta_data?.txRef,
+      payload?.meta_data?.appSessionId,
+      payload?.meta_data?.app_session_id,
+    ]
+      .map((v) => (v == null ? "" : String(v).trim()))
+      .filter((v) => v.length > 0);
+
+    const uniqueRefs = [...new Set(candidateRefs)];
+    if (uniqueRefs.length === 0) {
       return res.status(400).json({ message: "Missing tx_ref in verification response" });
     }
 
-    const purchase = await prisma.ppvPurchase.findUnique({
-      where: { paystackRef: ref },
-      include: { user: true, title: true },
+    console.info("[ppv][flutterwave][verify] resolved candidate refs", {
+      txRef,
+      candidateCount: uniqueRefs.length,
     });
-    if (!purchase) return res.status(404).json({ message: "Purchase not found" });
+
+    let purchase: any = null;
+    let ref: string | undefined;
+
+    for (const candidate of uniqueRefs) {
+      const found = await prisma.ppvPurchase.findUnique({
+        where: { paystackRef: candidate },
+        include: { user: true, title: true },
+      });
+      if (found) {
+        purchase = found;
+        ref = candidate;
+        break;
+      }
+    }
+
+    if (!purchase || !ref) {
+      console.warn("[ppv][flutterwave][verify] purchase lookup failed", {
+        txRef,
+        transactionId,
+        candidateCount: uniqueRefs.length,
+      });
+      return res.status(404).json({ message: "Purchase not found" });
+    }
 
     if (String(payload?.status).toLowerCase() === "successful") {
       const expiresAt = new Date(Date.now() + ppvAccessDays * 24 * 60 * 60 * 1000);
@@ -1098,10 +1428,16 @@ export const verifyFlutterwavePurchase = async (req: AuthenticatedRequest, res: 
         where: { paystackRef: ref },
         data: {
           status: "SUCCESS",
-          paystackTrxId: String(payload?.id ?? ""),
-          rawPayload: data,
+          paystackTrxId: String(payload?.id ?? transactionId ?? ""),
+          rawPayload: verification.data,
           accessExpiresAt: expiresAt,
         },
+      });
+      console.info("[ppv][flutterwave][verify] purchase marked success", {
+        purchaseId: String(purchase.id),
+        txRef: ref,
+        userId: String(purchase.userId),
+        titleId: String(purchase.titleId),
       });
       if (purchase.status !== "SUCCESS") {
         await sendPpvThankYou({
@@ -1114,11 +1450,16 @@ export const verifyFlutterwavePurchase = async (req: AuthenticatedRequest, res: 
     } else if (payload?.status) {
       await prisma.ppvPurchase.update({
         where: { paystackRef: ref },
-        data: { status: "FAILED", rawPayload: data },
+        data: { status: "FAILED", rawPayload: verification.data },
+      });
+      console.info("[ppv][flutterwave][verify] purchase marked failed", {
+        purchaseId: String(purchase.id),
+        txRef: ref,
+        status: String(payload?.status),
       });
     }
 
-    return res.json({ verified: true, data });
+    return res.json({ verified: true, data: verification.data });
   } catch (err) {
     console.error("flutterwave verify error", err);
     return res.status(500).json({ message: "Verification failed" });

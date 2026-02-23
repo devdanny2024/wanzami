@@ -10,6 +10,7 @@ import {
   getAccess,
   myTitles,
   flutterwaveWebhook,
+  flutterwaveAppSessionReturn,
   verifyFlutterwavePurchase,
   initiatePaystackPurchase,
   verifyPaystackPurchase,
@@ -31,7 +32,9 @@ router.get("/ppv/access/:titleId", requireAuth, getAccess);
 router.get("/ppv/my-titles", requireAuth, myTitles);
 router.get("/admin/ppv/purchases", requireAuth, requireAdmin, adminListPurchases);
 router.post("/ppv/flutterwave/webhook", flutterwaveWebhook);
+router.get("/app-session/ppv/flutterwave/return", flutterwaveAppSessionReturn);
 router.post("/ppv/flutterwave/verify", requireAuth, verifyFlutterwavePurchase);
+router.post("/app-session/ppv/flutterwave/verify", verifyFlutterwavePurchase);
 router.post("/ppv/paystack/initiate", requireAuth, initiatePaystackPurchase);
 router.post("/ppv/paystack/verify", requireAuth, verifyPaystackPurchase);
 router.post("/ppv/paystack/webhook", paystackWebhook);
