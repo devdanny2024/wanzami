@@ -72,12 +72,21 @@ export const continueWatching = async (req: AuthenticatedRequest, res: Response)
     take: 200,
   });
 
-  type ProgressStats = { completion: number; lastAt: Date };
-  const bestByTitle = new Map<bigint, ProgressStats>();
+  type ProgressStats = {
+    completion: number;
+    lastAt: Date;
+    positionSec?: number;
+    durationSec?: number;
+  };
+  const latestByTitle = new Map<bigint, ProgressStats>();
   for (const e of events) {
-    if (!e.titleId) continue;
+    if (!e.titleId || latestByTitle.has(e.titleId)) continue;
     const metadata =
       typeof e.metadata === "object" && e.metadata !== null ? (e.metadata as any) : {};
+
+    const positionSec = Number(metadata.positionSec);
+    const durationSec = Number(metadata.durationSec);
+
     let completion = Number(
       typeof metadata.completionPercent === "number"
         ? metadata.completionPercent
@@ -85,32 +94,42 @@ export const continueWatching = async (req: AuthenticatedRequest, res: Response)
           ? metadata.completion
           : NaN,
     );
+
     // Fallback: derive completion from position / duration when percent is missing.
     if (Number.isNaN(completion)) {
-      const pos = Number(metadata.positionSec);
-      const dur = Number(metadata.durationSec);
-      if (Number.isFinite(pos) && Number.isFinite(dur) && dur > 0) {
-        completion = Math.max(0, Math.min(1, pos / dur));
+      if (Number.isFinite(positionSec) && Number.isFinite(durationSec) && durationSec > 0) {
+        completion = Math.max(0, Math.min(1, positionSec / durationSec));
       }
     }
-    if (!Number.isFinite(completion) || completion <= 0) continue;
 
-    const existing = bestByTitle.get(e.titleId);
-    if (!existing) {
-      bestByTitle.set(e.titleId, { completion, lastAt: e.occurredAt });
-    } else {
-      bestByTitle.set(e.titleId, {
-        completion: completion > existing.completion ? completion : existing.completion,
-        lastAt: e.occurredAt > existing.lastAt ? e.occurredAt : existing.lastAt,
-      });
-    }
+    const normalizedCompletion = Number.isFinite(completion)
+      ? Math.max(0, Math.min(1, completion))
+      : 0;
+
+    const hasProgress =
+      normalizedCompletion > 0 ||
+      (Number.isFinite(positionSec) && positionSec > 0 && Number.isFinite(durationSec) && durationSec > 0);
+
+    if (!hasProgress) continue;
+
+    latestByTitle.set(e.titleId, {
+      completion: normalizedCompletion,
+      lastAt: e.occurredAt,
+      positionSec: Number.isFinite(positionSec) ? Math.max(0, Math.floor(positionSec)) : undefined,
+      durationSec: Number.isFinite(durationSec) ? Math.max(0, Math.floor(durationSec)) : undefined,
+    });
   }
 
-  const candidates = Array.from(bestByTitle.entries()).map(([titleId, stats]) => ({
-    titleId,
-    completion: stats.completion,
-    lastAt: stats.lastAt.getTime(),
-  }));
+  const candidates = Array.from(latestByTitle.entries())
+    .map(([titleId, stats]) => ({
+      titleId,
+      completion: stats.completion,
+      positionSec: stats.positionSec,
+      durationSec: stats.durationSec,
+      lastAt: stats.lastAt.getTime(),
+    }))
+    // Continue Watching should only surface titles still in progress.
+    .filter((c) => c.completion > 0 && c.completion < 0.98);
 
   if (!candidates.length) {
     return res.json({ items: [] });
@@ -140,6 +159,9 @@ export const continueWatching = async (req: AuthenticatedRequest, res: Response)
         thumbnailUrl: t.thumbnailUrl,
         runtimeMinutes: t.runtimeMinutes,
         completionPercent: Math.max(0, Math.min(1, c.completion)),
+        positionSec: c.positionSec,
+        durationSec: c.durationSec,
+        lastWatchedAt: new Date(c.lastAt).toISOString(),
       };
     })
     .filter(Boolean);
