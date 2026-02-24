@@ -424,7 +424,7 @@ export const createLiveEvent = async (req: AuthenticatedRequest, res: Response) 
     const resolvedVisibility = visibility ?? LiveVisibility.PRIVATE;
     const resolvedIsPublished = resolvedVisibility !== LiveVisibility.PRIVATE;
 
-    const created = await prisma.$transaction(async (tx) => {
+    const createdBase = await prisma.$transaction(async (tx) => {
       const initial = await tx.liveEvent.create({
         data: {
           title,
@@ -448,13 +448,20 @@ export const createLiveEvent = async (req: AuthenticatedRequest, res: Response) 
         await ensureUnlistedSlug(tx, initial.id);
       }
 
-      return tx.liveEvent.findUniqueOrThrow({ where: { id: initial.id }, include: liveEventInclude });
+      return initial;
     });
 
-    return res.json({ event: toAdminEvent(created) });
+    try {
+      const created = await prisma.liveEvent.findUniqueOrThrow({ where: { id: createdBase.id }, include: liveEventInclude });
+      return res.json({ event: toAdminEvent(created) });
+    } catch (fetchErr: any) {
+      // Do not fail creation if post-create enrichment/query is degraded.
+      logLiveNonFatal("createLiveEvent.postCreateFetch", fetchErr);
+      return res.status(201).json({ event: toAdminEvent({ ...createdBase, sources: [] }) });
+    }
   } catch (err: any) {
-    console.error("createLiveEvent error", err);
-    return res.status(500).json({ message: "Failed to create live event", error: err?.message });
+    logLiveNonFatal("createLiveEvent", err);
+    return sendLiveGracefulFallback(res, "createLiveEvent", err);
   }
 };
 
