@@ -13,10 +13,21 @@ type LiveSource = {
   eventId?: string;
   type: "CAMERA" | "SCREEN" | "RTMP" | "CONTROL_DECK";
   label: string;
-  status: "READY" | "OFFLINE" | "ERROR";
+  status: "READY" | "OFFLINE" | "ERROR" | "DEGRADED";
+  reportedStatus?: "READY" | "OFFLINE" | "ERROR" | "DEGRADED";
   playbackUrl?: string | null;
   previewUrl?: string | null;
   metadata?: Record<string, any> | null;
+  health?: {
+    lastHeartbeatAt?: string | null;
+    timeoutMs?: number;
+    ageMs?: number | null;
+    isTimedOut?: boolean;
+    latencyMs?: number | null;
+    bitrateKbps?: number | null;
+    droppedFrames?: number | null;
+    note?: string | null;
+  };
   isActiveOutput: boolean;
 };
 
@@ -52,6 +63,12 @@ type LiveChatMessage = {
   createdAt: string;
 };
 
+type BrowserLiveSession = {
+  stream: MediaStream;
+  client: any | null;
+  sourceId?: string;
+};
+
 async function adminApiFetch(path: string, init?: RequestInit) {
   const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
   const res = await fetch(path, {
@@ -82,6 +99,14 @@ const pickPlayablePlaybackUrl = (event?: LiveEvent | null, sourceId?: string | n
   const byActive = sources.find((s) => s.isActiveOutput);
   const best = preferred?.playbackUrl?.trim() || byActive?.playbackUrl?.trim() || event.playbackUrl?.trim();
   return best || "";
+};
+
+const formatIngestUrl = (ingestEndpoint?: string | null) => {
+  if (!ingestEndpoint) return "";
+  const raw = ingestEndpoint.trim();
+  if (!raw) return "";
+  if (raw.startsWith("rtmp://") || raw.startsWith("rtmps://")) return raw;
+  return `rtmps://${raw}:443/app/`;
 };
 
 function HlsPlayer({ src, title }: { src: string; title: string }) {
@@ -226,9 +251,30 @@ export function LiveStudio() {
   const [selectedSourceId, setSelectedSourceId] = useState<string>("");
   const [chatMessages, setChatMessages] = useState<LiveChatMessage[]>([]);
   const [chatBusy, setChatBusy] = useState(false);
+  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
+  const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedVideoDeviceId, setSelectedVideoDeviceId] = useState("");
+  const [selectedAudioDeviceId, setSelectedAudioDeviceId] = useState("");
+  const [cameraBusy, setCameraBusy] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [cameraMuted, setCameraMuted] = useState(false);
+  const browserLiveRef = useRef<BrowserLiveSession | null>(null);
+  const webcamPreviewRef = useRef<HTMLVideoElement | null>(null);
 
   const selectedEvent = useMemo(() => events.find((e) => e.id === selectedEventId) ?? null, [events, selectedEventId]);
   const previewUrl = useMemo(() => pickPlayablePlaybackUrl(selectedEvent, selectedSourceId || undefined), [selectedEvent, selectedSourceId]);
+
+  const loadSourcesForEvent = async (eventId: string) => {
+    const res = await adminApiFetch(`/api/admin/live/events/${eventId}/sources`);
+    if (!res.ok) throw new Error((res.data as any)?.message || "Failed to load event sources");
+
+    const nextSources = (((res.data as any)?.sources ?? []) as LiveSource[]);
+    setEvents((prev) =>
+      prev.map((event) => (event.id === eventId ? { ...event, sources: nextSources } : event))
+    );
+
+    return nextSources;
+  };
 
   const loadEvents = async () => {
     try {
@@ -238,8 +284,14 @@ export function LiveStudio() {
       if (!res.ok) throw new Error((res.data as any)?.message || "Failed to load live events");
       const next = (((res.data as any)?.events ?? []) as LiveEvent[]);
       setEvents(next);
-      if (!selectedEventId && next[0]?.id) {
-        setSelectedEventId(next[0].id);
+
+      const initialSelectedEventId = selectedEventId || next[0]?.id || "";
+      if (!selectedEventId && initialSelectedEventId) {
+        setSelectedEventId(initialSelectedEventId);
+      }
+
+      if (initialSelectedEventId) {
+        await loadSourcesForEvent(initialSelectedEventId);
       }
     } catch (err: any) {
       setError(err?.message || "Failed to load live events");
@@ -256,12 +308,42 @@ export function LiveStudio() {
   }, []);
 
   useEffect(() => {
-    // reset selected source if it doesn't exist on newly selected event
+    if (!selectedEventId) return;
+
+    void loadSourcesForEvent(selectedEventId).catch((err: any) => {
+      toast.error(err?.message || "Failed to load event sources");
+    });
+
+    const t = setInterval(() => {
+      void loadSourcesForEvent(selectedEventId).catch(() => undefined);
+    }, 5000);
+
+    return () => clearInterval(t);
+  }, [selectedEventId]);
+
+  useEffect(() => {
     const sources = selectedEvent?.sources ?? [];
+
     if (selectedSourceId && !sources.some((s) => s.id === selectedSourceId)) {
       setSelectedSourceId("");
+      return;
     }
-  }, [selectedEventId]);
+
+    if (!selectedSourceId && sources.length > 0) {
+      const preferred = sources.find((s) => s.isActiveOutput) ?? sources[0];
+      if (preferred?.id) {
+        setSelectedSourceId(preferred.id);
+      }
+    }
+  }, [selectedEvent, selectedSourceId]);
+
+  useEffect(() => {
+    if (section === "webcam") {
+      void loadMediaDevices().catch(() => undefined);
+    }
+  }, [section]);
+
+  useEffect(() => () => cleanupBrowserLive(), []);
 
   const loadChatMessages = async () => {
     if (!selectedEventId) return;
@@ -293,17 +375,102 @@ export function LiveStudio() {
     }
   };
 
-  const goLive = async () => {
+  const cleanupBrowserLive = () => {
+    const session = browserLiveRef.current;
+    if (session?.client) {
+      try {
+        session.client.stopBroadcast?.();
+      } catch {
+        // ignore
+      }
+    }
+    session?.stream?.getTracks().forEach((track) => track.stop());
+    browserLiveRef.current = null;
+    if (webcamPreviewRef.current) {
+      webcamPreviewRef.current.srcObject = null;
+    }
+    setCameraMuted(false);
+  };
+
+  const loadMediaDevices = async () => {
+    if (!navigator.mediaDevices?.enumerateDevices) return;
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const nextVideo = devices.filter((d) => d.kind === "videoinput");
+    const nextAudio = devices.filter((d) => d.kind === "audioinput");
+    setVideoDevices(nextVideo);
+    setAudioDevices(nextAudio);
+    if (!selectedVideoDeviceId && nextVideo[0]?.deviceId) setSelectedVideoDeviceId(nextVideo[0].deviceId);
+    if (!selectedAudioDeviceId && nextAudio[0]?.deviceId) setSelectedAudioDeviceId(nextAudio[0].deviceId);
+  };
+
+  const startPreviewStream = async (opts?: { videoDeviceId?: string; audioDeviceId?: string }) => {
+    const videoDeviceId = opts?.videoDeviceId ?? selectedVideoDeviceId;
+    const audioDeviceId = opts?.audioDeviceId ?? selectedAudioDeviceId;
+
+    cleanupBrowserLive();
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: videoDeviceId ? { deviceId: { exact: videoDeviceId } } : { width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: audioDeviceId ? { deviceId: { exact: audioDeviceId } } : true,
+    });
+
+    browserLiveRef.current = { stream, client: null };
+    if (webcamPreviewRef.current) {
+      webcamPreviewRef.current.srcObject = stream;
+      webcamPreviewRef.current.muted = true;
+      void webcamPreviewRef.current.play().catch(() => undefined);
+    }
+
+    return stream;
+  };
+
+  const startWebcamSession = async () => {
+    try {
+      setCameraError(null);
+      setCameraBusy(true);
+      await startPreviewStream();
+      await loadMediaDevices();
+    } catch (err: any) {
+      setCameraError(err?.message || "Unable to access camera/microphone.");
+    } finally {
+      setCameraBusy(false);
+    }
+  };
+
+  const ensureBroadcastSdk = async () => {
+    if (typeof window === "undefined") throw new Error("Browser environment required");
+    const w = window as any;
+    if (w.IVSBroadcastClient) return w.IVSBroadcastClient;
+    await new Promise<void>((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "https://web-broadcast.live-video.net/1.29.0/amazon-ivs-web-broadcast.js";
+      script.async = true;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error("Failed to load IVS broadcast SDK"));
+      document.head.appendChild(script);
+    });
+    if (!w.IVSBroadcastClient) throw new Error("IVS broadcast SDK unavailable");
+    return w.IVSBroadcastClient;
+  };
+
+  const startWebcamLive = async () => {
     if (!selectedEvent) return;
-    const sourceId = selectedSourceId || selectedEvent.sources?.find((s) => s.isActiveOutput)?.id;
-    if (!sourceId) {
-      toast.error("Pick a source first");
+    const ingestUrl = formatIngestUrl(selectedEvent.ingestEndpoint);
+    if (!ingestUrl || !selectedEvent.streamKey) {
+      setCameraError("Event ingest details are missing. Use Stream settings to copy RTMPS URL + stream key.");
+      return;
+    }
+
+    const stream = browserLiveRef.current?.stream;
+    if (!stream) {
+      setCameraError("Start webcam preview first.");
       return;
     }
 
     try {
-      setError(null);
-      // 1) publish if needed
+      setCameraError(null);
+      setCameraBusy(true);
+
       if (!selectedEvent.isPublished) {
         const pub = await adminApiFetch(`/api/admin/live/events/${selectedEvent.id}/publish`, {
           method: "PATCH",
@@ -312,21 +479,84 @@ export function LiveStudio() {
         if (!pub.ok) throw new Error((pub.data as any)?.message || "Failed to publish");
       }
 
-      // 2) switch active output (the thing users will see)
-      const sw = await adminApiFetch(`/api/admin/live/events/${selectedEvent.id}/sources/switch`, {
-        method: "POST",
-        body: JSON.stringify({ sourceId }),
-      });
-      if (!sw.ok) throw new Error((sw.data as any)?.message || "Failed to switch source");
+      const sdk = await ensureBroadcastSdk();
+      const client = sdk.create({ streamConfig: sdk.BASIC_LANDSCAPE });
+      if (stream.getVideoTracks().length) client.addVideoInputDevice(stream, "camera", { index: 0 });
+      if (stream.getAudioTracks().length) client.addAudioInputDevice(stream, "mic");
+      await client.startBroadcast(selectedEvent.streamKey, selectedEvent.ingestEndpoint!);
 
-      // 3) mark event live (B flow)
+      let sourceId: string | undefined;
+      const latest = await adminApiFetch(`/api/admin/live/events/${selectedEvent.id}`);
+      const latestEvent = latest.ok ? ((latest.data as any)?.event as LiveEvent) : selectedEvent;
+      const existing = (latestEvent.sources ?? []).find((s) => s.type === "CAMERA" && s.label === "Browser Camera");
+      if (existing) {
+        sourceId = existing.id;
+        await adminApiFetch(`/api/admin/live/events/${selectedEvent.id}/sources/${existing.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ status: "READY", isActiveOutput: true }),
+        });
+      } else {
+        const created = await adminApiFetch(`/api/admin/live/events/${selectedEvent.id}/sources`, {
+          method: "POST",
+          body: JSON.stringify({ type: "CAMERA", label: "Browser Camera", status: "READY", isActiveOutput: true }),
+        });
+        sourceId = (created.data as any)?.source?.id;
+      }
+
       const start = await adminApiFetch(`/api/admin/live/events/${selectedEvent.id}/start`, {
         method: "POST",
-        body: JSON.stringify({ sourceId }),
+        body: JSON.stringify(sourceId ? { sourceId } : {}),
       });
       if (!start.ok) throw new Error((start.data as any)?.message || "Failed to go live");
 
-      toast.success("Event is now LIVE");
+      browserLiveRef.current = { stream, client, sourceId };
+      toast.success("Webcam is now LIVE");
+      await loadEvents();
+    } catch (err: any) {
+      setCameraError(err?.message || "Failed to start webcam live.");
+      toast.error(err?.message || "Failed to start webcam live.");
+    } finally {
+      setCameraBusy(false);
+    }
+  };
+
+  const stopWebcamLive = async () => {
+    if (!selectedEvent) return;
+    try {
+      setCameraBusy(true);
+      if (selectedEvent.status === "LIVE") {
+        await adminApiFetch(`/api/admin/live/events/${selectedEvent.id}/end`, { method: "POST" });
+      }
+      cleanupBrowserLive();
+      await loadEvents();
+    } finally {
+      setCameraBusy(false);
+    }
+  };
+
+  const goLive = async () => {
+    if (!selectedEvent) return;
+
+    const sources = selectedEvent.sources ?? [];
+    const sourceId = selectedSourceId || sources.find((s) => s.isActiveOutput)?.id || sources[0]?.id;
+
+    try {
+      setError(null);
+      if (!selectedEvent.isPublished) {
+        const pub = await adminApiFetch(`/api/admin/live/events/${selectedEvent.id}/publish`, {
+          method: "PATCH",
+          body: JSON.stringify({ isPublished: true }),
+        });
+        if (!pub.ok) throw new Error((pub.data as any)?.message || "Failed to publish");
+      }
+
+      const start = await adminApiFetch(`/api/admin/live/events/${selectedEvent.id}/start`, {
+        method: "POST",
+        body: JSON.stringify(sourceId ? { sourceId } : {}),
+      });
+      if (!start.ok) throw new Error((start.data as any)?.message || "Failed to go live");
+
+      toast.success(sourceId ? "Event is now LIVE with selected source" : "Event is now LIVE. Waiting for ingest signal.");
       await loadEvents();
     } catch (err: any) {
       const msg = err?.message || "Failed to go live";
@@ -378,7 +608,11 @@ export function LiveStudio() {
                 <CardTitle className="text-white">Preview</CardTitle>
               </CardHeader>
               <CardContent>
-                {previewUrl ? (
+                {section === "webcam" ? (
+                  <div className="aspect-video rounded-lg border border-neutral-800 bg-black/40 overflow-hidden">
+                    <video ref={webcamPreviewRef} className="h-full w-full object-contain" playsInline muted autoPlay />
+                  </div>
+                ) : previewUrl ? (
                   <HlsPlayer src={previewUrl} title={selectedEvent?.title || "Preview"} />
                 ) : (
                   <div className="aspect-video rounded-lg border border-neutral-800 bg-black/40 flex items-center justify-center text-neutral-400">
@@ -423,7 +657,12 @@ export function LiveStudio() {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-xs text-neutral-500">Preview source</label>
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs text-neutral-500">Preview source</label>
+                        <button className="text-[11px] text-[#fd7e14]" onClick={() => void loadSourcesForEvent(selectedEvent.id)}>
+                          Refresh sources
+                        </button>
+                      </div>
                       <select
                         className="w-full rounded-md border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-white"
                         value={selectedSourceId}
@@ -432,11 +671,21 @@ export function LiveStudio() {
                         <option value="">(Auto)</option>
                         {(selectedEvent.sources ?? []).map((s) => (
                           <option key={s.id} value={s.id}>
-                            {s.label} {s.isActiveOutput ? "(ACTIVE)" : ""}
+                            {s.label} [{s.status}] {s.isActiveOutput ? "(ACTIVE)" : ""}
                           </option>
                         ))}
                       </select>
-                      <p className="text-[11px] text-neutral-500">GO LIVE will use the selected source.</p>
+                      <p className="text-[11px] text-neutral-500">GO LIVE uses selected source when set. If none is selected, Live Studio starts ingest mode and waits for OBS/encoder input.</p>
+                      {selectedSourceId ? (() => {
+                        const s = (selectedEvent.sources ?? []).find((x) => x.id === selectedSourceId);
+                        if (!s) return null;
+                        return (
+                          <p className="text-[11px] text-neutral-500">
+                            Health: {s.status}
+                            {s.health?.lastHeartbeatAt ? ` • last heartbeat ${new Date(s.health.lastHeartbeatAt).toLocaleTimeString()}` : " • no heartbeat yet"}
+                          </p>
+                        );
+                      })() : null}
                     </div>
 
                     <div className="flex gap-2">
@@ -477,10 +726,10 @@ export function LiveStudio() {
                           <span className="text-neutral-500">RTMPS URL:</span>
                           <div className="flex items-center gap-2 mt-1">
                             <span className="text-white/80 break-all flex-1">
-                              {selectedEvent.ingestEndpoint ? `rtmps://${selectedEvent.ingestEndpoint}:443/app/` : "Not available"}
+                              {formatIngestUrl(selectedEvent.ingestEndpoint) || "Not available"}
                             </span>
                             {selectedEvent.ingestEndpoint ? (
-                              <button className="text-[#fd7e14]" onClick={() => copyText(`rtmps://${selectedEvent.ingestEndpoint}:443/app/`)}>
+                              <button className="text-[#fd7e14]" onClick={() => copyText(formatIngestUrl(selectedEvent.ingestEndpoint))}>
                                 Copy
                               </button>
                             ) : null}
@@ -497,12 +746,81 @@ export function LiveStudio() {
                             ) : null}
                           </div>
                         </div>
+                        <div className="rounded border border-neutral-800 bg-neutral-950 p-2 text-[11px] space-y-1">
+                          <p className="text-neutral-400">Operator checks (OBS/Encoder):</p>
+                          <p className="text-neutral-500">• Use RTMPS URL + stream key exactly as shown (no extra spaces).</p>
+                          <p className="text-neutral-500">• Start encoder output first, then click GO LIVE in Studio.</p>
+                          <p className="text-neutral-500">• If preview stays empty, refresh sources and verify encoder is connected.</p>
+                        </div>
                       </div>
                     ) : null}
 
                     {section === "webcam" ? (
-                      <div className="pt-2 border-t border-neutral-800 text-xs text-neutral-400">
-                        Webcam broadcasting UI will be moved here next (we already have the working camera flow in CreatorHub).
+                      <div className="pt-2 border-t border-neutral-800 space-y-2 text-xs text-neutral-300">
+                        <p className="text-xs uppercase tracking-wide text-neutral-400">Webcam checks</p>
+                        <p className="text-neutral-400">1) Start preview and confirm camera + mic meters are active.</p>
+                        <p className="text-neutral-400">2) Ensure event has ingest URL and stream key before broadcasting.</p>
+                        <div className="flex flex-wrap gap-2">
+                          <Button size="sm" className="bg-[#fd7e14] hover:bg-[#ff9940] text-white" onClick={startWebcamSession} disabled={cameraBusy}>
+                            {cameraBusy ? "Starting..." : "Start Webcam Preview"}
+                          </Button>
+                          <Button size="sm" variant="outline" className="border-neutral-700 text-neutral-200" onClick={startWebcamLive} disabled={cameraBusy || !browserLiveRef.current?.stream || selectedEvent.status === "LIVE"}>
+                            Go LIVE (Webcam)
+                          </Button>
+                          <Button size="sm" variant="outline" className="border-neutral-700 text-neutral-200" onClick={stopWebcamLive} disabled={cameraBusy || !browserLiveRef.current?.stream}>
+                            Stop Webcam
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-neutral-700 text-neutral-200"
+                            onClick={() => {
+                              const stream = browserLiveRef.current?.stream;
+                              if (!stream) return;
+                              const nextMuted = !cameraMuted;
+                              stream.getAudioTracks().forEach((track) => {
+                                track.enabled = !nextMuted;
+                              });
+                              setCameraMuted(nextMuted);
+                            }}
+                            disabled={!browserLiveRef.current?.stream}
+                          >
+                            {cameraMuted ? "Unmute Mic" : "Mute Mic"}
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                          <select
+                            className="rounded-md border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-white"
+                            value={selectedVideoDeviceId}
+                            onChange={(e) => {
+                              setSelectedVideoDeviceId(e.target.value);
+                              void startPreviewStream({ videoDeviceId: e.target.value }).catch((err: any) => setCameraError(err?.message || "Failed to switch camera"));
+                            }}
+                          >
+                            <option value="">Default Camera</option>
+                            {videoDevices.map((d, idx) => (
+                              <option key={d.deviceId || `v-${idx}`} value={d.deviceId}>
+                                {d.label || `Camera ${idx + 1}`}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            className="rounded-md border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-white"
+                            value={selectedAudioDeviceId}
+                            onChange={(e) => {
+                              setSelectedAudioDeviceId(e.target.value);
+                              void startPreviewStream({ audioDeviceId: e.target.value }).catch((err: any) => setCameraError(err?.message || "Failed to switch microphone"));
+                            }}
+                          >
+                            <option value="">Default Microphone</option>
+                            {audioDevices.map((d, idx) => (
+                              <option key={d.deviceId || `a-${idx}`} value={d.deviceId}>
+                                {d.label || `Microphone ${idx + 1}`}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        {cameraError ? <p className="text-red-400">{cameraError}</p> : null}
                       </div>
                     ) : null}
                   </>
