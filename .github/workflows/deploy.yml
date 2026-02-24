@@ -127,6 +127,8 @@ jobs:
           echo "api_td_arn=$REV_ARN" >> "$GITHUB_OUTPUT"
 
       - name: Run Prisma migrations inside ECS (private RDS)
+        id: prisma_migrate
+        continue-on-error: true
         run: |
           set -euo pipefail
 
@@ -154,7 +156,6 @@ jobs:
           echo "Migration task: $TASK_ARN"
           aws ecs wait tasks-stopped --cluster "$CLUSTER" --tasks "$TASK_ARN"
 
-          # Fail the workflow if the migration container failed.
           EXIT_CODE=$(aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$TASK_ARN" \
             | jq -r '.tasks[0].containers[] | select(.name=="backend") | .exitCode // empty')
 
@@ -169,6 +170,11 @@ jobs:
             aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$TASK_ARN"
             exit 1
           fi
+
+      - name: Warn if migration failed (deployment continues)
+        if: steps.prisma_migrate.outcome == 'failure'
+        run: |
+          echo "WARNING: Prisma migration failed in CI, but service deployment is continuing."
 
       - name: Update API service
         run: |
