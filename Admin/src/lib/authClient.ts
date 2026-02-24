@@ -5,8 +5,7 @@ const AUTH_SERVICE_URL =
   process.env.NEXT_PUBLIC_AUTH_SERVICE_URL ??
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   process.env.NEXT_PUBLIC_API_BASE ??
-  // Hard fallback to Wanzami prod backend API
-  "https://wanzami-backend-alb-1018329891.us-east-2.elb.amazonaws.com/api";
+  "";
 
 const AUTH_FETCH_TIMEOUT_MS = Number(process.env.AUTH_FETCH_TIMEOUT_MS ?? 12000);
 
@@ -33,6 +32,17 @@ function createTimeoutSignal(signal?: AbortSignal) {
 }
 
 export async function authFetch(path: string, init?: RequestInit) {
+  if (!AUTH_SERVICE_URL) {
+    return {
+      ok: false,
+      status: 500,
+      data: {
+        message: "Auth service base URL not configured",
+        error: "Set AUTH_SERVICE_URL (or NEXT_PUBLIC_AUTH_SERVICE_URL / NEXT_PUBLIC_API_BASE_URL)",
+      },
+    };
+  }
+
   const targetUrl = `${AUTH_SERVICE_URL}${withLeadingSlash(path)}`;
   const { signal, cleanup } = createTimeoutSignal(init?.signal);
 
