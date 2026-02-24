@@ -112,16 +112,26 @@ const parseSourceId = (value?: string): bigint | null => {
 
 const generateUnlistedSlug = () => crypto.randomBytes(9).toString("base64url");
 
-let liveEventCategoryColumnEnsured = false;
-const ensureLiveEventCategoryColumn = async () => {
-  if (liveEventCategoryColumnEnsured) return;
+let liveEventCompatColumnsEnsured = false;
+const ensureLiveEventCompatColumns = async () => {
+  if (liveEventCompatColumnsEnsured) return;
   try {
-    await prisma.$executeRawUnsafe(
-      'ALTER TABLE "LiveEvent" ADD COLUMN IF NOT EXISTS "category" TEXT;'
-    );
-    liveEventCategoryColumnEnsured = true;
+    // Backward-compatible guard for partially migrated environments.
+    // Keep Live Studio operator flows available even when rollout order is behind.
+    await prisma.$executeRawUnsafe('ALTER TABLE "LiveEvent" ADD COLUMN IF NOT EXISTS "category" TEXT;');
+    await prisma.$executeRawUnsafe('ALTER TABLE "LiveEvent" ADD COLUMN IF NOT EXISTS "isPublished" BOOLEAN NOT NULL DEFAULT false;');
+    await prisma.$executeRawUnsafe(`DO $$ BEGIN
+      CREATE TYPE "LiveVisibility" AS ENUM ('PRIVATE', 'UNLISTED', 'PUBLIC');
+    EXCEPTION
+      WHEN duplicate_object THEN NULL;
+    END $$;`);
+    await prisma.$executeRawUnsafe('ALTER TABLE "LiveEvent" ADD COLUMN IF NOT EXISTS "visibility" "LiveVisibility" NOT NULL DEFAULT \'PRIVATE\';');
+    await prisma.$executeRawUnsafe('ALTER TABLE "LiveEvent" ADD COLUMN IF NOT EXISTS "unlistedSlug" TEXT;');
+    await prisma.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "LiveEvent_unlistedSlug_key" ON "LiveEvent"("unlistedSlug");');
+    await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "LiveEvent_isPublished_status_idx" ON "LiveEvent"("isPublished", "status");');
+    liveEventCompatColumnsEnsured = true;
   } catch (err: any) {
-    console.error("ensureLiveEventCategoryColumn warning", {
+    console.error("ensureLiveEventCompatColumns warning", {
       message: err?.message,
       code: err?.code,
     });
@@ -394,7 +404,7 @@ const ensurePublishCandidatePlayback = async (event: any) => {
 };
 
 export const createLiveEvent = async (req: AuthenticatedRequest, res: Response) => {
-  await ensureLiveEventCategoryColumn();
+  await ensureLiveEventCompatColumns();
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ errors: parsed.error.flatten() });
@@ -467,7 +477,7 @@ export const createLiveEvent = async (req: AuthenticatedRequest, res: Response) 
 
 export const getLiveEventAdmin = async (req: Request, res: Response) => {
   try {
-    await ensureLiveEventCategoryColumn();
+    await ensureLiveEventCompatColumns();
     const eventId = parseEventId(req.params.id);
     if (!eventId) return res.status(400).json({ message: "Invalid event id" });
 
@@ -482,7 +492,7 @@ export const getLiveEventAdmin = async (req: Request, res: Response) => {
 
 export const listLiveEventsAdmin = async (_req: Request, res: Response) => {
   try {
-    await ensureLiveEventCategoryColumn();
+    await ensureLiveEventCompatColumns();
     const events = await prisma.liveEvent.findMany({
       include: liveEventInclude,
       orderBy: [{ createdAt: "desc" }],
@@ -688,7 +698,7 @@ export const updateLiveEventPublishAdmin = async (req: Request, res: Response) =
 };
 
 export const getLiveEventPublic = async (req: Request, res: Response) => {
-  await ensureLiveEventCategoryColumn();
+  await ensureLiveEventCompatColumns();
   const eventId = parseEventId(req.params.id);
   if (!eventId) return res.status(400).json({ message: "Invalid event id" });
 
@@ -706,7 +716,7 @@ export const getLiveEventPublic = async (req: Request, res: Response) => {
 };
 
 export const getLiveEventUnlistedPublic = async (req: Request, res: Response) => {
-  await ensureLiveEventCategoryColumn();
+  await ensureLiveEventCompatColumns();
   const slug = typeof req.params.slug === "string" ? req.params.slug.trim() : "";
   if (!slug) return res.status(400).json({ message: "Invalid unlisted slug" });
 
@@ -725,7 +735,7 @@ export const getLiveEventUnlistedPublic = async (req: Request, res: Response) =>
 
 export const listLiveEventsPublic = async (_req: Request, res: Response) => {
   try {
-    await ensureLiveEventCategoryColumn();
+    await ensureLiveEventCompatColumns();
     const events = await prisma.liveEvent.findMany({
       include: liveEventInclude,
       where: {
