@@ -7,6 +7,13 @@ const connection = new IORedis(config.redisUrl, {
   enableReadyCheck: false,
 });
 
+connection.on("error", (err) => {
+  console.error("[emailQueue] Redis connection error", {
+    message: err?.message,
+    code: (err as { code?: string })?.code,
+  });
+});
+
 // Use a hashtagged prefix so BullMQ keys hash to the same slot in Redis Cluster/Valkey.
 const prefix = "{bullmq}";
 
@@ -19,4 +26,10 @@ export const emailQueue = new Queue("email", {
     removeOnComplete: 500,
     removeOnFail: 1000,
   },
+});
+
+emailQueue.on("error", (err) => {
+  console.error("[emailQueue] Queue error", {
+    message: err?.message,
+  });
 });

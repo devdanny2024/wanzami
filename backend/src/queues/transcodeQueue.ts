@@ -7,6 +7,13 @@ const connection = new IORedis(config.redisUrl, {
   enableReadyCheck: false,
 });
 
+connection.on("error", (err) => {
+  console.error("[transcodeQueue] Redis connection error", {
+    message: err?.message,
+    code: (err as { code?: string })?.code,
+  });
+});
+
 // Use a hashtagged prefix so BullMQ keys hash to the same slot in Redis Cluster/Valkey.
 const prefix = "{bullmq}";
 
@@ -19,4 +26,10 @@ export const transcodeQueue = new Queue("transcode", {
     removeOnComplete: 1000,
     removeOnFail: 5000,
   },
+});
+
+transcodeQueue.on("error", (err) => {
+  console.error("[transcodeQueue] Queue error", {
+    message: err?.message,
+  });
 });
