@@ -484,7 +484,15 @@ export const listLiveEventsAdmin = async (_req: Request, res: Response) => {
 
     return res.json({ events: events.map(toAdminEvent) });
   } catch (err: any) {
-    return sendLiveGracefulFallback(res, "listLiveEventsAdmin", err);
+    logLiveNonFatal("listLiveEventsAdmin", err);
+
+    // Never hard-crash the Admin Live Studio list surface.
+    // Return empty-state payload so operators can still access the page while infra/schema issues are being resolved.
+    return res.status(200).json({
+      events: [],
+      degraded: true,
+      message: "Live Studio data is temporarily degraded."
+    });
   }
 };
 
