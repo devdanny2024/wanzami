@@ -8,6 +8,13 @@ const connection = new IORedis(config.redisUrl, {
   enableReadyCheck: false,
 });
 
+connection.on("error", (err) => {
+  console.error("[emailWorker] Redis connection non-fatal error", {
+    message: err?.message,
+    code: (err as { code?: string })?.code,
+  });
+});
+
 const prefix = "{bullmq}";
 
 type EmailJobData = {
@@ -61,5 +68,12 @@ worker.on("completed", (job) => {
 
 worker.on("failed", (job, err) => {
   console.error(`[emailWorker] Job failed ${job?.id}`, err);
+});
+
+worker.on("error", (err) => {
+  console.error("[emailWorker] Worker non-fatal error", {
+    message: err?.message,
+    code: (err as { code?: string })?.code,
+  });
 });
 

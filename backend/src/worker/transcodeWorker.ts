@@ -39,6 +39,13 @@ const connection = new IORedis(config.redisUrl, {
   enableReadyCheck: false,
 });
 
+connection.on("error", (err) => {
+  console.error("[transcodeWorker] Redis connection non-fatal error", {
+    message: err?.message,
+    code: (err as { code?: string })?.code,
+  });
+});
+
 // Use a hashtagged prefix so BullMQ keys hash to the same slot in Redis Cluster/Valkey.
 const prefix = "{bullmq}";
 
@@ -275,4 +282,11 @@ worker.on("failed", async (job, err) => {
 
 worker.on("completed", () => {
   // no-op
+});
+
+worker.on("error", (err) => {
+  console.error("[transcodeWorker] Worker non-fatal error", {
+    message: err?.message,
+    code: (err as { code?: string })?.code,
+  });
 });

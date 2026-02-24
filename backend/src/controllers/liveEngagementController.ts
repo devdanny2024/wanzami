@@ -34,6 +34,29 @@ const parseBigIntId = (value?: string): bigint | null => {
   }
 };
 
+const isTransientInfraError = (err: any) => {
+  const code = String(err?.code ?? "").toUpperCase();
+  const message = String(err?.message ?? "").toUpperCase();
+  return (
+    code.includes("ETIMEDOUT") ||
+    code.includes("ECONNREFUSED") ||
+    message.includes("REDIS") ||
+    message.includes("ETIMEDOUT")
+  );
+};
+
+const sendEngagementFallback = (res: Response, scope: string, err: any) => {
+  console.error(`[live-engagement] ${scope} non-fatal error`, {
+    message: err?.message,
+    code: err?.code,
+    name: err?.name,
+  });
+  if (isTransientInfraError(err)) {
+    return res.status(503).json({ message: "Live engagement is temporarily unavailable", code: "LIVE_ENGAGEMENT_DEGRADED" });
+  }
+  return res.status(500).json({ message: "Live engagement request failed", code: "LIVE_ENGAGEMENT_FAILED" });
+};
+
 const ensureLiveEventViewable = async (eventId: bigint) => {
   const event = await prisma.liveEvent.findUnique({ where: { id: eventId } });
   if (!event) return { status: 404 as const, message: "Live event not found" };
@@ -45,44 +68,48 @@ const ensureLiveEventViewable = async (eventId: bigint) => {
 };
 
 export const listLiveChatMessages = async (req: Request, res: Response) => {
-  const eventId = parseBigIntId(req.params.id);
-  if (!eventId) return res.status(400).json({ message: "Invalid event id" });
+  try {
+    const eventId = parseBigIntId(req.params.id);
+    if (!eventId) return res.status(400).json({ message: "Invalid event id" });
 
-  const guard = await ensureLiveEventViewable(eventId);
-  if ("status" in guard) { const g = guard as { status: number; message: string }; return res.status(g.status).json({ message: g.message }); }
+    const guard = await ensureLiveEventViewable(eventId);
+    if ("status" in guard) { const g = guard as { status: number; message: string }; return res.status(g.status).json({ message: g.message }); }
 
-  const cursor = req.query.cursor ? parseBigIntId(String(req.query.cursor)) : null;
-  const limit = Math.max(1, Math.min(Number(req.query.limit ?? 40) || 40, 100));
+    const cursor = req.query.cursor ? parseBigIntId(String(req.query.cursor)) : null;
+    const limit = Math.max(1, Math.min(Number(req.query.limit ?? 40) || 40, 100));
 
-  const messages = await liveDb.liveChatMessage.findMany({
-    where: {
-      liveEventId: eventId,
-      isDeleted: false,
-      isHidden: false,
-    },
-    include: {
-      user: {
-        select: { id: true, name: true, role: true },
+    const messages = await liveDb.liveChatMessage.findMany({
+      where: {
+        liveEventId: eventId,
+        isDeleted: false,
+        isHidden: false,
       },
-    },
-    orderBy: { id: "desc" },
-    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-    take: limit,
-  });
+      include: {
+        user: {
+          select: { id: true, name: true, role: true },
+        },
+      },
+      orderBy: { id: "desc" },
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      take: limit,
+    });
 
-  return res.json({
-    messages: messages.reverse().map((m: any) => ({
-      id: m.id.toString(),
-      eventId: m.liveEventId.toString(),
-      userId: m.userId.toString(),
-      userName: m.user?.name ?? "Viewer",
-      userRole: m.user?.role ?? "USER",
-      message: m.message,
-      isPinned: m.isPinned,
-      createdAt: m.createdAt,
-    })),
-    nextCursor: messages.length === limit ? messages[messages.length - 1]?.id.toString() : null,
-  });
+    return res.json({
+      messages: messages.reverse().map((m: any) => ({
+        id: m.id.toString(),
+        eventId: m.liveEventId.toString(),
+        userId: m.userId.toString(),
+        userName: m.user?.name ?? "Viewer",
+        userRole: m.user?.role ?? "USER",
+        message: m.message,
+        isPinned: m.isPinned,
+        createdAt: m.createdAt,
+      })),
+      nextCursor: messages.length === limit ? messages[messages.length - 1]?.id.toString() : null,
+    });
+  } catch (err: any) {
+    return sendEngagementFallback(res, "listLiveChatMessages", err);
+  }
 };
 
 export const listLiveChatMessagesAdmin = async (req: Request, res: Response) => {
@@ -229,60 +256,64 @@ export const listLiveReactions = async (req: Request, res: Response) => {
 };
 
 export const getLiveEngagementSnapshot = async (req: Request, res: Response) => {
-  const eventId = parseBigIntId(req.params.id);
-  if (!eventId) return res.status(400).json({ message: "Invalid event id" });
+  try {
+    const eventId = parseBigIntId(req.params.id);
+    if (!eventId) return res.status(400).json({ message: "Invalid event id" });
 
-  const guard = await ensureLiveEventViewable(eventId);
-  if ("status" in guard) { const g = guard as { status: number; message: string }; return res.status(g.status).json({ message: g.message }); }
+    const guard = await ensureLiveEventViewable(eventId);
+    if ("status" in guard) { const g = guard as { status: number; message: string }; return res.status(g.status).json({ message: g.message }); }
 
-  const sinceRaw = typeof req.query.since === "string" ? req.query.since : undefined;
-  const since = sinceRaw ? new Date(sinceRaw) : null;
-  const validSince = since && !Number.isNaN(since.getTime()) ? since : null;
+    const sinceRaw = typeof req.query.since === "string" ? req.query.since : undefined;
+    const since = sinceRaw ? new Date(sinceRaw) : null;
+    const validSince = since && !Number.isNaN(since.getTime()) ? since : null;
 
-  const [messages, totals, latestReactions] = await Promise.all([
-    liveDb.liveChatMessage.findMany({
-      where: {
-        liveEventId: eventId,
-        isDeleted: false,
-        isHidden: false,
-        ...(validSince ? { createdAt: { gt: validSince } } : {}),
-      },
-      include: { user: { select: { id: true, name: true, role: true } } },
-      orderBy: { createdAt: "asc" },
-      take: validSince ? 150 : 50,
-    }),
-    liveDb.liveReactionAggregate.findMany({ where: { liveEventId: eventId } }),
-    liveDb.liveReactionEvent.findMany({
-      where: {
-        liveEventId: eventId,
-        ...(validSince ? { createdAt: { gt: validSince } } : {}),
-      },
-      orderBy: { createdAt: "desc" },
-      include: { user: { select: { id: true, name: true } } },
-      take: 60,
-    }),
-  ]);
+    const [messages, totals, latestReactions] = await Promise.all([
+      liveDb.liveChatMessage.findMany({
+        where: {
+          liveEventId: eventId,
+          isDeleted: false,
+          isHidden: false,
+          ...(validSince ? { createdAt: { gt: validSince } } : {}),
+        },
+        include: { user: { select: { id: true, name: true, role: true } } },
+        orderBy: { createdAt: "asc" },
+        take: validSince ? 150 : 50,
+      }),
+      liveDb.liveReactionAggregate.findMany({ where: { liveEventId: eventId } }),
+      liveDb.liveReactionEvent.findMany({
+        where: {
+          liveEventId: eventId,
+          ...(validSince ? { createdAt: { gt: validSince } } : {}),
+        },
+        orderBy: { createdAt: "desc" },
+        include: { user: { select: { id: true, name: true } } },
+        take: 60,
+      }),
+    ]);
 
-  return res.json({
-    serverTime: new Date().toISOString(),
-    messages: messages.map((m: any) => ({
-      id: m.id.toString(),
-      eventId: m.liveEventId.toString(),
-      userId: m.userId.toString(),
-      userName: m.user?.name ?? "Viewer",
-      userRole: m.user?.role ?? "USER",
-      message: m.message,
-      isPinned: m.isPinned,
-      createdAt: m.createdAt,
-    })),
-    reactionTotals: totals.map((item: any) => ({ type: item.reactionType, count: item.count })),
-    recentReactions: latestReactions.map((item: any) => ({
-      id: item.id.toString(),
-      type: item.reactionType,
-      createdAt: item.createdAt,
-      user: item.user ? { id: item.user.id.toString(), name: item.user.name } : null,
-    })),
-  });
+    return res.json({
+      serverTime: new Date().toISOString(),
+      messages: messages.map((m: any) => ({
+        id: m.id.toString(),
+        eventId: m.liveEventId.toString(),
+        userId: m.userId.toString(),
+        userName: m.user?.name ?? "Viewer",
+        userRole: m.user?.role ?? "USER",
+        message: m.message,
+        isPinned: m.isPinned,
+        createdAt: m.createdAt,
+      })),
+      reactionTotals: totals.map((item: any) => ({ type: item.reactionType, count: item.count })),
+      recentReactions: latestReactions.map((item: any) => ({
+        id: item.id.toString(),
+        type: item.reactionType,
+        createdAt: item.createdAt,
+        user: item.user ? { id: item.user.id.toString(), name: item.user.name } : null,
+      })),
+    });
+  } catch (err: any) {
+    return sendEngagementFallback(res, "getLiveEngagementSnapshot", err);
+  }
 };
 
 export const moderateLiveChatMessage = async (req: Request, res: Response) => {
