@@ -181,8 +181,9 @@ enum LiveSourceType {
 
 enum LiveSourceStatus {
   READY
+  DEGRADED
   OFFLINE
-  ERROR
+  ERROR // legacy; normalized to DEGRADED in API responses
 }
 
 enum PopularityWindow {
