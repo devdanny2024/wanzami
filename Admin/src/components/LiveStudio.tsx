@@ -473,8 +473,8 @@ export function LiveStudio() {
 
   const startWebcamLive = async () => {
     if (!selectedEvent) return;
-    const ingestUrl = formatIngestUrl(selectedEvent.ingestEndpoint);
-    if (!ingestUrl || !selectedEvent.streamKey) {
+    const ingestEndpoint = selectedEvent.ingestEndpoint?.trim() || "";
+    if (!ingestEndpoint || !selectedEvent.streamKey) {
       setCameraError("Event ingest details are missing. Use Stream settings to copy RTMPS URL + stream key.");
       return;
     }
@@ -503,7 +503,7 @@ export function LiveStudio() {
       if (stream.getAudioTracks().length) client.addAudioInputDevice(stream, "mic");
 
       await withTimeout(
-        client.startBroadcast(selectedEvent.streamKey, ingestUrl),
+        client.startBroadcast(selectedEvent.streamKey, ingestEndpoint),
         15000,
         "Webcam broadcast start timed out. Check ingest URL/network and retry.",
       );
