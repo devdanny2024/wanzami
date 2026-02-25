@@ -24,6 +24,21 @@ export const config = {
     accelerate: process.env.S3_ACCELERATE === "true",
   },
   redisUrl: process.env.REDIS_URL ?? "redis://localhost:6379",
+  redis: {
+    url: process.env.REDIS_URL ?? "redis://localhost:6379",
+    tls:
+      process.env.REDIS_TLS === "true" ||
+      (process.env.REDIS_URL ?? "").toLowerCase().startsWith("rediss://"),
+    connectTimeoutMs: numberOrDefault(process.env.REDIS_CONNECT_TIMEOUT_MS, 10000),
+    lazyConnect: process.env.REDIS_LAZY_CONNECT !== "false",
+    retryBaseDelayMs: numberOrDefault(process.env.REDIS_RETRY_BASE_DELAY_MS, 250),
+    retryMaxDelayMs: numberOrDefault(process.env.REDIS_RETRY_MAX_DELAY_MS, 5000),
+    maxReconnectAttempts: numberOrDefault(process.env.REDIS_MAX_RECONNECT_ATTEMPTS, 50),
+    enqueueOperationTimeoutMs: numberOrDefault(process.env.QUEUE_ENQUEUE_TIMEOUT_MS, 2500),
+    enqueueMaxAttempts: numberOrDefault(process.env.QUEUE_ENQUEUE_MAX_ATTEMPTS, 3),
+    enqueueRetryBaseDelayMs: numberOrDefault(process.env.QUEUE_ENQUEUE_RETRY_BASE_DELAY_MS, 200),
+    enqueueRetryMaxDelayMs: numberOrDefault(process.env.QUEUE_ENQUEUE_RETRY_MAX_DELAY_MS, 2000),
+  },
   ffmpegPath: process.env.FFMPEG_PATH,
   uploadMaxConcurrency: numberOrDefault(process.env.UPLOAD_MAX_CONCURRENCY, 10),
   downloadMaxConcurrency: numberOrDefault(process.env.DOWNLOAD_MAX_CONCURRENCY, 10),

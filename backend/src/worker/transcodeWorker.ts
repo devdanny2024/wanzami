@@ -1,11 +1,11 @@
 import { Worker, Job } from "bullmq";
-import IORedis from "ioredis";
 import ffmpeg from "fluent-ffmpeg";
 import { createRequire } from "module";
 import { prisma } from "../prisma.js";
 import { config } from "../config.js";
 import { AssetStatus, UploadStatus, Rendition } from "@prisma/client";
 import { downloadToFile, uploadFile } from "../upload/s3.js";
+import { createRedisConnection } from "../queues/redisClient.js";
 import { mkdtemp, rm, readdir, stat, writeFile } from "fs/promises";
 import path from "path";
 import os from "os";
@@ -34,17 +34,7 @@ type TranscodeJob = {
   episodeId: string | number | null;
 };
 
-const connection = new IORedis(config.redisUrl, {
-  maxRetriesPerRequest: null,
-  enableReadyCheck: false,
-});
-
-connection.on("error", (err) => {
-  console.error("[transcodeWorker] Redis connection non-fatal error", {
-    message: err?.message,
-    code: (err as { code?: string })?.code,
-  });
-});
+const connection = createRedisConnection("transcodeWorker");
 
 // Use a hashtagged prefix so BullMQ keys hash to the same slot in Redis Cluster/Valkey.
 const prefix = "{bullmq}";

@@ -1,19 +1,8 @@
 import { Worker, Job } from "bullmq";
-import IORedis from "ioredis";
-import { config } from "../config.js";
 import { sendEmail } from "../utils/mailer.js";
+import { createRedisConnection } from "../queues/redisClient.js";
 
-const connection = new IORedis(config.redisUrl, {
-  maxRetriesPerRequest: null,
-  enableReadyCheck: false,
-});
-
-connection.on("error", (err) => {
-  console.error("[emailWorker] Redis connection non-fatal error", {
-    message: err?.message,
-    code: (err as { code?: string })?.code,
-  });
-});
+const connection = createRedisConnection("emailWorker");
 
 const prefix = "{bullmq}";
 

@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { z } from "zod";
 import { sendEmail } from "../utils/mailer.js";
-import { emailQueue } from "../queues/emailQueue.js";
+import { enqueueEmailJob } from "../queues/emailQueue.js";
 import { prisma } from "../prisma.js";
 
 const RecipientSchema = z.object({
@@ -117,7 +117,7 @@ export const sendCampaignEmails = async (req: Request, res: Response) => {
     if (!slice.length) break;
 
     const delayMs = batchIndex * 60 * 60 * 1000; // space batches hourly
-    const job = await emailQueue.add(
+    const result = await enqueueEmailJob(
       "send",
       {
         subject: parsed.data.subject,
@@ -130,7 +130,19 @@ export const sendCampaignEmails = async (req: Request, res: Response) => {
         delay: delayMs,
       }
     );
-    jobs.push({ id: job.id, startIndex: offset, count: slice.length, delayMs });
+
+    if (!result.ok) {
+      return res.status(202).json({
+        message: "Email queue is temporarily unavailable. Already accepted batches will run when Redis recovers.",
+        queuedCount: jobs.reduce((sum, j) => sum + j.count, 0),
+        totalRecipients: recipients.length,
+        failedAtStartIndex: offset,
+        reason: result.reason,
+        jobs,
+      });
+    }
+
+    jobs.push({ id: result.id, startIndex: offset, count: slice.length, delayMs });
 
     offset += batchSize;
     batchIndex += 1;

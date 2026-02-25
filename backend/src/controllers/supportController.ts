@@ -4,7 +4,7 @@ import { prisma } from "../prisma.js";
 import type { AuthenticatedRequest } from "../middleware/auth.js";
 import { sendEmail } from "../utils/mailer.js";
 import { config } from "../config.js";
-import { emailQueue } from "../queues/emailQueue.js";
+import { enqueueEmailJob } from "../queues/emailQueue.js";
 
 // Keep Zod around for reply validation, but handle ticket creation
 // with more permissive, hand-rolled validation so we never block
@@ -247,14 +247,19 @@ export const addSupportTicketReply = async (req: AuthenticatedRequest, res: Resp
 
   // Notify the customer that an admin has replied, best-effort.
   if (ticket.email) {
-    void emailQueue
-      .add("send", {
-        subject: `Re: ${ticket.subject}`,
-        html: `<p>Our support team has replied to your ticket:</p>
+    void enqueueEmailJob("send", {
+      subject: `Re: ${ticket.subject}`,
+      html: `<p>Our support team has replied to your ticket:</p>
 <p>${message.replace(/\n/g, "<br/>")}</p>`,
-        recipients: [{ email: ticket.email, name: ticket.email }],
-      })
-      .catch(() => {});
+      recipients: [{ email: ticket.email, name: ticket.email }],
+    }).then((result) => {
+      if (!result.ok) {
+        console.warn("[supportController] Failed to enqueue support reply email", {
+          ticketId: ticket.id.toString(),
+          reason: result.reason,
+        });
+      }
+    });
   }
 
   return res.status(201).json({
