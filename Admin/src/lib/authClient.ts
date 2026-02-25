@@ -32,7 +32,10 @@ function createTimeoutSignal(signal?: AbortSignal) {
 }
 
 export async function authFetch(path: string, init?: RequestInit) {
-  if (!AUTH_SERVICE_URL) {
+  const normalizedPath = withLeadingSlash(path);
+  const isBrowser = typeof window !== "undefined";
+
+  if (!isBrowser && !AUTH_SERVICE_URL) {
     return {
       ok: false,
       status: 500,
@@ -42,8 +45,8 @@ export async function authFetch(path: string, init?: RequestInit) {
       },
     };
   }
-
-  const targetUrl = `${AUTH_SERVICE_URL}${withLeadingSlash(path)}`;
+  // In browser/client components, always use same-origin Next API proxy to avoid CORS/network-policy drift.
+  const targetUrl = isBrowser ? `/api${normalizedPath}` : `${AUTH_SERVICE_URL}${normalizedPath}`;
   const maxAttempts = 3;
   let lastError: any;
 
