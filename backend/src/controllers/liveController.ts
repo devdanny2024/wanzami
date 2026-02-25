@@ -836,8 +836,9 @@ export const startLiveEvent = async (req: Request, res: Response) => {
       });
     }
 
+    const shouldEnforcePlaybackProbe = selectedSource?.type !== LiveSourceType.CAMERA;
     const playbackReachable = await probePlaybackUrl(candidatePlaybackUrl, 8, 2500);
-    if (!playbackReachable) {
+    if (!playbackReachable && shouldEnforcePlaybackProbe) {
       return res.status(409).json({
         message: "Playback is not reachable yet. Ensure ingest is active, then retry start.",
         code: "LIVE_PLAYBACK_UNAVAILABLE",
