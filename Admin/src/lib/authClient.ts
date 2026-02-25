@@ -44,35 +44,52 @@ export async function authFetch(path: string, init?: RequestInit) {
   }
 
   const targetUrl = `${AUTH_SERVICE_URL}${withLeadingSlash(path)}`;
-  const { signal, cleanup } = createTimeoutSignal(init?.signal);
+  const maxAttempts = 2;
+  let lastError: any;
 
-  try {
-    const res = await fetch(targetUrl, {
-      ...init,
-      headers: {
-        "Content-Type": "application/json",
-        ...(init?.headers ?? {}),
-      },
-      cache: "no-store",
-      signal,
-    });
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const { signal, cleanup } = createTimeoutSignal(init?.signal);
+    try {
+      const res = await fetch(targetUrl, {
+        ...init,
+        headers: {
+          "Content-Type": "application/json",
+          ...(init?.headers ?? {}),
+        },
+        cache: "no-store",
+        signal,
+      });
 
-    const data = await res.json().catch(() => ({}));
-    return { ok: res.ok, status: res.status, data };
-  } catch (error: any) {
-    const timedOut = error?.name === "AbortError";
-
-    return {
-      ok: false,
-      status: timedOut ? 504 : 502,
-      data: {
-        message: timedOut
-          ? `Upstream auth service timed out after ${AUTH_FETCH_TIMEOUT_MS}ms`
-          : "Upstream auth service unreachable",
-        error: error?.message || "fetch failed",
-      },
-    };
-  } finally {
-    cleanup();
+      const data = await res.json().catch(() => ({}));
+      return { ok: res.ok, status: res.status, data };
+    } catch (error: any) {
+      lastError = error;
+      const timedOut = error?.name === "AbortError";
+      const retryable = timedOut || (error?.message || "").toLowerCase().includes("fetch");
+      if (!(retryable && attempt < maxAttempts)) {
+        return {
+          ok: false,
+          status: timedOut ? 504 : 502,
+          data: {
+            message: timedOut
+              ? `Upstream auth service timed out after ${AUTH_FETCH_TIMEOUT_MS}ms`
+              : "Upstream auth service unreachable",
+            error: error?.message || "fetch failed",
+          },
+        };
+      }
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    } finally {
+      cleanup();
+    }
   }
+
+  return {
+    ok: false,
+    status: 502,
+    data: {
+      message: "Upstream auth service unreachable",
+      error: lastError?.message || "fetch failed",
+    },
+  };
 }
