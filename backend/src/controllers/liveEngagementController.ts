@@ -113,34 +113,38 @@ export const listLiveChatMessages = async (req: Request, res: Response) => {
 };
 
 export const listLiveChatMessagesAdmin = async (req: Request, res: Response) => {
-  const eventId = parseBigIntId(req.params.id);
-  if (!eventId) return res.status(400).json({ message: "Invalid event id" });
+  try {
+    const eventId = parseBigIntId(req.params.id);
+    if (!eventId) return res.status(400).json({ message: "Invalid event id" });
 
-  const event = await prisma.liveEvent.findUnique({ where: { id: eventId } });
-  if (!event) return res.status(404).json({ message: "Live event not found" });
+    const event = await prisma.liveEvent.findUnique({ where: { id: eventId } });
+    if (!event) return res.status(404).json({ message: "Live event not found" });
 
-  const limit = Math.max(1, Math.min(Number(req.query.limit ?? 100) || 100, 200));
-  const messages = await liveDb.liveChatMessage.findMany({
-    where: { liveEventId: eventId },
-    include: { user: { select: { id: true, name: true, role: true } } },
-    orderBy: { createdAt: "desc" },
-    take: limit,
-  });
+    const limit = Math.max(1, Math.min(Number(req.query.limit ?? 100) || 100, 200));
+    const messages = await liveDb.liveChatMessage.findMany({
+      where: { liveEventId: eventId },
+      include: { user: { select: { id: true, name: true, role: true } } },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    });
 
-  return res.json({
-    messages: messages.map((m: any) => ({
-      id: m.id.toString(),
-      eventId: m.liveEventId.toString(),
-      userId: m.userId.toString(),
-      userName: m.user?.name ?? "Viewer",
-      userRole: m.user?.role ?? "USER",
-      message: m.message,
-      isHidden: m.isHidden,
-      isDeleted: m.isDeleted,
-      isPinned: m.isPinned,
-      createdAt: m.createdAt,
-    })),
-  });
+    return res.json({
+      messages: messages.map((m: any) => ({
+        id: m.id.toString(),
+        eventId: m.liveEventId.toString(),
+        userId: m.userId.toString(),
+        userName: m.user?.name ?? "Viewer",
+        userRole: m.user?.role ?? "USER",
+        message: m.message,
+        isHidden: m.isHidden,
+        isDeleted: m.isDeleted,
+        isPinned: m.isPinned,
+        createdAt: m.createdAt,
+      })),
+    });
+  } catch (err: any) {
+    return sendEngagementFallback(res, "listLiveChatMessagesAdmin", err);
+  }
 };
 
 export const createLiveChatMessage = async (req: AuthenticatedRequest, res: Response) => {
