@@ -109,6 +109,20 @@ const formatIngestUrl = (ingestEndpoint?: string | null) => {
   return `rtmps://${raw}:443/app/`;
 };
 
+const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+};
+
 function HlsPlayer({ src, title }: { src: string; title: string }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hlsRef = useRef<any>(null);
@@ -409,10 +423,14 @@ export function LiveStudio() {
 
     cleanupBrowserLive();
 
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: videoDeviceId ? { deviceId: { exact: videoDeviceId } } : { width: { ideal: 1280 }, height: { ideal: 720 } },
-      audio: audioDeviceId ? { deviceId: { exact: audioDeviceId } } : true,
-    });
+    const stream = await withTimeout(
+      navigator.mediaDevices.getUserMedia({
+        video: videoDeviceId ? { deviceId: { exact: videoDeviceId } } : { width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: audioDeviceId ? { deviceId: { exact: audioDeviceId } } : true,
+      }),
+      15000,
+      "Camera/microphone request timed out. Check browser permission and device availability.",
+    );
 
     browserLiveRef.current = { stream, client: null };
     if (webcamPreviewRef.current) {
@@ -483,24 +501,34 @@ export function LiveStudio() {
       const client = sdk.create({ streamConfig: sdk.BASIC_LANDSCAPE });
       if (stream.getVideoTracks().length) client.addVideoInputDevice(stream, "camera", { index: 0 });
       if (stream.getAudioTracks().length) client.addAudioInputDevice(stream, "mic");
-      await client.startBroadcast(selectedEvent.streamKey, selectedEvent.ingestEndpoint!);
+
+      await withTimeout(
+        client.startBroadcast(selectedEvent.streamKey, ingestUrl),
+        15000,
+        "Webcam broadcast start timed out. Check ingest URL/network and retry.",
+      );
 
       let sourceId: string | undefined;
       const latest = await adminApiFetch(`/api/admin/live/events/${selectedEvent.id}`);
       const latestEvent = latest.ok ? ((latest.data as any)?.event as LiveEvent) : selectedEvent;
+      const sourcePlaybackUrl = latestEvent.playbackUrl || selectedEvent.playbackUrl || null;
       const existing = (latestEvent.sources ?? []).find((s) => s.type === "CAMERA" && s.label === "Browser Camera");
       if (existing) {
         sourceId = existing.id;
         await adminApiFetch(`/api/admin/live/events/${selectedEvent.id}/sources/${existing.id}`, {
           method: "PATCH",
-          body: JSON.stringify({ status: "READY", isActiveOutput: true }),
+          body: JSON.stringify({ status: "READY", isActiveOutput: true, playbackUrl: sourcePlaybackUrl }),
         });
       } else {
         const created = await adminApiFetch(`/api/admin/live/events/${selectedEvent.id}/sources`, {
           method: "POST",
-          body: JSON.stringify({ type: "CAMERA", label: "Browser Camera", status: "READY", isActiveOutput: true }),
+          body: JSON.stringify({ type: "CAMERA", label: "Browser Camera", status: "READY", isActiveOutput: true, playbackUrl: sourcePlaybackUrl }),
         });
         sourceId = (created.data as any)?.source?.id;
+      }
+
+      if (sourceId) {
+        setSelectedSourceId(sourceId);
       }
 
       const start = await adminApiFetch(`/api/admin/live/events/${selectedEvent.id}/start`, {
