@@ -7,7 +7,7 @@ const AUTH_SERVICE_URL =
   process.env.NEXT_PUBLIC_API_BASE ??
   "";
 
-const AUTH_FETCH_TIMEOUT_MS = Number(process.env.AUTH_FETCH_TIMEOUT_MS ?? 12000);
+const AUTH_FETCH_TIMEOUT_MS = Number(process.env.AUTH_FETCH_TIMEOUT_MS ?? 25000);
 
 function withLeadingSlash(path: string) {
   return path.startsWith("/") ? path : `/${path}`;
@@ -44,7 +44,7 @@ export async function authFetch(path: string, init?: RequestInit) {
   }
 
   const targetUrl = `${AUTH_SERVICE_URL}${withLeadingSlash(path)}`;
-  const maxAttempts = 2;
+  const maxAttempts = 3;
   let lastError: any;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
