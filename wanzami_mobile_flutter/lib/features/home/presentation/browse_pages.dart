@@ -2,7 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:screen_brightness/screen_brightness.dart';
 import 'package:video_player/video_player.dart';
+import 'package:volume_controller/volume_controller.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../../core/theme/app_tokens.dart';
@@ -1127,10 +1130,18 @@ class _InAppCheckoutPageState extends State<InAppCheckoutPage> {
 }
 
 class PlayerPage extends StatefulWidget {
-  const PlayerPage({super.key, required this.item, this.episode});
+  const PlayerPage({
+    super.key,
+    required this.item,
+    this.episode,
+    this.contentRepository,
+    this.liveEventId,
+  });
 
   final MediaItem item;
   final MediaEpisode? episode;
+  final ContentRepository? contentRepository;
+  final String? liveEventId;
 
   @override
   State<PlayerPage> createState() => _PlayerPageState();
@@ -1150,6 +1161,19 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   int _openRequestId = 0;
   bool _showControls = true;
   Timer? _hideControlsTimer;
+  double _volumeLevel = 1;
+  double _brightnessLevel = 0.5;
+
+  final List<String> _reactionPresets = const ['❤️', '🔥', '👏', '😂', '🎉'];
+  final TextEditingController _chatController = TextEditingController();
+  List<LiveChatMessage> _messages = const [];
+  List<LiveReactionTotal> _reactionTotals = const [];
+  List<String> _burstReactions = const [];
+  bool _chatSending = false;
+  bool _chatPanelOpen = true;
+  bool _chatInputExpanded = false;
+  String? _lastEngagementSync;
+  Timer? _engagementTimer;
 
   @override
   void initState() {
@@ -1159,16 +1183,36 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     WidgetsBinding.instance
         .addPostFrameCallback((_) => _enterLandscapePlaybackMode());
     _prepare();
+    unawaited(_initPlayerFeedbackControls());
+    unawaited(_updateWakeLock());
+    if (_isLiveMode) {
+      unawaited(_syncEngagement());
+      _engagementTimer = Timer.periodic(
+        const Duration(milliseconds: 2500),
+        (_) => unawaited(_syncEngagement()),
+      );
+    }
   }
+
+  bool get _isLiveMode =>
+      widget.item.type.toUpperCase() == 'LIVE' &&
+      widget.contentRepository != null &&
+      (widget.liveEventId ?? widget.item.id).isNotEmpty;
+
+  String get _liveEventId => widget.liveEventId ?? widget.item.id;
 
   @override
   void dispose() {
     _isDisposed = true;
     _openRequestId++;
     _hideControlsTimer?.cancel();
+    _engagementTimer?.cancel();
+    _chatController.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _controller?.removeListener(_onVideoTick);
     unawaited(_stopPlayback(disposeController: true));
+    unawaited(ScreenBrightness.instance.resetScreenBrightness());
+    unawaited(WakelockPlus.disable());
     unawaited(_restoreSystemUi());
     super.dispose();
   }
@@ -1177,6 +1221,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       unawaited(_enterLandscapePlaybackMode());
+      unawaited(_updateWakeLock());
       return;
     }
 
@@ -1185,6 +1230,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
         state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached) {
       unawaited(_stopPlayback(disposeController: false));
+      unawaited(WakelockPlus.disable());
     }
   }
 
@@ -1223,6 +1269,8 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
         await controller.dispose();
       } catch (_) {}
     }
+
+    await _updateWakeLock();
   }
 
   Future<bool> _onWillPop() async {
@@ -1233,16 +1281,66 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
 
   void _onVideoTick() {
     if (mounted) setState(() {});
+    unawaited(_updateWakeLock());
+  }
+
+  Future<void> _initPlayerFeedbackControls() async {
+    try {
+      final volume = await VolumeController.instance.getVolume();
+      if (mounted) {
+        setState(() => _volumeLevel = volume.clamp(0.0, 1.0).toDouble());
+      }
+    } catch (_) {}
+
+    try {
+      final brightness = await ScreenBrightness.instance.current;
+      if (mounted) {
+        setState(() => _brightnessLevel = brightness.clamp(0.0, 1.0).toDouble());
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _updateWakeLock() async {
+    final controller = _controller;
+    final shouldKeepAwake =
+        _showControls || (controller?.value.isInitialized == true && controller!.value.isPlaying);
+    try {
+      await WakelockPlus.toggle(enable: shouldKeepAwake);
+    } catch (_) {}
+  }
+
+  Future<void> _setVolume(double value) async {
+    final clamped = value.clamp(0.0, 1.0).toDouble();
+    setState(() => _volumeLevel = clamped);
+    try {
+      VolumeController.instance.showSystemUI = false;
+      await VolumeController.instance.setVolume(clamped);
+    } catch (_) {}
+    _showControlsTemporarily();
+  }
+
+  Future<void> _setBrightness(double value) async {
+    final clamped = value.clamp(0.0, 1.0).toDouble();
+    setState(() => _brightnessLevel = clamped);
+    try {
+      await ScreenBrightness.instance.setScreenBrightness(clamped);
+    } catch (_) {}
+    _showControlsTemporarily();
   }
 
   void _restartAutoHideTimer() {
     _hideControlsTimer?.cancel();
     final c = _controller;
-    if (c == null || !c.value.isInitialized || !c.value.isPlaying) return;
+    if (c == null || !c.value.isInitialized || !c.value.isPlaying) {
+      unawaited(_updateWakeLock());
+      return;
+    }
     _hideControlsTimer = Timer(_controlsAutoHideDelay, () {
       if (!mounted) return;
       setState(() => _showControls = false);
+      unawaited(_updateWakeLock());
     });
+    unawaited(_updateWakeLock());
   }
 
   void _showControlsTemporarily() {
@@ -1258,7 +1356,74 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       _restartAutoHideTimer();
     } else {
       _hideControlsTimer?.cancel();
+      unawaited(_updateWakeLock());
     }
+  }
+
+  Future<void> _syncEngagement() async {
+    if (!_isLiveMode || _isDisposed) return;
+    try {
+      final snapshot = await widget.contentRepository!.fetchLiveEngagementSnapshot(
+        _liveEventId,
+        since: _lastEngagementSync,
+      );
+      if (!mounted || _isDisposed) return;
+      final next = [..._messages, ...snapshot.messages];
+      final seen = <String>{};
+      final deduped = <LiveChatMessage>[];
+      for (final item in next.reversed) {
+        if (seen.add(item.id)) deduped.add(item);
+      }
+      setState(() {
+        _messages = deduped.reversed.take(200).toList();
+        _reactionTotals = snapshot.reactionTotals;
+        _burstReactions = snapshot.recentReactions.take(12).toList();
+        _lastEngagementSync = snapshot.serverTime ?? _lastEngagementSync;
+      });
+    } catch (_) {}
+  }
+
+  int _reactionCount(String type) =>
+      _reactionTotals.firstWhere(
+        (x) => x.type == type,
+        orElse: () => LiveReactionTotal(type: type, count: 0),
+      ).count;
+
+  Future<void> _submitChat() async {
+    if (!_isLiveMode || _chatSending) return;
+    final text = _chatController.text.trim();
+    if (text.isEmpty) return;
+
+    setState(() => _chatSending = true);
+    try {
+      final msg = await widget.contentRepository!
+          .sendLiveChatMessage(_liveEventId, text);
+      if (!mounted) return;
+      if (msg != null) {
+        setState(() {
+          _messages = [..._messages, msg].take(200).toList();
+        });
+      }
+      _chatController.clear();
+    } finally {
+      if (mounted) setState(() => _chatSending = false);
+    }
+  }
+
+  Future<void> _emitReaction(String type) async {
+    if (!_isLiveMode) return;
+    setState(() => _burstReactions = [type, ..._burstReactions].take(12).toList());
+    unawaited(widget.contentRepository!.sendLiveReaction(_liveEventId, type));
+    setState(() {
+      final existing = _reactionTotals.where((x) => x.type == type).toList();
+      if (existing.isEmpty) {
+        _reactionTotals = [..._reactionTotals, LiveReactionTotal(type: type, count: 1)];
+      } else {
+        _reactionTotals = _reactionTotals
+            .map((x) => x.type == type ? LiveReactionTotal(type: x.type, count: x.count + 1) : x)
+            .toList();
+      }
+    });
   }
 
   Future<void> _prepare() async {
@@ -1330,6 +1495,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
 
       setState(() => _loading = false);
       _restartAutoHideTimer();
+      unawaited(_updateWakeLock());
     } catch (_) {
       if (idx < _sources.length - 1 &&
           !_isDisposed &&
@@ -1354,9 +1520,11 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       await c.pause();
       _hideControlsTimer?.cancel();
       if (mounted) setState(() => _showControls = true);
+      await _updateWakeLock();
     } else {
       await c.play();
       _showControlsTemporarily();
+      await _updateWakeLock();
     }
   }
 
@@ -1475,6 +1643,16 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                               ),
                             ),
                           ),
+                          if (_isLiveMode)
+                            IconButton(
+                              onPressed: () =>
+                                  setState(() => _chatPanelOpen = !_chatPanelOpen),
+                              icon: Icon(
+                                  _chatPanelOpen
+                                      ? Icons.chat_bubble
+                                      : Icons.chat_bubble_outline,
+                                  color: Colors.white),
+                            ),
                           if (_sources.length > 1)
                             PopupMenuButton<int>(
                               tooltip: 'Select quality',
@@ -1538,7 +1716,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                         icon: Icons.replay_10,
                         onPressed: () => _seekRelative(-_seekStep),
                       ),
-                      const SizedBox(width: 24),
+                      const SizedBox(width: 44),
                       _SeekControlButton(
                         icon: c!.value.isPlaying
                             ? Icons.pause_circle_filled
@@ -1546,7 +1724,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                         size: 70,
                         onPressed: _togglePlayback,
                       ),
-                      const SizedBox(width: 24),
+                      const SizedBox(width: 44),
                       _SeekControlButton(
                         icon: Icons.forward_10,
                         onPressed: () => _seekRelative(_seekStep),
@@ -1573,6 +1751,35 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.brightness_6,
+                                  color: Colors.white70, size: 18),
+                              Expanded(
+                                child: Slider(
+                                  value: _brightnessLevel,
+                                  min: 0,
+                                  max: 1,
+                                  activeColor: AppTokens.brandOrange,
+                                  inactiveColor: const Color(0x55FFFFFF),
+                                  onChanged: (value) => _setBrightness(value),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              const Icon(Icons.volume_up,
+                                  color: Colors.white70, size: 18),
+                              Expanded(
+                                child: Slider(
+                                  value: _volumeLevel,
+                                  min: 0,
+                                  max: 1,
+                                  activeColor: AppTokens.brandOrange,
+                                  inactiveColor: const Color(0x55FFFFFF),
+                                  onChanged: (value) => _setVolume(value),
+                                ),
+                              ),
+                            ],
+                          ),
                           VideoProgressIndicator(
                             c!,
                             allowScrubbing: true,
@@ -1603,9 +1810,157 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                     ),
                   ),
                 ),
+              if (_isLiveMode && _chatPanelOpen)
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: SafeArea(
+                    left: false,
+                    child: SizedBox(
+                      width: MediaQuery.of(context).size.width >= 1200
+                          ? 360
+                          : MediaQuery.of(context).size.width * 0.42,
+                      child: _LiveChatPanel(state: this),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _LiveChatPanel extends StatelessWidget {
+  const _LiveChatPanel({required this.state});
+
+  final _PlayerPageState state;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xE6101010),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF2A2A2A)),
+      ),
+      child: Column(
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(12, 10, 12, 6),
+            child: Row(
+              children: [
+                Icon(Icons.chat, color: Colors.white70, size: 16),
+                SizedBox(width: 8),
+                Text('Live chat', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final item in state._reactionPresets)
+                  InkWell(
+                    onTap: () => state._emitReaction(item),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1A1A1A),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: const Color(0xFF3A3A3A)),
+                      ),
+                      child: Text('$item ${state._reactionCount(item)}', style: const TextStyle(color: Colors.white, fontSize: 12)),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              itemCount: state._messages.length,
+              itemBuilder: (_, i) {
+                final m = state._messages[i];
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xAA1D1D1D),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: RichText(
+                    text: TextSpan(
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      children: [
+                        TextSpan(text: m.userName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                        const TextSpan(text: '  '),
+                        TextSpan(text: m.message),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: state._chatController,
+                    maxLength: 500,
+                    minLines: 1,
+                    maxLines: state._chatInputExpanded ? 5 : 1,
+                    textInputAction: state._chatInputExpanded
+                        ? TextInputAction.newline
+                        : TextInputAction.send,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: const InputDecoration(
+                      counterText: '',
+                      hintText: 'Say something…',
+                      hintStyle: TextStyle(color: Colors.white38),
+                      filled: true,
+                      fillColor: Color(0xFF1A1A1A),
+                      border: OutlineInputBorder(borderSide: BorderSide.none),
+                      isDense: true,
+                    ),
+                    onSubmitted: state._chatInputExpanded
+                        ? null
+                        : (_) => state._submitChat(),
+                  ),
+                ),
+                IconButton(
+                  tooltip: state._chatInputExpanded
+                      ? 'Collapse chat input'
+                      : 'Expand chat input',
+                  onPressed: () => state.setState(
+                    () => state._chatInputExpanded = !state._chatInputExpanded,
+                  ),
+                  icon: Icon(
+                    state._chatInputExpanded
+                        ? Icons.unfold_less
+                        : Icons.unfold_more,
+                    color: Colors.white70,
+                    size: 20,
+                  ),
+                ),
+                FilledButton(
+                  onPressed: state._chatSending ? null : state._submitChat,
+                  style: FilledButton.styleFrom(backgroundColor: AppTokens.brandOrange),
+                  child: const Text('Send'),
+                ),
+              ],
+            ),
+          )
+        ],
       ),
     );
   }
