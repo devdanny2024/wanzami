@@ -249,6 +249,35 @@ const isSourceSwitchSafeForLive = (source: any) => {
   return Boolean(source.playbackUrl?.trim());
 };
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const probePlaybackUrl = async (url: string, attempts = 3, delayMs = 2000) => {
+  const target = url.trim();
+  if (!target) return false;
+
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      const res = await fetch(target, {
+        method: "GET",
+        headers: {
+          Accept: "application/vnd.apple.mpegurl,application/x-mpegURL,text/plain,*/*",
+          "Cache-Control": "no-cache",
+        },
+      });
+
+      if (res.ok) return true;
+    } catch {
+      // ignore and retry
+    }
+
+    if (i < attempts - 1) {
+      await sleep(delayMs);
+    }
+  }
+
+  return false;
+};
+
 const toPublicEvent = (e: any) => {
   const activeSource = resolveActiveSource(e);
   const effectivePlaybackUrl = pickPlayablePlaybackUrl(e);
@@ -793,6 +822,26 @@ export const startLiveEvent = async (req: Request, res: Response) => {
           code: "LIVE_SOURCE_SWITCH_BLOCKED",
         });
       }
+    }
+
+    const selectedSource = initialSourceId
+      ? current.sources.find((source) => source.id === initialSourceId) ?? null
+      : resolveActiveSource(current);
+
+    const candidatePlaybackUrl = selectedSource?.playbackUrl?.trim() || pickPlayablePlaybackUrl(current);
+    if (!candidatePlaybackUrl) {
+      return res.status(409).json({
+        message: "Cannot start live without a playback URL.",
+        code: "LIVE_PLAYBACK_MISSING",
+      });
+    }
+
+    const playbackReachable = await probePlaybackUrl(candidatePlaybackUrl, 3, 2000);
+    if (!playbackReachable) {
+      return res.status(409).json({
+        message: "Playback is not reachable yet. Ensure ingest is active, then retry start.",
+        code: "LIVE_PLAYBACK_UNAVAILABLE",
+      });
     }
 
     const updated = await prisma.$transaction(async (tx) => {
