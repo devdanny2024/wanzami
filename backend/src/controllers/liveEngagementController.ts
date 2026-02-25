@@ -143,7 +143,17 @@ export const listLiveChatMessagesAdmin = async (req: Request, res: Response) => 
       })),
     });
   } catch (err: any) {
-    return sendEngagementFallback(res, "listLiveChatMessagesAdmin", err);
+    console.error("[live-engagement] listLiveChatMessagesAdmin degraded", {
+      message: err?.message,
+      code: err?.code,
+      name: err?.name,
+    });
+    return res.status(200).json({
+      messages: [],
+      degraded: true,
+      message: "Live engagement is temporarily unavailable",
+      code: "LIVE_ENGAGEMENT_DEGRADED",
+    });
   }
 };
 
@@ -316,7 +326,20 @@ export const getLiveEngagementSnapshot = async (req: Request, res: Response) => 
       })),
     });
   } catch (err: any) {
-    return sendEngagementFallback(res, "getLiveEngagementSnapshot", err);
+    console.error("[live-engagement] getLiveEngagementSnapshot degraded", {
+      message: err?.message,
+      code: err?.code,
+      name: err?.name,
+    });
+    return res.status(200).json({
+      serverTime: new Date().toISOString(),
+      messages: [],
+      reactionTotals: [],
+      recentReactions: [],
+      degraded: true,
+      message: "Live engagement is temporarily unavailable",
+      code: "LIVE_ENGAGEMENT_DEGRADED",
+    });
   }
 };
 
