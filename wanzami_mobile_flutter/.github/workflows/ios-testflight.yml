@@ -121,11 +121,12 @@ jobs:
             echo "IPA not found in build/ios/ipa"
             exit 1
           fi
-          xcrun altool --upload-app \
-            --type ios \
-            --file "$IPA_PATH" \
-            --apiKey "$APP_STORE_CONNECT_KEY_ID" \
-            --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID"
+          xcrun iTMSTransporter \
+            -m upload \
+            -assetFile "$IPA_PATH" \
+            -apiKey "$APP_STORE_CONNECT_KEY_ID" \
+            -apiIssuer "$APP_STORE_CONNECT_ISSUER_ID" \
+            -v informational
 
       - name: Upload artifacts
         if: always()

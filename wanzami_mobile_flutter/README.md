@@ -28,3 +28,10 @@ You can override base URL in any env:
 ```bash
 flutter run --dart-define=APP_ENV=prod --dart-define=API_BASE_URL=https://.../api
 ```
+
+## iOS TestFlight CI/CD
+
+Cloud pipeline files:
+- `.github/workflows/ios-testflight.yml`
+- `docs/ios-testflight-setup.md`
+- `docs/ios-testflight-secrets-checklist.md`

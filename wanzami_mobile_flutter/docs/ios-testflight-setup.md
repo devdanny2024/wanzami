@@ -4,7 +4,10 @@ This project includes a GitHub Actions workflow at `.github/workflows/ios-testfl
 
 ## Required GitHub Secrets
 
-Set these in **GitHub → Repository → Settings → Secrets and variables → Actions**:
+Set these in **GitHub → Repository → Settings → Secrets and variables → Actions**.
+
+Use companion checklist: `docs/ios-testflight-secrets-checklist.md`
+
 
 - `APP_STORE_CONNECT_ISSUER_ID` (required)
 - `APP_STORE_CONNECT_KEY_ID` (required)
