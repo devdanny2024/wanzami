@@ -133,19 +133,54 @@ const replayBadge = (status?: ReplayStatus) => {
   }
 };
 
+const LIVE_DIRECT_API_BASE =
+  process.env.NEXT_PUBLIC_AUTH_SERVICE_URL ??
+  process.env.NEXT_PUBLIC_API_BASE_URL ??
+  process.env.NEXT_PUBLIC_API_BASE ??
+  "https://api.blvckcode.io/api";
+
+function toDirectApiUrl(path: string) {
+  const normalized = path.startsWith("/api") ? path.slice(4) : path;
+  return `${LIVE_DIRECT_API_BASE}${normalized.startsWith("/") ? normalized : `/${normalized}`}`;
+}
+
 async function adminApiFetch(path: string, init?: RequestInit) {
   const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-  const res = await fetch(path, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    cache: "no-store",
-  });
-  const data = await res.json().catch(() => ({}));
-  return { ok: res.ok, status: res.status, data };
+  const headers = {
+    "Content-Type": "application/json",
+    ...(init?.headers ?? {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+
+  const attempt = async (target: string) => {
+    const res = await fetch(target, {
+      ...init,
+      headers,
+      cache: "no-store",
+    });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, data };
+  };
+
+  try {
+    const primary = await attempt(path);
+    if (primary.ok) return primary;
+
+    const shouldFallbackDirect =
+      path.startsWith("/api/admin/live") && [502, 503, 504].includes(primary.status);
+    if (!shouldFallbackDirect) return primary;
+
+    return attempt(toDirectApiUrl(path));
+  } catch (error: any) {
+    if (path.startsWith("/api/admin/live")) {
+      return attempt(toDirectApiUrl(path));
+    }
+    return {
+      ok: false,
+      status: 502,
+      data: { message: "Request failed", error: error?.message || "fetch failed" },
+    };
+  }
 }
 
 function LivePlaybackPlayer({ src, title }: { src: string; title: string }) {
