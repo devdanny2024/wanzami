@@ -514,57 +514,49 @@ export type LiveEngagementSnapshot = {
   }>;
 };
 
-export async function fetchLiveEvents(accessToken?: string | null) {
+export async function fetchLiveEvents(accessToken: string) {
   const res = await fetchWithTimeout(`${API_BASE}/live/events`, {
     cache: "no-store",
-    headers: accessToken
-      ? {
-          Authorization: `Bearer ${accessToken}`,
-        }
-      : undefined,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
   });
   const data = await handleJsonResponse(res);
   return (data?.events as LiveEvent[]) ?? [];
 }
 
-export async function fetchLiveEventById(id: string, accessToken?: string | null) {
+export async function fetchLiveEventById(id: string, accessToken: string) {
   const res = await fetchWithTimeout(`${API_BASE}/live/events/${id}`, {
     cache: "no-store",
-    headers: accessToken
-      ? {
-          Authorization: `Bearer ${accessToken}`,
-        }
-      : undefined,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
   });
   const data = await handleJsonResponse(res);
   return (data?.event as LiveEvent) ?? null;
 }
 
-export async function fetchLiveEventByUnlistedSlug(slug: string, accessToken?: string | null) {
+export async function fetchLiveEventByUnlistedSlug(slug: string, accessToken: string) {
   const safeSlug = slug.trim();
   const res = await fetchWithTimeout(`${API_BASE}/live/events/unlisted/${encodeURIComponent(safeSlug)}`, {
     cache: "no-store",
-    headers: accessToken
-      ? {
-          Authorization: `Bearer ${accessToken}`,
-        }
-      : undefined,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
   });
   const data = await handleJsonResponse(res);
   return (data?.event as LiveEvent) ?? null;
 }
 
-export async function fetchLiveEngagementSnapshot(eventId: string, accessToken?: string | null, since?: string | null) {
+export async function fetchLiveEngagementSnapshot(eventId: string, accessToken: string, since?: string | null) {
   const query = new URLSearchParams();
   if (since) query.set("since", since);
   const suffix = query.toString() ? `?${query.toString()}` : "";
   const res = await fetchWithTimeout(`${API_BASE}/live/events/${eventId}/engagement${suffix}`, {
     cache: "no-store",
-    headers: accessToken
-      ? {
-          Authorization: `Bearer ${accessToken}`,
-        }
-      : undefined,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
   }, 20000);
   const data = await handleJsonResponse(res);
   return data as LiveEngagementSnapshot;
