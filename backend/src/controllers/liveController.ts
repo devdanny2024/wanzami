@@ -836,7 +836,7 @@ export const startLiveEvent = async (req: Request, res: Response) => {
       });
     }
 
-    const playbackReachable = await probePlaybackUrl(candidatePlaybackUrl, 8, 2500);
+    const playbackReachable = await probePlaybackUrl(candidatePlaybackUrl, 20, 3000);
     if (!playbackReachable) {
       return res.status(409).json({
         message: "Playback is not reachable yet. Ensure ingest is active, then retry start.",

@@ -534,25 +534,6 @@ export function LiveStudio() {
         setSelectedSourceId(sourceId);
       }
 
-      const waitForPlaybackReady = async () => {
-        if (!sourcePlaybackUrl) return false;
-        for (let i = 0; i < 10; i += 1) {
-          try {
-            const res = await fetch(sourcePlaybackUrl, { cache: "no-store" });
-            if (res.ok) return true;
-          } catch {
-            // retry
-          }
-          await new Promise((resolve) => setTimeout(resolve, 3000));
-        }
-        return false;
-      };
-
-      const playbackReady = await waitForPlaybackReady();
-      if (!playbackReady) {
-        throw new Error("Ingest started but playback is not ready yet. Keep webcam running and retry GO LIVE.");
-      }
-
       const start = await adminApiFetch(`/api/admin/live/events/${selectedEvent.id}/start`, {
         method: "POST",
         body: JSON.stringify(sourceId ? { sourceId } : {}),
