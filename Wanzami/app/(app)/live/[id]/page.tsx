@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import Hls from "hls.js";
 import Image from "next/image";
@@ -40,12 +40,17 @@ export default function LiveDetailPage({ params }: { params: { id: string } }) {
   const [messages, setMessages] = useState<LiveChatMessage[]>([]);
   const [reactionTotals, setReactionTotals] = useState<LiveReactionTotal[]>([]);
   const [burstReactions, setBurstReactions] = useState<string[]>([]);
-  const [lastEngagementSync, setLastEngagementSync] = useState<string | null>(null);
+  const [lastEngagementSync, setLastEngagementSync] = useState<string | null>(
+    null,
+  );
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hlsRef = useRef<InstanceType<typeof Hls> | null>(null);
-  const [availableLevels, setAvailableLevels] = useState<Array<{ index: number; label: string }>>([]);
+  const [availableLevels, setAvailableLevels] = useState<
+    Array<{ index: number; label: string }>
+  >([]);
   const [selectedLevel, setSelectedLevel] = useState<number>(-1);
   const [qualityLabel, setQualityLabel] = useState<string>("Auto");
+  const [chatOpen, setChatOpen] = useState(true);
   const [, tick] = useState(0);
 
   useEffect(() => {
@@ -54,11 +59,10 @@ export default function LiveDetailPage({ params }: { params: { id: string } }) {
   }, []);
 
   useEffect(() => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-    if (!token) {
-      window.location.href = "/login";
-      return;
-    }
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("accessToken")
+        : null;
 
     let cancelled = false;
 
@@ -102,14 +106,21 @@ export default function LiveDetailPage({ params }: { params: { id: string } }) {
   }, [params.id]);
 
   useEffect(() => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("accessToken")
+        : null;
     if (!token || !event?.id) return;
 
     let cancelled = false;
 
     const sync = async () => {
       try {
-        const snapshot = await fetchLiveEngagementSnapshot(event.id, token, lastEngagementSync);
+        const snapshot = await fetchLiveEngagementSnapshot(
+          event.id,
+          token,
+          lastEngagementSync,
+        );
         if (cancelled) return;
         setLastEngagementSync(snapshot.serverTime);
         setMessages((prev) => {
@@ -122,7 +133,9 @@ export default function LiveDetailPage({ params }: { params: { id: string } }) {
           });
         });
         setReactionTotals(snapshot.reactionTotals);
-        setBurstReactions(snapshot.recentReactions.map((item) => item.type).slice(0, 12));
+        setBurstReactions(
+          snapshot.recentReactions.map((item) => item.type).slice(0, 12),
+        );
       } catch {
         // silent incremental sync errors
       }
@@ -175,13 +188,21 @@ export default function LiveDetailPage({ params }: { params: { id: string } }) {
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         const levels = hls.levels.map((level, idx) => ({
           index: idx,
-          label: level.height ? `${level.height}p` : `${Math.round((level.bitrate || 0) / 1000)}kbps`,
+          label: level.height
+            ? `${level.height}p`
+            : `${Math.round((level.bitrate || 0) / 1000)}kbps`,
         }));
         setAvailableLevels(levels);
       });
       hls.on(Hls.Events.LEVEL_SWITCHED, (_event, data) => {
         const current = hls.levels[data.level];
-        setQualityLabel(data.level < 0 ? "Auto" : current?.height ? `${current.height}p` : "Manual");
+        setQualityLabel(
+          data.level < 0
+            ? "Auto"
+            : current?.height
+              ? `${current.height}p`
+              : "Manual",
+        );
       });
       hlsRef.current = hls;
     } else {
@@ -198,7 +219,10 @@ export default function LiveDetailPage({ params }: { params: { id: string } }) {
 
   const submitChat = async () => {
     if (!event?.id || !chatInput.trim()) return;
-    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("accessToken")
+        : null;
     if (!token) return;
 
     setChatSending(true);
@@ -215,7 +239,10 @@ export default function LiveDetailPage({ params }: { params: { id: string } }) {
 
   const emitReaction = async (type: string) => {
     if (!event?.id) return;
-    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("accessToken")
+        : null;
     if (!token) return;
     setBurstReactions((prev) => [type, ...prev].slice(0, 12));
     try {
@@ -223,7 +250,9 @@ export default function LiveDetailPage({ params }: { params: { id: string } }) {
       setReactionTotals((prev) => {
         const existing = prev.find((x) => x.type === type);
         if (!existing) return [...prev, { type, count: 1 }];
-        return prev.map((x) => (x.type === type ? { ...x, count: x.count + 1 } : x));
+        return prev.map((x) =>
+          x.type === type ? { ...x, count: x.count + 1 } : x,
+        );
       });
     } catch {
       // soft fail on tap spam
@@ -231,13 +260,22 @@ export default function LiveDetailPage({ params }: { params: { id: string } }) {
   };
 
   if (loading) {
-    return <div className="min-h-screen bg-black text-white px-4 md:px-12 pt-28">Loading live event...</div>;
+    return (
+      <div className="min-h-screen bg-black text-white px-4 md:px-12 pt-28">
+        Loading live event...
+      </div>
+    );
   }
 
   return (
     <div className="min-h-screen bg-black text-white px-4 md:px-12 lg:px-16 pt-28 pb-10">
       <div className="mb-4">
-        <Link href="/live" className="text-sm text-neutral-400 hover:text-white">← Back to Live</Link>
+        <Link
+          href="/live"
+          className="text-sm text-neutral-400 hover:text-white"
+        >
+          ← Back to Live
+        </Link>
       </div>
 
       {error && <p className="text-red-400 mb-4">{error}</p>}
@@ -247,16 +285,22 @@ export default function LiveDetailPage({ params }: { params: { id: string } }) {
           <div className="flex items-start justify-between gap-3 mb-3">
             <div>
               <h1 className="text-3xl font-semibold">{event.title}</h1>
-              {event.category ? <p className="text-xs text-neutral-400 mt-1">Category: {event.category}</p> : null}
-              {event.description && <p className="text-neutral-400 mt-2">{event.description}</p>}
+              {event.category ? (
+                <p className="text-xs text-neutral-400 mt-1">
+                  Category: {event.category}
+                </p>
+              ) : null}
+              {event.description && (
+                <p className="text-neutral-400 mt-2">{event.description}</p>
+              )}
             </div>
             <span
               className={`text-xs px-2 py-1 rounded-full border ${
                 event.status === "LIVE"
                   ? "border-red-500/40 text-red-300 bg-red-500/10"
                   : event.status === "SCHEDULED"
-                  ? "border-blue-500/40 text-blue-300 bg-blue-500/10"
-                  : "border-neutral-500/40 text-neutral-300 bg-neutral-500/10"
+                    ? "border-blue-500/40 text-blue-300 bg-blue-500/10"
+                    : "border-neutral-500/40 text-neutral-300 bg-neutral-500/10"
               }`}
             >
               {event.status}
@@ -269,29 +313,52 @@ export default function LiveDetailPage({ params }: { params: { id: string } }) {
             </div>
           )}
 
-          <div className="grid gap-5 xl:grid-cols-[1fr_340px]">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
             <div>
               <div className="relative w-full max-w-5xl aspect-video bg-neutral-900 rounded-xl overflow-hidden">
                 {primaryPlaybackUrl ? (
-                  <video ref={videoRef} controls autoPlay playsInline className="w-full h-full bg-black" />
+                  <video
+                    ref={videoRef}
+                    controls
+                    autoPlay
+                    playsInline
+                    className="w-full h-full bg-black"
+                  />
                 ) : event.status === "ENDED" ? (
-                  <div className="w-full h-full flex items-center justify-center text-center px-8 text-neutral-300">Live has ended</div>
+                  <div className="w-full h-full flex items-center justify-center text-center px-8 text-neutral-300">
+                    Live has ended
+                  </div>
                 ) : event.thumbnailUrl ? (
                   <div className="relative w-full h-full">
-                    <Image src={event.thumbnailUrl} alt={event.title} fill className="object-cover" unoptimized />
+                    <Image
+                      src={event.thumbnailUrl}
+                      alt={event.title}
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-neutral-200 text-sm">
                       Stream is not available yet.
                     </div>
                   </div>
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-neutral-400">Stream is not available yet.</div>
+                  <div className="w-full h-full flex items-center justify-center text-neutral-400">
+                    Stream is not available yet.
+                  </div>
                 )}
 
-                <div className="absolute top-3 right-3 bg-black/60 px-2 py-1 rounded text-xs">Quality: {qualityLabel}</div>
+                <div className="absolute top-3 right-3 bg-black/60 px-2 py-1 rounded text-xs">
+                  Quality: {qualityLabel}
+                </div>
                 {burstReactions.length ? (
                   <div className="absolute bottom-3 right-3 flex flex-col gap-1 text-lg">
                     {burstReactions.slice(0, 5).map((icon, idx) => (
-                      <span key={`${icon}-${idx}`} className="drop-shadow-[0_0_4px_rgba(0,0,0,0.8)]">{icon}</span>
+                      <span
+                        key={`${icon}-${idx}`}
+                        className="drop-shadow-[0_0_4px_rgba(0,0,0,0.8)]"
+                      >
+                        {icon}
+                      </span>
                     ))}
                   </div>
                 ) : null}
@@ -311,44 +378,76 @@ export default function LiveDetailPage({ params }: { params: { id: string } }) {
                         hlsRef.current.nextLevel = level;
                         hlsRef.current.loadLevel = level;
                       }
-                      setQualityLabel(level < 0 ? "Auto" : availableLevels.find((l) => l.index === level)?.label || "Manual");
+                      setQualityLabel(
+                        level < 0
+                          ? "Auto"
+                          : availableLevels.find((l) => l.index === level)
+                              ?.label || "Manual",
+                      );
                     }}
                   >
                     <option value={-1}>Auto</option>
                     {availableLevels.map((l) => (
-                      <option key={l.index} value={l.index}>{l.label}</option>
+                      <option key={l.index} value={l.index}>
+                        {l.label}
+                      </option>
                     ))}
                   </select>
                 </div>
               ) : null}
 
-              <div className="mt-4 flex gap-2 flex-wrap">
+              <div className="mt-4 flex gap-2 flex-wrap items-center">
                 {reactionPresets.map((item) => {
-                  const count = reactionTotals.find((x) => x.type === item)?.count ?? 0;
+                  const count =
+                    reactionTotals.find((x) => x.type === item)?.count ?? 0;
                   return (
                     <button
                       key={item}
                       onClick={() => void emitReaction(item)}
                       className="px-3 py-1.5 rounded-full border border-neutral-700 bg-neutral-900 hover:bg-neutral-800 text-sm"
                     >
-                      {item} {count > 0 ? <span className="text-neutral-400">{count}</span> : null}
+                      {item}{" "}
+                      {count > 0 ? (
+                        <span className="text-neutral-400">{count}</span>
+                      ) : null}
                     </button>
                   );
                 })}
+                <button
+                  onClick={() => setChatOpen((v) => !v)}
+                  className="lg:hidden ml-auto px-3 py-1.5 rounded-full border border-neutral-700 bg-neutral-900 text-sm"
+                >
+                  {chatOpen ? "Hide chat" : "Show chat"}
+                </button>
               </div>
             </div>
 
-            <aside className="border border-neutral-800 rounded-xl bg-neutral-950 p-3 h-[70vh] flex flex-col">
+            <aside
+              className={`${chatOpen ? "flex" : "hidden"} lg:flex border border-neutral-800 rounded-xl bg-neutral-950 p-3 h-[70vh] lg:sticky lg:top-28 flex-col`}
+            >
               <h3 className="text-sm font-semibold mb-2">Live chat</h3>
               <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-                {messages.length === 0 ? <p className="text-xs text-neutral-500">No messages yet.</p> : null}
+                {messages.length === 0 ? (
+                  <p className="text-xs text-neutral-500">No messages yet.</p>
+                ) : null}
                 {messages.map((m) => (
-                  <div key={m.id} className="text-xs bg-neutral-900/70 rounded p-2">
+                  <div
+                    key={m.id}
+                    className="text-xs bg-neutral-900/70 rounded p-2"
+                  >
                     <p className="text-neutral-300">
-                      <span className="text-white font-medium">{m.userName}</span>
-                      {m.userRole && m.userRole !== "USER" ? <span className="ml-1 text-amber-300">({m.userRole})</span> : null}
+                      <span className="text-white font-medium">
+                        {m.userName}
+                      </span>
+                      {m.userRole && m.userRole !== "USER" ? (
+                        <span className="ml-1 text-amber-300">
+                          ({m.userRole})
+                        </span>
+                      ) : null}
                     </p>
-                    <p className="text-neutral-200 mt-0.5 break-words">{m.message}</p>
+                    <p className="text-neutral-200 mt-0.5 break-words">
+                      {m.message}
+                    </p>
                   </div>
                 ))}
               </div>

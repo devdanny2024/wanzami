@@ -36,10 +36,6 @@ export default function LivePage() {
 
   useEffect(() => {
     const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-    if (!token) {
-      window.location.href = "/login";
-      return;
-    }
 
     const load = async (isBackground = false) => {
       try {
