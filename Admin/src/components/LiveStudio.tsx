@@ -508,6 +508,9 @@ export function LiveStudio() {
         "Webcam broadcast start timed out. Check ingest URL/network and retry.",
       );
 
+      // Give IVS ingest a short warm-up window before backend probes playback m3u8.
+      await new Promise((resolve) => setTimeout(resolve, 8000));
+
       let sourceId: string | undefined;
       const latest = await adminApiFetch(`/api/admin/live/events/${selectedEvent.id}`);
       const latestEvent = latest.ok ? ((latest.data as any)?.event as LiveEvent) : selectedEvent;
