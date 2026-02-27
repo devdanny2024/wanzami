@@ -383,6 +383,7 @@ model LiveEvent {
   chatMessages LiveChatMessage[]
   reactions LiveReactionEvent[]
   reactionAggregates LiveReactionAggregate[]
+  viewerSessions LiveViewerSession[]
   chatModerations LiveChatModeration[]
 
   @@index([status])
@@ -453,6 +454,22 @@ model LiveReactionAggregate {
 
   @@unique([liveEventId, reactionType])
   @@index([liveEventId, count])
+}
+
+model LiveViewerSession {
+  id          BigInt   @id @default(autoincrement())
+  liveEventId BigInt
+  userId      BigInt
+  lastSeenAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  liveEvent LiveEvent @relation(fields: [liveEventId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([liveEventId, userId])
+  @@index([liveEventId, lastSeenAt])
+  @@index([userId, lastSeenAt])
 }
 
 model LiveChatModeration {

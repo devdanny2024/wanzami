@@ -13,6 +13,7 @@ import {
   fetchLiveEventByUnlistedSlug,
   sendLiveChatMessage,
   sendLiveReaction,
+  sendLiveViewerHeartbeat,
 } from "@/lib/contentClient";
 
 function formatCountdown(targetIso?: string | null) {
@@ -135,6 +136,33 @@ export default function LiveDetailPage({ params }: { params: { id: string } }) {
       clearInterval(poll);
     };
   }, [event?.id, lastEngagementSync]);
+
+  useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    if (!token || !event?.id || event.status !== "LIVE") return;
+
+    let cancelled = false;
+
+    const pingViewerHeartbeat = async () => {
+      try {
+        const payload = await sendLiveViewerHeartbeat(event.id, token);
+        if (cancelled || typeof payload?.viewerCount !== "number") return;
+        setEvent((prev) => (prev ? { ...prev, viewerCount: payload.viewerCount } : prev));
+      } catch {
+        // non-blocking telemetry ping
+      }
+    };
+
+    void pingViewerHeartbeat();
+    const interval = setInterval(() => {
+      void pingViewerHeartbeat();
+    }, 15000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [event?.id, event?.status]);
 
   const primaryPlaybackUrl = useMemo(() => {
     if (!event) return null;
@@ -267,6 +295,10 @@ export default function LiveDetailPage({ params }: { params: { id: string } }) {
             <div className="mb-4 text-blue-300 text-sm">
               Starts in {formatCountdown(event.scheduledStartAt) ?? "soon"}
             </div>
+          )}
+
+          {event.status === "LIVE" && (
+            <div className="mb-4 text-red-300 text-sm">● {event.viewerCount ?? 0} watching</div>
           )}
 
           <div className="grid gap-5 xl:grid-cols-[1fr_340px]">

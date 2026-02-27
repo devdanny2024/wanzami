@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { LiveVisibility } from "@prisma/client";
+import { LiveEventStatus, LiveVisibility } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../prisma.js";
 import type { AuthenticatedRequest } from "../middleware/auth.js";
@@ -65,6 +65,55 @@ const ensureLiveEventViewable = async (eventId: bigint) => {
     return { status: 403 as const, message: "Live event is private" };
   }
   return { event } as const;
+};
+
+const LIVE_VIEWER_WINDOW_MS = 60_000;
+
+const touchLiveViewerSession = async (eventId: bigint, userId: bigint) => {
+  const now = new Date();
+  const activeSince = new Date(now.getTime() - LIVE_VIEWER_WINDOW_MS);
+
+  const activeViewers = await prisma.$transaction(async (tx) => {
+    await tx.liveViewerSession.upsert({
+      where: {
+        liveEventId_userId: {
+          liveEventId: eventId,
+          userId,
+        },
+      },
+      create: {
+        liveEventId: eventId,
+        userId,
+        lastSeenAt: now,
+      },
+      update: {
+        lastSeenAt: now,
+      },
+    });
+
+    await tx.liveViewerSession.deleteMany({
+      where: {
+        liveEventId: eventId,
+        lastSeenAt: { lt: activeSince },
+      },
+    });
+
+    const count = await tx.liveViewerSession.count({
+      where: {
+        liveEventId: eventId,
+        lastSeenAt: { gte: activeSince },
+      },
+    });
+
+    await tx.liveEvent.update({
+      where: { id: eventId },
+      data: { viewerCount: count },
+    });
+
+    return count;
+  });
+
+  return activeViewers;
 };
 
 export const listLiveChatMessages = async (req: Request, res: Response) => {
@@ -340,6 +389,35 @@ export const getLiveEngagementSnapshot = async (req: Request, res: Response) => 
       message: "Live engagement is temporarily unavailable",
       code: "LIVE_ENGAGEMENT_DEGRADED",
     });
+  }
+};
+
+export const heartbeatLiveViewer = async (req: AuthenticatedRequest, res: Response) => {
+  const eventId = parseBigIntId(req.params.id);
+  if (!eventId) return res.status(400).json({ message: "Invalid event id" });
+  if (!req.user?.userId) return res.status(401).json({ message: "Unauthorized" });
+  const userId = parseBigIntId(String(req.user.userId));
+  if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+  const guard = await ensureLiveEventViewable(eventId);
+  if ("status" in guard) {
+    const g = guard as { status: number; message: string };
+    return res.status(g.status).json({ message: g.message });
+  }
+
+  const { event } = guard as { event: any };
+  if (event.status !== LiveEventStatus.LIVE) {
+    if (event.viewerCount !== 0) {
+      await prisma.liveEvent.update({ where: { id: eventId }, data: { viewerCount: 0 } });
+    }
+    return res.json({ viewerCount: 0, status: event.status });
+  }
+
+  try {
+    const viewerCount = await touchLiveViewerSession(eventId, userId);
+    return res.json({ viewerCount, status: event.status, windowMs: LIVE_VIEWER_WINDOW_MS });
+  } catch (err: any) {
+    return sendEngagementFallback(res, "heartbeatLiveViewer", err);
   }
 };
 

@@ -587,6 +587,18 @@ export async function sendLiveReaction(eventId: string, accessToken: string, typ
   return handleJsonResponse(res);
 }
 
+export async function sendLiveViewerHeartbeat(eventId: string, accessToken: string) {
+  const res = await fetchWithTimeout(`${API_BASE}/live/events/${eventId}/viewer-heartbeat`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    cache: "no-store",
+  }, 15000);
+  const data = await handleJsonResponse(res);
+  return data as { viewerCount: number; status?: "SCHEDULED" | "LIVE" | "ENDED"; windowMs?: number };
+}
+
 export async function postEvents(events: EngagementEventInput[], accessToken: string) {
   if (!events.length) return;
   const res = await fetchWithTimeout(`${API_BASE}/events`, {

@@ -26,6 +26,7 @@ import {
   createLiveChatMessage,
   deleteLiveChatMessage,
   getLiveEngagementSnapshot,
+  heartbeatLiveViewer,
   listLiveChatMessages,
   listLiveChatMessagesAdmin,
   listLiveReactions,
@@ -62,6 +63,7 @@ router.post("/live/events/:id/chat", requireAuth, createLiveChatMessage);
 router.get("/live/events/:id/reactions", listLiveReactions);
 router.post("/live/events/:id/reactions", requireAuth, sendLiveReaction);
 router.get("/live/events/:id/engagement", getLiveEngagementSnapshot);
+router.post("/live/events/:id/viewer-heartbeat", requireAuth, heartbeatLiveViewer);
 
 router.get("/admin/live/events/:id/chat", requireAuth, requireAdmin, listLiveChatMessagesAdmin);
 router.patch("/admin/live/events/:id/chat/:messageId", requireAuth, requireAdmin, moderateLiveChatMessage);
