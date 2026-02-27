@@ -5,6 +5,11 @@ import { Providers } from "./providers";
 export const metadata: Metadata = {
   title: "Wanzami",
   description: "Wanzami streaming platform",
+  icons: {
+    icon: "/wanzami-logo.png",
+    shortcut: "/wanzami-logo.png",
+    apple: "/wanzami-logo.png",
+  },
 };
 
 export default function RootLayout({
