@@ -47,6 +47,7 @@ model User {
   supportTickets SupportTicket[]
   supportTicketMessages SupportTicketMessage[]
   liveEventsCreated LiveEvent[] @relation("LiveEventCreatedBy")
+  liveViewerSessions LiveViewerSession[]
   liveChatMessages LiveChatMessage[]
   liveReactionsSent LiveReactionEvent[]
   liveChatModerations LiveChatModeration[] @relation("LiveChatModerationTarget")
