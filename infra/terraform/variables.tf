@@ -82,3 +82,66 @@ variable "media_bucket_name" {
   type    = string
   default = ""
 }
+
+# --------------------
+# Scaling & performance tuning
+# --------------------
+variable "backend_task_cpu" {
+  type    = number
+  default = 2048
+}
+
+variable "backend_task_memory" {
+  type    = number
+  default = 4096
+}
+
+variable "worker_task_cpu" {
+  type    = number
+  default = 512
+}
+
+variable "worker_task_memory" {
+  type    = number
+  default = 1024
+}
+
+variable "backend_desired_count" {
+  type    = number
+  default = 8
+}
+
+variable "worker_transcode_desired_count" {
+  type    = number
+  default = 2
+}
+
+variable "worker_cron_desired_count" {
+  type    = number
+  default = 2
+}
+
+variable "backend_autoscale_min_capacity" {
+  type    = number
+  default = 4
+}
+
+variable "backend_autoscale_max_capacity" {
+  type    = number
+  default = 20
+}
+
+variable "backend_cpu_target_utilization" {
+  type    = number
+  default = 50
+}
+
+variable "backend_memory_target_utilization" {
+  type    = number
+  default = 60
+}
+
+variable "alb_idle_timeout_seconds" {
+  type    = number
+  default = 60
+}

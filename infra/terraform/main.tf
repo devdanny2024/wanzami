@@ -140,8 +140,8 @@ locals {
 # --------------------
 resource "aws_ecs_task_definition" "backend" {
   family                   = "wanzami-backend-task"
-  cpu                      = "256"
-  memory                   = "512"
+  cpu                      = tostring(var.backend_task_cpu)
+  memory                   = tostring(var.backend_task_memory)
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   execution_role_arn       = data.aws_iam_role.ecs_execution.arn
@@ -170,8 +170,8 @@ resource "aws_ecs_task_definition" "backend" {
 
 resource "aws_ecs_task_definition" "worker_transcode" {
   family                   = "wanzami-worker-transcode"
-  cpu                      = "256"
-  memory                   = "512"
+  cpu                      = tostring(var.worker_task_cpu)
+  memory                   = tostring(var.worker_task_memory)
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   execution_role_arn       = data.aws_iam_role.ecs_execution.arn
@@ -197,8 +197,8 @@ resource "aws_ecs_task_definition" "worker_transcode" {
 
 resource "aws_ecs_task_definition" "worker_cron" {
   family                   = "wanzami-worker-cron"
-  cpu                      = "256"
-  memory                   = "512"
+  cpu                      = tostring(var.worker_task_cpu)
+  memory                   = tostring(var.worker_task_memory)
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   execution_role_arn       = data.aws_iam_role.ecs_execution.arn
@@ -236,6 +236,7 @@ resource "aws_lb" "alb" {
   load_balancer_type = "application"
   subnets            = var.public_subnets
   security_groups    = [var.alb_sg_id]
+  idle_timeout       = var.alb_idle_timeout_seconds
 }
 
 data "aws_lb_target_group" "backend" {
@@ -252,11 +253,12 @@ resource "aws_lb_target_group" "backend" {
   target_type = "ip"
 
   health_check {
-    path                = "/api/health"
-    interval            = 30
+    path                = "/health"
+    interval            = 15
+    timeout             = 5
     healthy_threshold   = 2
-    unhealthy_threshold = 2
-    matcher             = "200"
+    unhealthy_threshold = 3
+    matcher             = "200-299"
   }
 }
 
@@ -356,12 +358,15 @@ resource "aws_route53_record" "api" {
 # ECS Services
 # --------------------
 resource "aws_ecs_service" "backend" {
-  count           = var.use_existing_backend_service ? 0 : 1
-  name            = var.backend_service_name
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.backend.arn
-  desired_count   = 1
-  launch_type     = "FARGATE"
+  count                              = var.use_existing_backend_service ? 0 : 1
+  name                               = var.backend_service_name
+  cluster                            = aws_ecs_cluster.main.id
+  task_definition                    = aws_ecs_task_definition.backend.arn
+  desired_count                      = var.backend_desired_count
+  launch_type                        = "FARGATE"
+  health_check_grace_period_seconds  = 90
+  deployment_minimum_healthy_percent = 100
+  deployment_maximum_percent         = 200
 
   network_configuration {
     subnets          = var.private_subnets
@@ -381,7 +386,7 @@ resource "aws_ecs_service" "worker_transcode" {
   name            = var.worker_transcode_service_name
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.worker_transcode.arn
-  desired_count   = 1
+  desired_count   = var.worker_transcode_desired_count
   launch_type     = "FARGATE"
 
   network_configuration {
@@ -396,13 +401,65 @@ resource "aws_ecs_service" "worker_cron" {
   name            = var.worker_cron_service_name
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.worker_cron.arn
-  desired_count   = 1
+  desired_count   = var.worker_cron_desired_count
   launch_type     = "FARGATE"
 
   network_configuration {
     subnets          = var.private_subnets
     security_groups  = [var.ecs_sg_id]
     assign_public_ip = false
+  }
+}
+
+# --------------------
+# Backend autoscaling
+# --------------------
+resource "aws_appautoscaling_target" "backend_service" {
+  count              = var.use_existing_backend_service ? 0 : 1
+  max_capacity       = var.backend_autoscale_max_capacity
+  min_capacity       = var.backend_autoscale_min_capacity
+  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.backend[0].name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+}
+
+resource "aws_appautoscaling_policy" "backend_cpu_target" {
+  count              = var.use_existing_backend_service ? 0 : 1
+  name               = "wanzami-backend-cpu-target"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.backend_service[0].resource_id
+  scalable_dimension = aws_appautoscaling_target.backend_service[0].scalable_dimension
+  service_namespace  = aws_appautoscaling_target.backend_service[0].service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    target_value = var.backend_cpu_target_utilization
+
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageCPUUtilization"
+    }
+
+    scale_in_cooldown  = 300
+    scale_out_cooldown = 90
+  }
+}
+
+resource "aws_appautoscaling_policy" "backend_memory_target" {
+  count              = var.use_existing_backend_service ? 0 : 1
+  name               = "wanzami-backend-memory-target"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.backend_service[0].resource_id
+  scalable_dimension = aws_appautoscaling_target.backend_service[0].scalable_dimension
+  service_namespace  = aws_appautoscaling_target.backend_service[0].service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    target_value = var.backend_memory_target_utilization
+
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageMemoryUtilization"
+    }
+
+    scale_in_cooldown  = 300
+    scale_out_cooldown = 90
   }
 }
 
