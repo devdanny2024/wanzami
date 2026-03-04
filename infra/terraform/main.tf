@@ -486,7 +486,7 @@ resource "aws_appautoscaling_policy" "backend_alb_request_target" {
 
     predefined_metric_specification {
       predefined_metric_type = "ALBRequestCountPerTarget"
-      resource_label         = "${local.alb_arn_suffix}/${local.tg_arn_suffix}"
+      resource_label         = "${local.alb_arn_suffix}/targetgroup/${local.tg_arn_suffix}"
     }
 
     scale_in_cooldown  = var.backend_scale_in_cooldown_seconds
