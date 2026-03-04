@@ -133,6 +133,10 @@ locals {
   tg_arn  = var.use_existing_target_group ? data.aws_lb_target_group.backend[0].arn : aws_lb_target_group.backend[0].arn
   alb_dns_name = var.use_existing_alb ? data.aws_lb.alb[0].dns_name : aws_lb.alb[0].dns_name
   alb_zone_id  = var.use_existing_alb ? data.aws_lb.alb[0].zone_id : aws_lb.alb[0].zone_id
+
+  # Required for ALBRequestCountPerTarget autoscaling + ALB/TG alarms
+  alb_arn_suffix = join("/", slice(split("/", local.alb_arn), 1, length(split("/", local.alb_arn))))
+  tg_arn_suffix  = join("/", slice(split("/", local.tg_arn), 1, length(split("/", local.tg_arn))))
 }
 
 # --------------------
@@ -368,6 +372,11 @@ resource "aws_ecs_service" "backend" {
   deployment_minimum_healthy_percent = 100
   deployment_maximum_percent         = 200
 
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+
   network_configuration {
     subnets          = var.private_subnets
     security_groups  = [var.ecs_sg_id]
@@ -413,18 +422,19 @@ resource "aws_ecs_service" "worker_cron" {
 
 # --------------------
 # Backend autoscaling
+# Works for both newly created and pre-existing ECS backend service.
 # --------------------
 resource "aws_appautoscaling_target" "backend_service" {
-  count              = var.use_existing_backend_service ? 0 : 1
+  count              = var.enable_backend_autoscaling ? 1 : 0
   max_capacity       = var.backend_autoscale_max_capacity
   min_capacity       = var.backend_autoscale_min_capacity
-  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.backend[0].name}"
+  resource_id        = "service/${aws_ecs_cluster.main.name}/${var.backend_service_name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
 }
 
 resource "aws_appautoscaling_policy" "backend_cpu_target" {
-  count              = var.use_existing_backend_service ? 0 : 1
+  count              = var.enable_backend_autoscaling ? 1 : 0
   name               = "wanzami-backend-cpu-target"
   policy_type        = "TargetTrackingScaling"
   resource_id        = aws_appautoscaling_target.backend_service[0].resource_id
@@ -438,13 +448,13 @@ resource "aws_appautoscaling_policy" "backend_cpu_target" {
       predefined_metric_type = "ECSServiceAverageCPUUtilization"
     }
 
-    scale_in_cooldown  = 300
-    scale_out_cooldown = 90
+    scale_in_cooldown  = var.backend_scale_in_cooldown_seconds
+    scale_out_cooldown = var.backend_scale_out_cooldown_seconds
   }
 }
 
 resource "aws_appautoscaling_policy" "backend_memory_target" {
-  count              = var.use_existing_backend_service ? 0 : 1
+  count              = var.enable_backend_autoscaling ? 1 : 0
   name               = "wanzami-backend-memory-target"
   policy_type        = "TargetTrackingScaling"
   resource_id        = aws_appautoscaling_target.backend_service[0].resource_id
@@ -458,8 +468,73 @@ resource "aws_appautoscaling_policy" "backend_memory_target" {
       predefined_metric_type = "ECSServiceAverageMemoryUtilization"
     }
 
-    scale_in_cooldown  = 300
-    scale_out_cooldown = 90
+    scale_in_cooldown  = var.backend_scale_in_cooldown_seconds
+    scale_out_cooldown = var.backend_scale_out_cooldown_seconds
+  }
+}
+
+resource "aws_appautoscaling_policy" "backend_alb_request_target" {
+  count              = var.enable_backend_autoscaling && var.enable_backend_alb_request_autoscaling ? 1 : 0
+  name               = "wanzami-backend-alb-req-target"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.backend_service[0].resource_id
+  scalable_dimension = aws_appautoscaling_target.backend_service[0].scalable_dimension
+  service_namespace  = aws_appautoscaling_target.backend_service[0].service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    target_value = var.backend_alb_request_target_per_target
+
+    predefined_metric_specification {
+      predefined_metric_type = "ALBRequestCountPerTarget"
+      resource_label         = "${local.alb_arn_suffix}/${local.tg_arn_suffix}"
+    }
+
+    scale_in_cooldown  = var.backend_scale_in_cooldown_seconds
+    scale_out_cooldown = var.backend_scale_out_cooldown_seconds
+  }
+}
+
+# --------------------
+# CloudWatch alarms (backend/API resilience)
+# --------------------
+resource "aws_cloudwatch_metric_alarm" "alb_5xx_high" {
+  count               = var.enable_backend_alarms ? 1 : 0
+  alarm_name          = "wanzami-alb-5xx-high"
+  alarm_description   = "ALB 5XX errors are above threshold"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 2
+  metric_name         = "HTTPCode_ELB_5XX_Count"
+  namespace           = "AWS/ApplicationELB"
+  period              = 60
+  statistic           = "Sum"
+  threshold           = var.alarm_alb_5xx_sum_threshold
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = var.alarm_sns_topic_arns
+  ok_actions          = var.alarm_sns_topic_arns
+
+  dimensions = {
+    LoadBalancer = local.alb_arn_suffix
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "target_response_time_high" {
+  count               = var.enable_backend_alarms ? 1 : 0
+  alarm_name          = "wanzami-target-response-time-high"
+  alarm_description   = "Backend target response time is above threshold"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 2
+  metric_name         = "TargetResponseTime"
+  namespace           = "AWS/ApplicationELB"
+  period              = 60
+  statistic           = "Average"
+  threshold           = var.alarm_target_response_time_seconds
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = var.alarm_sns_topic_arns
+  ok_actions          = var.alarm_sns_topic_arns
+
+  dimensions = {
+    LoadBalancer = local.alb_arn_suffix
+    TargetGroup  = local.tg_arn_suffix
   }
 }
 

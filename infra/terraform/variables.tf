@@ -121,6 +121,11 @@ variable "worker_cron_desired_count" {
   default = 2
 }
 
+variable "enable_backend_autoscaling" {
+  type    = bool
+  default = true
+}
+
 variable "backend_autoscale_min_capacity" {
   type    = number
   default = 4
@@ -139,6 +144,46 @@ variable "backend_cpu_target_utilization" {
 variable "backend_memory_target_utilization" {
   type    = number
   default = 60
+}
+
+variable "enable_backend_alb_request_autoscaling" {
+  type    = bool
+  default = true
+}
+
+variable "backend_alb_request_target_per_target" {
+  type    = number
+  default = 800
+}
+
+variable "backend_scale_in_cooldown_seconds" {
+  type    = number
+  default = 300
+}
+
+variable "backend_scale_out_cooldown_seconds" {
+  type    = number
+  default = 90
+}
+
+variable "enable_backend_alarms" {
+  type    = bool
+  default = true
+}
+
+variable "alarm_sns_topic_arns" {
+  type    = list(string)
+  default = []
+}
+
+variable "alarm_alb_5xx_sum_threshold" {
+  type    = number
+  default = 25
+}
+
+variable "alarm_target_response_time_seconds" {
+  type    = number
+  default = 2
 }
 
 variable "alb_idle_timeout_seconds" {
