@@ -38,8 +38,7 @@ app.use(
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
       if (allowedOrigins.includes(origin)) return callback(null, true);
-      // Fallback: allow all origins to avoid blocking admin until we have the exact host configured.
-      return callback(null, true);
+      return callback(null, false);
     },
     credentials: false,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -47,13 +46,6 @@ app.use(
     optionsSuccessStatus: 204,
   })
 );
-// Ensure CORS headers even on errors/proxies that might strip the above.
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
-  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  next();
-});
 app.use(express.json());
 app.use(cookieParser());
 
@@ -71,6 +63,7 @@ app.use("/api", supportRoutes);
 app.use("/api", liveRoutes);
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
+app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
 
 app.use((_, res) => res.status(404).json({ message: "Not found" }));
 

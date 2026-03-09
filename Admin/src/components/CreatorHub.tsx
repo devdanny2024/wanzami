@@ -42,7 +42,7 @@ type LiveSource = {
   eventId?: string;
   type: "CAMERA" | "SCREEN" | "RTMP" | "CONTROL_DECK";
   label: string;
-  status: "READY" | "OFFLINE" | "ERROR";
+  status: "READY" | "DEGRADED" | "OFFLINE" | "ERROR";
   playbackUrl?: string | null;
   previewUrl?: string | null;
   metadata?: Record<string, any> | null;
