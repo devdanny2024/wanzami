@@ -115,9 +115,15 @@ const generateUnlistedSlug = () => crypto.randomBytes(9).toString("base64url");
 let liveEventCompatColumnsEnsured = false;
 const ensureLiveEventCompatColumns = async () => {
   if (liveEventCompatColumnsEnsured) return;
+
+  // Runtime DDL is disabled by default; rely on Prisma migrations.
+  // Enable only for emergency backwards-compat with: LIVE_ENABLE_COMPAT_DDL=true
+  if (process.env.LIVE_ENABLE_COMPAT_DDL !== "true") {
+    liveEventCompatColumnsEnsured = true;
+    return;
+  }
+
   try {
-    // Backward-compatible guard for partially migrated environments.
-    // Keep Live Studio operator flows available even when rollout order is behind.
     await prisma.$executeRawUnsafe('ALTER TABLE "LiveEvent" ADD COLUMN IF NOT EXISTS "category" TEXT;');
     await prisma.$executeRawUnsafe('ALTER TABLE "LiveEvent" ADD COLUMN IF NOT EXISTS "isPublished" BOOLEAN NOT NULL DEFAULT false;');
     await prisma.$executeRawUnsafe(`DO $$ BEGIN
@@ -789,6 +795,7 @@ export const startLiveEvent = async (req: Request, res: Response) => {
 
     const initialSourceIdRaw = typeof req.body?.sourceId === "string" ? req.body.sourceId : undefined;
     const initialSourceId = initialSourceIdRaw ? parseSourceId(initialSourceIdRaw) : null;
+    const forceStart = req.body?.forceStart === true;
     if (initialSourceIdRaw && !initialSourceId) {
       return res.status(400).json({ message: "Invalid source id" });
     }
@@ -837,9 +844,9 @@ export const startLiveEvent = async (req: Request, res: Response) => {
     }
 
     const playbackReachable = await probePlaybackUrl(candidatePlaybackUrl, 20, 3000);
-    if (!playbackReachable) {
+    if (!playbackReachable && !forceStart) {
       return res.status(409).json({
-        message: "Playback is not reachable yet. Ensure ingest is active, then retry start.",
+        message: "Playback is not reachable yet. Ensure ingest is active, then retry start. If you need to proceed, retry with forceStart=true.",
         code: "LIVE_PLAYBACK_UNAVAILABLE",
       });
     }
@@ -879,7 +886,17 @@ export const startLiveEvent = async (req: Request, res: Response) => {
       });
     });
 
-    return res.json({ event: toAdminEvent(updated) });
+    return res.json({
+      event: toAdminEvent(updated),
+      ...(playbackReachable
+        ? {}
+        : {
+            warning: {
+              code: "LIVE_PLAYBACK_UNVERIFIED",
+              message: "Stream started with forceStart=true before playback URL probe succeeded.",
+            },
+          }),
+    });
   } catch (err: any) {
     return sendLiveGracefulFallback(res, "startLiveEvent", err);
   }

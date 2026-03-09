@@ -465,10 +465,24 @@ export function CreatorHub() {
 
     try {
       setError(null);
-      const res = await adminApiFetch(`/api/admin/live/events/${id}/${action}`, {
+      let res = await adminApiFetch(`/api/admin/live/events/${id}/${action}`, {
         method: "POST",
         body: action === "start" && sourceId ? JSON.stringify({ sourceId }) : undefined,
       });
+
+      if (!res.ok && action === "start" && (res.data as any)?.code === "LIVE_PLAYBACK_UNAVAILABLE") {
+        const shouldForceStart =
+          typeof window !== "undefined" &&
+          window.confirm("Playback URL is not reachable yet. Start live anyway with force start?");
+
+        if (shouldForceStart) {
+          res = await adminApiFetch(`/api/admin/live/events/${id}/${action}`, {
+            method: "POST",
+            body: JSON.stringify({ ...(sourceId ? { sourceId } : {}), forceStart: true }),
+          });
+        }
+      }
+
       if (!res.ok) throw new Error((res.data as any)?.message || "Failed to update event");
       if ((res.data as any)?.event) {
         const nextEvent = (res.data as any).event as LiveEvent;

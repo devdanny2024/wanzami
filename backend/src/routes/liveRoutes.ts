@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { requireAdmin, requireAuth } from "../middleware/auth.js";
+import { Permission } from "../auth/permissions.js";
+import { requireAuth, requirePermission } from "../middleware/auth.js";
 import {
   createLiveEvent,
   createLiveEventSourceAdmin,
@@ -37,23 +38,23 @@ import {
 
 const router = Router();
 
-router.post("/admin/live/events", requireAuth, requireAdmin, createLiveEvent);
-router.get("/admin/live/events", requireAuth, requireAdmin, listLiveEventsAdmin);
-router.get("/admin/live/events/:id", requireAuth, requireAdmin, getLiveEventAdmin);
-router.delete("/admin/live/events/:id", requireAuth, requireAdmin, deleteLiveEventAdmin);
-router.patch("/admin/live/events/:id", requireAuth, requireAdmin, updateLiveEventAdmin);
-router.post("/admin/live/events/:id/start", requireAuth, requireAdmin, startLiveEvent);
-router.post("/admin/live/events/:id/end", requireAuth, requireAdmin, endLiveEvent);
-router.patch("/admin/live/events/:id/viewers", requireAuth, requireAdmin, updateLiveEventViewerCountAdmin);
-router.patch("/admin/live/events/:id/replay", requireAuth, requireAdmin, updateLiveEventReplayAdmin);
-router.patch("/admin/live/events/:id/publish", requireAuth, requireAdmin, updateLiveEventPublishAdmin);
-router.get("/admin/live/events/:id/sources", requireAuth, requireAdmin, listLiveEventSourcesAdmin);
-router.post("/admin/live/events/:id/sources", requireAuth, requireAdmin, createLiveEventSourceAdmin);
-router.post("/admin/live/events/:id/sources/register-third-party", requireAuth, requireAdmin, registerLiveEventThirdPartySourceAdmin);
-router.patch("/admin/live/events/:id/sources/:sourceId", requireAuth, requireAdmin, updateLiveEventSourceAdmin);
-router.post("/admin/live/events/:id/sources/:sourceId/heartbeat", requireAuth, requireAdmin, heartbeatLiveEventSourceAdmin);
-router.delete("/admin/live/events/:id/sources/:sourceId", requireAuth, requireAdmin, deleteLiveEventSourceAdmin);
-router.post("/admin/live/events/:id/sources/switch", requireAuth, requireAdmin, switchLiveEventSourceAdmin);
+router.post("/admin/live/events", requireAuth, requirePermission(Permission.LIVE_MANAGE), createLiveEvent);
+router.get("/admin/live/events", requireAuth, requirePermission(Permission.LIVE_MANAGE), listLiveEventsAdmin);
+router.get("/admin/live/events/:id", requireAuth, requirePermission(Permission.LIVE_MANAGE), getLiveEventAdmin);
+router.delete("/admin/live/events/:id", requireAuth, requirePermission(Permission.LIVE_MANAGE), deleteLiveEventAdmin);
+router.patch("/admin/live/events/:id", requireAuth, requirePermission(Permission.LIVE_MANAGE), updateLiveEventAdmin);
+router.post("/admin/live/events/:id/start", requireAuth, requirePermission(Permission.LIVE_MANAGE), startLiveEvent);
+router.post("/admin/live/events/:id/end", requireAuth, requirePermission(Permission.LIVE_MANAGE), endLiveEvent);
+router.patch("/admin/live/events/:id/viewers", requireAuth, requirePermission(Permission.LIVE_MANAGE), updateLiveEventViewerCountAdmin);
+router.patch("/admin/live/events/:id/replay", requireAuth, requirePermission(Permission.LIVE_MANAGE), updateLiveEventReplayAdmin);
+router.patch("/admin/live/events/:id/publish", requireAuth, requirePermission(Permission.LIVE_MANAGE), updateLiveEventPublishAdmin);
+router.get("/admin/live/events/:id/sources", requireAuth, requirePermission(Permission.LIVE_MANAGE), listLiveEventSourcesAdmin);
+router.post("/admin/live/events/:id/sources", requireAuth, requirePermission(Permission.LIVE_MANAGE), createLiveEventSourceAdmin);
+router.post("/admin/live/events/:id/sources/register-third-party", requireAuth, requirePermission(Permission.LIVE_MANAGE), registerLiveEventThirdPartySourceAdmin);
+router.patch("/admin/live/events/:id/sources/:sourceId", requireAuth, requirePermission(Permission.LIVE_MANAGE), updateLiveEventSourceAdmin);
+router.post("/admin/live/events/:id/sources/:sourceId/heartbeat", requireAuth, requirePermission(Permission.LIVE_MANAGE), heartbeatLiveEventSourceAdmin);
+router.delete("/admin/live/events/:id/sources/:sourceId", requireAuth, requirePermission(Permission.LIVE_MANAGE), deleteLiveEventSourceAdmin);
+router.post("/admin/live/events/:id/sources/switch", requireAuth, requirePermission(Permission.LIVE_MANAGE), switchLiveEventSourceAdmin);
 
 router.get("/live/events", listLiveEventsPublic);
 router.get("/live/events/unlisted/:slug", getLiveEventUnlistedPublic);
@@ -65,10 +66,10 @@ router.post("/live/events/:id/reactions", requireAuth, sendLiveReaction);
 router.get("/live/events/:id/engagement", getLiveEngagementSnapshot);
 router.post("/live/events/:id/viewer-heartbeat", requireAuth, heartbeatLiveViewer);
 
-router.get("/admin/live/events/:id/chat", requireAuth, requireAdmin, listLiveChatMessagesAdmin);
-router.patch("/admin/live/events/:id/chat/:messageId", requireAuth, requireAdmin, moderateLiveChatMessage);
-router.delete("/admin/live/events/:id/chat/:messageId", requireAuth, requireAdmin, deleteLiveChatMessage);
-router.post("/admin/live/events/:id/chat/mute", requireAuth, requireAdmin, muteLiveChatUser);
+router.get("/admin/live/events/:id/chat", requireAuth, requirePermission(Permission.LIVE_MODERATE), listLiveChatMessagesAdmin);
+router.patch("/admin/live/events/:id/chat/:messageId", requireAuth, requirePermission(Permission.LIVE_MODERATE), moderateLiveChatMessage);
+router.delete("/admin/live/events/:id/chat/:messageId", requireAuth, requirePermission(Permission.LIVE_MODERATE), deleteLiveChatMessage);
+router.post("/admin/live/events/:id/chat/mute", requireAuth, requirePermission(Permission.LIVE_MODERATE), muteLiveChatUser);
 
 export default router;
 

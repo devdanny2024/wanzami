@@ -15,6 +15,8 @@ export enum Permission {
   SETTINGS_MANAGE = "settings:manage",
   SETTINGS_VIEW = "settings:view",
   OPS_MANAGE = "ops:manage",
+  LIVE_MANAGE = "live:manage",
+  LIVE_MODERATE = "live:moderate",
 }
 
 export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
@@ -29,6 +31,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     Permission.ANALYTICS_VIEW,
     Permission.SETTINGS_VIEW,
     Permission.OPS_MANAGE,
+    Permission.LIVE_MANAGE,
   ],
   BLOG_EDITOR: [
     Permission.DASHBOARD_VIEW,
@@ -43,6 +46,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     Permission.MODERATION_MANAGE,
     Permission.USERS_MANAGE,
     Permission.ANALYTICS_VIEW,
+    Permission.LIVE_MODERATE,
   ],
   SUPPORT: [
     Permission.DASHBOARD_VIEW,
@@ -50,6 +54,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     Permission.PAYMENTS_VIEW,
     Permission.MODERATION_MANAGE,
     Permission.ANALYTICS_VIEW,
+    Permission.LIVE_MODERATE,
   ],
   FINANCE: [
     Permission.DASHBOARD_VIEW,
@@ -74,6 +79,8 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     Permission.BLOG_VIEW,
     Permission.USERS_VIEW,
     Permission.ANALYTICS_VIEW,
+    Permission.LIVE_MANAGE,
+    Permission.LIVE_MODERATE,
   ],
   USER: [Permission.DASHBOARD_VIEW],
 };
