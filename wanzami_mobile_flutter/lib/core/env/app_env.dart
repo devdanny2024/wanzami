@@ -1,32 +1,75 @@
 enum AppFlavor { dev, stage, prod }
 
 class AppEnv {
-  static const String _prodLockedBaseUrl =
-      'https://wanzami-backend-alb-1018329891.us-east-2.elb.amazonaws.com/api';
+  // Use backend API origin directly in production to avoid frontend-proxy outages.
+  static const String _prodDefaultBaseUrl = 'https://api.blvckcode.io/api';
 
   final AppFlavor flavor;
   final String apiBaseUrl;
+  final String imageCdnBaseUrl;
+  final String imageOriginBaseUrl;
+  final String imageCacheVersion;
 
-  const AppEnv({required this.flavor, required this.apiBaseUrl});
+  const AppEnv({
+    required this.flavor,
+    required this.apiBaseUrl,
+    required this.imageCdnBaseUrl,
+    required this.imageOriginBaseUrl,
+    required this.imageCacheVersion,
+  });
 
   static AppEnv fromDefines() {
-    const flavorRaw = String.fromEnvironment('APP_ENV', defaultValue: 'dev');
     const overrideBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
+    const imageCdnBaseUrl = String.fromEnvironment('IMAGE_CDN_BASE_URL', defaultValue: '');
+    const imageOriginBaseUrl = String.fromEnvironment('IMAGE_ORIGIN_BASE_URL', defaultValue: '');
+    const imageCacheVersion = String.fromEnvironment('IMAGE_CACHE_VERSION', defaultValue: '');
 
-    final flavor = switch (flavorRaw.toLowerCase()) {
-      'prod' => AppFlavor.prod,
-      'stage' => AppFlavor.stage,
-      _ => AppFlavor.dev,
-    };
+    // Prod by default; allow explicit override for staging/hotfix testing.
+    final baseUrl = overrideBaseUrl.isNotEmpty ? overrideBaseUrl : _prodDefaultBaseUrl;
+    return AppEnv(
+      flavor: AppFlavor.prod,
+      apiBaseUrl: baseUrl,
+      imageCdnBaseUrl: imageCdnBaseUrl.trim(),
+      imageOriginBaseUrl: imageOriginBaseUrl.trim(),
+      imageCacheVersion: imageCacheVersion.trim(),
+    );
+  }
 
-    final baseUrl = overrideBaseUrl.isNotEmpty
-        ? overrideBaseUrl
-        : switch (flavor) {
-            AppFlavor.prod => _prodLockedBaseUrl,
-            AppFlavor.stage => 'https://staging.wanzami.example/api',
-            AppFlavor.dev => 'https://dev.wanzami.example/api',
-          };
+  String resolveImageUrl(String? rawUrl) {
+    final input = (rawUrl ?? '').trim();
+    if (input.isEmpty) return '';
+    if (input.startsWith('data:')) return input;
 
-    return AppEnv(flavor: flavor, apiBaseUrl: baseUrl);
+    final cdnBase = imageCdnBaseUrl.replaceFirst(RegExp(r'/+$'), '');
+    final originBase = imageOriginBaseUrl;
+
+    String resolved = input;
+
+    if (cdnBase.isNotEmpty) {
+      if (originBase.isNotEmpty && input.startsWith(originBase)) {
+        resolved = '$cdnBase${input.substring(originBase.length)}';
+      } else if (input.startsWith('/')) {
+        resolved = '$cdnBase$input';
+      } else if (!input.contains('://')) {
+        resolved = '$cdnBase/$input';
+      } else {
+        final uri = Uri.tryParse(input);
+        final keyPath = uri?.path.startsWith('/') == true
+            ? uri!.path.substring(1)
+            : uri?.path;
+        if (keyPath != null && keyPath.isNotEmpty) {
+          resolved = '$cdnBase/$keyPath';
+        }
+      }
+    }
+
+    if (imageCacheVersion.isEmpty) return resolved;
+
+    final uri = Uri.tryParse(resolved);
+    if (uri == null || !uri.hasScheme) return resolved;
+
+    final qp = Map<String, String>.from(uri.queryParameters);
+    qp.putIfAbsent('v', () => imageCacheVersion);
+    return uri.replace(queryParameters: qp).toString();
   }
 }

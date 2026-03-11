@@ -3,6 +3,50 @@ const API_BASE =
   process.env.AUTH_SERVICE_URL ??
   "https://wanzami-backend-alb-1018329891.us-east-2.elb.amazonaws.com/api";
 
+const IMAGE_CDN_BASE = (process.env.NEXT_PUBLIC_IMAGE_CDN_BASE_URL ?? "").trim();
+const IMAGE_ORIGIN_BASE = (process.env.NEXT_PUBLIC_IMAGE_ORIGIN_BASE_URL ?? "").trim();
+const IMAGE_CACHE_VERSION = (process.env.NEXT_PUBLIC_IMAGE_CACHE_VERSION ?? "").trim();
+
+export function resolveCdnImageUrl(rawUrl?: string | null) {
+  const input = (rawUrl ?? "").trim();
+  if (!input || input.startsWith("data:")) return input;
+
+  const cdnBase = IMAGE_CDN_BASE.replace(/\/+$/, "");
+  let resolved = input;
+
+  if (cdnBase) {
+    if (IMAGE_ORIGIN_BASE && input.startsWith(IMAGE_ORIGIN_BASE)) {
+      resolved = `${cdnBase}${input.slice(IMAGE_ORIGIN_BASE.length)}`;
+    } else if (input.startsWith("/")) {
+      resolved = `${cdnBase}${input}`;
+    } else if (!input.includes("://")) {
+      resolved = `${cdnBase}/${input}`;
+    } else {
+      try {
+        const url = new URL(input);
+        const keyPath = url.pathname.startsWith("/") ? url.pathname.slice(1) : url.pathname;
+        if (keyPath) {
+          resolved = `${cdnBase}/${keyPath}`;
+        }
+      } catch {
+        resolved = input;
+      }
+    }
+  }
+
+  if (!IMAGE_CACHE_VERSION) return resolved;
+
+  try {
+    const url = new URL(resolved);
+    if (!url.searchParams.has("v")) {
+      url.searchParams.set("v", IMAGE_CACHE_VERSION);
+    }
+    return url.toString();
+  } catch {
+    return resolved;
+  }
+}
+
 export type Title = {
   id: string;
   name: string;
@@ -58,6 +102,37 @@ export type PpvAccess = {
 // after login when cold caches or slow networks can add latency.
 const DEFAULT_TIMEOUT = 30000;
 
+function normalizeTitleImages<T extends Title>(title: T): T {
+  return {
+    ...title,
+    posterUrl: resolveCdnImageUrl(title.posterUrl),
+    thumbnailUrl: resolveCdnImageUrl(title.thumbnailUrl),
+    previewSpriteUrl: resolveCdnImageUrl(title.previewSpriteUrl),
+    previewVttUrl: resolveCdnImageUrl(title.previewVttUrl),
+    episodes: (title as any).episodes?.map((ep: any) => ({
+      ...ep,
+      posterUrl: resolveCdnImageUrl(ep.posterUrl),
+      thumbnailUrl: resolveCdnImageUrl(ep.thumbnailUrl),
+      previewSpriteUrl: resolveCdnImageUrl(ep.previewSpriteUrl),
+      previewVttUrl: resolveCdnImageUrl(ep.previewVttUrl),
+    })),
+    seasons: (title as any).seasons?.map((s: any) => ({
+      ...s,
+      posterUrl: resolveCdnImageUrl(s.posterUrl),
+      thumbnailUrl: resolveCdnImageUrl(s.thumbnailUrl),
+      previewSpriteUrl: resolveCdnImageUrl(s.previewSpriteUrl),
+      previewVttUrl: resolveCdnImageUrl(s.previewVttUrl),
+    })),
+  } as T;
+}
+
+function normalizeLiveEventImages<T extends LiveEvent>(event: T): T {
+  return {
+    ...event,
+    thumbnailUrl: resolveCdnImageUrl(event.thumbnailUrl),
+  };
+}
+
 async function handleJsonResponse(res: Response) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -84,7 +159,7 @@ export async function fetchTitles(country?: string): Promise<Title[]> {
     cache: "no-store",
   });
   const data = await handleJsonResponse(res);
-  return (data?.titles as Title[]) ?? [];
+  return ((data?.titles as Title[]) ?? []).map((title) => normalizeTitleImages(title));
 }
 
 export async function fetchTitleWithEpisodes(
@@ -104,7 +179,7 @@ export async function fetchTitleWithEpisodes(
     headers: Object.keys(headers).length ? headers : undefined,
   });
   const data = await handleJsonResponse(res);
-  return data?.title as Title & {
+  return normalizeTitleImages(data?.title as Title & {
     episodes?: Array<{
       id: string;
       seasonNumber: number;
@@ -139,7 +214,7 @@ export async function fetchTitleWithEpisodes(
       createdAt?: string;
       updatedAt?: string;
     }>;
-  };
+  });
 }
 
 export async function fetchPpvAccess(params: {
@@ -369,8 +444,14 @@ export async function fetchMyPpvTitles(params: {
   });
   const data = await handleJsonResponse(res);
   return {
-    activePurchases: data?.active ?? data?.activePurchases ?? [],
-    expiredPurchases: data?.expired ?? data?.expiredPurchases ?? [],
+    activePurchases: (data?.active ?? data?.activePurchases ?? []).map((p: any) => ({
+      ...p,
+      title: p?.title ? normalizeTitleImages(p.title as Title) : p?.title,
+    })),
+    expiredPurchases: (data?.expired ?? data?.expiredPurchases ?? []).map((p: any) => ({
+      ...p,
+      title: p?.title ? normalizeTitleImages(p.title as Title) : p?.title,
+    })),
   };
 }
 
@@ -522,7 +603,7 @@ export async function fetchLiveEvents(accessToken: string) {
     },
   });
   const data = await handleJsonResponse(res);
-  return (data?.events as LiveEvent[]) ?? [];
+  return ((data?.events as LiveEvent[]) ?? []).map((event) => normalizeLiveEventImages(event));
 }
 
 export async function fetchLiveEventById(id: string, accessToken: string) {
@@ -533,7 +614,7 @@ export async function fetchLiveEventById(id: string, accessToken: string) {
     },
   });
   const data = await handleJsonResponse(res);
-  return (data?.event as LiveEvent) ?? null;
+  return data?.event ? normalizeLiveEventImages(data.event as LiveEvent) : null;
 }
 
 export async function fetchLiveEventByUnlistedSlug(slug: string, accessToken: string) {
@@ -545,7 +626,7 @@ export async function fetchLiveEventByUnlistedSlug(slug: string, accessToken: st
     },
   });
   const data = await handleJsonResponse(res);
-  return (data?.event as LiveEvent) ?? null;
+  return data?.event ? normalizeLiveEventImages(data.event as LiveEvent) : null;
 }
 
 export async function fetchLiveEngagementSnapshot(eventId: string, accessToken: string, since?: string | null) {
