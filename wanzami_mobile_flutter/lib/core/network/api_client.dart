@@ -30,6 +30,28 @@ class ApiClient {
     );
   }
 
+  Future<http.Response> patch(
+    String url, {
+    Map<String, String>? headers,
+    Object? body,
+  }) {
+    return _sendWithRetry(
+      () => httpClient.patch(Uri.parse(url), headers: _authHeaders(headers), body: body),
+      () => httpClient.patch(Uri.parse(url), headers: _authHeaders(headers), body: body),
+    );
+  }
+
+  Future<http.Response> delete(
+    String url, {
+    Map<String, String>? headers,
+    Object? body,
+  }) {
+    return _sendWithRetry(
+      () => httpClient.delete(Uri.parse(url), headers: _authHeaders(headers), body: body),
+      () => httpClient.delete(Uri.parse(url), headers: _authHeaders(headers), body: body),
+    );
+  }
+
   Future<http.Response> _sendWithRetry(
     Future<http.Response> Function() firstCall,
     Future<http.Response> Function() retryCall,

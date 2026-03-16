@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:audio_session/audio_session.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:screen_brightness/screen_brightness.dart';
@@ -58,9 +59,10 @@ class _BrowsePageState extends State<BrowsePage> {
         final filtered = _selectedGenre == 'All'
             ? items
             : items
-                .where((e) => ('${e.title} ${e.description}')
-                    .toLowerCase()
-                    .contains(_selectedGenre.toLowerCase()))
+                .where((e) => e.genres
+                    .map((g) => g.trim().toLowerCase())
+                    .where((g) => g.isNotEmpty)
+                    .any((g) => g == _selectedGenre.trim().toLowerCase()))
                 .toList();
 
         return CustomScrollView(
@@ -1147,6 +1149,8 @@ class PlayerPage extends StatefulWidget {
   State<PlayerPage> createState() => _PlayerPageState();
 }
 
+enum _PlayerGestureSide { left, right }
+
 class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   static const _controlsAutoHideDelay = Duration(seconds: 4);
   static const _seekStep = Duration(seconds: 10);
@@ -1163,6 +1167,8 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   Timer? _hideControlsTimer;
   double _volumeLevel = 1;
   double _brightnessLevel = 0.5;
+  _PlayerGestureSide? _gestureSide;
+  double? _lastGestureGlobalY;
 
   final List<String> _reactionPresets = const ['❤️', '🔥', '👏', '😂', '🎉'];
   final TextEditingController _chatController = TextEditingController();
@@ -1175,6 +1181,11 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   String? _lastEngagementSync;
   Timer? _engagementTimer;
 
+  StreamSubscription<AudioInterruptionEvent>? _audioInterruptionSub;
+  StreamSubscription<void>? _becomingNoisySub;
+  bool _resumeAfterInterruption = false;
+  bool _inForeground = true;
+
   @override
   void initState() {
     super.initState();
@@ -1183,6 +1194,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     WidgetsBinding.instance
         .addPostFrameCallback((_) => _enterLandscapePlaybackMode());
     _prepare();
+    unawaited(_configureAudioInterruptionHandling());
     unawaited(_initPlayerFeedbackControls());
     unawaited(_updateWakeLock());
     if (_isLiveMode) {
@@ -1207,6 +1219,8 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     _openRequestId++;
     _hideControlsTimer?.cancel();
     _engagementTimer?.cancel();
+    _audioInterruptionSub?.cancel();
+    _becomingNoisySub?.cancel();
     _chatController.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _controller?.removeListener(_onVideoTick);
@@ -1220,15 +1234,24 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      _inForeground = true;
       unawaited(_enterLandscapePlaybackMode());
+      unawaited(_resumeAfterInterruptionIfNeeded());
       unawaited(_updateWakeLock());
       return;
     }
 
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.hidden ||
-        state == AppLifecycleState.paused ||
-        state == AppLifecycleState.detached) {
+        state == AppLifecycleState.paused) {
+      _inForeground = false;
+      unawaited(_pauseForInterruption());
+      unawaited(WakelockPlus.disable());
+      return;
+    }
+
+    if (state == AppLifecycleState.detached) {
+      _inForeground = false;
       unawaited(_stopPlayback(disposeController: false));
       unawaited(WakelockPlus.disable());
     }
@@ -1251,6 +1274,68 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     ]);
   }
 
+  Future<void> _configureAudioInterruptionHandling() async {
+    try {
+      final session = await AudioSession.instance;
+
+      _audioInterruptionSub = session.interruptionEventStream.listen((event) {
+        if (event.begin) {
+          unawaited(_pauseForInterruption());
+          return;
+        }
+
+        if (_inForeground) {
+          unawaited(_resumeAfterInterruptionIfNeeded());
+        }
+      });
+
+      _becomingNoisySub = session.becomingNoisyEventStream.listen((_) {
+        unawaited(_pauseForInterruption());
+      });
+    } catch (_) {
+      // Best-effort interruption handling.
+    }
+  }
+
+  Future<void> _pauseForInterruption() async {
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized) return;
+
+    _resumeAfterInterruption = controller.value.isPlaying;
+    if (!_resumeAfterInterruption) return;
+
+    try {
+      await controller.pause();
+    } catch (_) {}
+
+    await _updateWakeLock();
+  }
+
+  Future<void> _resumeAfterInterruptionIfNeeded() async {
+    if (!_resumeAfterInterruption || _isDisposed) return;
+
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized) {
+      if (_isLiveMode && _sources.isNotEmpty) {
+        await _openSource(_sourceIndex.clamp(0, _sources.length - 1).toInt());
+      }
+      _resumeAfterInterruption = false;
+      return;
+    }
+
+    try {
+      await controller.play();
+      _showControlsTemporarily();
+    } catch (_) {
+      if (_isLiveMode && _sources.isNotEmpty) {
+        await _openSource(_sourceIndex.clamp(0, _sources.length - 1).toInt());
+      }
+    } finally {
+      _resumeAfterInterruption = false;
+      await _updateWakeLock();
+    }
+  }
+
   Future<void> _stopPlayback({required bool disposeController}) async {
     final controller = _controller;
     if (controller == null) return;
@@ -1262,6 +1347,8 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     try {
       await controller.seekTo(Duration.zero);
     } catch (_) {}
+
+    _resumeAfterInterruption = false;
 
     if (disposeController) {
       _controller = null;
@@ -1326,6 +1413,34 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       await ScreenBrightness.instance.setScreenBrightness(clamped);
     } catch (_) {}
     _showControlsTemporarily();
+  }
+
+  void _handleVerticalDragStart(DragStartDetails details, double width) {
+    _gestureSide = details.localPosition.dx < (width / 2)
+        ? _PlayerGestureSide.left
+        : _PlayerGestureSide.right;
+    _lastGestureGlobalY = details.globalPosition.dy;
+  }
+
+  void _handleVerticalDragUpdate(DragUpdateDetails details) {
+    if (_gestureSide == null || _lastGestureGlobalY == null) return;
+
+    final deltaY = _lastGestureGlobalY! - details.globalPosition.dy;
+    _lastGestureGlobalY = details.globalPosition.dy;
+
+    if (deltaY.abs() < 1) return;
+
+    final nextDelta = deltaY / 280;
+    if (_gestureSide == _PlayerGestureSide.left) {
+      unawaited(_setBrightness(_brightnessLevel + nextDelta));
+    } else {
+      unawaited(_setVolume(_volumeLevel + nextDelta));
+    }
+  }
+
+  void _handleVerticalDragEnd([DragEndDetails? _]) {
+    _gestureSide = null;
+    _lastGestureGlobalY = null;
   }
 
   void _restartAutoHideTimer() {
@@ -1575,6 +1690,13 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
         body: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: initialized ? _toggleControls : null,
+          onVerticalDragStart: initialized
+              ? (details) => _handleVerticalDragStart(
+                  details, MediaQuery.of(context).size.width)
+              : null,
+          onVerticalDragUpdate:
+              initialized ? _handleVerticalDragUpdate : null,
+          onVerticalDragEnd: initialized ? _handleVerticalDragEnd : null,
           child: Stack(
             children: [
               Positioned.fill(
@@ -1751,34 +1873,20 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.brightness_6,
-                                  color: Colors.white70, size: 18),
-                              Expanded(
-                                child: Slider(
-                                  value: _brightnessLevel,
-                                  min: 0,
-                                  max: 1,
-                                  activeColor: AppTokens.brandOrange,
-                                  inactiveColor: const Color(0x55FFFFFF),
-                                  onChanged: (value) => _setBrightness(value),
+                          const Padding(
+                            padding: EdgeInsets.only(bottom: 6),
+                            child: Row(
+                              children: [
+                                Icon(Icons.swipe_up_alt,
+                                    color: Colors.white60, size: 16),
+                                SizedBox(width: 6),
+                                Text(
+                                  'Swipe up/down on left for brightness, right for volume',
+                                  style: TextStyle(
+                                      color: Colors.white60, fontSize: 12),
                                 ),
-                              ),
-                              const SizedBox(width: 10),
-                              const Icon(Icons.volume_up,
-                                  color: Colors.white70, size: 18),
-                              Expanded(
-                                child: Slider(
-                                  value: _volumeLevel,
-                                  min: 0,
-                                  max: 1,
-                                  activeColor: AppTokens.brandOrange,
-                                  inactiveColor: const Color(0x55FFFFFF),
-                                  onChanged: (value) => _setVolume(value),
-                                ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                           VideoProgressIndicator(
                             c!,

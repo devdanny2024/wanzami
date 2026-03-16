@@ -1,0 +1,8 @@
+# Copy this file to key.properties and fill the values.
+# DO NOT COMMIT key.properties
+
+# Path to your keystore file (relative to android/)
+storeFile=../wanzami-upload.keystore
+storePassword=CHANGE_ME
+keyAlias=wanzami
+keyPassword=CHANGE_ME

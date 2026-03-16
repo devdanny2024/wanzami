@@ -11,6 +11,15 @@ dependencies:
     sdk: flutter
   http: ^1.2.2
   flutter_secure_storage: ^9.2.2
+  audio_session: ^0.1.25
+  video_player: ^2.9.2
+  flutter_web_auth_2: ^5.0.1
+  google_sign_in: ^6.2.1
+  url_launcher: ^6.3.0
+  webview_flutter: ^4.10.0
+  wakelock_plus: ^1.2.8
+  volume_controller: ^3.4.0
+  screen_brightness: ^1.0.1
 
 dev_dependencies:
   flutter_test:
@@ -19,3 +28,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/images/
