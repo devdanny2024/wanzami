@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Play, Plus, Info } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Play, Info } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 
@@ -15,6 +15,7 @@ export interface MovieData {
   description?: string | null;
   year?: string | number;
   trailerUrl?: string | null;
+  shortTrailerUrl?: string | null;
   type?: string;
   createdAt?: string;
   posterUrl?: string;
@@ -40,6 +41,9 @@ interface MovieCardProps {
 
 export function MovieCard({ movie, onClick }: MovieCardProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const hoverTimerRef = useRef<number | null>(null);
+
   const isFree = (movie as any)?.isPpv === false;
   const ownedByCache = (() => {
     if (typeof window === 'undefined') return false;
@@ -65,14 +69,58 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
     ) ||
     ownedByCache;
 
+  const hoverTrailerUrl = movie.shortTrailerUrl || movie.trailerUrl;
+  const canHoverPlayTrailer = Boolean(
+    hoverTrailerUrl &&
+      typeof hoverTrailerUrl === 'string' &&
+      // Keep it safe + lightweight: hover autoplay works best with direct MP4/WebM.
+      // If you later want HLS (.m3u8), we can wire hls.js just for hover.
+      !hoverTrailerUrl.includes('.m3u8'),
+  );
+
+  useEffect(() => {
+    // Cleanup on unmount
+    return () => {
+      if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current);
+    };
+  }, []);
+
+  const handleEnter = () => {
+    setIsHovered(true);
+    if (!canHoverPlayTrailer) return;
+
+    if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = window.setTimeout(async () => {
+      const v = videoRef.current;
+      if (!v) return;
+      try {
+        v.currentTime = 0;
+        await v.play();
+      } catch {
+        // Autoplay can still be blocked depending on browser/user settings.
+      }
+    }, 250);
+  };
+
+  const handleLeave = () => {
+    setIsHovered(false);
+    if (hoverTimerRef.current) window.clearTimeout(hoverTimerRef.current);
+
+    const v = videoRef.current;
+    if (v) {
+      v.pause();
+      v.currentTime = 0;
+    }
+  };
+
   return (
     <motion.div
-      className="relative group cursor-pointer flex-shrink-0 min-w-[200px] sm:min-w-0 rounded-2xl border border-white/10 bg-white/5 p-4"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      className="relative group cursor-pointer flex-shrink-0 min-w-[200px] sm:min-w-0 rounded-2xl border border-white/10 bg-white/5 p-4 hover:z-50"
+      onMouseEnter={handleEnter}
+      onMouseLeave={handleLeave}
       onClick={() => onClick(movie)}
-      whileHover={{ scale: 1.05 }}
-      transition={{ duration: 0.2 }}
+      whileHover={{ scale: 1.12, y: -8 }}
+      transition={{ duration: 0.18 }}
     >
       <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-900">
         <ImageWithFallback
@@ -80,6 +128,22 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
           alt={movie.title}
           className="w-full h-full object-cover"
         />
+
+        {/* Hover trailer preview (muted autoplay) */}
+        {canHoverPlayTrailer && hoverTrailerUrl && (
+          <video
+            ref={videoRef}
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-150 ${
+              isHovered ? 'opacity-100' : 'opacity-0'
+            }`}
+            src={hoverTrailerUrl}
+            muted
+            playsInline
+            preload="metadata"
+            // loop feels closer to Netflix hover previews
+            loop
+          />
+        )}
 
         {/* Play overlay for owned titles */}
         {owned && (
