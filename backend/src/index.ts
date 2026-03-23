@@ -35,7 +35,9 @@ const allowedOrigins = [
 
 const allowedOriginPatterns = [
   // Vercel preview domains for Wanzami frontend/admin under this project team.
-  /^https:\/\/wanzami(?:-admin)?-git-[a-z0-9-]+-blvckcodeios-projects\.vercel\.app$/i,
+  // Keep broad enough for branch preview naming changes.
+  /^https:\/\/wanzami(?:-admin)?-git-[^.]+-blvckcodeios-projects\.vercel\.app$/i,
+  /^https:\/\/wanzami(?:-admin)?-[^.]*\.vercel\.app$/i,
 ];
 
 const isAllowedOrigin = (origin: string) =>
