@@ -33,11 +33,19 @@ const allowedOrigins = [
   "http://localhost:4173",
 ];
 
+const allowedOriginPatterns = [
+  // Vercel preview domains for Wanzami frontend/admin under this project team.
+  /^https:\/\/wanzami(?:-admin)?-git-[a-z0-9-]+-blvckcodeios-projects\.vercel\.app$/i,
+];
+
+const isAllowedOrigin = (origin: string) =>
+  allowedOrigins.includes(origin) || allowedOriginPatterns.some((re) => re.test(origin));
+
 app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
+      if (isAllowedOrigin(origin)) return callback(null, true);
       return callback(null, false);
     },
     credentials: false,
