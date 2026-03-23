@@ -362,3 +362,5 @@ npm run test
 ```
 
 If you want, this README can be expanded later with architecture diagrams, API endpoint catalog, and a single script to boot local services together.
+
+[ci-test] trigger deploy workflow check - 2026-03-23
