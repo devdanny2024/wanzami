@@ -53,6 +53,7 @@ export function MoviesManagement() {
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [movies, setMovies] = useState<MovieTitle[]>([]);
+  const [hoveredMovieId, setHoveredMovieId] = useState<string | null>(null);
   const { startUpload, startAssetUpload, tasks } = useUploadQueue();
 
   const token = useMemo(() => (typeof window !== "undefined" ? localStorage.getItem("accessToken") : null), []);
@@ -239,17 +240,33 @@ export function MoviesManagement() {
                   : movie.pendingReview
                   ? "Pending review"
                   : "Live";
+                const trailerPreviewUrl = movie.shortTrailerUrl || movie.trailerUrl || "";
+                const shouldPreview = hoveredMovieId === movie.id && Boolean(trailerPreviewUrl);
                 return (
                   <div
                     key={movie.id}
                     className="relative rounded-xl overflow-hidden border border-neutral-800 bg-neutral-950 group"
+                    onMouseEnter={() => setHoveredMovieId(movie.id)}
+                    onMouseLeave={() => setHoveredMovieId((curr) => (curr === movie.id ? null : curr))}
                   >
                     <div className="relative h-56">
-                      <ImageWithFallback
-                        src={movie.thumbnailUrl || movie.posterUrl || ""}
-                        alt={movie.name}
-                        className="w-full h-full object-cover"
-                      />
+                      {shouldPreview ? (
+                        <video
+                          src={trailerPreviewUrl}
+                          className="w-full h-full object-cover"
+                          autoPlay
+                          muted
+                          loop
+                          playsInline
+                          preload="metadata"
+                        />
+                      ) : (
+                        <ImageWithFallback
+                          src={movie.thumbnailUrl || movie.posterUrl || ""}
+                          alt={movie.name}
+                          className="w-full h-full object-cover"
+                        />
+                      )}
                       <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
                         <Button
                           size="sm"
