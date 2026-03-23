@@ -89,7 +89,7 @@ export function RegistrationFlow({ onAuth, onBack, onLogin }: RegistrationFlowPr
       const apiBase =
         process.env.NEXT_PUBLIC_API_BASE ||
         process.env.AUTH_SERVICE_URL ||
-        "https://api.carlylehub.org/api";
+        "https://api.blvckcode.io/api";
       const redirectUri = `${window.location.origin}/oauth/google/callback`;
       const res = await fetch(
         `${apiBase.replace(/\/+$/, "")}/auth/google/url?redirectUri=${encodeURIComponent(redirectUri)}`
