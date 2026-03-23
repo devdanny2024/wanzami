@@ -241,6 +241,75 @@ export const listPublicTitles = async (req, res) => {
     }));
     return res.json({ titles: localized });
 };
+export const searchPublicTitles = async (req, res) => {
+    const countryOverride = req.query.country?.toUpperCase()?.trim();
+    const country = countryOverride || resolveCountry(req);
+    const kidMode = parseKidMode(req);
+    const age = deriveAge(req);
+    const q = req.query.q?.trim() ?? "";
+    const where = {
+        archived: false,
+        pendingReview: false,
+        OR: [
+            { countryAvailability: { has: country } },
+            { countryAvailability: { equals: [] } },
+        ],
+        AND: maturityClause(kidMode, age),
+    };
+    if (q) {
+        where.AND = [
+            ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
+            {
+                OR: [
+                    { name: { contains: q, mode: "insensitive" } },
+                    { description: { contains: q, mode: "insensitive" } },
+                    { genres: { has: q } },
+                ],
+            },
+        ];
+    }
+    const titles = await prisma.title.findMany({
+        where,
+        orderBy: [{ releaseDate: "desc" }, { createdAt: "desc" }],
+        include: {
+            episodes: { select: { id: true } },
+            seasons: { select: { id: true } },
+        },
+        take: 100,
+    });
+    return res.json({
+        titles: titles.map((t) => ({
+            id: t.id.toString(),
+            name: t.name,
+            type: t.type,
+            description: t.description,
+            genres: t.genres,
+            cast: t.cast,
+            crew: t.crew,
+            language: t.language,
+            maturityRating: t.maturityRating,
+            runtimeMinutes: t.runtimeMinutes,
+            countryAvailability: t.countryAvailability,
+            isOriginal: t.isOriginal,
+            posterUrl: t.posterUrl,
+            thumbnailUrl: t.thumbnailUrl,
+            trailerUrl: t.trailerUrl,
+            shortTrailerUrl: t.shortTrailerUrl,
+            archived: t.archived,
+            pendingReview: t.pendingReview,
+            isPpv: t.isPpv,
+            ppvPriceNaira: t.ppvPriceNaira,
+            ppvCurrency: t.ppvCurrency,
+            ppvDescription: t.ppvDescription,
+            createdAt: t.createdAt,
+            updatedAt: t.updatedAt,
+            episodeCount: t.episodes.length,
+            seasonCount: t.seasons.length,
+            releaseDate: t.releaseDate,
+            releaseYear: t.releaseDate ? t.releaseDate.getUTCFullYear() : undefined,
+        })),
+    });
+};
 export const getTitleWithEpisodes = async (req, res) => {
     const titleId = req.params.id ? BigInt(req.params.id) : null;
     if (!titleId) {

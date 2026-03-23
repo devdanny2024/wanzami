@@ -1,10 +1,6 @@
 import { Queue } from "bullmq";
-import IORedis from "ioredis";
-import { config } from "../config.js";
-const connection = new IORedis(config.redisUrl, {
-    maxRetriesPerRequest: null,
-    enableReadyCheck: false,
-});
+import { createRedisConnection, resilientEnqueue } from "./redisClient.js";
+const connection = createRedisConnection("transcodeQueue");
 // Use a hashtagged prefix so BullMQ keys hash to the same slot in Redis Cluster/Valkey.
 const prefix = "{bullmq}";
 export const transcodeQueue = new Queue("transcode", {
@@ -17,3 +13,9 @@ export const transcodeQueue = new Queue("transcode", {
         removeOnFail: 5000,
     },
 });
+transcodeQueue.on("error", (err) => {
+    console.error("[transcodeQueue] Queue error", {
+        message: err?.message,
+    });
+});
+export const enqueueTranscodeJob = async (data, opts) => resilientEnqueue("transcodeQueue", () => transcodeQueue.add("transcode", data, opts));

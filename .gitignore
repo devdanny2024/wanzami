@@ -39,3 +39,20 @@ infra/terraform/terraform.tfstate.*
 UI Changes & Additions/
 /Custom Media Player/
 Admin Series Management Design/
+
+# Backend build output (if generated)
+backend/dist/
+
+# Flutter / Android build artifacts
+wanzami_mobile_flutter/android/build/
+wanzami_mobile_flutter/.flutter-plugins
+
+# Large packs / zips
+*.zip
+Wanzami_Submission_Pack_rev2/
+Wanzami Smart TV and Tablet Expansion/
+
+
+# Temp scripts
+wanzami_mobile_flutter/.tmp_check_apk.py
+

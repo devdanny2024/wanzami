@@ -20,6 +20,20 @@ export const config = {
         accelerate: process.env.S3_ACCELERATE === "true",
     },
     redisUrl: process.env.REDIS_URL ?? "redis://localhost:6379",
+    redis: {
+        url: process.env.REDIS_URL ?? "redis://localhost:6379",
+        tls: process.env.REDIS_TLS === "true" ||
+            (process.env.REDIS_URL ?? "").toLowerCase().startsWith("rediss://"),
+        connectTimeoutMs: numberOrDefault(process.env.REDIS_CONNECT_TIMEOUT_MS, 10000),
+        lazyConnect: process.env.REDIS_LAZY_CONNECT !== "false",
+        retryBaseDelayMs: numberOrDefault(process.env.REDIS_RETRY_BASE_DELAY_MS, 250),
+        retryMaxDelayMs: numberOrDefault(process.env.REDIS_RETRY_MAX_DELAY_MS, 5000),
+        maxReconnectAttempts: numberOrDefault(process.env.REDIS_MAX_RECONNECT_ATTEMPTS, 50),
+        enqueueOperationTimeoutMs: numberOrDefault(process.env.QUEUE_ENQUEUE_TIMEOUT_MS, 2500),
+        enqueueMaxAttempts: numberOrDefault(process.env.QUEUE_ENQUEUE_MAX_ATTEMPTS, 3),
+        enqueueRetryBaseDelayMs: numberOrDefault(process.env.QUEUE_ENQUEUE_RETRY_BASE_DELAY_MS, 200),
+        enqueueRetryMaxDelayMs: numberOrDefault(process.env.QUEUE_ENQUEUE_RETRY_MAX_DELAY_MS, 2000),
+    },
     ffmpegPath: process.env.FFMPEG_PATH,
     uploadMaxConcurrency: numberOrDefault(process.env.UPLOAD_MAX_CONCURRENCY, 10),
     downloadMaxConcurrency: numberOrDefault(process.env.DOWNLOAD_MAX_CONCURRENCY, 10),
@@ -39,8 +53,10 @@ export const config = {
         encryptionKey: process.env.FLW_ENCRYPTION_KEY ?? "",
         baseUrl: process.env.FLW_BASE_URL ?? "https://api.flutterwave.com",
         webhookSecret: process.env.FLW_WEBHOOK_SECRET ?? "",
-        callbackUrl: process.env.FLW_CALLBACK_URL ?? process.env.PAYSTACK_CALLBACK_URL ?? "",
+        callbackUrl: process.env.FLW_CALLBACK_URL ?? "",
+        appSessionReturnUrl: process.env.FLW_APP_SESSION_RETURN_URL ?? "",
     },
+    apiPublicUrl: process.env.API_PUBLIC_URL ?? process.env.BACKEND_URL ?? "",
     fx: {
         apiBase: process.env.FX_API_BASE ?? "https://api.exchangerate.host/latest",
         cacheTtlMs: numberOrDefault(process.env.FX_CACHE_TTL_MS, 6 * 60 * 60 * 1000),
@@ -53,5 +69,8 @@ export const config = {
     ivs: {
         region: process.env.IVS_REGION ?? process.env.AWS_REGION ?? "us-east-1",
         recordingEnabled: process.env.IVS_RECORDING_ENABLED === "true",
+    },
+    live: {
+        sourceHeartbeatTimeoutMs: numberOrDefault(process.env.LIVE_SOURCE_HEARTBEAT_TIMEOUT_MS, 45000),
     },
 };

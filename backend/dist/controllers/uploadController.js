@@ -4,7 +4,7 @@ import { prisma } from "../prisma.js";
 import { createMultipartUpload, presignPartUrls, presignPartUrlsForNumbers, completeMultipartUpload, partSizeBytes, listMultipartParts, } from "../upload/s3.js";
 import { config } from "../config.js";
 import { UploadStatus, Rendition, TitleType, AssetStatus } from "@prisma/client";
-import { transcodeQueue } from "../queues/transcodeQueue.js";
+import { enqueueTranscodeJob } from "../queues/transcodeQueue.js";
 const initSchema = z.object({
     kind: z.enum(["MOVIE", "SERIES", "EPISODE"]),
     titleId: z.coerce.bigint().optional(),
@@ -201,21 +201,30 @@ export const completeUpload = async (req, res) => {
             error: null,
         },
     });
-    try {
-        await transcodeQueue.add("transcode", {
-            uploadJobId: updated.id.toString(),
-            key,
-            renditions: targetRenditions,
-            titleId: job.titleId ? job.titleId.toString() : null,
-            episodeId: job.episodeId ? job.episodeId.toString() : null,
-        });
-    }
-    catch (err) {
+    const enqueueResult = await enqueueTranscodeJob({
+        uploadJobId: updated.id.toString(),
+        key,
+        renditions: targetRenditions,
+        titleId: job.titleId ? job.titleId.toString() : null,
+        episodeId: job.episodeId ? job.episodeId.toString() : null,
+    });
+    if (!enqueueResult.ok) {
         await prisma.uploadJob.update({
             where: { id: jobId },
-            data: { status: UploadStatus.FAILED, error: err?.message ?? "Failed to enqueue transcode" },
+            data: {
+                status: UploadStatus.PROCESSING,
+                error: `Transcode queue unavailable: ${enqueueResult.reason}`,
+            },
         });
-        return res.status(500).json({ message: "Failed to enqueue transcode", error: err?.message });
+        return res.status(202).json({
+            message: "Upload completed, but transcode queue is temporarily unavailable. Retry transcode when Redis recovers.",
+            queued: false,
+            reason: enqueueResult.reason,
+            job: {
+                id: updated.id.toString(),
+                status: UploadStatus.PROCESSING,
+            },
+        });
     }
     return res.json({
         job: {
@@ -286,14 +295,21 @@ export const retryTranscode = async (req, res) => {
             error: null,
         },
     });
-    await transcodeQueue.add("transcode", {
+    const enqueueResult = await enqueueTranscodeJob({
         uploadJobId: updated.id.toString(),
         key,
         renditions,
         titleId: job.titleId ? job.titleId.toString() : null,
         episodeId: job.episodeId ? job.episodeId.toString() : null,
     });
-    return res.json({ message: "Transcode requeued", jobId: updated.id.toString() });
+    if (!enqueueResult.ok) {
+        await prisma.uploadJob.update({
+            where: { id: jobId },
+            data: { status: UploadStatus.FAILED, error: `Retry enqueue failed: ${enqueueResult.reason}` },
+        });
+        return res.status(503).json({ message: "Redis queue unavailable", error: enqueueResult.reason });
+    }
+    return res.json({ message: "Transcode requeued", jobId: updated.id.toString(), queueJobId: enqueueResult.id });
 };
 export const backfillTranscodes = async (req, res) => {
     const rawLimit = req.body?.limit ?? req.query.limit;
@@ -339,13 +355,20 @@ export const backfillTranscodes = async (req, res) => {
                 error: null,
             },
         });
-        await transcodeQueue.add("transcode", {
+        const enqueueResult = await enqueueTranscodeJob({
             uploadJobId: updated.id.toString(),
             key,
             renditions,
             titleId: job.titleId ? job.titleId.toString() : null,
             episodeId: job.episodeId ? job.episodeId.toString() : null,
         });
+        if (!enqueueResult.ok) {
+            await prisma.uploadJob.update({
+                where: { id: job.id },
+                data: { status: UploadStatus.FAILED, error: `Backfill enqueue failed: ${enqueueResult.reason}` },
+            });
+            continue;
+        }
         queued.push(updated.id.toString());
     }
     return res.json({

@@ -4,6 +4,7 @@ import {
   listTitles,
   listEpisodesForTitle,
   listPublicTitles,
+  searchPublicTitles,
   getTitleWithEpisodes,
   createTitle,
   updateTitle,
@@ -25,6 +26,7 @@ const router = Router();
 
 // Public catalog
 router.get("/titles", listPublicTitles);
+router.get("/search/titles", searchPublicTitles);
 router.get("/titles/:id", getTitleWithEpisodes);
 router.get("/titles/:id/episodes", listEpisodesForTitle);
 

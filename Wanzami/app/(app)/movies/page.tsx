@@ -10,6 +10,7 @@ import {
   fetchBecauseYouWatched,
   fetchForYou,
   fetchMyPpvTitles,
+  resolveCdnImageUrl,
 } from "@/lib/contentClient";
 import { MovieData } from "@/components/MovieCard";
 
@@ -47,7 +48,7 @@ export default function MoviesPage() {
               id: safeId,
               backendId: title.id,
               title: title.name,
-              image: title.thumbnailUrl || title.posterUrl || fallbackImage,
+              image: resolveCdnImageUrl(title.thumbnailUrl || title.posterUrl || fallbackImage),
               description: title.description,
               rating: displayRating,
               type: title.type,
@@ -139,7 +140,7 @@ export default function MoviesPage() {
         id: Number(backendId) || Date.now() + idx,
         backendId,
         title: item.name ?? item.title ?? `Title ${backendId}`,
-        image: item.thumbnailUrl || item.posterUrl || fallbackImage,
+        image: resolveCdnImageUrl(item.thumbnailUrl || item.posterUrl || fallbackImage),
         posterUrl: item.posterUrl,
         thumbnailUrl: item.thumbnailUrl,
         type: item.type ?? "MOVIE",
@@ -216,10 +217,11 @@ export default function MoviesPage() {
                 id: backendId ? Number(backendId) || Date.now() + idx : Date.now() + idx,
                 backendId: backendId ?? `item-${idx}`,
                 title: item.name ?? `Title ${backendId ?? idx}`,
-                image:
+                image: resolveCdnImageUrl(
                   item.thumbnailUrl ||
                   item.posterUrl ||
                   "https://placehold.co/600x900/111111/FD7E14?text=Wanzami",
+                ),
               } as MovieData);
             }
           });

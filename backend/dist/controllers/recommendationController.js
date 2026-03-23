@@ -66,11 +66,13 @@ export const continueWatching = async (req, res) => {
         // events are not lost if there is a lot of recent activity.
         take: 200,
     });
-    const bestByTitle = new Map();
+    const latestByTitle = new Map();
     for (const e of events) {
-        if (!e.titleId)
+        if (!e.titleId || latestByTitle.has(e.titleId))
             continue;
         const metadata = typeof e.metadata === "object" && e.metadata !== null ? e.metadata : {};
+        const positionSec = Number(metadata.positionSec);
+        const durationSec = Number(metadata.durationSec);
         let completion = Number(typeof metadata.completionPercent === "number"
             ? metadata.completionPercent
             : typeof metadata.completion === "number"
@@ -78,30 +80,34 @@ export const continueWatching = async (req, res) => {
                 : NaN);
         // Fallback: derive completion from position / duration when percent is missing.
         if (Number.isNaN(completion)) {
-            const pos = Number(metadata.positionSec);
-            const dur = Number(metadata.durationSec);
-            if (Number.isFinite(pos) && Number.isFinite(dur) && dur > 0) {
-                completion = Math.max(0, Math.min(1, pos / dur));
+            if (Number.isFinite(positionSec) && Number.isFinite(durationSec) && durationSec > 0) {
+                completion = Math.max(0, Math.min(1, positionSec / durationSec));
             }
         }
-        if (!Number.isFinite(completion) || completion <= 0)
+        const normalizedCompletion = Number.isFinite(completion)
+            ? Math.max(0, Math.min(1, completion))
+            : 0;
+        const hasProgress = normalizedCompletion > 0 ||
+            (Number.isFinite(positionSec) && positionSec > 0 && Number.isFinite(durationSec) && durationSec > 0);
+        if (!hasProgress)
             continue;
-        const existing = bestByTitle.get(e.titleId);
-        if (!existing) {
-            bestByTitle.set(e.titleId, { completion, lastAt: e.occurredAt });
-        }
-        else {
-            bestByTitle.set(e.titleId, {
-                completion: completion > existing.completion ? completion : existing.completion,
-                lastAt: e.occurredAt > existing.lastAt ? e.occurredAt : existing.lastAt,
-            });
-        }
+        latestByTitle.set(e.titleId, {
+            completion: normalizedCompletion,
+            lastAt: e.occurredAt,
+            positionSec: Number.isFinite(positionSec) ? Math.max(0, Math.floor(positionSec)) : undefined,
+            durationSec: Number.isFinite(durationSec) ? Math.max(0, Math.floor(durationSec)) : undefined,
+        });
     }
-    const candidates = Array.from(bestByTitle.entries()).map(([titleId, stats]) => ({
+    const candidates = Array.from(latestByTitle.entries())
+        .map(([titleId, stats]) => ({
         titleId,
         completion: stats.completion,
+        positionSec: stats.positionSec,
+        durationSec: stats.durationSec,
         lastAt: stats.lastAt.getTime(),
-    }));
+    }))
+        // Continue Watching should only surface titles still in progress.
+        .filter((c) => c.completion > 0 && c.completion < 0.98);
     if (!candidates.length) {
         return res.json({ items: [] });
     }
@@ -128,6 +134,9 @@ export const continueWatching = async (req, res) => {
             thumbnailUrl: t.thumbnailUrl,
             runtimeMinutes: t.runtimeMinutes,
             completionPercent: Math.max(0, Math.min(1, c.completion)),
+            positionSec: c.positionSec,
+            durationSec: c.durationSec,
+            lastWatchedAt: new Date(c.lastAt).toISOString(),
         };
     })
         .filter(Boolean);

@@ -10,6 +10,7 @@ import {
   fetchBecauseYouWatched,
   fetchForYou,
   fetchMyPpvTitles,
+  resolveCdnImageUrl,
 } from "@/lib/contentClient";
 import { MovieData } from "@/components/MovieCard";
 
@@ -47,7 +48,7 @@ export default function SeriesPage() {
               id: safeId,
               backendId: title.id,
               title: title.name,
-              image: title.thumbnailUrl || title.posterUrl || fallbackImage,
+              image: resolveCdnImageUrl(title.thumbnailUrl || title.posterUrl || fallbackImage),
               description: title.description,
               rating: displayRating,
               type: title.type,
@@ -149,7 +150,7 @@ export default function SeriesPage() {
               id: Number(i.titleId ?? i.id ?? idx) || Date.now() + idx,
               backendId: i.titleId ?? i.id ?? String(idx),
               title: i.name ?? i.title ?? `Series ${i.titleId ?? i.id ?? idx}`,
-              image: i.thumbnailUrl || i.posterUrl || "https://placehold.co/640x360/111111/FD7E14?text=Wanzami",
+              image: resolveCdnImageUrl(i.thumbnailUrl || i.posterUrl || "https://placehold.co/640x360/111111/FD7E14?text=Wanzami"),
               type: i.type ?? "SERIES",
               completionPercent: typeof i.completionPercent === "number" ? i.completionPercent : undefined,
               runtimeMinutes: i.runtimeMinutes ?? 0,

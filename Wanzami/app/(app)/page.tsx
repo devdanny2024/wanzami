@@ -11,6 +11,7 @@ import {
   fetchForYou,
   fetchLiveEvents,
   fetchMyPpvTitles,
+  resolveCdnImageUrl,
 } from "@/lib/contentClient";
 import { MovieData } from "@/components/MovieCard";
 
@@ -56,7 +57,7 @@ export default function HomeRoute() {
               id: safeId,
               backendId: title.id,
               title: title.name,
-              image: title.thumbnailUrl || title.posterUrl || fallbackImage,
+              image: resolveCdnImageUrl(title.thumbnailUrl || title.posterUrl || fallbackImage),
               description: title.description,
               rating: displayRating,
               type: title.type,
@@ -271,7 +272,7 @@ export default function HomeRoute() {
                   id: Number(backendId) || Date.now() + idx,
                   backendId,
                   title: item.name ?? `Title ${backendId}`,
-                  image: item.thumbnailUrl || item.posterUrl || fallbackImage,
+                  image: resolveCdnImageUrl(item.thumbnailUrl || item.posterUrl || fallbackImage),
                   type: (item.type as any) ?? "MOVIE",
                   runtimeMinutes,
                   genres: item.genres,
