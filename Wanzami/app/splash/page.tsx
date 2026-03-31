@@ -5,7 +5,7 @@ import { Play, Download, Users, MonitorPlay, Tv } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { Footer } from "@/components/Footer";
 import { StartupSound } from "@/components/StartupSound";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 const features = [
   {
@@ -149,27 +149,19 @@ function Features() {
 
 export default function SplashPage() {
   const router = useRouter();
-  const [soundReady, setSoundReady] = useState(false);
   const [navigating, setNavigating] = useState(false);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setSoundReady(true), 2500);
-    return () => window.clearTimeout(timer);
-  }, []);
 
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden splash-root">
-      {(!soundReady || navigating) && (
+      {navigating && (
         <div className="absolute inset-0 z-[70] flex items-start justify-center pointer-events-none">
           <div className="mt-6 px-4 py-3 bg-black/75 border border-white/10 rounded-2xl shadow-lg flex items-center gap-3">
             <div className="w-6 h-6 border-3 border-[#fd7e14] border-t-transparent rounded-full animate-spin" />
-            <p className="text-white/80 text-sm">
-              {navigating ? "Loading Wanzami…" : "Loading your experience…"}
-            </p>
+            <p className="text-white/80 text-sm">Loading Wanzami…</p>
           </div>
         </div>
       )}
-      <StartupSound onReady={() => setSoundReady(true)} />
+      <StartupSound />
       <Header
         onLogin={() => {
           setNavigating(true);

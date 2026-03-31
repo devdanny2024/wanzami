@@ -3,41 +3,36 @@
 import { useEffect, useRef } from 'react';
 
 /**
- * Plays a short Wanzami brand sound on app load with a graceful fallback:
- * - Attempts autoplay on mount.
- * - If blocked by the browser, waits for the first user interaction to play once.
+ * Plays a short Wanzami brand sound on app load in a non-blocking way.
+ *
+ * Source priority:
+ * 1) NEXT_PUBLIC_STARTUP_SOUND_URL (recommended CDN URL)
+ * 2) local /wanzami-surround.wav
  */
-type StartupSoundProps = {
-  onReady?: () => void;
-};
+function resolveSoundUrl() {
+  const direct = process.env.NEXT_PUBLIC_STARTUP_SOUND_URL?.trim();
+  if (direct) return direct;
+  return '/wanzami-surround.wav';
+}
 
-export function StartupSound({ onReady }: StartupSoundProps) {
+export function StartupSound() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const attemptedAuto = useRef(false);
   const playedAudible = useRef(false);
-  const readyCalled = useRef(false);
-
-  const signalReady = () => {
-    if (readyCalled.current) return;
-    readyCalled.current = true;
-    onReady?.();
-  };
 
   useEffect(() => {
     const playSound = async () => {
-      // Try a muted autoplay to warm up; don't mark as played yet.
+      // Try a muted autoplay to warm up.
       if (attemptedAuto.current) return;
       attemptedAuto.current = true;
       try {
         const audio = audioRef.current;
         if (!audio) return;
 
-        // Allow autoplay by starting muted; we'll unmute on gesture.
+        // Allow autoplay by starting muted; unmute on gesture.
         audio.muted = true;
         audio.volume = 0.6;
-        audio.load();
         await audio.play();
-        // Autoplay may stay muted; don't mark as fully played yet.
       } catch {
         // Likely blocked; wait for user interaction.
       }
@@ -49,11 +44,12 @@ export function StartupSound({ onReady }: StartupSoundProps) {
       if (!audio) return;
       try {
         audio.muted = false;
-        audio.currentTime = 0;
-        await audio.play();
+        if (audio.paused) {
+          audio.currentTime = 0;
+          await audio.play();
+        }
         playedAudible.current = true;
         cleanup();
-        signalReady();
       } catch {
         // If still blocked, keep listeners for another try.
       }
@@ -79,20 +75,16 @@ export function StartupSound({ onReady }: StartupSoundProps) {
     document.addEventListener('touchstart', onUserGesture);
     document.addEventListener('pointermove', onPointerMove, { once: true });
 
-    // Safety timeout: don't block UI if audio never plays
-    const fallback = window.setTimeout(() => signalReady(), 5000);
-
     return () => {
       cleanup();
-      window.clearTimeout(fallback);
     };
   }, []);
 
   return (
     <audio
       ref={audioRef}
-      src="/wanzami-surround.wav"
-      preload="auto"
+      src={resolveSoundUrl()}
+      preload="metadata"
       autoPlay
       aria-hidden="true"
       className="hidden"
