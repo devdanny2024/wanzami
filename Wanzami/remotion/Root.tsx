@@ -2,10 +2,10 @@ import {Composition} from 'remotion';
 import {WanzamiPromo, type WanzamiPromoProps} from './compositions/WanzamiPromo';
 
 const defaultProps: WanzamiPromoProps = {
-  prompt: 'A cinematic teaser for Wanzami: stream African stories, live events, and exclusive premieres.',
-  cta: 'Watch now on Wanzami.tv',
+  prompt: 'African stories. Live moments. Premium streaming at your fingertips.',
+  cta: 'Start Streaming on Wanzami',
   vibe: 'cinematic',
-  accentColor: '#f59e0b',
+  accentColor: '#fd7e14',
 };
 
 export const RemotionRoot: React.FC = () => {
