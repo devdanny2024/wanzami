@@ -2,6 +2,7 @@ import {Composition} from 'remotion';
 import {WanzamiHypeTeaser} from './compositions/WanzamiHypeTeaser';
 import {WanzamiHypeTeaserPoster} from './compositions/WanzamiHypeTeaserPoster';
 import {WanzamiPromo, type WanzamiPromoProps} from './compositions/WanzamiPromo';
+import {WanzamiPulseTrailer} from './compositions/WanzamiPulseTrailer';
 
 const defaultProps: WanzamiPromoProps = {
   prompt: 'African stories. Live moments. Premium streaming at your fingertips.',
@@ -45,6 +46,19 @@ export const RemotionRoot: React.FC = () => {
         defaultProps={{
           opener: 'What is Wanzami?',
           closer: 'What is Wanzami?',
+          accentColor: '#fd7e14',
+        }}
+      />
+      <Composition
+        id="WanzamiPulseTrailer"
+        component={WanzamiPulseTrailer}
+        durationInFrames={480}
+        fps={30}
+        width={1080}
+        height={1920}
+        defaultProps={{
+          hook: 'What is Wanzami?',
+          cta: 'START WATCHING',
           accentColor: '#fd7e14',
         }}
       />
