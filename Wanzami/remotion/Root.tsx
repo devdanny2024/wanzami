@@ -1,4 +1,5 @@
 import {Composition} from 'remotion';
+import {WanzamiHypeTeaser} from './compositions/WanzamiHypeTeaser';
 import {WanzamiPromo, type WanzamiPromoProps} from './compositions/WanzamiPromo';
 
 const defaultProps: WanzamiPromoProps = {
@@ -19,6 +20,19 @@ export const RemotionRoot: React.FC = () => {
         width={1080}
         height={1920}
         defaultProps={defaultProps}
+      />
+      <Composition
+        id="WanzamiHypeTeaser"
+        component={WanzamiHypeTeaser}
+        durationInFrames={480}
+        fps={30}
+        width={1080}
+        height={1920}
+        defaultProps={{
+          opener: 'What is Wanzami?',
+          closer: 'What is Wanzami?',
+          accentColor: '#fd7e14',
+        }}
       />
     </>
   );
