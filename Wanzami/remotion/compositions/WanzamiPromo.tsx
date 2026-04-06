@@ -8,12 +8,14 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from 'remotion';
+import posterMeta from '../../public/remotion-posters/posters.json';
 
 export type WanzamiPromoProps = {
   prompt: string;
   cta: string;
   vibe: 'cinematic' | 'energetic' | 'minimal';
   accentColor: string;
+  posterFiles?: string[];
 };
 
 const BRAND = {
@@ -94,7 +96,7 @@ const Headline: React.FC<{ title: string; subtitle?: string; frame: number; star
   );
 };
 
-export const WanzamiPromo: React.FC<WanzamiPromoProps> = ({prompt, cta, vibe, accentColor}) => {
+export const WanzamiPromo: React.FC<WanzamiPromoProps> = ({prompt, cta, vibe, accentColor, posterFiles}) => {
   const frame = useCurrentFrame();
   const {fps} = useVideoConfig();
   const pulse = spring({
@@ -104,6 +106,13 @@ export const WanzamiPromo: React.FC<WanzamiPromoProps> = ({prompt, cta, vibe, ac
   });
 
   const activeAccent = accentColor || BRAND.accent;
+  const resolvedPosterFiles = (
+    posterFiles && posterFiles.length > 0
+      ? posterFiles
+      : (posterMeta as Array<{file: string}>).map((p) => p.file)
+  )
+    .slice(0, 6)
+    .map((p) => p.replace(/^\//, ''));
 
   const ambientX = interpolate(frame, [0, 299], [-40, 30]);
 
@@ -176,21 +185,52 @@ export const WanzamiPromo: React.FC<WanzamiPromoProps> = ({prompt, cta, vibe, ac
         <div
           style={{
             position: 'absolute',
-            left: 70,
-            right: 70,
-            bottom: 235,
+            left: 60,
+            right: 60,
+            bottom: 170,
             opacity: sceneOpacity(frame, sceneFrameRanges[1].start, sceneFrameRanges[1].end),
           }}
         >
-          <div style={{fontSize: 66, fontWeight: 850, marginBottom: 26, textTransform: 'uppercase'}}>Built from the Wanzami catalogue</div>
-          <div style={{display: 'flex', gap: 16, flexWrap: 'wrap'}}>
-            {['Blockbuster Movies', 'Binge-worthy Series', 'Wanzami Originals', 'Live & Upcoming Streams'].map((item) => (
+          <div style={{fontSize: 62, fontWeight: 850, marginBottom: 22, textTransform: 'uppercase'}}>From the Wanzami catalogue</div>
+          <div style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16}}>
+            {resolvedPosterFiles.map((poster, idx) => (
+              <div
+                key={poster}
+                style={{
+                  position: 'relative',
+                  borderRadius: 16,
+                  overflow: 'hidden',
+                  border: '1px solid rgba(255,255,255,0.18)',
+                  transform: `translateY(${(idx % 3) * 2}px)`,
+                  boxShadow: '0 20px 38px rgba(0,0,0,0.45)',
+                }}
+              >
+                <Img
+                  src={staticFile(poster)}
+                  style={{
+                    width: '100%',
+                    height: 230,
+                    objectFit: 'cover',
+                  }}
+                />
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'linear-gradient(180deg, rgba(0,0,0,0) 35%, rgba(0,0,0,0.75) 100%)',
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+          <div style={{display: 'flex', gap: 14, marginTop: 18, flexWrap: 'wrap'}}>
+            {['Movies', 'Series', 'Originals', 'Live Events'].map((item) => (
               <div
                 key={item}
                 style={{
-                  fontSize: 30,
+                  fontSize: 24,
                   fontWeight: 700,
-                  padding: '14px 22px',
+                  padding: '10px 16px',
                   borderRadius: 999,
                   border: `2px solid ${activeAccent}`,
                   color: BRAND.text,
