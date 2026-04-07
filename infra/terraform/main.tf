@@ -231,12 +231,12 @@ resource "aws_ecs_task_definition" "worker_cron" {
 # --------------------
 data "aws_lb" "alb" {
   count = var.use_existing_alb ? 1 : 0
-  name  = "wanzami-backend-alb"
+  name  = "wanzami-backend-alb-new"
 }
 
 resource "aws_lb" "alb" {
   count              = var.use_existing_alb ? 0 : 1
-  name               = "wanzami-backend-alb"
+  name               = "wanzami-backend-alb-new"
   load_balancer_type = "application"
   subnets            = var.public_subnets
   security_groups    = [var.alb_sg_id]
