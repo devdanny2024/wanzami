@@ -47,6 +47,18 @@ jobs:
         run: |
           mkdir -p infra/terraform
           printf "%s" "$TERRAFORM_TFVARS" > infra/terraform/terraform.tfvars
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('infra/terraform/terraform.tfvars')
+          text = p.read_text()
+          if 'use_existing_target_group' in text:
+              import re
+              text = re.sub(r'use_existing_target_group\s*=\s*true', 'use_existing_target_group = false', text)
+          else:
+              text += '\nuse_existing_target_group = false\n'
+          p.write_text(text)
+          print('Forced use_existing_target_group = false in workflow tfvars')
+          PY
 
       - name: Terraform Init
         working-directory: infra/terraform
