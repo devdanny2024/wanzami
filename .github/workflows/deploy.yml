@@ -111,7 +111,7 @@ jobs:
               return json.dumps(v)
 
           def upsert(text, key, value):
-              rendered = f'{key} = {hcl(value)}'
+              rendered = f'{key} = {hcl(value)}\n'
               patterns = [
                   re.compile(rf'(?ms)^\s*{re.escape(key)}\s*=\s*\[[^\]]*\]\s*'),
                   re.compile(rf'(?ms)^\s*{re.escape(key)}\s*=\s*\{{.*?^\}}\s*'),
@@ -120,7 +120,7 @@ jobs:
               for pattern in patterns:
                   if pattern.search(text):
                       return pattern.sub(rendered, text, count=1)
-              return text + f'\n{rendered}'
+              return text.rstrip() + f'\n{rendered}'
 
           for key, value in overrides.items():
               text = upsert(text, key, value)
