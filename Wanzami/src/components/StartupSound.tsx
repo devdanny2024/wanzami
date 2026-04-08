@@ -3,7 +3,8 @@
 import { useEffect, useRef } from 'react';
 
 /**
- * Plays a short Wanzami brand sound on app load in a non-blocking way.
+ * Plays a short Wanzami brand sound on app load without ever delaying or
+ * competing with primary UI clicks like Login / Register.
  *
  * Source priority:
  * 1) NEXT_PUBLIC_STARTUP_SOUND_URL (recommended CDN URL)
@@ -17,75 +18,35 @@ function resolveSoundUrl() {
 
 export function StartupSound() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const attemptedAuto = useRef(false);
-  const playedAudible = useRef(false);
+  const attemptedPlay = useRef(false);
 
   useEffect(() => {
-    const playSound = async () => {
-      // Try a muted autoplay to warm up.
-      if (attemptedAuto.current) return;
-      attemptedAuto.current = true;
-      try {
-        const audio = audioRef.current;
-        if (!audio) return;
+    const tryPlay = async () => {
+      if (attemptedPlay.current) return;
+      attemptedPlay.current = true;
 
-        // Allow autoplay by starting muted; unmute on gesture.
-        audio.muted = true;
-        audio.volume = 0.6;
-        await audio.play();
-      } catch {
-        // Likely blocked; wait for user interaction.
-      }
-    };
-
-    const onUserGesture = async () => {
-      if (playedAudible.current) return;
       const audio = audioRef.current;
       if (!audio) return;
+
       try {
+        audio.volume = 0.6;
         audio.muted = false;
-        if (audio.paused) {
-          audio.currentTime = 0;
-          await audio.play();
-        }
-        playedAudible.current = true;
-        cleanup();
+        await audio.play();
       } catch {
-        // If still blocked, keep listeners for another try.
+        // Autoplay may be blocked by the browser. That's fine — the splash UI
+        // must stay immediately clickable, so we do not hook into click/touch
+        // events as a fallback.
       }
     };
 
-    const onPointerMove = () => {
-      void playSound();
-    };
-
-    const cleanup = () => {
-      document.removeEventListener('click', onUserGesture);
-      document.removeEventListener('keydown', onUserGesture);
-      document.removeEventListener('touchstart', onUserGesture);
-      document.removeEventListener('pointermove', onPointerMove);
-    };
-
-    // Try autoplay immediately.
-    void playSound();
-
-    // Fallback: listen for the first user gesture to trigger playback.
-    document.addEventListener('click', onUserGesture);
-    document.addEventListener('keydown', onUserGesture);
-    document.addEventListener('touchstart', onUserGesture);
-    document.addEventListener('pointermove', onPointerMove, { once: true });
-
-    return () => {
-      cleanup();
-    };
+    void tryPlay();
   }, []);
 
   return (
     <audio
       ref={audioRef}
       src={resolveSoundUrl()}
-      preload="metadata"
-      autoPlay
+      preload="none"
       aria-hidden="true"
       className="hidden"
     />
