@@ -224,9 +224,20 @@ jobs:
                 (.containerDefinitions[0].environment // [])
                 | map(
                     if .name == "DATABASE_URL" then
-                      .value |= sub("@[^:/]+(:[0-9]+/.*)$"; "@" + $DB_HOST + "\\1")
+                      .value |= (
+                        (split("@")[0]) + "@" + $DB_HOST + ":" +
+                        (((split("@")[1] // "") | split("/")[0] | split(":") | .[1]) // "5432") + "/" +
+                        ((((split("@")[1] // "") | split("/") | .[1:]) | join("/")))
+                      )
                     elif .name == "REDIS_URL" and ($REDIS_HOST | length) > 0 then
-                      .value |= sub("//[^:@/]+"; "//" + $REDIS_HOST)
+                      .value |= (
+                        (split("://")[0]) + "://" + $REDIS_HOST + ":" +
+                        (((split("://")[1] // "") | split("/")[0] | split(":") | .[1]) // "6379") +
+                        (if (((split("://")[1] // "") | split("/") | length) > 1)
+                         then "/" + (((split("://")[1] // "") | split("/") | .[1:]) | join("/"))
+                         else ""
+                         end)
+                      )
                     else . end
                   )
               )
@@ -305,9 +316,20 @@ jobs:
                 (.containerDefinitions[0].environment // [])
                 | map(
                     if .name == "DATABASE_URL" then
-                      .value |= sub("@[^:/]+(:[0-9]+/.*)$"; "@" + $DB_HOST + "\\1")
+                      .value |= (
+                        (split("@")[0]) + "@" + $DB_HOST + ":" +
+                        (((split("@")[1] // "") | split("/")[0] | split(":") | .[1]) // "5432") + "/" +
+                        ((((split("@")[1] // "") | split("/") | .[1:]) | join("/")))
+                      )
                     elif .name == "REDIS_URL" and ($REDIS_HOST | length) > 0 then
-                      .value |= sub("//[^:@/]+"; "//" + $REDIS_HOST)
+                      .value |= (
+                        (split("://")[0]) + "://" + $REDIS_HOST + ":" +
+                        (((split("://")[1] // "") | split("/")[0] | split(":") | .[1]) // "6379") +
+                        (if (((split("://")[1] // "") | split("/") | length) > 1)
+                         then "/" + (((split("://")[1] // "") | split("/") | .[1:]) | join("/"))
+                         else ""
+                         end)
+                      )
                     else . end
                   )
               )
@@ -331,9 +353,20 @@ jobs:
                 (.containerDefinitions[0].environment // [])
                 | map(
                     if .name == "DATABASE_URL" then
-                      .value |= sub("@[^:/]+(:[0-9]+/.*)$"; "@" + $DB_HOST + "\\1")
+                      .value |= (
+                        (split("@")[0]) + "@" + $DB_HOST + ":" +
+                        (((split("@")[1] // "") | split("/")[0] | split(":") | .[1]) // "5432") + "/" +
+                        ((((split("@")[1] // "") | split("/") | .[1:]) | join("/")))
+                      )
                     elif .name == "REDIS_URL" and ($REDIS_HOST | length) > 0 then
-                      .value |= sub("//[^:@/]+"; "//" + $REDIS_HOST)
+                      .value |= (
+                        (split("://")[0]) + "://" + $REDIS_HOST + ":" +
+                        (((split("://")[1] // "") | split("/")[0] | split(":") | .[1]) // "6379") +
+                        (if (((split("://")[1] // "") | split("/") | length) > 1)
+                         then "/" + (((split("://")[1] // "") | split("/") | .[1:]) | join("/"))
+                         else ""
+                         end)
+                      )
                     else . end
                   )
               )
