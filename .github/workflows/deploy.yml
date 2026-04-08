@@ -7,7 +7,6 @@ on:
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION }}
-  DATABASE_URL: ${{ secrets.DATABASE_URL || '' }}
 
 jobs:
   terraform-apply:
@@ -90,6 +89,8 @@ jobs:
               'alb_sg_id': (alb.get('SecurityGroups') or [''])[0],
               'ecs_sg_id': (ecs.get('securityGroups') or [''])[0],
               'backend_tg_name': tg['TargetGroupName'],
+              'existing_db_instance_identifier': 'wanzami-pg-eu-prod-new',
+              'existing_redis_replication_group_id': 'wanzami-redis-eu',
               'use_existing_alb': True,
               'use_existing_target_group': True,
               'backend_task_cpu': 1024,

@@ -95,10 +95,23 @@ resource "aws_ecs_cluster" "main" {
 }
 
 # --------------------
+# Live data endpoints (used to neutralize stale secret/tfvars drift)
+# --------------------
+data "aws_db_instance" "existing" {
+  count                  = var.existing_db_instance_identifier != "" ? 1 : 0
+  db_instance_identifier = var.existing_db_instance_identifier
+}
+
+data "aws_elasticache_replication_group" "existing" {
+  count                 = var.existing_redis_replication_group_id != "" ? 1 : 0
+  replication_group_id  = var.existing_redis_replication_group_id
+}
+
+# --------------------
 # SSM Parameters (Env Vars)
 # --------------------
 resource "aws_ssm_parameter" "env" {
-  for_each  = var.env_vars
+  for_each  = local.resolved_env_vars
   name      = "/wanzami/${each.key}"
   type      = "String"
   value     = each.value
@@ -117,8 +130,21 @@ data "aws_iam_role" "ecs_task" {
 }
 
 locals {
+  live_db_host = var.existing_db_instance_identifier != "" ? data.aws_db_instance.existing[0].address : ""
+  live_redis_host = var.existing_redis_replication_group_id != "" ? data.aws_elasticache_replication_group.existing[0].primary_endpoint_address : ""
+
+  resolved_env_vars = merge(
+    var.env_vars,
+    contains(keys(var.env_vars), "DATABASE_URL") && local.live_db_host != "" ? {
+      DATABASE_URL = regexreplace(var.env_vars["DATABASE_URL"], "@[^:/]+", "@${local.live_db_host}")
+    } : {},
+    contains(keys(var.env_vars), "REDIS_URL") && local.live_redis_host != "" ? {
+      REDIS_URL = regexreplace(var.env_vars["REDIS_URL"], "://[^:@/]+", "://${local.live_redis_host}")
+    } : {}
+  )
+
   backend_env = [
-    for k, v in var.env_vars : {
+    for k, v in local.resolved_env_vars : {
       name  = k
       value = v
     }

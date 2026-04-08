@@ -8,6 +8,16 @@ variable "ecs_execution_role_name" { type = string }
 variable "ecs_task_role_name" { type = string }
 variable "env_vars" { type = map(string) }
 
+variable "existing_db_instance_identifier" {
+  type    = string
+  default = "wanzami-pg-eu-prod-new"
+}
+
+variable "existing_redis_replication_group_id" {
+  type    = string
+  default = "wanzami-redis-eu"
+}
+
 # Allow renaming resources if prior partial creates exist
 variable "backend_tg_name" {
   type    = string
