@@ -94,10 +94,10 @@ jobs:
               'use_existing_target_group': True,
               'backend_task_cpu': 1024,
               'backend_task_memory': 2048,
-              'backend_desired_count': 1,
+              'backend_desired_count': 2,
               'worker_transcode_desired_count': 1,
               'worker_cron_desired_count': 1,
-              'backend_autoscale_min_capacity': 1,
+              'backend_autoscale_min_capacity': 2,
               'backend_autoscale_max_capacity': 4,
           }
 

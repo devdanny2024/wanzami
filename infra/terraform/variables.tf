@@ -108,7 +108,7 @@ variable "worker_task_memory" {
 
 variable "backend_desired_count" {
   type    = number
-  default = 1
+  default = 2
 }
 
 variable "worker_transcode_desired_count" {
@@ -128,7 +128,7 @@ variable "enable_backend_autoscaling" {
 
 variable "backend_autoscale_min_capacity" {
   type    = number
-  default = 1
+  default = 2
 }
 
 variable "backend_autoscale_max_capacity" {
