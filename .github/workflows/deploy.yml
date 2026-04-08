@@ -201,11 +201,25 @@ jobs:
             --region "$AWS_REGION" \
             --query 'DBInstances[?DBInstanceIdentifier==`wanzami-pg-eu-prod-new`]|[0].Endpoint.Address' \
             --output text)
+          DB_SECRET_ARN=$(aws rds describe-db-instances \
+            --region "$AWS_REGION" \
+            --query 'DBInstances[?DBInstanceIdentifier==`wanzami-pg-eu-prod-new`]|[0].MasterUserSecret.SecretArn' \
+            --output text)
+          DB_SECRET_JSON=$(aws secretsmanager get-secret-value \
+            --region "$AWS_REGION" \
+            --secret-id "$DB_SECRET_ARN" \
+            --query 'SecretString' \
+            --output text)
+          DB_USERNAME=$(echo "$DB_SECRET_JSON" | jq -r '.username')
+          DB_PASSWORD=$(echo "$DB_SECRET_JSON" | jq -r '.password')
           REDIS_HOST=$(aws elasticache describe-replication-groups \
             --region "$AWS_REGION" \
             --query 'ReplicationGroups[?ReplicationGroupId==`wanzami-redis-eu`]|[0].NodeGroups[0].PrimaryEndpoint.Address' \
             --output text)
+          echo "::add-mask::$DB_PASSWORD"
           echo "db_host=$DB_HOST" >> "$GITHUB_OUTPUT"
+          echo "db_username=$DB_USERNAME" >> "$GITHUB_OUTPUT"
+          echo "db_password=$DB_PASSWORD" >> "$GITHUB_OUTPUT"
           echo "redis_host=$REDIS_HOST" >> "$GITHUB_OUTPUT"
 
       - name: Register API task definition revision
@@ -214,9 +228,11 @@ jobs:
           IMAGE="$ECR_REPO:${GITHUB_SHA}"
           TASKDEF_API_USE=${TASKDEF_API:-wanzami-backend-task}
           DB_HOST="${{ steps.live_endpoints.outputs.db_host }}"
+          DB_USERNAME="${{ steps.live_endpoints.outputs.db_username }}"
+          DB_PASSWORD="${{ steps.live_endpoints.outputs.db_password }}"
           REDIS_HOST="${{ steps.live_endpoints.outputs.redis_host }}"
           TD=$(aws ecs describe-task-definition --task-definition $TASKDEF_API_USE)
-          UPDATED=$(echo "$TD" | jq --arg IMG "$IMAGE" --arg DB_HOST "$DB_HOST" --arg REDIS_HOST "$REDIS_HOST" '
+          UPDATED=$(echo "$TD" | jq --arg IMG "$IMAGE" --arg DB_HOST "$DB_HOST" --arg DB_USERNAME "$DB_USERNAME" --arg DB_PASSWORD "$DB_PASSWORD" --arg REDIS_HOST "$REDIS_HOST" '
             .taskDefinition
             | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
             | .containerDefinitions[0].image = $IMG
@@ -224,10 +240,10 @@ jobs:
                 (.containerDefinitions[0].environment // [])
                 | map(
                     if .name == "DATABASE_URL" then
-                      .value |= (
-                        (split("@")[0]) + "@" + $DB_HOST + ":" +
-                        (((split("@")[1] // "") | split("/")[0] | split(":") | .[1]) // "5432") + "/" +
-                        ((((split("@")[1] // "") | split("/") | .[1:]) | join("/")))
+                      .value = (
+                        "postgresql://" + $DB_USERNAME + ":" + ($DB_PASSWORD | @uri) + "@" + $DB_HOST + ":" +
+                        (((.value | split("@")[1] // "") | split("/")[0] | split(":") | .[1]) // "5432") + "/" +
+                        ((((.value | split("@")[1] // "") | split("/") | .[1:]) | join("/")))
                       )
                     elif .name == "REDIS_URL" and ($REDIS_HOST | length) > 0 then
                       .value |= (
@@ -306,9 +322,11 @@ jobs:
           IMAGE="$ECR_REPO:${GITHUB_SHA}"
           TASKDEF_TRANSCODE_USE=${TASKDEF_TRANSCODE:-wanzami-worker-transcode}
           DB_HOST="${{ steps.live_endpoints.outputs.db_host }}"
+          DB_USERNAME="${{ steps.live_endpoints.outputs.db_username }}"
+          DB_PASSWORD="${{ steps.live_endpoints.outputs.db_password }}"
           REDIS_HOST="${{ steps.live_endpoints.outputs.redis_host }}"
           TD=$(aws ecs describe-task-definition --task-definition $TASKDEF_TRANSCODE_USE)
-          UPDATED=$(echo "$TD" | jq --arg IMG "$IMAGE" --arg DB_HOST "$DB_HOST" --arg REDIS_HOST "$REDIS_HOST" '
+          UPDATED=$(echo "$TD" | jq --arg IMG "$IMAGE" --arg DB_HOST "$DB_HOST" --arg DB_USERNAME "$DB_USERNAME" --arg DB_PASSWORD "$DB_PASSWORD" --arg REDIS_HOST "$REDIS_HOST" '
             .taskDefinition
             | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
             | .containerDefinitions[0].image = $IMG
@@ -316,10 +334,10 @@ jobs:
                 (.containerDefinitions[0].environment // [])
                 | map(
                     if .name == "DATABASE_URL" then
-                      .value |= (
-                        (split("@")[0]) + "@" + $DB_HOST + ":" +
-                        (((split("@")[1] // "") | split("/")[0] | split(":") | .[1]) // "5432") + "/" +
-                        ((((split("@")[1] // "") | split("/") | .[1:]) | join("/")))
+                      .value = (
+                        "postgresql://" + $DB_USERNAME + ":" + ($DB_PASSWORD | @uri) + "@" + $DB_HOST + ":" +
+                        (((.value | split("@")[1] // "") | split("/")[0] | split(":") | .[1]) // "5432") + "/" +
+                        ((((.value | split("@")[1] // "") | split("/") | .[1:]) | join("/")))
                       )
                     elif .name == "REDIS_URL" and ($REDIS_HOST | length) > 0 then
                       .value |= (
@@ -343,9 +361,11 @@ jobs:
           IMAGE="$ECR_REPO:${GITHUB_SHA}"
           TASKDEF_CRON_USE=${TASKDEF_CRON:-wanzami-worker-cron}
           DB_HOST="${{ steps.live_endpoints.outputs.db_host }}"
+          DB_USERNAME="${{ steps.live_endpoints.outputs.db_username }}"
+          DB_PASSWORD="${{ steps.live_endpoints.outputs.db_password }}"
           REDIS_HOST="${{ steps.live_endpoints.outputs.redis_host }}"
           TD=$(aws ecs describe-task-definition --task-definition $TASKDEF_CRON_USE)
-          UPDATED=$(echo "$TD" | jq --arg IMG "$IMAGE" --arg DB_HOST "$DB_HOST" --arg REDIS_HOST "$REDIS_HOST" '
+          UPDATED=$(echo "$TD" | jq --arg IMG "$IMAGE" --arg DB_HOST "$DB_HOST" --arg DB_USERNAME "$DB_USERNAME" --arg DB_PASSWORD "$DB_PASSWORD" --arg REDIS_HOST "$REDIS_HOST" '
             .taskDefinition
             | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
             | .containerDefinitions[0].image = $IMG
@@ -353,10 +373,10 @@ jobs:
                 (.containerDefinitions[0].environment // [])
                 | map(
                     if .name == "DATABASE_URL" then
-                      .value |= (
-                        (split("@")[0]) + "@" + $DB_HOST + ":" +
-                        (((split("@")[1] // "") | split("/")[0] | split(":") | .[1]) // "5432") + "/" +
-                        ((((split("@")[1] // "") | split("/") | .[1:]) | join("/")))
+                      .value = (
+                        "postgresql://" + $DB_USERNAME + ":" + ($DB_PASSWORD | @uri) + "@" + $DB_HOST + ":" +
+                        (((.value | split("@")[1] // "") | split("/")[0] | split(":") | .[1]) // "5432") + "/" +
+                        ((((.value | split("@")[1] // "") | split("/") | .[1:]) | join("/")))
                       )
                     elif .name == "REDIS_URL" and ($REDIS_HOST | length) > 0 then
                       .value |= (

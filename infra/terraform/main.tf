@@ -102,6 +102,11 @@ data "aws_db_instance" "existing" {
   db_instance_identifier = var.existing_db_instance_identifier
 }
 
+data "aws_secretsmanager_secret_version" "existing_db_master" {
+  count     = var.existing_db_instance_identifier != "" ? 1 : 0
+  secret_id = data.aws_db_instance.existing[0].master_user_secret[0].secret_arn
+}
+
 data "aws_elasticache_replication_group" "existing" {
   count                 = var.existing_redis_replication_group_id != "" ? 1 : 0
   replication_group_id  = var.existing_redis_replication_group_id
@@ -131,17 +136,17 @@ data "aws_iam_role" "ecs_task" {
 
 locals {
   live_db_host = var.existing_db_instance_identifier != "" ? data.aws_db_instance.existing[0].address : ""
+  live_db_secret = var.existing_db_instance_identifier != "" ? jsondecode(data.aws_secretsmanager_secret_version.existing_db_master[0].secret_string) : {}
+  live_db_username = try(local.live_db_secret.username, try(var.env_vars["DB_USER"], "wanzami"))
+  live_db_password = try(local.live_db_secret.password, "")
   live_redis_host = var.existing_redis_replication_group_id != "" ? data.aws_elasticache_replication_group.existing[0].primary_endpoint_address : ""
+  live_db_port = contains(keys(var.env_vars), "DATABASE_URL") ? (length(split(":", split("/", split("@", var.env_vars["DATABASE_URL"])[1])[0])) > 1 ? split(":", split("/", split("@", var.env_vars["DATABASE_URL"])[1])[0])[1] : "5432") : "5432"
+  live_db_name = contains(keys(var.env_vars), "DATABASE_URL") ? join("/", slice(split("/", split("@", var.env_vars["DATABASE_URL"])[1]), 1, length(split("/", split("@", var.env_vars["DATABASE_URL"])[1])))) : "wanzami"
 
   resolved_env_vars = merge(
     var.env_vars,
-    contains(keys(var.env_vars), "DATABASE_URL") && local.live_db_host != "" ? {
-      DATABASE_URL = join("@", concat(
-        slice(split("@", var.env_vars["DATABASE_URL"]), 0, 1),
-        [
-          "${local.live_db_host}:${length(split(":", split("/", split("@", var.env_vars["DATABASE_URL"])[1])[0])) > 1 ? split(":", split("/", split("@", var.env_vars["DATABASE_URL"])[1])[0])[1] : "5432"}/${join("/", slice(split("/", split("@", var.env_vars["DATABASE_URL"])[1]), 1, length(split("/", split("@", var.env_vars["DATABASE_URL"])[1]))))}"
-        ]
-      ))
+    contains(keys(var.env_vars), "DATABASE_URL") && local.live_db_host != "" && local.live_db_password != "" ? {
+      DATABASE_URL = "postgresql://${local.live_db_username}:${urlencode(local.live_db_password)}@${local.live_db_host}:${local.live_db_port}/${local.live_db_name}"
     } : {},
     contains(keys(var.env_vars), "REDIS_URL") && local.live_redis_host != "" ? {
       REDIS_URL = "${split("://", var.env_vars["REDIS_URL"])[0]}://${local.live_redis_host}:${length(split(":", split("/", split("://", var.env_vars["REDIS_URL"])[1])[0])) > 1 ? split(":", split("/", split("://", var.env_vars["REDIS_URL"])[1])[0])[1] : "6379"}${length(split("/", split("://", var.env_vars["REDIS_URL"])[1])) > 1 ? "/${join("/", slice(split("/", split("://", var.env_vars["REDIS_URL"])[1]), 1, length(split("/", split("://", var.env_vars["REDIS_URL"])[1]))))}" : ""}"
