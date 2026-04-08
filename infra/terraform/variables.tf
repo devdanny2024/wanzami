@@ -88,12 +88,12 @@ variable "media_bucket_name" {
 # --------------------
 variable "backend_task_cpu" {
   type    = number
-  default = 4096
+  default = 1024
 }
 
 variable "backend_task_memory" {
   type    = number
-  default = 8192
+  default = 2048
 }
 
 variable "worker_task_cpu" {
@@ -108,17 +108,17 @@ variable "worker_task_memory" {
 
 variable "backend_desired_count" {
   type    = number
-  default = 20
+  default = 1
 }
 
 variable "worker_transcode_desired_count" {
   type    = number
-  default = 2
+  default = 1
 }
 
 variable "worker_cron_desired_count" {
   type    = number
-  default = 2
+  default = 1
 }
 
 variable "enable_backend_autoscaling" {
@@ -128,12 +128,12 @@ variable "enable_backend_autoscaling" {
 
 variable "backend_autoscale_min_capacity" {
   type    = number
-  default = 20
+  default = 1
 }
 
 variable "backend_autoscale_max_capacity" {
   type    = number
-  default = 100
+  default = 4
 }
 
 variable "backend_cpu_target_utilization" {

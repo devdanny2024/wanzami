@@ -45,19 +45,81 @@ jobs:
           # Use a separate tfvars secret for the testing branch so we can iterate safely.
           TERRAFORM_TFVARS: ${{ github.ref_name == 'new-backend-testing' && secrets.TERRAFORM_TFVARS_TESTING || secrets.TERRAFORM_TFVARS }}
         run: |
+          set -euo pipefail
           mkdir -p infra/terraform
           printf "%s" "$TERRAFORM_TFVARS" > infra/terraform/terraform.tfvars
+
+          ALB_JSON=$(aws elbv2 describe-load-balancers \
+            --region "$AWS_REGION" \
+            --names wanzami-backend-alb-new \
+            --query 'LoadBalancers[0]' \
+            --output json)
+
+          ECS_JSON=$(aws ecs describe-services \
+            --region "$AWS_REGION" \
+            --cluster wanzami-cluster \
+            --services wanzami-backend-service-v2 \
+            --query 'services[0].networkConfiguration.awsvpcConfiguration' \
+            --output json)
+
+          TG_JSON=$(aws elbv2 describe-target-groups \
+            --region "$AWS_REGION" \
+            --load-balancer-arn "$(echo "$ALB_JSON" | jq -r '.LoadBalancerArn')" \
+            --query 'TargetGroups[0]' \
+            --output json)
+
+          export ALB_JSON ECS_JSON TG_JSON
+
           python - <<'PY'
+          import json
+          import re
           from pathlib import Path
+          import os
+
           p = Path('infra/terraform/terraform.tfvars')
           text = p.read_text()
-          if 'use_existing_target_group' in text:
-              import re
-              text = re.sub(r'use_existing_target_group\s*=\s*true', 'use_existing_target_group = false', text)
-          else:
-              text += '\nuse_existing_target_group = false\n'
+
+          alb = json.loads(os.environ['ALB_JSON'])
+          ecs = json.loads(os.environ['ECS_JSON'])
+          tg = json.loads(os.environ['TG_JSON'])
+
+          overrides = {
+              'vpc_id': alb['VpcId'],
+              'public_subnets': alb['AvailabilityZones'] and [az['SubnetId'] for az in alb['AvailabilityZones']],
+              'private_subnets': ecs.get('subnets', []),
+              'alb_sg_id': (alb.get('SecurityGroups') or [''])[0],
+              'ecs_sg_id': (ecs.get('securityGroups') or [''])[0],
+              'backend_tg_name': tg['TargetGroupName'],
+              'use_existing_alb': True,
+              'use_existing_target_group': True,
+              'backend_task_cpu': 1024,
+              'backend_task_memory': 2048,
+              'backend_desired_count': 1,
+              'worker_transcode_desired_count': 1,
+              'worker_cron_desired_count': 1,
+              'backend_autoscale_min_capacity': 1,
+              'backend_autoscale_max_capacity': 4,
+          }
+
+          def hcl(v):
+              if isinstance(v, bool):
+                  return 'true' if v else 'false'
+              if isinstance(v, (int, float)):
+                  return str(v)
+              if isinstance(v, list):
+                  return '[' + ', '.join(json.dumps(x) for x in v) + ']'
+              return json.dumps(v)
+
+          for key, value in overrides.items():
+              pattern = re.compile(rf'(^\s*{re.escape(key)}\s*=\s*)(.+)$', re.MULTILINE)
+              rendered = f'{key} = {hcl(value)}'
+              if pattern.search(text):
+                  text = pattern.sub(rendered, text)
+              else:
+                  text += f'\n{rendered}'
+
           p.write_text(text)
-          print('Forced use_existing_target_group = false in workflow tfvars')
+          print('Patched terraform.tfvars with live AWS network IDs and safe backend sizing defaults')
           PY
 
       - name: Terraform Init
