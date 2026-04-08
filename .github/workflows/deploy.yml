@@ -110,13 +110,20 @@ jobs:
                   return '[' + ', '.join(json.dumps(x) for x in v) + ']'
               return json.dumps(v)
 
-          for key, value in overrides.items():
-              pattern = re.compile(rf'(^\s*{re.escape(key)}\s*=\s*)(.+)$', re.MULTILINE)
+          def upsert(text, key, value):
               rendered = f'{key} = {hcl(value)}'
-              if pattern.search(text):
-                  text = pattern.sub(rendered, text)
-              else:
-                  text += f'\n{rendered}'
+              patterns = [
+                  re.compile(rf'(?ms)^\s*{re.escape(key)}\s*=\s*\[[^\]]*\]\s*'),
+                  re.compile(rf'(?ms)^\s*{re.escape(key)}\s*=\s*\{{.*?^\}}\s*'),
+                  re.compile(rf'(?m)^\s*{re.escape(key)}\s*=\s*.+$'),
+              ]
+              for pattern in patterns:
+                  if pattern.search(text):
+                      return pattern.sub(rendered, text, count=1)
+              return text + f'\n{rendered}'
+
+          for key, value in overrides.items():
+              text = upsert(text, key, value)
 
           p.write_text(text)
           print('Patched terraform.tfvars with live AWS network IDs and safe backend sizing defaults')
