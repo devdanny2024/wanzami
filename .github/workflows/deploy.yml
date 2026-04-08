@@ -192,16 +192,43 @@ jobs:
           docker push $ECR_REPO:latest
           docker push $ECR_REPO:$IMAGE_TAG
 
+      - name: Resolve live data endpoints
+        id: live_endpoints
+        run: |
+          set -euo pipefail
+          DB_HOST=$(aws rds describe-db-instances \
+            --region "$AWS_REGION" \
+            --query 'DBInstances[?DBInstanceIdentifier==`wanzami-pg-eu-prod-new`]|[0].Endpoint.Address' \
+            --output text)
+          REDIS_HOST=$(aws elasticache describe-replication-groups \
+            --region "$AWS_REGION" \
+            --query 'ReplicationGroups[?ReplicationGroupId==`wanzami-redis-eu`]|[0].NodeGroups[0].PrimaryEndpoint.Address' \
+            --output text)
+          echo "db_host=$DB_HOST" >> "$GITHUB_OUTPUT"
+          echo "redis_host=$REDIS_HOST" >> "$GITHUB_OUTPUT"
+
       - name: Register API task definition revision
         id: reg_api_td
         run: |
           IMAGE="$ECR_REPO:${GITHUB_SHA}"
           TASKDEF_API_USE=${TASKDEF_API:-wanzami-backend-task}
+          DB_HOST="${{ steps.live_endpoints.outputs.db_host }}"
+          REDIS_HOST="${{ steps.live_endpoints.outputs.redis_host }}"
           TD=$(aws ecs describe-task-definition --task-definition $TASKDEF_API_USE)
-          UPDATED=$(echo "$TD" | jq --arg IMG "$IMAGE" '
+          UPDATED=$(echo "$TD" | jq --arg IMG "$IMAGE" --arg DB_HOST "$DB_HOST" --arg REDIS_HOST "$REDIS_HOST" '
             .taskDefinition
             | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
             | .containerDefinitions[0].image = $IMG
+            | .containerDefinitions[0].environment = (
+                (.containerDefinitions[0].environment // [])
+                | map(
+                    if .name == "DATABASE_URL" then
+                      .value |= sub("@[^:/]+(:[0-9]+/.*)$"; "@" + $DB_HOST + "\\1")
+                    elif .name == "REDIS_URL" and ($REDIS_HOST | length) > 0 then
+                      .value |= sub("//[^:@/]+"; "//" + $REDIS_HOST)
+                    else . end
+                  )
+              )
           ')
           echo "$UPDATED" > /tmp/td-api.json
           REV_ARN=$(aws ecs register-task-definition --cli-input-json file:///tmp/td-api.json --query 'taskDefinition.taskDefinitionArn' --output text)
@@ -266,11 +293,23 @@ jobs:
         run: |
           IMAGE="$ECR_REPO:${GITHUB_SHA}"
           TASKDEF_TRANSCODE_USE=${TASKDEF_TRANSCODE:-wanzami-worker-transcode}
+          DB_HOST="${{ steps.live_endpoints.outputs.db_host }}"
+          REDIS_HOST="${{ steps.live_endpoints.outputs.redis_host }}"
           TD=$(aws ecs describe-task-definition --task-definition $TASKDEF_TRANSCODE_USE)
-          UPDATED=$(echo "$TD" | jq --arg IMG "$IMAGE" '
+          UPDATED=$(echo "$TD" | jq --arg IMG "$IMAGE" --arg DB_HOST "$DB_HOST" --arg REDIS_HOST "$REDIS_HOST" '
             .taskDefinition
             | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
             | .containerDefinitions[0].image = $IMG
+            | .containerDefinitions[0].environment = (
+                (.containerDefinitions[0].environment // [])
+                | map(
+                    if .name == "DATABASE_URL" then
+                      .value |= sub("@[^:/]+(:[0-9]+/.*)$"; "@" + $DB_HOST + "\\1")
+                    elif .name == "REDIS_URL" and ($REDIS_HOST | length) > 0 then
+                      .value |= sub("//[^:@/]+"; "//" + $REDIS_HOST)
+                    else . end
+                  )
+              )
           ')
           echo "$UPDATED" > /tmp/td-transcode.json
           REV_ARN=$(aws ecs register-task-definition --cli-input-json file:///tmp/td-transcode.json --query 'taskDefinition.taskDefinitionArn' --output text)
@@ -280,11 +319,23 @@ jobs:
         run: |
           IMAGE="$ECR_REPO:${GITHUB_SHA}"
           TASKDEF_CRON_USE=${TASKDEF_CRON:-wanzami-worker-cron}
+          DB_HOST="${{ steps.live_endpoints.outputs.db_host }}"
+          REDIS_HOST="${{ steps.live_endpoints.outputs.redis_host }}"
           TD=$(aws ecs describe-task-definition --task-definition $TASKDEF_CRON_USE)
-          UPDATED=$(echo "$TD" | jq --arg IMG "$IMAGE" '
+          UPDATED=$(echo "$TD" | jq --arg IMG "$IMAGE" --arg DB_HOST "$DB_HOST" --arg REDIS_HOST "$REDIS_HOST" '
             .taskDefinition
             | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
             | .containerDefinitions[0].image = $IMG
+            | .containerDefinitions[0].environment = (
+                (.containerDefinitions[0].environment // [])
+                | map(
+                    if .name == "DATABASE_URL" then
+                      .value |= sub("@[^:/]+(:[0-9]+/.*)$"; "@" + $DB_HOST + "\\1")
+                    elif .name == "REDIS_URL" and ($REDIS_HOST | length) > 0 then
+                      .value |= sub("//[^:@/]+"; "//" + $REDIS_HOST)
+                    else . end
+                  )
+              )
           ')
           echo "$UPDATED" > /tmp/td-cron.json
           REV_ARN=$(aws ecs register-task-definition --cli-input-json file:///tmp/td-cron.json --query 'taskDefinition.taskDefinitionArn' --output text)
