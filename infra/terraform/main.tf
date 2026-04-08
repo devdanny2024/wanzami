@@ -116,10 +116,10 @@ data "aws_elasticache_replication_group" "existing" {
 # SSM Parameters (Env Vars)
 # --------------------
 resource "aws_ssm_parameter" "env" {
-  for_each  = local.resolved_env_vars
-  name      = "/wanzami/${each.key}"
+  for_each  = local.resolved_env_var_keys
+  name      = "/wanzami/${each.value}"
   type      = "String"
-  value     = each.value
+  value     = local.resolved_env_vars[each.value]
   overwrite = true
 }
 
@@ -152,6 +152,7 @@ locals {
       REDIS_URL = "${split("://", var.env_vars["REDIS_URL"])[0]}://${local.live_redis_host}:${length(split(":", split("/", split("://", var.env_vars["REDIS_URL"])[1])[0])) > 1 ? split(":", split("/", split("://", var.env_vars["REDIS_URL"])[1])[0])[1] : "6379"}${length(split("/", split("://", var.env_vars["REDIS_URL"])[1])) > 1 ? "/${join("/", slice(split("/", split("://", var.env_vars["REDIS_URL"])[1]), 1, length(split("/", split("://", var.env_vars["REDIS_URL"])[1]))))}" : ""}"
     } : {}
   )
+  resolved_env_var_keys = toset(keys(nonsensitive(local.resolved_env_vars)))
 
   backend_env = [
     for k, v in local.resolved_env_vars : {
