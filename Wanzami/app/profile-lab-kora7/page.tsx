@@ -1,56 +1,43 @@
 const profiles = [
   {
     name: "Olukayode",
-    avatar: "/wanzami-logo.png",
+    avatar: "https://randomuser.me/api/portraits/men/32.jpg",
     accent: "from-orange-500 to-red-500",
     ring: "ring-orange-400/70",
   },
   {
     name: "MBO",
-    emoji: "🙂",
+    avatar: "https://randomuser.me/api/portraits/women/44.jpg",
     accent: "from-yellow-400 to-amber-500",
     ring: "ring-yellow-300/70",
   },
   {
-    name: "Macie!",
-    emoji: "☺️",
+    name: "Macie",
+    avatar: "https://randomuser.me/api/portraits/women/68.jpg",
     accent: "from-sky-400 to-blue-600",
     ring: "ring-sky-300/70",
   },
   {
     name: "Kids",
-    label: "KIDS",
+    avatar: "https://randomuser.me/api/portraits/lego/2.jpg",
     accent: "from-pink-500 via-orange-400 to-indigo-500",
     ring: "ring-pink-300/70",
   },
-  {
-    name: "Add Profile",
-    icon: "+",
-    accent: "from-white/10 to-white/5",
-    ring: "ring-white/20",
-  },
-  {
-    name: "Manage",
-    icon: "✎",
-    accent: "from-white/10 to-white/5",
-    ring: "ring-white/20",
-  },
+];
+
+const utilityActions = [
+  { name: "Add Profile", icon: "+" },
+  { name: "Manage Profiles", icon: "✎" },
 ];
 
 function ProfileTile({
   name,
-  emoji,
-  icon,
-  label,
   avatar,
   accent,
   ring,
 }: {
   name: string;
-  emoji?: string;
-  icon?: string;
-  label?: string;
-  avatar?: string;
+  avatar: string;
   accent: string;
   ring: string;
 }) {
@@ -62,17 +49,23 @@ function ProfileTile({
       <div
         className={`relative flex h-22 w-22 md:h-24 md:w-24 items-center justify-center overflow-hidden rounded-3xl bg-gradient-to-br ${accent} shadow-2xl ring-2 ${ring}`}
       >
-        {avatar ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={avatar} alt={name} className="h-full w-full object-cover" />
-        ) : label ? (
-          <span className="text-lg font-black tracking-wide text-white drop-shadow-lg md:text-xl">{label}</span>
-        ) : (
-          <span className="text-4xl text-white drop-shadow-lg">{emoji ?? icon}</span>
-        )}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={avatar} alt={name} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-white/10 opacity-80" />
       </div>
       <span className="text-sm font-medium text-white/90 group-hover:text-white md:text-base">{name}</span>
+    </button>
+  );
+}
+
+function UtilityAction({ name, icon }: { name: string; icon: string }) {
+  return (
+    <button
+      type="button"
+      className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-white/80 transition hover:border-white/30 hover:bg-white/10 hover:text-white"
+    >
+      <span className="text-base">{icon}</span>
+      <span>{name}</span>
     </button>
   );
 }
@@ -124,9 +117,15 @@ export default function ProfileLabKora7Page() {
               </p>
             </div>
 
-            <div className="mt-10 grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-3 lg:gap-x-10 lg:gap-y-10">
+            <div className="mt-10 grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-4 lg:gap-x-10 lg:gap-y-10">
               {profiles.map((profile) => (
                 <ProfileTile key={profile.name} {...profile} />
+              ))}
+            </div>
+
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+              {utilityActions.map((action) => (
+                <UtilityAction key={action.name} {...action} />
               ))}
             </div>
 
