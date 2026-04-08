@@ -136,10 +136,15 @@ locals {
   resolved_env_vars = merge(
     var.env_vars,
     contains(keys(var.env_vars), "DATABASE_URL") && local.live_db_host != "" ? {
-      DATABASE_URL = regexreplace(var.env_vars["DATABASE_URL"], "@[^:/]+", "@${local.live_db_host}")
+      DATABASE_URL = join("@", concat(
+        slice(split("@", var.env_vars["DATABASE_URL"]), 0, 1),
+        [
+          "${local.live_db_host}:${length(split(":", split("/", split("@", var.env_vars["DATABASE_URL"])[1])[0])) > 1 ? split(":", split("/", split("@", var.env_vars["DATABASE_URL"])[1])[0])[1] : "5432"}/${join("/", slice(split("/", split("@", var.env_vars["DATABASE_URL"])[1]), 1, length(split("/", split("@", var.env_vars["DATABASE_URL"])[1]))))}"
+        ]
+      ))
     } : {},
     contains(keys(var.env_vars), "REDIS_URL") && local.live_redis_host != "" ? {
-      REDIS_URL = regexreplace(var.env_vars["REDIS_URL"], "://[^:@/]+", "://${local.live_redis_host}")
+      REDIS_URL = "${split("://", var.env_vars["REDIS_URL"])[0]}://${local.live_redis_host}:${length(split(":", split("/", split("://", var.env_vars["REDIS_URL"])[1])[0])) > 1 ? split(":", split("/", split("://", var.env_vars["REDIS_URL"])[1])[0])[1] : "6379"}${length(split("/", split("://", var.env_vars["REDIS_URL"])[1])) > 1 ? "/${join("/", slice(split("/", split("://", var.env_vars["REDIS_URL"])[1]), 1, length(split("/", split("://", var.env_vars["REDIS_URL"])[1]))))}" : ""}"
     } : {}
   )
 
