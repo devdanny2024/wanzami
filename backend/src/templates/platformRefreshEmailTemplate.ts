@@ -4,7 +4,7 @@ const frontendBase =
   "https://www.wanzami.tv";
 
 const logoUrl = "https://wanzami-bucket.s3.eu-north-1.amazonaws.com/wanzami_assets/wanzami_logo.png";
-const heroPosterUrl = `${frontendBase}/remotion-posters/poster-4.jpg`;
+const unveilGraphicUrl = "https://wanzami-media-eu-576393818319.s3.eu-north-1.amazonaws.com/email-assets/wanzami-new-look-unveil.jpg";
 const featurePosters = [
   { title: "Ruin", image: `${frontendBase}/remotion-posters/poster-1.jpg` },
   { title: "Against Creation", image: `${frontendBase}/remotion-posters/poster-3.jpg` },
@@ -71,7 +71,7 @@ export function buildPlatformRefreshEmailTemplate(params?: {
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 24px;background:#171717;border:1px solid #2a2a2a;border-radius:16px;overflow:hidden;">
                 <tr>
                   <td>
-                    <img src="${heroPosterUrl}" alt="Traffick on Wanzami TV" width="100%" style="display:block;width:100%;height:auto;" />
+                    <img src="${unveilGraphicUrl}" alt="The new look of Wanzami TV" width="100%" style="display:block;width:100%;height:auto;" />
                   </td>
                 </tr>
                 <tr>
