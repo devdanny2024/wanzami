@@ -4,6 +4,12 @@ const frontendBase =
   "https://www.wanzami.tv";
 
 const logoUrl = "https://wanzami-bucket.s3.eu-north-1.amazonaws.com/wanzami_assets/wanzami_logo.png";
+const heroPosterUrl = `${frontendBase}/remotion-posters/poster-4.jpg`;
+const featurePosters = [
+  { title: "Ruin", image: `${frontendBase}/remotion-posters/poster-1.jpg` },
+  { title: "Against Creation", image: `${frontendBase}/remotion-posters/poster-3.jpg` },
+  { title: "Traffick", image: `${frontendBase}/remotion-posters/poster-4.jpg` },
+];
 
 export function buildPlatformRefreshEmailTemplate(params?: {
   name?: string | null;
@@ -17,6 +23,23 @@ export function buildPlatformRefreshEmailTemplate(params?: {
   const unsubscribeUrl = params?.unsubscribeUrl || `${frontendBase}/unsubscribe`;
   const privacyUrl = params?.privacyUrl || `${frontendBase}/privacy`;
   const helpUrl = params?.helpUrl || `${frontendBase}/contact`;
+  const postersHtml = featurePosters
+    .map(
+      (poster) => `
+        <td width="33.33%" style="padding:0 6px;vertical-align:top;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#171717;border:1px solid #2a2a2a;border-radius:12px;overflow:hidden;">
+            <tr>
+              <td>
+                <img src="${poster.image}" alt="${poster.title}" width="100%" style="display:block;width:100%;height:auto;" />
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:10px 10px 12px;font-size:13px;font-weight:700;color:#ffffff;">${poster.title}</td>
+            </tr>
+          </table>
+        </td>`
+    )
+    .join("");
 
   return {
     subject: "A fresh new Wanzami TV experience is here",
@@ -45,6 +68,20 @@ export function buildPlatformRefreshEmailTemplate(params?: {
               <p style="margin:0 0 18px;font-size:16px;line-height:1.7;color:#d7d7d7;">Something big just happened at Wanzami TV - and we couldn't wait to tell you about it.</p>
               <p style="margin:0 0 18px;font-size:16px;line-height:1.7;color:#d7d7d7;">We've been hard at work behind the scenes, and today we're thrilled to unveil a brand-new look, a smoother experience, and exciting new features designed with <strong style="color:#ffffff;">YOU</strong> in mind.</p>
 
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 24px;background:#171717;border:1px solid #2a2a2a;border-radius:16px;overflow:hidden;">
+                <tr>
+                  <td>
+                    <img src="${heroPosterUrl}" alt="Traffick on Wanzami TV" width="100%" style="display:block;width:100%;height:auto;" />
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:16px 18px;">
+                    <div style="font-size:18px;font-weight:800;color:#ffffff;margin:0 0 6px;">A bold new look, same powerful stories</div>
+                    <div style="font-size:14px;line-height:1.7;color:#d0d0d0;">Step into the refreshed Wanzami TV experience with sharper visuals, smoother browsing, and the stories you love front and center.</div>
+                  </td>
+                </tr>
+              </table>
+
               <div style="margin:28px 0 18px;font-size:18px;font-weight:700;color:#ffffff;">✨ Here's what's new:</div>
 
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 24px;">
@@ -62,6 +99,12 @@ export function buildPlatformRefreshEmailTemplate(params?: {
                 </tr>
                 <tr>
                   <td style="padding:0 0 12px;font-size:15px;line-height:1.7;color:#d7d7d7;">• Performance improvements for faster load times and seamless browsing</td>
+                </tr>
+              </table>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 22px;">
+                <tr>
+                  ${postersHtml}
                 </tr>
               </table>
 
