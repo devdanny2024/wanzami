@@ -3,6 +3,7 @@ import { z } from "zod";
 import { sendEmail } from "../utils/mailer.js";
 import { enqueueEmailJob } from "../queues/emailQueue.js";
 import { prisma } from "../prisma.js";
+import { buildPlatformRefreshEmailTemplate } from "../templates/platformRefreshEmailTemplate.js";
 
 const RecipientSchema = z.object({
   email: z.string().email(),
@@ -156,6 +157,21 @@ export const sendCampaignEmails = async (req: Request, res: Response) => {
     startIndex,
     batchSize,
   });
+};
+
+export const getEmailTemplate = async (req: Request, res: Response) => {
+  const key = String(req.params.key || "").trim().toLowerCase();
+
+  if (key === "platform-refresh" || key === "wanzami-refresh" || key === "product-update") {
+    const template = buildPlatformRefreshEmailTemplate();
+    return res.json({
+      key,
+      subject: template.subject,
+      html: template.html,
+    });
+  }
+
+  return res.status(404).json({ message: "Template not found" });
 };
 
 export const listUserRecipients = async (_req: Request, res: Response) => {
