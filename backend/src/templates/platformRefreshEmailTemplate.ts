@@ -57,9 +57,9 @@ export function buildPlatformRefreshEmailTemplate(params?: {
       <td align="center">
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#111111;border:1px solid #232323;border-radius:18px;overflow:hidden;">
           <tr>
-            <td style="background:linear-gradient(135deg,#fd7e14 0%,#ff5a1f 100%);padding:36px 32px 28px;text-align:center;">
+            <td style="background:#ffffff;padding:36px 32px 28px;text-align:center;">
               <img src="${logoUrl}" alt="Wanzami TV" width="132" style="display:block;margin:0 auto 18px;max-width:132px;" />
-              <div style="font-size:28px;line-height:1.2;font-weight:800;color:#ffffff;">Something big just happened at Wanzami TV</div>
+              <div style="font-size:28px;line-height:1.2;font-weight:800;color:#111111;">Something big just happened at Wanzami TV</div>
             </td>
           </tr>
           <tr>
