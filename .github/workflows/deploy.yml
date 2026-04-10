@@ -242,6 +242,7 @@ jobs:
             .taskDefinition
             | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
             | .containerDefinitions[0].image = $IMG
+            | .containerDefinitions[0].command = ["node", "dist/index.js"]
             | .containerDefinitions[0].environment = (
                 (.containerDefinitions[0].environment // [])
                 | map(
@@ -336,6 +337,7 @@ jobs:
             .taskDefinition
             | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
             | .containerDefinitions[0].image = $IMG
+            | .containerDefinitions[0].command = ["node", "dist/worker/transcodeWorker.js"]
             | .containerDefinitions[0].environment = (
                 (.containerDefinitions[0].environment // [])
                 | map(
@@ -375,6 +377,7 @@ jobs:
             .taskDefinition
             | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
             | .containerDefinitions[0].image = $IMG
+            | .containerDefinitions[0].command = ["node", "dist/worker/cron.js"]
             | .containerDefinitions[0].environment = (
                 (.containerDefinitions[0].environment // [])
                 | map(
