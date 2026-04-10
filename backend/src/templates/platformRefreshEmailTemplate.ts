@@ -3,8 +3,8 @@ const frontendBase =
   process.env.FRONTEND_URL ||
   "https://www.wanzami.tv";
 
-const logoUrl = "https://wanzami-bucket.s3.eu-north-1.amazonaws.com/wanzami_assets/wanzami_logo.png";
-const unveilGraphicUrl = "https://wanzami-media-eu-576393818319.s3.eu-north-1.amazonaws.com/email-assets/wanzami-new-look-unveil.jpg";
+const logoUrl = `${frontendBase}/wanzami-logo.png`;
+const unveilGraphicUrl = `${frontendBase}/email-assets/wanzami-new-look-website-hero.jpg`;
 const featurePosters = [
   { title: "Ruin", image: `${frontendBase}/remotion-posters/poster-1.jpg` },
   { title: "Against Creation", image: `${frontendBase}/remotion-posters/poster-3.jpg` },
