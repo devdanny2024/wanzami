@@ -1,7 +1,10 @@
 import { z } from "zod";
+import crypto from "crypto";
 import { sendEmail } from "../utils/mailer.js";
-import { enqueueEmailJob } from "../queues/emailQueue.js";
+import { enqueueEmailJob, emailQueue } from "../queues/emailQueue.js";
 import { prisma } from "../prisma.js";
+import { buildPlatformRefreshEmailTemplate } from "../templates/platformRefreshEmailTemplate.js";
+import { hashPassword } from "../utils/password.js";
 const RecipientSchema = z.object({
     email: z.string().email(),
     name: z.string().optional(),
@@ -13,11 +16,17 @@ const EmailPayloadSchema = z.object({
     startIndex: z.coerce.number().int().min(0).optional(),
     batchSize: z.coerce.number().int().min(1).optional(),
 });
+const AudienceImportSchema = z.object({
+    recipients: z.array(RecipientSchema).min(1, "At least one recipient is required"),
+});
+const HistoryQuerySchema = z.object({
+    limit: z.coerce.number().int().min(1).max(500).optional(),
+});
 const dedupeRecipients = (recipients) => {
     const map = new Map();
     for (const r of recipients) {
-        const key = r.email.toLowerCase();
-        map.set(key, { ...map.get(key), ...r });
+        const key = r.email.toLowerCase().trim();
+        map.set(key, { ...map.get(key), ...r, email: key });
     }
     return Array.from(map.values());
 };
@@ -125,6 +134,18 @@ export const sendCampaignEmails = async (req, res) => {
         batchSize,
     });
 };
+export const getEmailTemplate = async (req, res) => {
+    const key = String(req.params.key || "").trim().toLowerCase();
+    if (key === "platform-refresh" || key === "wanzami-refresh" || key === "product-update") {
+        const template = buildPlatformRefreshEmailTemplate();
+        return res.json({
+            key,
+            subject: template.subject,
+            html: template.html,
+        });
+    }
+    return res.status(404).json({ message: "Template not found" });
+};
 export const listUserRecipients = async (_req, res) => {
     const users = await prisma.user.findMany({
         where: { role: "USER" },
@@ -143,5 +164,91 @@ export const listUserRecipients = async (_req, res) => {
     return res.json({
         recipients,
         total: recipients.length,
+    });
+};
+export const importUserRecipients = async (req, res) => {
+    const parsed = AudienceImportSchema.safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid payload", issues: parsed.error.issues });
+    }
+    const recipients = dedupeRecipients(parsed.data.recipients);
+    if (recipients.length === 0) {
+        return res.status(400).json({ message: "No valid recipients" });
+    }
+    const placeholderPassword = await hashPassword(`ImportedAudienceOnly!-${crypto.randomUUID()}`);
+    let created = 0;
+    let updated = 0;
+    let skipped = 0;
+    for (const recipient of recipients) {
+        const email = recipient.email.trim().toLowerCase();
+        const name = recipient.name?.trim() || email.split("@")[0] || "Subscriber";
+        const existing = await prisma.user.findUnique({ where: { email } });
+        if (existing) {
+            const data = {};
+            if ((!existing.name || !existing.name.trim()) && name)
+                data.name = name;
+            if (existing.role !== "USER")
+                data.role = "USER";
+            if (Object.keys(data).length > 0) {
+                await prisma.user.update({ where: { email }, data });
+                updated += 1;
+            }
+            else {
+                skipped += 1;
+            }
+            continue;
+        }
+        await prisma.user.create({
+            data: {
+                email,
+                password: placeholderPassword,
+                name,
+                role: "USER",
+                emailVerified: false,
+            },
+        });
+        created += 1;
+    }
+    const total = await prisma.user.count({ where: { role: "USER" } });
+    return res.json({
+        message: "Audience import complete",
+        imported: recipients.length,
+        created,
+        updated,
+        skipped,
+        total,
+    });
+};
+export const listSentRecipientHistory = async (req, res) => {
+    const parsed = HistoryQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid query", issues: parsed.error.issues });
+    }
+    const limit = parsed.data.limit ?? 200;
+    const completedJobs = await emailQueue.getCompleted(0, limit - 1);
+    const unique = new Set();
+    const jobs = completedJobs.map((job) => {
+        const queuedRecipients = Array.isArray(job.returnvalue?.queuedRecipients)
+            ? job.returnvalue.queuedRecipients.filter(Boolean)
+            : [];
+        const recipients = queuedRecipients.length
+            ? queuedRecipients
+            : Array.isArray(job.data?.recipients)
+                ? job.data.recipients.map((r) => r?.email).filter(Boolean)
+                : [];
+        recipients.forEach((email) => unique.add(String(email).trim().toLowerCase()));
+        return {
+            id: job.id,
+            name: job.name,
+            subject: job.data?.subject,
+            queuedRecipients: recipients,
+            processedOn: job.processedOn,
+            finishedOn: job.finishedOn,
+        };
+    });
+    return res.json({
+        jobs,
+        uniqueRecipients: Array.from(unique.values()),
+        uniqueCount: unique.size,
     });
 };
