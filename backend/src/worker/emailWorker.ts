@@ -51,12 +51,30 @@ const worker = new Worker<EmailJobData>(
   }
 );
 
-worker.on("completed", (job) => {
-  console.log(`[emailWorker] Job completed ${job.id}`);
+worker.on("completed", async (job) => {
+  const state = await job.getState().catch(() => "unknown");
+  const value = job.returnvalue as
+    | {
+        queued?: number;
+        failed?: number;
+        queuedRecipients?: string[];
+        failedRecipients?: Array<{ email: string; error: string }>;
+      }
+    | undefined;
+  console.log(`[emailWorker] Job completed ${job.id}`, {
+    state,
+    queued: value?.queued ?? 0,
+    failed: value?.failed ?? 0,
+    queuedRecipients: value?.queuedRecipients ?? [],
+    failedRecipients: value?.failedRecipients ?? [],
+  });
 });
 
 worker.on("failed", (job, err) => {
-  console.error(`[emailWorker] Job failed ${job?.id}`, err);
+  console.error(`[emailWorker] Job failed ${job?.id}`, {
+    message: err?.message,
+    stack: err?.stack,
+  });
 });
 
 worker.on("error", (err) => {
