@@ -1,3 +1,4 @@
+import "./emailWorker.js";
 import cron from "node-cron";
 import { computePopularitySnapshots } from "../jobs/popularity.js";
 import { computeProfilePreferences } from "../jobs/preferences.js";
