@@ -8,6 +8,7 @@ This Terraform config provisions:
 - Optional Route53 + ACM for api domain
 - Optional S3 + CloudFront for media CDN
 - SSM Parameter Store entries for environment variables
+- Backend container health check now depends on `/health`, which verifies database connectivity before reporting healthy
 
 ## Prereqs
 - AWS credentials configured for the new account
@@ -44,3 +45,4 @@ terraform apply -auto-approve
 - Backend listens on port 4000 and health check hits /api/health.
 - HTTPS listener is only created if api_domain is set.
 - Secrets are stored in SSM Parameter Store (plaintext). For higher security, use Secrets Manager.
+- Important: if `existing_db_instance_identifier` is used, Terraform already knows how to derive a fresh `DATABASE_URL` from the live RDS master secret. Prefer that path over hard-coding stale database credentials in tfvars or task env.

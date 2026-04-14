@@ -72,8 +72,22 @@ app.use("/api", dashboardRoutes);
 app.use("/api", supportRoutes);
 app.use("/api", liveRoutes);
 
-app.get("/health", (_req, res) => res.json({ status: "ok" }));
-app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
+const healthHandler = async (_req: express.Request, res: express.Response) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return res.json({ status: "ok", database: "ok" });
+  } catch (err: any) {
+    console.error("healthcheck database error", err);
+    return res.status(503).json({
+      status: "degraded",
+      database: "unavailable",
+      reason: err?.name ?? "DatabaseError",
+    });
+  }
+};
+
+app.get("/health", healthHandler);
+app.get("/api/health", healthHandler);
 
 app.use((_, res) => res.status(404).json({ message: "Not found" }));
 

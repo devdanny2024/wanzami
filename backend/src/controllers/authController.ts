@@ -311,6 +311,8 @@ export const googleAuthCallback = async (req: Request, res: Response) => {
       err?.name === "PrismaClientInitializationError" ||
       err?.code === "P1001" ||
       rawMessage.includes("Can't reach database server") ||
+      rawMessage.includes("Authentication failed against database server") ||
+      rawMessage.includes("provided database credentials") ||
       rawMessage.includes("prisma.user.findUnique") ||
       rawMessage.includes("prisma.");
 

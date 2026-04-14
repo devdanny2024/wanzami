@@ -42,7 +42,9 @@ function CallbackContent() {
           const msg =
             apiCode === "ACCOUNT_NOT_FOUND_FOR_GOOGLE"
               ? "We couldn't complete Google sign-in for this email. Please try signing up first, then use Google to sign in."
-              : "Google sign-in is temporarily unavailable. Please try again later.";
+              : apiCode === "AUTH_TEMPORARILY_UNAVAILABLE"
+                ? "Login is temporarily unavailable because the service is having a database issue. Please try again shortly."
+                : "Google sign-in is temporarily unavailable. Please try again later.";
           setStatus("error");
           setMessage(msg);
           setErrorCode(apiCode ?? null);
