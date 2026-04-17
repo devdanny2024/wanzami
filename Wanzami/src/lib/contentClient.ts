@@ -21,16 +21,6 @@ export function resolveCdnImageUrl(rawUrl?: string | null) {
       resolved = `${cdnBase}${input}`;
     } else if (!input.includes("://")) {
       resolved = `${cdnBase}/${input}`;
-    } else {
-      try {
-        const url = new URL(input);
-        const keyPath = url.pathname.startsWith("/") ? url.pathname.slice(1) : url.pathname;
-        if (keyPath) {
-          resolved = `${cdnBase}/${keyPath}`;
-        }
-      } catch {
-        resolved = input;
-      }
     }
   }
 

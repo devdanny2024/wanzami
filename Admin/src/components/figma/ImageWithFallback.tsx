@@ -49,9 +49,13 @@ export function ImageWithFallback(props: React.ImgHTMLAttributes<HTMLImageElemen
 
     const fetchSigned = async () => {
       if (!props.src) return;
+      if (/^https?:\/\//i.test(props.src)) {
+        setSignedSrc(resolvedSrc);
+        return;
+      }
       const key = extractS3Key(props.src);
       if (!key) {
-        setSignedSrc(props.src);
+        setSignedSrc(resolvedSrc);
         return;
       }
       try {

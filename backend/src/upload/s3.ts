@@ -19,6 +19,11 @@ const PART_SIZE = Math.max(5, Number.isFinite(partSizeMb) ? partSizeMb : 64) * 1
 
 const endpoint = config.s3.endpoint && config.s3.endpoint.trim() !== "" ? config.s3.endpoint : undefined;
 const region = (config.s3.region && config.s3.region.trim()) || (process.env.AWS_REGION && process.env.AWS_REGION.trim()) || "eu-north-1";
+const preferRuntimeCredentials =
+  !!process.env.ECS_CONTAINER_METADATA_URI_V4 ||
+  !!process.env.ECS_CONTAINER_METADATA_URI ||
+  !!process.env.AWS_CONTAINER_CREDENTIALS_RELATIVE_URI ||
+  !!process.env.AWS_CONTAINER_CREDENTIALS_FULL_URI;
 
 const s3Client = () => {
   const base: any = {
@@ -29,7 +34,7 @@ const s3Client = () => {
   if (endpoint) {
     base.endpoint = endpoint;
   }
-  if (config.s3.accessKeyId && config.s3.secretAccessKey) {
+  if (!preferRuntimeCredentials && config.s3.accessKeyId && config.s3.secretAccessKey) {
     base.credentials = {
       accessKeyId: config.s3.accessKeyId,
       secretAccessKey: config.s3.secretAccessKey,

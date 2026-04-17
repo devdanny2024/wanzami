@@ -156,22 +156,34 @@ const safeLocalizePrice = async (opts: {
   }
 };
 
+const PUBLIC_MEDIA_PREFIXES = ["poster/", "thumbnail/", "trailer/", "uploads/"];
+
+const isPublicMediaKey = (key: string) => PUBLIC_MEDIA_PREFIXES.some((prefix) => key.startsWith(prefix));
+
 const resolvePlaybackUrl = async (url?: string | null) => {
   if (!url) return url;
-  const key = extractS3KeyFromUrl(url);
-  if (key) {
-    // Prefer CDN if configured; otherwise presign S3
-    if (config.mediaCdnBase) {
-      return `${config.mediaCdnBase}/${key}`;
-    }
-    try {
-      return await presignGetObject(key, 3600);
-    } catch (err) {
-      console.error("presign playback url failed", { key, err });
-      return null;
-    }
+  const trimmedUrl = url.trim();
+  const key = extractS3KeyFromUrl(trimmedUrl);
+  if (!key) {
+    return trimmedUrl;
   }
-  return url;
+
+  if (isPublicMediaKey(key)) {
+    if (/^https?:\/\//i.test(trimmedUrl)) {
+      return trimmedUrl;
+    }
+    if (config.s3.bucket && config.s3.region) {
+      return `https://${config.s3.bucket}.s3.${config.s3.region}.amazonaws.com/${key}`;
+    }
+    return trimmedUrl;
+  }
+
+  try {
+    return await presignGetObject(key, 3600);
+  } catch (err) {
+    console.error("presign playback url failed", { key, err });
+    return null;
+  }
 };
 
 export const listPublicTitles = async (req: Request, res: Response) => {
