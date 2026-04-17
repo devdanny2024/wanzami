@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
 import crypto from "crypto";
+import path from "path";
 import { prisma } from "../prisma.js";
-import { presignPutObject, presignGetObject } from "../upload/s3.js";
+import { presignPutObject, presignGetObject, getObjectResponse } from "../upload/s3.js";
 import { config } from "../config.js";
 import { resolveCountry } from "../utils/country.js";
 import { auditLog } from "../utils/audit.js";
@@ -129,9 +130,9 @@ const extractS3KeyFromUrl = (url?: string | null) => {
     }
     if (url.startsWith("http://") || url.startsWith("https://")) {
       const u = new URL(url);
-      const path = u.pathname.startsWith("/") ? u.pathname.slice(1) : u.pathname;
-      if (config.s3.bucket && u.hostname.startsWith(`${config.s3.bucket}.`)) {
-        return decodeURIComponent(path);
+      const pathName = u.pathname.startsWith("/") ? u.pathname.slice(1) : u.pathname;
+      if (/\.s3[.-]/i.test(u.hostname) || u.hostname.includes("cloudfront.net")) {
+        return decodeURIComponent(pathName);
       }
     }
     if (!url.includes("://")) {
@@ -141,6 +142,88 @@ const extractS3KeyFromUrl = (url?: string | null) => {
     return null;
   }
   return null;
+};
+
+const getRequestOrigin = (req: Request) => {
+  const protoHeader = (req.headers["x-forwarded-proto"] as string | undefined)?.split(",")[0]?.trim();
+  const hostHeader = (req.headers["x-forwarded-host"] as string | undefined)?.split(",")[0]?.trim();
+  const proto = protoHeader || req.protocol || "http";
+  const host = hostHeader || req.get("host") || "localhost";
+  return `${proto}://${host}`;
+};
+
+const createMediaToken = (key: string, expiresInSec = 3600) => {
+  const payload = {
+    key,
+    exp: Math.floor(Date.now() / 1000) + Math.max(60, expiresInSec),
+  };
+  const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const signature = crypto.createHmac("sha256", config.accessSecret).update(encoded).digest("base64url");
+  return `${encoded}.${signature}`;
+};
+
+const verifyMediaToken = (token: string) => {
+  const [encoded, signature] = token.split(".");
+  if (!encoded || !signature) {
+    throw new Error("Malformed media token");
+  }
+  const expected = crypto.createHmac("sha256", config.accessSecret).update(encoded).digest("base64url");
+  const left = Buffer.from(signature);
+  const right = Buffer.from(expected);
+  if (left.length !== right.length || !crypto.timingSafeEqual(left, right)) {
+    throw new Error("Invalid media token signature");
+  }
+  const parsed = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8")) as { key?: string; exp?: number };
+  if (!parsed.key || !parsed.exp || parsed.exp <= Math.floor(Date.now() / 1000)) {
+    throw new Error("Expired media token");
+  }
+  return parsed as { key: string; exp: number };
+};
+
+const buildMediaProxyUrl = (origin: string, key: string, expiresInSec = 3600) => {
+  const params = new URLSearchParams({
+    key,
+    token: createMediaToken(key, expiresInSec),
+  });
+  return `${origin}/api/media/stream?${params.toString()}`;
+};
+
+const hlsVariantKeyForRendition = (key: string, rendition?: string | null) => {
+  if (!rendition || !key.endsWith("/master.m3u8")) {
+    return key;
+  }
+  return path.posix.join(path.posix.dirname(key), `${rendition}.m3u8`);
+};
+
+const readBodyAsString = async (body: any) => {
+  if (!body) return "";
+  if (typeof body.transformToString === "function") {
+    return body.transformToString();
+  }
+  const chunks: Buffer[] = [];
+  for await (const chunk of body as AsyncIterable<any>) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks).toString("utf8");
+};
+
+const rewriteHlsPlaylist = (playlist: string, origin: string, key: string, expiresInSec: number) => {
+  const baseDir = path.posix.dirname(key);
+  return playlist
+    .split(/\r?\n/)
+    .map((line) => {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) {
+        return line;
+      }
+      if (/^https?:\/\//i.test(trimmed)) {
+        const nestedKey = extractS3KeyFromUrl(trimmed);
+        return nestedKey ? buildMediaProxyUrl(origin, nestedKey, expiresInSec) : trimmed;
+      }
+      const nextKey = path.posix.normalize(path.posix.join(baseDir, trimmed)).replace(/^(\.\.\/)+/, "");
+      return buildMediaProxyUrl(origin, nextKey, expiresInSec);
+    })
+    .join("\n");
 };
 
 const safeLocalizePrice = async (opts: {
@@ -160,29 +243,91 @@ const PUBLIC_MEDIA_PREFIXES = ["poster/", "thumbnail/", "trailer/", "uploads/"];
 
 const isPublicMediaKey = (key: string) => PUBLIC_MEDIA_PREFIXES.some((prefix) => key.startsWith(prefix));
 
-const resolvePlaybackUrl = async (url?: string | null) => {
+const resolvePlaybackUrl = async (
+  url?: string | null,
+  opts?: { origin?: string; rendition?: string | null }
+) => {
   if (!url) return url;
   const trimmedUrl = url.trim();
-  const key = extractS3KeyFromUrl(trimmedUrl);
-  if (!key) {
+  const extractedKey = extractS3KeyFromUrl(trimmedUrl);
+  if (!extractedKey) {
     return trimmedUrl;
   }
 
-  if (isPublicMediaKey(key)) {
+  if (isPublicMediaKey(extractedKey)) {
     if (/^https?:\/\//i.test(trimmedUrl)) {
       return trimmedUrl;
     }
     if (config.s3.bucket && config.s3.region) {
-      return `https://${config.s3.bucket}.s3.${config.s3.region}.amazonaws.com/${key}`;
+      return `https://${config.s3.bucket}.s3.${config.s3.region}.amazonaws.com/${extractedKey}`;
     }
     return trimmedUrl;
   }
 
+  const key = hlsVariantKeyForRendition(extractedKey, opts?.rendition);
+  const origin = opts?.origin;
+  if (!origin) {
+    try {
+      return await presignGetObject(key, 3600);
+    } catch (err) {
+      console.error("presign playback url failed", { key, err });
+      return null;
+    }
+  }
+
+  return buildMediaProxyUrl(origin, key, 3600);
+};
+
+export const streamMediaAsset = async (req: Request, res: Response) => {
+  const key = typeof req.query.key === "string" ? req.query.key.trim() : "";
+  const token = typeof req.query.token === "string" ? req.query.token.trim() : "";
+
+  if (!key || !token) {
+    return res.status(400).json({ message: "Missing media token or key" });
+  }
+
   try {
-    return await presignGetObject(key, 3600);
+    const payload = verifyMediaToken(token);
+    if (payload.key !== key) {
+      return res.status(403).json({ message: "Invalid media token" });
+    }
+
+    const bucket = config.s3.bucket;
+    if (!bucket) {
+      return res.status(500).json({ message: "Media bucket not configured" });
+    }
+
+    const object = await getObjectResponse(key, bucket);
+    if (!object.Body) {
+      return res.status(404).json({ message: "Media not found" });
+    }
+
+    const ttlRemaining = Math.max(60, payload.exp - Math.floor(Date.now() / 1000));
+    const contentType = object.ContentType || (key.endsWith(".m3u8")
+      ? "application/vnd.apple.mpegurl"
+      : key.endsWith(".ts")
+      ? "video/MP2T"
+      : "application/octet-stream");
+
+    res.setHeader("Cache-Control", "private, no-store, max-age=0");
+    res.setHeader("Content-Type", contentType);
+    if (object.ContentLength != null) {
+      res.setHeader("Content-Length", String(object.ContentLength));
+    }
+
+    if (key.endsWith(".m3u8")) {
+      const body = await readBodyAsString(object.Body);
+      const rewritten = rewriteHlsPlaylist(body, getRequestOrigin(req), key, ttlRemaining);
+      return res.status(200).send(rewritten);
+    }
+
+    for await (const chunk of object.Body as AsyncIterable<any>) {
+      res.write(chunk);
+    }
+    return res.end();
   } catch (err) {
-    console.error("presign playback url failed", { key, err });
-    return null;
+    console.error("stream media asset failed", { key, err });
+    return res.status(403).json({ message: "Unable to stream media" });
   }
 };
 
@@ -423,8 +568,9 @@ export const getTitleWithEpisodes = async (req: Request, res: Response) => {
     }
   }
 
-  const trailerUrl = await resolvePlaybackUrl(title.trailerUrl);
-  const shortTrailerUrl = await resolvePlaybackUrl(title.shortTrailerUrl);
+  const requestOrigin = getRequestOrigin(req);
+  const trailerUrl = await resolvePlaybackUrl(title.trailerUrl, { origin: requestOrigin });
+  const shortTrailerUrl = await resolvePlaybackUrl(title.shortTrailerUrl, { origin: requestOrigin });
 
   let localizedPrice = null as null | { amount: number; currency: string; rate: number };
   if (title.isPpv && title.ppvPriceNaira) {
@@ -439,7 +585,7 @@ export const getTitleWithEpisodes = async (req: Request, res: Response) => {
     title.assetVersions.map(async (a) => ({
       id: a.id.toString(),
       rendition: a.rendition,
-      url: ppvStreamAllowed ? await resolvePlaybackUrl(a.url) : null,
+      url: ppvStreamAllowed ? await resolvePlaybackUrl(a.url, { origin: requestOrigin, rendition: a.rendition }) : null,
       sizeBytes: a.sizeBytes ? Number(a.sizeBytes) : undefined,
       durationSec: a.durationSec ?? undefined,
       status: a.status,
@@ -466,7 +612,7 @@ export const getTitleWithEpisodes = async (req: Request, res: Response) => {
         (e as any).assetVersions?.map(async (a: any) => ({
           id: a.id.toString(),
           rendition: a.rendition,
-          url: ppvStreamAllowed ? await resolvePlaybackUrl(a.url) : null,
+          url: ppvStreamAllowed ? await resolvePlaybackUrl(a.url, { origin: requestOrigin, rendition: a.rendition }) : null,
           sizeBytes: a.sizeBytes ? Number(a.sizeBytes) : undefined,
           durationSec: a.durationSec ?? undefined,
           status: a.status,

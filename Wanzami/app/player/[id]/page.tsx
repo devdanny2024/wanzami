@@ -56,6 +56,11 @@ const labelForRendition = (r?: string) => {
   }
 };
 
+const isHlsUrl = (value?: string | null) => {
+  if (!value) return false;
+  return /\.m3u8($|\?)/i.test(value) || /[?&]key=[^&]*\.m3u8(?:$|&)/i.test(value);
+};
+
 const buildSourcesFromAssets = (
   assetsInput?: {
     rendition: 'R4K' | 'R2K' | 'R1080' | 'R720' | 'R360' | string;
@@ -80,46 +85,15 @@ const buildSourcesFromAssets = (
     ];
   }
 
-  const hasMaster = assets.some((a) => (a.url as string).includes('/master.m3u8'));
-
-  if (hasMaster) {
-    const master = assets.find((a) => (a.url as string).includes('/master.m3u8'))!;
-    const masterUrl = master.url as string;
-
-    const autoSource = {
-      src: masterUrl,
-      label: 'Auto',
-      type: masterUrl.toLowerCase().endsWith('.m3u8') ? 'application/x-mpegURL' : 'video/mp4',
-    };
-
-    const sortedWithRenditions = assets
-      .slice()
-      .sort((a, b) => (renditionRank[b.rendition] ?? 0) - (renditionRank[a.rendition] ?? 0));
-
-    const manualSources = sortedWithRenditions.map((a) => {
-      const baseUrl = (a.url as string).includes('master.m3u8')
-        ? (a.url as string).replace('master.m3u8', `${a.rendition}.m3u8`)
-        : (a.url as string);
-      return {
-        src: baseUrl,
-        label: labelForRendition(a.rendition),
-        type: baseUrl.toLowerCase().endsWith('.m3u8') ? 'application/x-mpegURL' : 'video/mp4',
-      };
-    });
-
-    return [autoSource, ...manualSources];
-  }
-
   const sorted = assets.sort(
     (a, b) => (renditionRank[b.rendition] ?? 0) - (renditionRank[a.rendition] ?? 0)
   );
   return sorted.map((a) => ({
     src: a.url as string,
     label: labelForRendition(a.rendition),
-    type:
-      (a.url as string).toLowerCase().endsWith('.m3u8')
-        ? 'application/x-mpegURL'
-        : 'video/mp4',
+    type: isHlsUrl(a.url as string)
+      ? 'application/x-mpegURL'
+      : 'video/mp4',
   }));
 };
 

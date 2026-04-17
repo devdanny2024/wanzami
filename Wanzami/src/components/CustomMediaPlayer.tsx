@@ -127,6 +127,10 @@ export function CustomMediaPlayer({
   const buildSourcesFromEpisode = useCallback((ep?: Episode | null): MediaSource[] => {
     if (!ep?.assetVersions?.length) return [];
     const rank: Record<string, number> = { R4K: 5, R2K: 4, R1080: 3, R720: 2, R360: 1 };
+    const isHlsAsset = (value?: string | null) => {
+      if (!value) return false;
+      return /\.m3u8($|\?)/i.test(value) || /[?&]key=[^&]*\.m3u8(?:$|&)/i.test(value);
+    };
     return ep.assetVersions
       .filter((a) => a?.url)
       .sort((a, b) => (rank[b.rendition] ?? 0) - (rank[a.rendition] ?? 0))
@@ -144,7 +148,7 @@ export function CustomMediaPlayer({
             : a.rendition === "R360"
             ? "360p"
             : a.rendition ?? "Source",
-        type: (a.url as string).toLowerCase().endsWith(".m3u8")
+        type: isHlsAsset(a.url as string)
           ? "application/x-mpegURL"
           : "video/mp4",
       }));
@@ -450,7 +454,7 @@ export function CustomMediaPlayer({
 
     const isHlsSource = (source: string, type?: string) => {
       const lower = source.toLowerCase();
-      if (lower.endsWith(".m3u8")) return true;
+      if (lower.endsWith(".m3u8") || /\.m3u8($|\?)/i.test(source) || /[?&]key=[^&]*\.m3u8(?:$|&)/i.test(source)) return true;
       if (type && type.toLowerCase().includes("mpegurl")) return true;
       return false;
     };

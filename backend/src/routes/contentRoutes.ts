@@ -11,6 +11,7 @@ import {
   publishTitle,
   presignAsset,
   presignAssetRead,
+  streamMediaAsset,
   deleteTitle,
   createEpisode,
   updateEpisode,
@@ -29,6 +30,7 @@ router.get("/titles", listPublicTitles);
 router.get("/search/titles", searchPublicTitles);
 router.get("/titles/:id", getTitleWithEpisodes);
 router.get("/titles/:id/episodes", listEpisodesForTitle);
+router.get("/media/stream", streamMediaAsset);
 
 router.get("/admin/titles", requireAuth, requireAdmin, listTitles);
 router.get("/admin/titles/:id/episodes", requireAuth, requireAdmin, listEpisodesForTitle);

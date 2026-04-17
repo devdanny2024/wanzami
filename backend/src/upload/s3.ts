@@ -217,6 +217,19 @@ export const presignPutObject = async (key: string, contentType = "application/o
   return url;
 };
 
+export const getObjectResponse = async (key: string, bucket = config.s3.bucket) => {
+  if (!bucket) {
+    throw new Error("S3 bucket not configured");
+  }
+  const client = s3Client();
+  return client.send(
+    new GetObjectCommand({
+      Bucket: bucket,
+      Key: key,
+    })
+  );
+};
+
 export const presignGetObject = async (key: string, expiresIn = 900) => {
   if (!config.s3.bucket) {
     throw new Error("S3 bucket not configured");
