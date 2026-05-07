@@ -1,8 +1,22 @@
 import type { Metadata } from "next";
+import { Inter, Bebas_Neue } from "next/font/google";
 import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { Providers } from "./providers";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const bebasNeue = Bebas_Neue({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-display",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Wanzami",
@@ -67,10 +81,8 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="bg-black text-white">
-        <Providers>
-          {children}
-        </Providers>
+      <body className={`${inter.className} ${inter.variable} ${bebasNeue.variable} bg-black text-white`}>
+        <Providers>{children}</Providers>
         <Analytics />
       </body>
     </html>
