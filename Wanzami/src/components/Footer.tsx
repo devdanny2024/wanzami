@@ -2,7 +2,12 @@ import { Facebook, Instagram, Music2, Twitter, Youtube } from 'lucide-react';
 
 export function Footer() {
   const footerLinks = {
-    Support: ['Contact'],
+    Support: [
+      { label: 'Contact', href: '/contact' },
+      { label: 'Terms of Use', href: '/policy#terms' },
+      { label: 'Privacy Policy', href: '/policy#privacy' },
+      { label: 'FAQ', href: '/policy#faq' },
+    ],
   };
 
   const socials = [
@@ -16,7 +21,6 @@ export function Footer() {
   return (
     <footer className="bg-[#0b0b0c] border-t border-white/5 pt-16 pb-8">
       <div className="max-w-7xl mx-auto px-4 md:px-12 lg:px-16">
-        {/* Main footer content */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
           {Object.entries(footerLinks)
             .filter(([, links]) => links.length)
@@ -25,22 +29,16 @@ export function Footer() {
                 <h3 className="text-white text-sm mb-4 tracking-wide">{category}</h3>
                 <ul className="space-y-3">
                   {links.map((link) => (
-                    <li key={link}>
-                      {link === 'Contact' ? (
-                        <a
-                          href="/contact"
-                          className="text-gray-500 hover:text-white text-sm transition-colors"
-                        >
-                          Contact
-                        </a>
-                      ) : null}
+                    <li key={link.label}>
+                      <a href={link.href} className="text-gray-500 hover:text-white text-sm transition-colors">
+                        {link.label}
+                      </a>
                     </li>
                   ))}
                 </ul>
               </div>
             ))}
 
-          {/* Social links */}
           <div>
             <h3 className="text-white text-sm mb-4 tracking-wide">Connect</h3>
             <div className="flex flex-wrap gap-3">
@@ -60,7 +58,6 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Bottom bar */}
         <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-gray-600 text-sm">© 2026 Wanzami. All rights reserved.</p>
           <p className="text-gray-600 text-sm">
