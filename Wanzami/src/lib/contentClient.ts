@@ -1,7 +1,7 @@
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ??
   process.env.AUTH_SERVICE_URL ??
-  "https://wanzami-backend-alb-1018329891.us-east-2.elb.amazonaws.com/api";
+  "https://api.blvckcode.io/api";
 
 const IMAGE_CDN_BASE = (process.env.NEXT_PUBLIC_IMAGE_CDN_BASE_URL ?? "").trim();
 const IMAGE_ORIGIN_BASE = (process.env.NEXT_PUBLIC_IMAGE_ORIGIN_BASE_URL ?? "").trim();

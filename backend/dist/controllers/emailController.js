@@ -187,8 +187,7 @@ export const importUserRecipients = async (req, res) => {
             const data = {};
             if ((!existing.name || !existing.name.trim()) && name)
                 data.name = name;
-            if (existing.role !== "USER")
-                data.role = "USER";
+            // Never downgrade privileged users during audience import.
             if (Object.keys(data).length > 0) {
                 await prisma.user.update({ where: { email }, data });
                 updated += 1;

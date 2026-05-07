@@ -8,6 +8,10 @@ const partSizeMb = Number(process.env.S3_MULTIPART_PART_SIZE_MB ?? "64");
 const PART_SIZE = Math.max(5, Number.isFinite(partSizeMb) ? partSizeMb : 64) * 1024 * 1024; // >= 5MB
 const endpoint = config.s3.endpoint && config.s3.endpoint.trim() !== "" ? config.s3.endpoint : undefined;
 const region = (config.s3.region && config.s3.region.trim()) || (process.env.AWS_REGION && process.env.AWS_REGION.trim()) || "eu-north-1";
+const preferRuntimeCredentials = !!process.env.ECS_CONTAINER_METADATA_URI_V4 ||
+    !!process.env.ECS_CONTAINER_METADATA_URI ||
+    !!process.env.AWS_CONTAINER_CREDENTIALS_RELATIVE_URI ||
+    !!process.env.AWS_CONTAINER_CREDENTIALS_FULL_URI;
 const s3Client = () => {
     const base = {
         region,
@@ -17,7 +21,7 @@ const s3Client = () => {
     if (endpoint) {
         base.endpoint = endpoint;
     }
-    if (config.s3.accessKeyId && config.s3.secretAccessKey) {
+    if (!preferRuntimeCredentials && config.s3.accessKeyId && config.s3.secretAccessKey) {
         base.credentials = {
             accessKeyId: config.s3.accessKeyId,
             secretAccessKey: config.s3.secretAccessKey,
@@ -166,6 +170,16 @@ export const presignPutObject = async (key, contentType = "application/octet-str
         ContentType: contentType,
     }), { expiresIn });
     return url;
+};
+export const getObjectResponse = async (key, bucket = config.s3.bucket) => {
+    if (!bucket) {
+        throw new Error("S3 bucket not configured");
+    }
+    const client = s3Client();
+    return client.send(new GetObjectCommand({
+        Bucket: bucket,
+        Key: key,
+    }));
 };
 export const presignGetObject = async (key, expiresIn = 900) => {
     if (!config.s3.bucket) {

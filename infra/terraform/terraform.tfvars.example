@@ -36,13 +36,18 @@ env_vars = {
 
   # IVS must be created in a supported region (separate from the ECS region)
   IVS_REGION            = "eu-west-1"
-  DATABASE_URL          = "postgresql://postgres:REPLACE_ME@database-1.cxy88uogafmp.eu-north-1.rds.amazonaws.com:5432/wanzami"
 
-  # TODO: Replace with EU S3 + CDN if migrating assets
+  # Do NOT hard-code DATABASE_URL here for production ECS.
+  # When existing_db_instance_identifier is set, Terraform now injects:
+  # - DB_HOST / DB_PORT / DB_NAME as plain env vars
+  # - DB_USER / DB_PASSWORD from the live RDS master secret at task start
+  DB_NAME               = "wanzami"
+
   # Media bucket (new account / eu-north-1)
-  S3_BUCKET             = "wanzami-media-eu"
+  # Do not set static S3 creds for ECS; let the task role access this bucket.
+  S3_BUCKET             = "wanzami-media-eu-576393818319"
   S3_REGION             = "eu-north-1"
-  MEDIA_CDN_BASE        = "https://dylsoq281d2uy.cloudfront.net"
+  MEDIA_CDN_BASE        = "https://d2gnxyreh5ighz.cloudfront.net"
 
   # Google OAuth (required for /api/auth/google/*)
   GOOGLE_CLIENT_ID      = "REPLACE_ME"
@@ -50,8 +55,6 @@ env_vars = {
   GOOGLE_REDIRECT_URI   = "https://www.wanzami.tv/oauth/google/callback"
 
   # Secrets placeholders
-  S3_ACCESS_KEY         = "REPLACE_ME"
-  S3_SECRET_KEY         = "REPLACE_ME"
   FLW_PUBLIC_KEY        = "REPLACE_ME"
   FLW_SECRET_KEY        = "REPLACE_ME"
   FLW_ENCRYPTION_KEY    = "REPLACE_ME"
@@ -70,5 +73,5 @@ env_vars = {
   SMTP_PASS             = "REPLACE_ME_GMAIL_APP_PASSWORD"
   SMTP_FROM             = "Wanzami <wanzamitv@gmail.com>"
   DEVICE_LIMIT          = "4"
-  PPV_ACCESS_DAYS        = "3"
+  PPV_ACCESS_DAYS       = "3"
 }

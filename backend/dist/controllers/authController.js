@@ -257,11 +257,29 @@ export const googleAuthCallback = async (req, res) => {
     }
     catch (err) {
         const codeVal = err?.code;
-        const msg = err?.message ?? "Google auth failed";
+        const rawMessage = String(err?.message ?? "Google auth failed");
+        const isDatabaseConnectivityError = err?.name === "PrismaClientInitializationError" ||
+            err?.code === "P1001" ||
+            rawMessage.includes("Can't reach database server") ||
+            rawMessage.includes("Authentication failed against database server") ||
+            rawMessage.includes("provided database credentials") ||
+            rawMessage.includes("prisma.user.findUnique") ||
+            rawMessage.includes("prisma.");
         if (codeVal === "ACCOUNT_NOT_FOUND_FOR_GOOGLE") {
-            return res.status(404).json({ code: codeVal, message: msg });
+            return res.status(404).json({ code: codeVal, message: rawMessage });
         }
-        return res.status(400).json({ message: msg });
+        if (isDatabaseConnectivityError) {
+            console.error("googleAuthCallback database connectivity error", err);
+            return res.status(503).json({
+                code: "AUTH_TEMPORARILY_UNAVAILABLE",
+                message: "Google sign-in is temporarily unavailable. Please try again later.",
+            });
+        }
+        console.error("googleAuthCallback error", err);
+        return res.status(500).json({
+            code: "GOOGLE_AUTH_FAILED",
+            message: "Google sign-in is temporarily unavailable. Please try again later.",
+        });
     }
 };
 export const completeOnboarding = async (req, res) => {

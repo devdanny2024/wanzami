@@ -45,4 +45,7 @@ terraform apply -auto-approve
 - Backend listens on port 4000 and health check hits /api/health.
 - HTTPS listener is only created if api_domain is set.
 - Secrets are stored in SSM Parameter Store (plaintext). For higher security, use Secrets Manager.
-- Important: if `existing_db_instance_identifier` is used, Terraform already knows how to derive a fresh `DATABASE_URL` from the live RDS master secret. Prefer that path over hard-coding stale database credentials in tfvars or task env.
+- Permanent DB fix: when `existing_db_instance_identifier` is set, ECS tasks now receive `DB_HOST` / `DB_PORT` / `DB_NAME` as regular env vars and `DB_USER` / `DB_PASSWORD` directly from the live RDS master secret at task start. Do not hard-code `DATABASE_URL` into task definitions, tfvars, or checked-in JSON artifacts.
+- S3 playback fix: use `S3_BUCKET = wanzami-media-eu-576393818319` for the eu-north-1 account and do not inject static `S3_ACCESS_KEY` / `S3_SECRET_KEY` into ECS task env. Let the ECS task role provide credentials.
+- Secret rotation fix: Terraform also provisions an EventBridge -> Lambda hook that forces a new ECS deployment for the backend and workers after `PutSecretValue`, `UpdateSecret`, or `RotationSucceeded` events on the DB secret, so rotated credentials are picked up automatically.
+- Important: the EventBridge rule uses Secrets Manager events delivered via CloudTrail. Make sure management events are being delivered to EventBridge in this AWS account.

@@ -29,27 +29,26 @@ const allowedOrigins = [
     "http://localhost:3001",
     "http://localhost:4173",
 ];
+const allowedOriginPatterns = [
+    // Vercel preview domains for Wanzami frontend/admin under this project team.
+    // Keep broad enough for branch preview naming changes.
+    /^https:\/\/wanzami(?:-admin)?-git-[^.]+-blvckcodeios-projects\.vercel\.app$/i,
+    /^https:\/\/wanzami(?:-admin)?-[^.]*\.vercel\.app$/i,
+];
+const isAllowedOrigin = (origin) => allowedOrigins.includes(origin) || allowedOriginPatterns.some((re) => re.test(origin));
 app.use(cors({
     origin: (origin, callback) => {
         if (!origin)
             return callback(null, true);
-        if (allowedOrigins.includes(origin))
+        if (isAllowedOrigin(origin))
             return callback(null, true);
-        // Fallback: allow all origins to avoid blocking admin until we have the exact host configured.
-        return callback(null, true);
+        return callback(null, false);
     },
     credentials: false,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     optionsSuccessStatus: 204,
 }));
-// Ensure CORS headers even on errors/proxies that might strip the above.
-app.use((req, res, next) => {
-    res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
-    res.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
-    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-    next();
-});
 app.use(express.json());
 app.use(cookieParser());
 app.use("/api", authRoutes);
@@ -64,7 +63,22 @@ app.use("/api", emailRoutes);
 app.use("/api", dashboardRoutes);
 app.use("/api", supportRoutes);
 app.use("/api", liveRoutes);
-app.get("/health", (_req, res) => res.json({ status: "ok" }));
+const healthHandler = async (_req, res) => {
+    try {
+        await prisma.$queryRaw `SELECT 1`;
+        return res.json({ status: "ok", database: "ok" });
+    }
+    catch (err) {
+        console.error("healthcheck database error", err);
+        return res.status(503).json({
+            status: "degraded",
+            database: "unavailable",
+            reason: err?.name ?? "DatabaseError",
+        });
+    }
+};
+app.get("/health", healthHandler);
+app.get("/api/health", healthHandler);
 app.use((_, res) => res.status(404).json({ message: "Not found" }));
 app.use((err, req, res, _next) => {
     console.error(err);

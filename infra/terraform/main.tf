@@ -5,12 +5,18 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    archive = {
+      source  = "hashicorp/archive"
+      version = "~> 2.5"
+    }
   }
 }
 
 provider "aws" {
   region = var.aws_region
 }
+
+data "aws_caller_identity" "current" {}
 
 # --------------------
 # ECR
@@ -108,8 +114,8 @@ data "aws_secretsmanager_secret_version" "existing_db_master" {
 }
 
 data "aws_elasticache_replication_group" "existing" {
-  count                 = var.existing_redis_replication_group_id != "" ? 1 : 0
-  replication_group_id  = var.existing_redis_replication_group_id
+  count                = var.existing_redis_replication_group_id != "" ? 1 : 0
+  replication_group_id = var.existing_redis_replication_group_id
 }
 
 # --------------------
@@ -134,20 +140,58 @@ data "aws_iam_role" "ecs_task" {
   name = var.ecs_task_role_name
 }
 
+resource "aws_iam_role_policy" "ecs_execution_db_runtime_secret" {
+  count = var.existing_db_instance_identifier != "" ? 1 : 0
+
+  name = "wanzami-ecs-db-runtime-secret"
+  role = data.aws_iam_role.ecs_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = ["secretsmanager:GetSecretValue"]
+        Resource = [data.aws_db_instance.existing[0].master_user_secret[0].secret_arn]
+      },
+      {
+        Effect = "Allow"
+        Action = ["kms:Decrypt"]
+        Resource = ["*"]
+        Condition = {
+          StringEquals = {
+            "kms:ViaService" = "secretsmanager.${var.aws_region}.amazonaws.com"
+          }
+        }
+      }
+    ]
+  })
+}
+
 locals {
-  live_db_host = var.existing_db_instance_identifier != "" ? data.aws_db_instance.existing[0].address : ""
-  live_db_secret = var.existing_db_instance_identifier != "" ? jsondecode(data.aws_secretsmanager_secret_version.existing_db_master[0].secret_string) : {}
-  live_db_username = try(local.live_db_secret.username, try(var.env_vars["DB_USER"], "wanzami"))
-  live_db_password = try(local.live_db_secret.password, "")
-  live_redis_host = var.existing_redis_replication_group_id != "" ? data.aws_elasticache_replication_group.existing[0].primary_endpoint_address : ""
-  live_db_port = contains(keys(var.env_vars), "DATABASE_URL") ? (length(split(":", split("/", split("@", var.env_vars["DATABASE_URL"])[1])[0])) > 1 ? split(":", split("/", split("@", var.env_vars["DATABASE_URL"])[1])[0])[1] : "5432") : "5432"
-  live_db_name = contains(keys(var.env_vars), "DATABASE_URL") ? join("/", slice(split("/", split("@", var.env_vars["DATABASE_URL"])[1]), 1, length(split("/", split("@", var.env_vars["DATABASE_URL"])[1])))) : "wanzami"
+  db_runtime_secret_enabled = var.existing_db_instance_identifier != "" && try(length(data.aws_db_instance.existing[0].master_user_secret), 0) > 0
+  db_secret_arn             = local.db_runtime_secret_enabled ? data.aws_db_instance.existing[0].master_user_secret[0].secret_arn : ""
+  live_db_host              = var.existing_db_instance_identifier != "" ? data.aws_db_instance.existing[0].address : ""
+  live_db_secret            = var.existing_db_instance_identifier != "" ? jsondecode(data.aws_secretsmanager_secret_version.existing_db_master[0].secret_string) : {}
+  live_db_username          = try(local.live_db_secret.username, try(var.env_vars["DB_USER"], "wanzami"))
+  live_redis_host           = var.existing_redis_replication_group_id != "" ? data.aws_elasticache_replication_group.existing[0].primary_endpoint_address : ""
+  live_db_port              = try(tostring(data.aws_db_instance.existing[0].port), contains(keys(var.env_vars), "DB_PORT") ? var.env_vars["DB_PORT"] : (contains(keys(var.env_vars), "DATABASE_URL") ? (length(split(":", split("/", split("@", var.env_vars["DATABASE_URL"])[1])[0])) > 1 ? split(":", split("/", split("@", var.env_vars["DATABASE_URL"])[1])[0])[1] : "5432") : "5432"))
+  live_db_name              = try(local.live_db_secret.dbname, try(var.env_vars["DB_NAME"], contains(keys(var.env_vars), "DATABASE_URL") ? join("/", slice(split("/", split("@", var.env_vars["DATABASE_URL"])[1]), 1, length(split("/", split("@", var.env_vars["DATABASE_URL"])[1])))) : "wanzami"))
+
+  base_env_vars = {
+    for k, v in var.env_vars :
+    k => v if !contains(["DATABASE_URL", "DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASSWORD"], k)
+  }
 
   resolved_env_vars = merge(
-    var.env_vars,
-    contains(keys(var.env_vars), "DATABASE_URL") && local.live_db_host != "" && local.live_db_password != "" ? {
-      DATABASE_URL = "postgresql://${local.live_db_username}:${urlencode(local.live_db_password)}@${local.live_db_host}:${local.live_db_port}/${local.live_db_name}"
-    } : {},
+    local.base_env_vars,
+    local.db_runtime_secret_enabled ? {
+      DB_HOST = local.live_db_host
+      DB_PORT = local.live_db_port
+      DB_NAME = local.live_db_name
+    } : (contains(keys(var.env_vars), "DATABASE_URL") && local.live_db_host != "" && try(local.live_db_secret.password, "") != "" ? {
+      DATABASE_URL = "postgresql://${local.live_db_username}:${urlencode(local.live_db_secret.password)}@${local.live_db_host}:${local.live_db_port}/${local.live_db_name}"
+    } : {}),
     contains(keys(var.env_vars), "REDIS_URL") && local.live_redis_host != "" ? {
       REDIS_URL = "${split("://", var.env_vars["REDIS_URL"])[0]}://${local.live_redis_host}:${length(split(":", split("/", split("://", var.env_vars["REDIS_URL"])[1])[0])) > 1 ? split(":", split("/", split("://", var.env_vars["REDIS_URL"])[1])[0])[1] : "6379"}${length(split("/", split("://", var.env_vars["REDIS_URL"])[1])) > 1 ? "/${join("/", slice(split("/", split("://", var.env_vars["REDIS_URL"])[1]), 1, length(split("/", split("://", var.env_vars["REDIS_URL"])[1]))))}" : ""}"
     } : {}
@@ -160,12 +204,27 @@ locals {
       value = v
     }
   ]
-  backend_repo_url = var.use_existing_ecr ? data.aws_ecr_repository.backend[0].repository_url : aws_ecr_repository.backend[0].repository_url
-  worker_transcode_repo_url = var.use_existing_ecr ? data.aws_ecr_repository.worker_transcode[0].repository_url : aws_ecr_repository.worker_transcode[0].repository_url
-  worker_cron_repo_url = var.use_existing_ecr ? data.aws_ecr_repository.worker_cron[0].repository_url : aws_ecr_repository.worker_cron[0].repository_url
-  backend_log_group = var.use_existing_log_groups ? data.aws_cloudwatch_log_group.backend[0].name : aws_cloudwatch_log_group.backend[0].name
-  worker_transcode_log_group = var.use_existing_log_groups ? data.aws_cloudwatch_log_group.worker_transcode[0].name : aws_cloudwatch_log_group.worker_transcode[0].name
-  worker_cron_log_group = var.use_existing_log_groups ? data.aws_cloudwatch_log_group.worker_cron[0].name : aws_cloudwatch_log_group.worker_cron[0].name
+  backend_secret_refs = local.db_runtime_secret_enabled ? [
+    {
+      name      = "DB_USER"
+      valueFrom = "${local.db_secret_arn}:username::"
+    },
+    {
+      name      = "DB_PASSWORD"
+      valueFrom = "${local.db_secret_arn}:password::"
+    }
+  ] : []
+  db_rotation_redeploy_service_arns = [
+    "arn:aws:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:service/${aws_ecs_cluster.main.name}/${var.backend_service_name}",
+    "arn:aws:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:service/${aws_ecs_cluster.main.name}/${var.worker_transcode_service_name}",
+    "arn:aws:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:service/${aws_ecs_cluster.main.name}/${var.worker_cron_service_name}"
+  ]
+  backend_repo_url             = var.use_existing_ecr ? data.aws_ecr_repository.backend[0].repository_url : aws_ecr_repository.backend[0].repository_url
+  worker_transcode_repo_url    = var.use_existing_ecr ? data.aws_ecr_repository.worker_transcode[0].repository_url : aws_ecr_repository.worker_transcode[0].repository_url
+  worker_cron_repo_url         = var.use_existing_ecr ? data.aws_ecr_repository.worker_cron[0].repository_url : aws_ecr_repository.worker_cron[0].repository_url
+  backend_log_group            = var.use_existing_log_groups ? data.aws_cloudwatch_log_group.backend[0].name : aws_cloudwatch_log_group.backend[0].name
+  worker_transcode_log_group   = var.use_existing_log_groups ? data.aws_cloudwatch_log_group.worker_transcode[0].name : aws_cloudwatch_log_group.worker_transcode[0].name
+  worker_cron_log_group        = var.use_existing_log_groups ? data.aws_cloudwatch_log_group.worker_cron[0].name : aws_cloudwatch_log_group.worker_cron[0].name
   alb_arn = var.use_existing_alb ? data.aws_lb.alb[0].arn : aws_lb.alb[0].arn
   tg_arn  = var.use_existing_target_group ? data.aws_lb_target_group.backend[0].arn : aws_lb_target_group.backend[0].arn
   alb_dns_name = var.use_existing_alb ? data.aws_lb.alb[0].dns_name : aws_lb.alb[0].dns_name
@@ -197,6 +256,7 @@ resource "aws_ecs_task_definition" "backend" {
         { containerPort = 4000, hostPort = 4000, protocol = "tcp" }
       ]
       environment = local.backend_env
+      secrets     = local.backend_secret_refs
       healthCheck = {
         command     = ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
         interval    = 30
@@ -231,6 +291,7 @@ resource "aws_ecs_task_definition" "worker_transcode" {
       image     = "${local.worker_transcode_repo_url}:latest"
       essential = true
       environment = local.backend_env
+      secrets     = local.backend_secret_refs
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -258,6 +319,7 @@ resource "aws_ecs_task_definition" "worker_cron" {
       image     = "${local.worker_cron_repo_url}:latest"
       essential = true
       environment = local.backend_env
+      secrets     = local.backend_secret_refs
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -536,6 +598,123 @@ resource "aws_appautoscaling_policy" "backend_alb_request_target" {
     scale_in_cooldown  = var.backend_scale_in_cooldown_seconds
     scale_out_cooldown = var.backend_scale_out_cooldown_seconds
   }
+}
+
+data "archive_file" "db_rotation_force_redeploy_lambda" {
+  count       = local.db_runtime_secret_enabled ? 1 : 0
+  type        = "zip"
+  source_file = "${path.module}/lambda/ecs_force_redeploy_on_secret_rotation.py"
+  output_path = "${path.module}/lambda/ecs_force_redeploy_on_secret_rotation.zip"
+}
+
+resource "aws_iam_role" "db_rotation_force_redeploy_lambda" {
+  count = local.db_runtime_secret_enabled ? 1 : 0
+
+  name = "wanzami-db-rotation-force-redeploy-lambda"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "db_rotation_force_redeploy_lambda_basic" {
+  count = local.db_runtime_secret_enabled ? 1 : 0
+
+  role       = aws_iam_role.db_rotation_force_redeploy_lambda[0].name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy" "db_rotation_force_redeploy_lambda_ecs" {
+  count = local.db_runtime_secret_enabled ? 1 : 0
+
+  name = "wanzami-db-rotation-force-redeploy-ecs"
+  role = aws_iam_role.db_rotation_force_redeploy_lambda[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["ecs:UpdateService"]
+        Resource = local.db_rotation_redeploy_service_arns
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["ecs:DescribeServices"]
+        Resource = ["*"]
+      }
+    ]
+  })
+}
+
+resource "aws_lambda_function" "db_rotation_force_redeploy" {
+  count = local.db_runtime_secret_enabled ? 1 : 0
+
+  function_name = "wanzami-db-rotation-force-redeploy"
+  role          = aws_iam_role.db_rotation_force_redeploy_lambda[0].arn
+  runtime       = "python3.12"
+  handler       = "ecs_force_redeploy_on_secret_rotation.handler"
+  filename      = data.archive_file.db_rotation_force_redeploy_lambda[0].output_path
+  source_code_hash = data.archive_file.db_rotation_force_redeploy_lambda[0].output_base64sha256
+  timeout       = 30
+
+  environment {
+    variables = {
+      ECS_CLUSTER_NAME = aws_ecs_cluster.main.name
+      ECS_SERVICE_NAMES = join(",", [
+        var.backend_service_name,
+        var.worker_transcode_service_name,
+        var.worker_cron_service_name,
+      ])
+      DB_SECRET_ARN = local.db_secret_arn
+    }
+  }
+}
+
+resource "aws_cloudwatch_event_rule" "db_secret_rotation" {
+  count = local.db_runtime_secret_enabled ? 1 : 0
+
+  name        = "wanzami-db-secret-rotation"
+  description = "Force new ECS deployments after DB secret changes or rotation"
+
+  event_pattern = jsonencode({
+    source = ["aws.secretsmanager"]
+    "detail-type" = [
+      "AWS API Call via CloudTrail",
+      "AWS Service Event via CloudTrail"
+    ]
+    detail = {
+      eventSource = ["secretsmanager.amazonaws.com"]
+      eventName   = ["PutSecretValue", "UpdateSecret", "RotationSucceeded"]
+    }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "db_secret_rotation_lambda" {
+  count = local.db_runtime_secret_enabled ? 1 : 0
+
+  rule      = aws_cloudwatch_event_rule.db_secret_rotation[0].name
+  target_id = "wanzami-db-secret-rotation-redeploy"
+  arn       = aws_lambda_function.db_rotation_force_redeploy[0].arn
+}
+
+resource "aws_lambda_permission" "db_secret_rotation_eventbridge" {
+  count = local.db_runtime_secret_enabled ? 1 : 0
+
+  statement_id  = "AllowExecutionFromEventBridgeDbSecretRotation"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.db_rotation_force_redeploy[0].function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.db_secret_rotation[0].arn
 }
 
 # --------------------
