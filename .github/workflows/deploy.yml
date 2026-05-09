@@ -144,6 +144,7 @@ jobs:
         working-directory: infra/terraform
         run: |
           terraform import 'aws_iam_role.db_rotation_force_redeploy_lambda[0]' wanzami-db-rotation-force-redeploy-lambda || true
+          terraform import 'aws_lambda_function.db_rotation_force_redeploy[0]' wanzami-db-rotation-force-redeploy || true
 
       - name: Terraform Apply
         working-directory: infra/terraform
