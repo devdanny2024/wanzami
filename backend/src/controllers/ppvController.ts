@@ -8,6 +8,7 @@ import { resolveCountry } from "../utils/country.js";
 import { localizePrice } from "../utils/pricing.js";
 import { getFlutterwaveAccessToken } from "../utils/flutterwaveV4.js";
 import crypto from "crypto";
+import { createNotification } from "./notificationController.js";
 
 const now = () => new Date();
 
@@ -1203,6 +1204,13 @@ export const flutterwaveWebhook = async (req: Request, res: Response) => {
           titleId: purchase.titleId,
           titleName: purchase.title?.name,
         });
+        void createNotification({
+          userId: purchase.userId,
+          type: "RENTAL_EXPIRY",
+          title: "Rental confirmed",
+          body: `You now have access to "${purchase.title?.name ?? "this title"}". Your rental expires on ${expiresAt.toLocaleDateString()}.`,
+          metadata: { titleId: purchase.titleId.toString(), accessExpiresAt: expiresAt.toISOString() },
+        });
       }
     } else {
       await prisma.ppvPurchase.update({
@@ -1446,6 +1454,13 @@ export const verifyFlutterwavePurchase = async (req: AuthenticatedRequest, res: 
           titleId: purchase.titleId,
           titleName: purchase.title?.name,
         });
+        void createNotification({
+          userId: purchase.userId,
+          type: "RENTAL_EXPIRY",
+          title: "Rental confirmed",
+          body: `You now have access to "${purchase.title?.name ?? "this title"}". Your rental expires on ${expiresAt.toLocaleDateString()}.`,
+          metadata: { titleId: purchase.titleId.toString(), accessExpiresAt: expiresAt.toISOString() },
+        });
       }
     } else if (payload?.status) {
       await prisma.ppvPurchase.update({
@@ -1567,6 +1582,13 @@ export const paystackWebhook = async (req: Request, res: Response) => {
           userName: purchase.user?.name,
           titleId: purchase.titleId,
           titleName: purchase.title?.name,
+        });
+        void createNotification({
+          userId: purchase.userId,
+          type: "RENTAL_EXPIRY",
+          title: "Rental confirmed",
+          body: `You now have access to "${purchase.title?.name ?? "this title"}". Your rental expires on ${expiresAt.toLocaleDateString()}.`,
+          metadata: { titleId: purchase.titleId.toString(), accessExpiresAt: expiresAt.toISOString() },
         });
       }
     } else if (data?.status) {

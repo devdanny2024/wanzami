@@ -47,6 +47,8 @@ class MediaItem {
     this.isPpv = false,
     this.ppvPriceNaira,
     this.ppvCurrency,
+    this.trailerUrl,
+    this.shortTrailerUrl,
   });
 
   final String id;
@@ -65,6 +67,8 @@ class MediaItem {
   final bool isPpv;
   final double? ppvPriceNaira;
   final String? ppvCurrency;
+  final String? trailerUrl;
+  final String? shortTrailerUrl;
 
   bool get isSeries => type.toUpperCase() == 'SERIES';
 
@@ -111,6 +115,8 @@ class MediaItem {
       isPpv: json['isPpv'] == true,
       ppvPriceNaira: double.tryParse((json['ppvPriceNaira'] ?? '').toString()),
       ppvCurrency: json['ppvCurrency']?.toString(),
+      trailerUrl: json['trailerUrl']?.toString(),
+      shortTrailerUrl: json['shortTrailerUrl']?.toString(),
     );
   }
 }
@@ -185,11 +191,13 @@ class ContinueWatchingItem {
     required this.item,
     required this.completionPercent,
     this.remainingLabel,
+    this.episodeId,
   });
 
   final MediaItem item;
   final double completionPercent;
   final String? remainingLabel;
+  final String? episodeId;
 
   int get watchedPercent => (completionPercent * 100).round().clamp(0, 100);
 
@@ -290,17 +298,25 @@ class ContinueWatchingItem {
     ]);
 
     if (remainingLabel == null && durationSec != null && durationSec > 0) {
-      final watchedSec =
-          positionSec ?? ((completion.clamp(0, 1).toDouble()) * durationSec).round();
+      final watchedSec = positionSec ??
+          ((completion.clamp(0, 1).toDouble()) * durationSec).round();
       final remSec = (durationSec - watchedSec).clamp(0, durationSec);
       final remMinutes = (remSec / 60).ceil();
       if (remMinutes > 0) remainingLabel = '${remMinutes}m';
     }
 
+    final episodeIdText = firstNonEmpty([
+      json['episodeId'],
+      json['currentEpisodeId'],
+      json['lastEpisodeId'],
+      hydratedContent['episodeId'],
+    ]);
+
     return ContinueWatchingItem(
       item: MediaItem.fromJson(hydratedContent),
       completionPercent: completion.toDouble(),
       remainingLabel: remainingLabel,
+      episodeId: episodeIdText,
     );
   }
 }
@@ -331,7 +347,8 @@ class LiveEvent {
       title: (json['title'] ?? json['name'] ?? 'Live Event').toString(),
       status: (json['status'] ?? 'SCHEDULED').toString(),
       playbackUrl: (json['playbackUrl'] ?? json['url'])?.toString(),
-      thumbnailUrl: env.resolveImageUrl((json['thumbnailUrl'] ?? json['coverImage'])?.toString()),
+      thumbnailUrl: env.resolveImageUrl(
+          (json['thumbnailUrl'] ?? json['coverImage'])?.toString()),
       viewers: int.tryParse((json['viewerCount'] ?? '').toString()),
     );
   }
@@ -350,7 +367,8 @@ class LiveChatMessage {
   final String message;
   final String? userRole;
 
-  factory LiveChatMessage.fromJson(Map<String, dynamic> json) => LiveChatMessage(
+  factory LiveChatMessage.fromJson(Map<String, dynamic> json) =>
+      LiveChatMessage(
         id: (json['id'] ?? '').toString(),
         userName: (json['userName'] ?? json['username'] ?? 'Viewer').toString(),
         message: (json['message'] ?? '').toString(),
@@ -364,7 +382,8 @@ class LiveReactionTotal {
   final String type;
   final int count;
 
-  factory LiveReactionTotal.fromJson(Map<String, dynamic> json) => LiveReactionTotal(
+  factory LiveReactionTotal.fromJson(Map<String, dynamic> json) =>
+      LiveReactionTotal(
         type: (json['type'] ?? '').toString(),
         count: int.tryParse((json['count'] ?? 0).toString()) ?? 0,
       );

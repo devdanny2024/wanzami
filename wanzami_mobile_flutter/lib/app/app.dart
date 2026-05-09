@@ -16,6 +16,7 @@ import '../features/auth/presentation/splash_page.dart';
 import '../features/auth/presentation/onboarding_page.dart';
 import '../features/content/data/content_repository.dart';
 import '../features/home/presentation/home_shell_page.dart';
+import '../features/notifications/data/notification_repository.dart';
 import '../features/profile/data/profile_repository.dart';
 import '../features/profile/presentation/profile_picker_page.dart';
 
@@ -35,6 +36,7 @@ class _WanzamiAppState extends State<WanzamiApp> with WidgetsBindingObserver {
   late final ApiClient _apiClient;
   late final ContentRepository _contentRepository;
   late final ProfileRepository _profileRepository;
+  late final NotificationRepository _notificationRepository;
 
   bool _showRegister = false;
   bool _showSplash = true;
@@ -57,6 +59,7 @@ class _WanzamiAppState extends State<WanzamiApp> with WidgetsBindingObserver {
     _apiClient = ApiClient(httpClient: http.Client(), tokenStore: _tokenStore, authRepository: _authRepository);
     _contentRepository = ContentRepository(apiClient: _apiClient, env: widget.env);
     _profileRepository = ProfileRepository(apiClient: _apiClient, env: widget.env);
+    _notificationRepository = NotificationRepository(apiClient: _apiClient, env: widget.env);
 
     _authController.addListener(_handleAuthStateChange);
 
@@ -164,6 +167,7 @@ class _WanzamiAppState extends State<WanzamiApp> with WidgetsBindingObserver {
                 },
                 contentRepository: _contentRepository,
                 profileRepository: _profileRepository,
+                notificationRepository: _notificationRepository,
                 activeProfileId: (_activeProfile!['id'] ?? '').toString(),
                 initialTabIndex: 0,
               );
@@ -173,12 +177,14 @@ class _WanzamiAppState extends State<WanzamiApp> with WidgetsBindingObserver {
               key: const ValueKey('register'),
               controller: _authController,
               onShowLogin: () => setState(() => _showRegister = false),
+              env: widget.env,
             );
           } else {
             page = LoginPage(
               key: const ValueKey('login'),
               controller: _authController,
               onShowRegister: () => setState(() => _showRegister = true),
+              env: widget.env,
             );
           }
 

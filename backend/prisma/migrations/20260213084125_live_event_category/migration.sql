@@ -1,4 +1,4 @@
-﻿-- AlterTable
+-- AlterTable
 ALTER TABLE 
 "LiveEvent"
  ADD COLUMN 

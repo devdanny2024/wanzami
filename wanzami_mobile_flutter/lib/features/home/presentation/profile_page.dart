@@ -17,8 +17,6 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _loading = true;
   Map<String, dynamic> _me = const {};
   List<Map<String, dynamic>> _profiles = const [];
-  List<Map<String, dynamic>> _devices = const [];
-
   @override
   void initState() {
     super.initState();
@@ -30,12 +28,10 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final me = await widget.profileRepository.me();
       final profiles = await widget.profileRepository.profiles();
-      final devices = await widget.profileRepository.devices();
       if (mounted) {
         setState(() {
           _me = me;
           _profiles = profiles;
-          _devices = devices;
           _loading = false;
         });
       }
@@ -87,34 +83,13 @@ class _ProfilePageState extends State<ProfilePage> {
     await _load();
   }
 
-  Future<void> _assignProfile(Map<String, dynamic> device) async {
-    if (_profiles.isEmpty) return;
-    final selected = await showDialog<Map<String, dynamic>>(
-      context: context,
-      builder: (_) => SimpleDialog(
-        title: const Text('Assign profile'),
-        children: [
-          for (final p in _profiles)
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(context, p),
-              child: Text((p['name'] ?? 'Profile').toString()),
-            ),
-        ],
-      ),
-    );
-    if (selected != null) {
-      await widget.profileRepository.assignDeviceProfile(
-        deviceId: (device['deviceId'] ?? '').toString(),
-        profileId: (selected['id'] ?? '').toString(),
-      );
-      await _load();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final name = (_me['name'] ?? 'Wanzami User').toString();
-    final email = (_me['email'] ?? '').toString();
+    final userPayload = (_me['user'] is Map<String, dynamic>)
+        ? _me['user'] as Map<String, dynamic>
+        : _me;
+    final name = (userPayload['name'] ?? userPayload['displayName'] ?? userPayload['username'] ?? 'Wanzami User').toString();
+    final email = (userPayload['email'] ?? _me['email'] ?? '').toString();
 
     return Scaffold(
       backgroundColor: AppTokens.background,
@@ -167,19 +142,6 @@ class _ProfilePageState extends State<ProfilePage> {
                           PopupMenuItem(value: 'delete', child: Text('Delete')),
                         ],
                       ),
-                    ),
-                  ),
-                  const Divider(),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: Text('Devices', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
-                  ),
-                  ..._devices.map(
-                    (d) => ListTile(
-                      leading: const Icon(Icons.devices),
-                      title: Text((d['label'] ?? d['deviceId'] ?? 'Device').toString()),
-                      subtitle: Text(((d['profile'] ?? const {})['name'] ?? 'Unassigned').toString()),
-                      trailing: TextButton(onPressed: () => _assignProfile(d), child: const Text('Assign')),
                     ),
                   ),
                   const SizedBox(height: 12),

@@ -47,10 +47,12 @@ class _LivePageState extends State<LivePage> {
             .take(4)
             .toList();
 
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(24, 56, 24, 110),
+        return Stack(
           children: [
-            Row(
+            ListView(
+              padding: const EdgeInsets.fromLTRB(24, 56, 24, 110),
+              children: [
+                Row(
               children: [
                 TweenAnimationBuilder<double>(
                   tween: Tween(begin: 0.9, end: 1.15),
@@ -197,8 +199,77 @@ class _LivePageState extends State<LivePage> {
               ),
             ],
           ],
+            ),
+            Positioned(
+              right: 20,
+              bottom: 110,
+              child: FloatingActionButton.extended(
+                onPressed: () => _showGoLiveSheet(context),
+                backgroundColor: AppTokens.brandOrange,
+                foregroundColor: AppTokens.onBrandOrange,
+                icon: const Icon(Icons.videocam),
+                label: const Text('Go Live',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
+              ),
+            ),
+          ],
         );
       },
+    );
+  }
+
+  void _showGoLiveSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A1A),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Row(
+              children: [
+                Icon(Icons.videocam, color: AppTokens.brandOrange, size: 28),
+                SizedBox(width: 12),
+                Text('Go Live on Wanzami',
+                    style:
+                        TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Want to stream a live event, premiere, or show on Wanzami? Reach out to the Wanzami team to get set up as a live broadcaster.',
+              style: TextStyle(color: AppTokens.secondaryText, height: 1.5),
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: () => Navigator.pop(context),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppTokens.brandOrange,
+                foregroundColor: AppTokens.onBrandOrange,
+                minimumSize: const Size(double.infinity, 48),
+              ),
+              icon: const Icon(Icons.mail_outline),
+              label: const Text('Contact Us to Go Live'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -8,6 +8,7 @@ import { resolveCountry } from "../utils/country.js";
 import { auditLog } from "../utils/audit.js";
 import { localizePrice } from "../utils/pricing.js";
 import { AssetStatus } from "@prisma/client";
+import { createNotification } from "./notificationController.js";
 import { DeleteObjectsCommand, S3Client } from "@aws-sdk/client-s3";
 import { verifyAccessToken } from "../auth/jwt.js";
 
@@ -983,6 +984,27 @@ export const publishTitle = async (req: Request, res: Response) => {
     resource: id.toString(),
     detail: { publishEpisodes },
   });
+
+  // Notify all users about new content
+  void (async () => {
+    try {
+      const users = await prisma.user.findMany({ select: { id: true }, where: { role: "USER" } });
+      await Promise.all(
+        users.map((u) =>
+          createNotification({
+            userId: u.id,
+            type: "NEW_CONTENT",
+            title: "New on Wanzami",
+            body: `"${title.name}" is now available to watch.`,
+            metadata: { titleId: id.toString(), titleType: title.type },
+          })
+        )
+      );
+    } catch {
+      // Non-critical
+    }
+  })();
+
   return res.json({ title: { id: title.id.toString(), name: title.name, type: title.type, pendingReview: title.pendingReview, archived: title.archived } });
 };
 

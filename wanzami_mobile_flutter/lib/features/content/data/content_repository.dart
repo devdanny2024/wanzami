@@ -128,6 +128,36 @@ class ContentRepository {
     );
   }
 
+  Future<void> reportEngagementEvent({
+    required String eventType,
+    required String titleId,
+    String? episodeId,
+    String? profileId,
+    double? completionPercent,
+    int? positionSec,
+    int? durationSec,
+  }) async {
+    try {
+      final payload = <String, dynamic>{
+        'eventType': eventType,
+        'titleId': titleId,
+        'occurredAt': DateTime.now().toUtc().toIso8601String(),
+        'country': 'NG',
+      };
+      if (episodeId != null && episodeId.isNotEmpty) payload['episodeId'] = episodeId;
+      if (profileId != null && profileId.isNotEmpty) payload['profileId'] = profileId;
+      final meta = <String, dynamic>{};
+      if (completionPercent != null) meta['completionPercent'] = completionPercent;
+      if (positionSec != null) meta['positionSec'] = positionSec;
+      if (durationSec != null) meta['durationSec'] = durationSec;
+      if (meta.isNotEmpty) payload['metadata'] = meta;
+      await apiClient.post(
+        '${env.apiBaseUrl}/events',
+        body: jsonEncode({'events': [payload]}),
+      );
+    } catch (_) {}
+  }
+
   Future<List<ContinueWatchingItem>> fetchContinueWatching(
       {String? profileId}) async {
     final endpoint =

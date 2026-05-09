@@ -22,6 +22,7 @@ import {
   googleAuthCallback as googleAuthCallbackService,
 } from "../services/googleAuth.js";
 import { welcomeEmailTemplate } from "../templates/welcomeEmailTemplate.js";
+import { createNotification } from "./notificationController.js";
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -139,7 +140,7 @@ const getProfilesForUser = async (userId: bigint) => {
   return [formatProfile(created)];
 };
 
-const upsertDevice = async (userId: bigint, deviceId: string) => {
+const upsertDevice = async (userId: bigint, deviceId: string): Promise<{ isNew: boolean }> => {
   const existing = await prisma.device.findUnique({
     where: {
       userId_deviceId: {
@@ -154,7 +155,7 @@ const upsertDevice = async (userId: bigint, deviceId: string) => {
       where: { id: existing.id },
       data: { lastSeen: new Date() },
     });
-    return existing;
+    return { isNew: false };
   }
 
   const deviceCount = await prisma.device.count({ where: { userId } });
@@ -173,9 +174,8 @@ const upsertDevice = async (userId: bigint, deviceId: string) => {
     }
   }
 
-  return prisma.device.create({
-    data: { userId, deviceId },
-  });
+  await prisma.device.create({ data: { userId, deviceId } });
+  return { isNew: true };
 };
 
 const issueTokens = async (user: {
@@ -406,7 +406,7 @@ export const login = async (req: Request, res: Response) => {
   }
 
   const resolvedDeviceId = deviceId ?? crypto.randomUUID();
-  await upsertDevice(user.id, resolvedDeviceId);
+  const { isNew: isNewDevice } = await upsertDevice(user.id, resolvedDeviceId);
 
   const permissions = getPermissionsForRole(user.role);
   const accessToken = signAccessToken(
@@ -437,6 +437,16 @@ export const login = async (req: Request, res: Response) => {
       ipAddress: req.ip,
     },
   });
+
+  if (isNewDevice) {
+    void createNotification({
+      userId: user.id,
+      type: "NEW_DEVICE_LOGIN",
+      title: "New device sign-in",
+      body: `A new device signed in to your Wanzami account. If this wasn't you, please change your password.`,
+      metadata: { deviceId: resolvedDeviceId, userAgent: req.headers["user-agent"] ?? null },
+    });
+  }
 
   return res.json({
     user: {

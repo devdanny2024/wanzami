@@ -52,6 +52,7 @@ model User {
   liveReactionsSent LiveReactionEvent[]
   liveChatModerations LiveChatModeration[] @relation("LiveChatModerationTarget")
   liveChatModerationsAuthored LiveChatModeration[] @relation("LiveChatModerationBy")
+  notifications UserNotification[]
 }
 
 model Session {
@@ -680,4 +681,27 @@ model SupportTicketMessage {
   isAdmin   Boolean       @default(false)
   message   String
   createdAt DateTime      @default(now())
+}
+
+enum NotificationType {
+  NEW_CONTENT
+  RENTAL_EXPIRY
+  NEW_DEVICE_LOGIN
+  SYSTEM
+}
+
+model UserNotification {
+  id        BigInt           @id @default(autoincrement())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    BigInt
+  type      NotificationType
+  title     String
+  body      String
+  imageUrl  String?
+  metadata  Json?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@index([userId, isRead, createdAt])
+  @@index([userId, createdAt])
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/material.dart';
@@ -204,7 +205,8 @@ class _BrowsePageState extends State<BrowsePage> {
                                             child: const Text('ORIGINAL',
                                                 style: TextStyle(
                                                     fontSize: 10,
-                                                    color: AppTokens.onBrandOrange,
+                                                    color:
+                                                        AppTokens.onBrandOrange,
                                                     fontWeight:
                                                         FontWeight.w700)),
                                           ),
@@ -376,7 +378,8 @@ class _SearchPageState extends State<SearchPage> {
                       color: AppTokens.elevated,
                       borderRadius: BorderRadius.circular(22),
                     ),
-                    child: const Icon(Icons.close, color: AppTokens.primaryText),
+                    child:
+                        const Icon(Icons.close, color: AppTokens.primaryText),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -386,20 +389,25 @@ class _SearchPageState extends State<SearchPage> {
                     decoration: BoxDecoration(
                       color: AppTokens.surface,
                       borderRadius: BorderRadius.circular(28),
-                      border: Border.all(color: AppTokens.brandOrange, width: 1.6),
+                      border:
+                          Border.all(color: AppTokens.brandOrange, width: 1.6),
                     ),
                     child: TextField(
                       controller: _controller,
                       autofocus: true,
                       onChanged: (_) => setState(() {}),
                       onSubmitted: (_) => _runSearch(),
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+                      style: const TextStyle(
+                          fontSize: 20, fontWeight: FontWeight.w500),
                       decoration: InputDecoration(
                         hintText: 'Search movies, series...',
-                        hintStyle: const TextStyle(color: AppTokens.secondaryText),
-                        prefixIcon: const Icon(Icons.search, color: AppTokens.secondaryText),
+                        hintStyle:
+                            const TextStyle(color: AppTokens.secondaryText),
+                        prefixIcon: const Icon(Icons.search,
+                            color: AppTokens.secondaryText),
                         suffixIcon: IconButton(
-                            icon: const Icon(Icons.arrow_forward, color: AppTokens.secondaryText),
+                            icon: const Icon(Icons.arrow_forward,
+                                color: AppTokens.secondaryText),
                             onPressed: _runSearch),
                         border: InputBorder.none,
                       ),
@@ -500,6 +508,7 @@ class _DetailPageState extends State<DetailPage> {
   bool _startingPlayback = false;
   String? _paymentStatus;
   String? _pendingFlutterwaveTxRef;
+  String? _resumeEpisodeId;
 
   void _setPaymentStatus(String? status) {
     if (!mounted) return;
@@ -535,6 +544,49 @@ class _DetailPageState extends State<DetailPage> {
         ((item.playbackUrl ?? '').isNotEmpty);
   }
 
+  List<MediaEpisode> _sortedEpisodes(MediaItem item) {
+    final episodes = [...item.episodes];
+    episodes.sort((a, b) {
+      final bySeason = a.seasonNumber.compareTo(b.seasonNumber);
+      if (bySeason != 0) return bySeason;
+      final byEpisode = a.episodeNumber.compareTo(b.episodeNumber);
+      if (byEpisode != 0) return byEpisode;
+      return a.title.compareTo(b.title);
+    });
+    return episodes;
+  }
+
+  MediaEpisode? _resolveSeriesEpisode(
+    MediaItem item, {
+    String? preferredEpisodeId,
+  }) {
+    final episodes = _sortedEpisodes(item);
+    if (episodes.isEmpty) return null;
+    final wantedId = preferredEpisodeId?.trim();
+    if (wantedId != null && wantedId.isNotEmpty) {
+      for (final episode in episodes) {
+        if (episode.id == wantedId) return episode;
+      }
+    }
+    return episodes.first;
+  }
+
+  Future<void> _loadSeriesResumeEpisode() async {
+    if (!widget.item.isSeries || widget.profileId.isEmpty) return;
+    try {
+      final items = await widget.repository
+          .fetchContinueWatching(profileId: widget.profileId);
+      if (!mounted) return;
+      final match = items.cast<ContinueWatchingItem?>().firstWhere(
+            (entry) => entry?.item.id == widget.item.id,
+            orElse: () => null,
+          );
+      final nextEpisodeId = match?.episodeId?.trim();
+      if (nextEpisodeId == null || nextEpisodeId.isEmpty) return;
+      setState(() => _resumeEpisodeId = nextEpisodeId);
+    } catch (_) {}
+  }
+
   Future<MediaItem> _fetchFreshDetail() {
     return widget.repository.fetchTitleDetail(
       widget.item.id,
@@ -549,13 +601,21 @@ class _DetailPageState extends State<DetailPage> {
     const maxAttempts = 4;
     for (var i = 0; i < maxAttempts; i++) {
       final detail = await _fetchFreshDetail();
-      final episode = targetEpisodeId == null
-          ? null
-          : detail.episodes
-              .where((e) => e.id == targetEpisodeId)
-              .cast<MediaEpisode?>()
-              .firstWhere((e) => e != null, orElse: () => null);
-      if (_hasPlayableAsset(detail, episode: episode)) return detail;
+      final episode = detail.isSeries
+          ? _resolveSeriesEpisode(
+              detail,
+              preferredEpisodeId: targetEpisodeId,
+            )
+          : (targetEpisodeId == null
+              ? null
+              : detail.episodes
+                  .where((e) => e.id == targetEpisodeId)
+                  .cast<MediaEpisode?>()
+                  .firstWhere((e) => e != null, orElse: () => null));
+      if (_hasPlayableAsset(detail, episode: episode) ||
+          (episode == null && _hasPlayableAsset(detail))) {
+        return detail;
+      }
       if (!poll) break;
       await Future.delayed(const Duration(milliseconds: 900));
     }
@@ -567,8 +627,13 @@ class _DetailPageState extends State<DetailPage> {
     if (_startingPlayback) return;
     setState(() => _startingPlayback = true);
     try {
+      final preferredEpisodeId = episode?.id ??
+          (widget.item.isSeries ? _resumeEpisodeId : null) ??
+          (widget.item.episodes.isNotEmpty
+              ? widget.item.episodes.first.id
+              : null);
       final refreshed = await _refreshDetailUntilPlayable(
-        targetEpisodeId: episode?.id,
+        targetEpisodeId: preferredEpisodeId,
         poll: pollForEntitlement,
       );
       if (!mounted) return;
@@ -580,12 +645,18 @@ class _DetailPageState extends State<DetailPage> {
         );
         return;
       }
-      final selectedEpisode = episode == null
-          ? null
-          : refreshed.episodes
-              .where((e) => e.id == episode.id)
-              .cast<MediaEpisode?>()
-              .firstWhere((e) => e != null, orElse: () => episode);
+      final selectedEpisode = refreshed.isSeries
+          ? _resolveSeriesEpisode(
+              refreshed,
+              preferredEpisodeId: preferredEpisodeId,
+            )
+          : (preferredEpisodeId == null
+              ? null
+              : (refreshed.episodes
+                      .cast<MediaEpisode?>()
+                      .firstWhere((e) => e?.id == preferredEpisodeId,
+                          orElse: () => null) ??
+                  episode));
       await widget.onPlay(refreshed, selectedEpisode);
     } catch (e) {
       if (!mounted) return;
@@ -601,6 +672,7 @@ class _DetailPageState extends State<DetailPage> {
   void initState() {
     super.initState();
     _loadAccess();
+    _loadSeriesResumeEpisode();
   }
 
   Future<void> _loadAccess() async {
@@ -610,7 +682,8 @@ class _DetailPageState extends State<DetailPage> {
     } catch (_) {}
   }
 
-  Future<void> _finalizeFlutterwavePayment(Map<String, String>? callback) async {
+  Future<void> _finalizeFlutterwavePayment(
+      Map<String, String>? callback) async {
     final callbackMap = callback ?? const <String, String>{};
     final txRef = (callbackMap['tx_ref'] ??
             callbackMap['txRef'] ??
@@ -620,19 +693,20 @@ class _DetailPageState extends State<DetailPage> {
         (callbackMap['transaction_id'] ?? callbackMap['transactionId'])?.trim();
 
     if ((txRef ?? '').isEmpty && (transactionId ?? '').isEmpty) {
-      throw Exception('Unable to finalize payment. Missing transaction reference.');
+      throw Exception(
+          'Unable to finalize payment. Missing transaction reference.');
     }
 
     const verifyAttempts = 4;
     Object? lastVerifyError;
 
     for (var i = 0; i < verifyAttempts; i++) {
-      _setPaymentStatus('Verifying Flutterwave payment… (${i + 1}/$verifyAttempts)');
+      _setPaymentStatus(
+          'Verifying Flutterwave payment… (${i + 1}/$verifyAttempts)');
       try {
         await widget.repository.verifyFlutterwavePurchase(
           txRef: (txRef ?? '').isEmpty ? null : txRef,
-          transactionId:
-              (transactionId ?? '').isEmpty ? null : transactionId,
+          transactionId: (transactionId ?? '').isEmpty ? null : transactionId,
         );
         lastVerifyError = null;
         break;
@@ -837,10 +911,34 @@ class _DetailPageState extends State<DetailPage> {
                       Expanded(
                         child: Text(
                           _paymentStatus!,
-                          style: const TextStyle(color: AppTokens.secondaryText),
+                          style:
+                              const TextStyle(color: AppTokens.secondaryText),
                         ),
                       ),
                     ],
+                  ),
+                ],
+                if (widget.item.trailerUrl != null &&
+                    widget.item.trailerUrl!.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => PlayerPage(
+                          item: MediaItem(
+                            id: widget.item.id,
+                            title: '${widget.item.title} — Trailer',
+                            description: '',
+                            type: widget.item.type,
+                            thumbnailUrl: widget.item.thumbnailUrl,
+                            bannerUrl: widget.item.bannerUrl,
+                            playbackUrl: widget.item.trailerUrl,
+                          ),
+                        ),
+                      ),
+                    ),
+                    icon: const Icon(Icons.play_circle_outline),
+                    label: const Text('Watch Trailer'),
                   ),
                 ],
                 const SizedBox(height: 14),
@@ -1025,10 +1123,11 @@ class _InAppCheckoutPageState extends State<InAppCheckoutPage> {
     if (returnPaths.contains(normalizedPath)) return true;
     if (normalizedPath.startsWith('/app/ppv/')) return true;
 
-    final qp =
-        uri.queryParameters.map((k, v) => MapEntry(k.toLowerCase(), v));
+    final qp = uri.queryParameters.map((k, v) => MapEntry(k.toLowerCase(), v));
     final status = qp['status']?.toLowerCase();
-    if (status == 'successful' || status == 'completed' || status == 'success') {
+    if (status == 'successful' ||
+        status == 'completed' ||
+        status == 'success') {
       return true;
     }
 
@@ -1052,7 +1151,8 @@ class _InAppCheckoutPageState extends State<InAppCheckoutPage> {
         _callbackCaptured = true;
         Navigator.pop(context, <String, String>{
           ...params,
-          if ((widget.initialTxRef ?? '').isNotEmpty) 'tx_ref': widget.initialTxRef!,
+          if ((widget.initialTxRef ?? '').isNotEmpty)
+            'tx_ref': widget.initialTxRef!,
           'flutterwave_return': '1',
           'returned_url': url,
         });
@@ -1094,7 +1194,8 @@ class _InAppCheckoutPageState extends State<InAppCheckoutPage> {
     _callbackCaptured = true;
     Navigator.pop(context, <String, String>{
       'manual': '1',
-      if ((widget.initialTxRef ?? '').isNotEmpty) 'tx_ref': widget.initialTxRef!,
+      if ((widget.initialTxRef ?? '').isNotEmpty)
+        'tx_ref': widget.initialTxRef!,
     });
   }
 
@@ -1138,12 +1239,14 @@ class PlayerPage extends StatefulWidget {
     this.episode,
     this.contentRepository,
     this.liveEventId,
+    this.profileId,
   });
 
   final MediaItem item;
   final MediaEpisode? episode;
   final ContentRepository? contentRepository;
   final String? liveEventId;
+  final String? profileId;
 
   @override
   State<PlayerPage> createState() => _PlayerPageState();
@@ -1165,7 +1268,11 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   int _openRequestId = 0;
   bool _showControls = true;
   Timer? _hideControlsTimer;
+  Timer? _progressTimer;
+  bool _didReportPlayStart = false;
   double _volumeLevel = 1;
+  bool _muted = false;
+  double _volumeBeforeMute = 1;
   double _brightnessLevel = 0.5;
   _PlayerGestureSide? _gestureSide;
   double? _lastGestureGlobalY;
@@ -1223,7 +1330,9 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     _becomingNoisySub?.cancel();
     _chatController.dispose();
     WidgetsBinding.instance.removeObserver(this);
+    _progressTimer?.cancel();
     _controller?.removeListener(_onVideoTick);
+    if (_didReportPlayStart) _reportWatchProgress('PLAY_END');
     unawaited(_stopPlayback(disposeController: true));
     unawaited(ScreenBrightness.instance.resetScreenBrightness());
     unawaited(WakelockPlus.disable());
@@ -1382,15 +1491,17 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     try {
       final brightness = await ScreenBrightness.instance.current;
       if (mounted) {
-        setState(() => _brightnessLevel = brightness.clamp(0.0, 1.0).toDouble());
+        setState(
+            () => _brightnessLevel = brightness.clamp(0.0, 1.0).toDouble());
       }
     } catch (_) {}
   }
 
   Future<void> _updateWakeLock() async {
     final controller = _controller;
-    final shouldKeepAwake =
-        _showControls || (controller?.value.isInitialized == true && controller!.value.isPlaying);
+    final shouldKeepAwake = _showControls ||
+        (controller?.value.isInitialized == true &&
+            controller!.value.isPlaying);
     try {
       await WakelockPlus.toggle(enable: shouldKeepAwake);
     } catch (_) {}
@@ -1404,6 +1515,19 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       await VolumeController.instance.setVolume(clamped);
     } catch (_) {}
     _showControlsTemporarily();
+  }
+
+  Future<void> _toggleMute() async {
+    if (_muted) {
+      setState(() => _muted = false);
+      await _setVolume(_volumeBeforeMute > 0 ? _volumeBeforeMute : 0.7);
+    } else {
+      setState(() {
+        _volumeBeforeMute = _volumeLevel;
+        _muted = true;
+      });
+      await _setVolume(0);
+    }
   }
 
   Future<void> _setBrightness(double value) async {
@@ -1478,7 +1602,8 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
   Future<void> _syncEngagement() async {
     if (!_isLiveMode || _isDisposed) return;
     try {
-      final snapshot = await widget.contentRepository!.fetchLiveEngagementSnapshot(
+      final snapshot =
+          await widget.contentRepository!.fetchLiveEngagementSnapshot(
         _liveEventId,
         since: _lastEngagementSync,
       );
@@ -1498,11 +1623,57 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     } catch (_) {}
   }
 
-  int _reactionCount(String type) =>
-      _reactionTotals.firstWhere(
+  bool _isHlsLikeUrl(String url) {
+    final uri = Uri.tryParse(url);
+    final key = (uri?.queryParameters['key'] ?? '').toLowerCase();
+    final source = url.toLowerCase();
+    return source.contains('.m3u8') || key.contains('.m3u8');
+  }
+
+  VideoFormat? _inferVideoFormat(String url) {
+    final uri = Uri.tryParse(url);
+    final key = (uri?.queryParameters['key'] ?? '').toLowerCase();
+    final source = url.toLowerCase();
+    final combined = '$source $key';
+
+    if (combined.contains('.m3u8')) return VideoFormat.hls;
+    if (combined.contains('.mpd')) return VideoFormat.dash;
+    return null;
+  }
+
+  int _playbackPriority(MediaSource source) {
+    final rendition = source.rendition.trim().toUpperCase();
+
+    if (rendition == 'AUTO' || rendition == 'MASTER') return 0;
+    if (_isHlsLikeUrl(source.url) && rendition.isEmpty) return 1;
+
+    switch (rendition) {
+      case 'R720':
+        return 2;
+      case 'R360':
+        return 3;
+      case 'R1080':
+        return 4;
+      case 'R4K':
+      case 'R2K':
+        return 5;
+      default:
+        return 6;
+    }
+  }
+
+  int _comparePlaybackSources(MediaSource a, MediaSource b) {
+    final byPriority = _playbackPriority(a).compareTo(_playbackPriority(b));
+    if (byPriority != 0) return byPriority;
+    return a.rendition.compareTo(b.rendition);
+  }
+
+  int _reactionCount(String type) => _reactionTotals
+      .firstWhere(
         (x) => x.type == type,
         orElse: () => LiveReactionTotal(type: type, count: 0),
-      ).count;
+      )
+      .count;
 
   Future<void> _submitChat() async {
     if (!_isLiveMode || _chatSending) return;
@@ -1527,17 +1698,52 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
 
   Future<void> _emitReaction(String type) async {
     if (!_isLiveMode) return;
-    setState(() => _burstReactions = [type, ..._burstReactions].take(12).toList());
+    setState(
+        () => _burstReactions = [type, ..._burstReactions].take(12).toList());
     unawaited(widget.contentRepository!.sendLiveReaction(_liveEventId, type));
     setState(() {
       final existing = _reactionTotals.where((x) => x.type == type).toList();
       if (existing.isEmpty) {
-        _reactionTotals = [..._reactionTotals, LiveReactionTotal(type: type, count: 1)];
+        _reactionTotals = [
+          ..._reactionTotals,
+          LiveReactionTotal(type: type, count: 1)
+        ];
       } else {
         _reactionTotals = _reactionTotals
-            .map((x) => x.type == type ? LiveReactionTotal(type: x.type, count: x.count + 1) : x)
+            .map((x) => x.type == type
+                ? LiveReactionTotal(type: x.type, count: x.count + 1)
+                : x)
             .toList();
       }
+    });
+  }
+
+  void _reportWatchProgress(String eventType) {
+    final repo = widget.contentRepository;
+    if (repo == null || _isLiveMode) return;
+    final c = _controller;
+    final positionSec = c?.value.isInitialized == true ? c!.value.position.inSeconds : 0;
+    final durationSec =
+        (c?.value.isInitialized == true && c!.value.duration > Duration.zero)
+            ? c!.value.duration.inSeconds
+            : 0;
+    final completion =
+        durationSec > 0 ? (positionSec / durationSec).clamp(0.0, 1.0) : 0.0;
+    unawaited(repo.reportEngagementEvent(
+      eventType: eventType,
+      titleId: widget.item.id,
+      episodeId: widget.episode?.id,
+      profileId: widget.profileId,
+      completionPercent: completion,
+      positionSec: positionSec,
+      durationSec: durationSec > 0 ? durationSec : null,
+    ));
+  }
+
+  void _startProgressTimer() {
+    _progressTimer?.cancel();
+    _progressTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (_controller?.value.isPlaying == true) _reportWatchProgress('SCRUB');
     });
   }
 
@@ -1549,9 +1755,12 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
             ? widget.item.orderedSources
             : <MediaSource>[]);
 
+    final orderedCandidates = [...candidateSources]
+      ..sort(_comparePlaybackSources);
+
     final fallbackUrl = ep?.playbackUrl ?? widget.item.playbackUrl;
     _sources = [
-      ...candidateSources,
+      ...orderedCandidates,
       if (fallbackUrl != null && fallbackUrl.isNotEmpty)
         MediaSource(rendition: 'AUTO', url: fallbackUrl),
     ];
@@ -1586,8 +1795,18 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       });
     }
 
+    final uri = Uri.parse(selected.url);
+    final formatHint = _inferVideoFormat(selected.url);
+
+    developer.log(
+      'Opening playback source index=$idx rendition=${selected.rendition} formatHint=${formatHint?.name ?? 'none'} url=$uri',
+      name: 'PlayerPage',
+    );
+
     try {
-      final next = VideoPlayerController.networkUrl(Uri.parse(selected.url));
+      final next = formatHint == null
+          ? VideoPlayerController.networkUrl(uri)
+          : VideoPlayerController.networkUrl(uri, formatHint: formatHint);
       await next.initialize();
 
       if (_isDisposed || requestId != _openRequestId || !mounted) {
@@ -1602,16 +1821,33 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       await next.play();
       next.addListener(_onVideoTick);
       await old?.dispose();
+      if (!_didReportPlayStart) {
+        _didReportPlayStart = true;
+        _reportWatchProgress('PLAY_START');
+        _startProgressTimer();
+      }
 
       if (_isDisposed || requestId != _openRequestId || !mounted) {
         await _stopPlayback(disposeController: true);
         return;
       }
 
+      developer.log(
+        'Playback source initialized index=$idx rendition=${selected.rendition}',
+        name: 'PlayerPage',
+      );
+
       setState(() => _loading = false);
       _restartAutoHideTimer();
       unawaited(_updateWakeLock());
-    } catch (_) {
+    } catch (err, stackTrace) {
+      developer.log(
+        'Playback source failed index=$idx rendition=${selected.rendition} url=$uri',
+        name: 'PlayerPage',
+        error: err,
+        stackTrace: stackTrace,
+      );
+
       if (idx < _sources.length - 1 &&
           !_isDisposed &&
           requestId == _openRequestId) {
@@ -1651,9 +1887,8 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
     if (duration <= Duration.zero) return;
 
     final raw = c.value.position + delta;
-    final target = raw < Duration.zero
-        ? Duration.zero
-        : (raw > duration ? duration : raw);
+    final target =
+        raw < Duration.zero ? Duration.zero : (raw > duration ? duration : raw);
 
     await c.seekTo(target);
     _showControlsTemporarily();
@@ -1694,8 +1929,7 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
               ? (details) => _handleVerticalDragStart(
                   details, MediaQuery.of(context).size.width)
               : null,
-          onVerticalDragUpdate:
-              initialized ? _handleVerticalDragUpdate : null,
+          onVerticalDragUpdate: initialized ? _handleVerticalDragUpdate : null,
           onVerticalDragEnd: initialized ? _handleVerticalDragEnd : null,
           child: Stack(
             children: [
@@ -1767,8 +2001,8 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                           ),
                           if (_isLiveMode)
                             IconButton(
-                              onPressed: () =>
-                                  setState(() => _chatPanelOpen = !_chatPanelOpen),
+                              onPressed: () => setState(
+                                  () => _chatPanelOpen = !_chatPanelOpen),
                               icon: Icon(
                                   _chatPanelOpen
                                       ? Icons.chat_bubble
@@ -1906,6 +2140,19 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
                                     color: Colors.white70, fontSize: 12),
                               ),
                               const Spacer(),
+                              IconButton(
+                                onPressed: _toggleMute,
+                                icon: Icon(
+                                  _muted
+                                      ? Icons.volume_off
+                                      : Icons.volume_up,
+                                  color: Colors.white70,
+                                  size: 20,
+                                ),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+                              const SizedBox(width: 8),
                               Text(
                                 '-${_formatDuration(remaining)}',
                                 style: const TextStyle(
@@ -1963,7 +2210,9 @@ class _LiveChatPanel extends StatelessWidget {
               children: [
                 Icon(Icons.chat, color: Colors.white70, size: 16),
                 SizedBox(width: 8),
-                Text('Live chat', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                Text('Live chat',
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.w600)),
               ],
             ),
           ),
@@ -1977,13 +2226,16 @@ class _LiveChatPanel extends StatelessWidget {
                   InkWell(
                     onTap: () => state._emitReaction(item),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
                         color: const Color(0xFF1A1A1A),
                         borderRadius: BorderRadius.circular(999),
                         border: Border.all(color: const Color(0xFF3A3A3A)),
                       ),
-                      child: Text('$item ${state._reactionCount(item)}', style: const TextStyle(color: Colors.white, fontSize: 12)),
+                      child: Text('$item ${state._reactionCount(item)}',
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 12)),
                     ),
                   ),
               ],
@@ -2005,9 +2257,14 @@ class _LiveChatPanel extends StatelessWidget {
                   ),
                   child: RichText(
                     text: TextSpan(
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      style:
+                          const TextStyle(color: Colors.white70, fontSize: 12),
                       children: [
-                        TextSpan(text: m.userName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                        TextSpan(
+                            text: m.userName,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600)),
                         const TextSpan(text: '  '),
                         TextSpan(text: m.message),
                       ],
@@ -2062,7 +2319,8 @@ class _LiveChatPanel extends StatelessWidget {
                 ),
                 FilledButton(
                   onPressed: state._chatSending ? null : state._submitChat,
-                  style: FilledButton.styleFrom(backgroundColor: AppTokens.brandOrange),
+                  style: FilledButton.styleFrom(
+                      backgroundColor: AppTokens.brandOrange),
                   child: const Text('Send'),
                 ),
               ],
