@@ -1,7 +1,7 @@
 import { Response } from "express";
 import { prisma } from "../prisma.js";
 import { AuthenticatedRequest } from "../middleware/auth.js";
-import { NotificationType } from "@prisma/client";
+import { NotificationType, Prisma } from "@prisma/client";
 
 export const getNotifications = async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user?.userId;
@@ -94,7 +94,7 @@ export async function createNotification(params: {
   title: string;
   body: string;
   imageUrl?: string;
-  metadata?: Record<string, unknown>;
+  metadata?: Prisma.InputJsonObject;
 }) {
   try {
     await prisma.userNotification.create({
