@@ -22,7 +22,8 @@ api_domain = ""
 api_zone_id = ""
 
 # Optional: media bucket + CloudFront
-media_bucket_name = ""
+# Setting this grants the ECS task role GetObject/PutObject access to the bucket.
+media_bucket_name = "wanzami-media-eu-576393818319"
 
 # Application environment variables (DO NOT COMMIT SECRETS)
 # Copy this file to terraform.tfvars and fill in values securely.

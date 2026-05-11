@@ -169,6 +169,44 @@ resource "aws_iam_role_policy" "ecs_execution_db_runtime_secret" {
 }
 
 locals {
+  resolved_s3_bucket = (
+    var.media_bucket_name != "" ? var.media_bucket_name :
+    try(var.env_vars["S3_BUCKET"], "")
+  )
+}
+
+resource "aws_iam_role_policy" "ecs_task_s3_media" {
+  count = local.resolved_s3_bucket != "" ? 1 : 0
+
+  name = "wanzami-ecs-task-s3-media"
+  role = data.aws_iam_role.ecs_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:AbortMultipartUpload",
+          "s3:ListMultipartUploadParts",
+          "s3:CreateMultipartUpload",
+          "s3:CompleteMultipartUpload",
+        ]
+        Resource = ["arn:aws:s3:::${local.resolved_s3_bucket}/*"]
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
+        Resource = ["arn:aws:s3:::${local.resolved_s3_bucket}"]
+      }
+    ]
+  })
+}
+
+locals {
   db_runtime_secret_enabled = var.existing_db_instance_identifier != "" && try(length(data.aws_db_instance.existing[0].master_user_secret), 0) > 0
   db_secret_arn             = local.db_runtime_secret_enabled ? data.aws_db_instance.existing[0].master_user_secret[0].secret_arn : ""
   live_db_host              = var.existing_db_instance_identifier != "" ? data.aws_db_instance.existing[0].address : ""

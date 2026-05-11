@@ -326,9 +326,17 @@ export const streamMediaAsset = async (req: Request, res: Response) => {
       res.write(chunk);
     }
     return res.end();
-  } catch (err) {
-    console.error("stream media asset failed", { key, err });
-    return res.status(403).json({ message: "Unable to stream media" });
+  } catch (err: any) {
+    const code = err?.name ?? err?.Code ?? "UnknownError";
+    const detail = err?.message ?? String(err);
+    console.error("stream media asset failed", { key, code, detail });
+    if (code === "NoSuchKey" || code === "NotFound") {
+      return res.status(404).json({ message: "Media not found", code });
+    }
+    if (code === "AccessDenied" || code === "InvalidSignatureException" || code === "ExpiredTokenException") {
+      return res.status(503).json({ message: "Media storage access error", code });
+    }
+    return res.status(403).json({ message: "Unable to stream media", code });
   }
 };
 
