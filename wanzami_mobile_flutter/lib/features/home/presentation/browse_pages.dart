@@ -158,8 +158,7 @@ class _BrowsePageState extends State<BrowsePage> {
                                             begin: Alignment.bottomCenter,
                                             end: Alignment.topCenter,
                                             colors: [
-                                              Colors.black
-                                                  .withValues(alpha: 0.65),
+                                              Colors.black.withOpacity(0.65),
                                               Colors.transparent
                                             ],
                                           ),

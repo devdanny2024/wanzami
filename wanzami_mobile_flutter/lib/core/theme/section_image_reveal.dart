@@ -130,7 +130,7 @@ class _PulseSkeletonState extends State<PulseSkeleton> with SingleTickerProvider
         return Container(
           decoration: BoxDecoration(
             borderRadius: widget.borderRadius,
-            color: Colors.white.withValues(alpha: alpha),
+            color: Colors.white.withOpacity(alpha),
           ),
         );
       },

@@ -162,7 +162,7 @@ class _NotificationTile extends StatelessWidget {
       onTap: onTap,
       child: Container(
         color: unread
-            ? AppTokens.surface.withValues(alpha: 0.6)
+            ? AppTokens.surface.withOpacity(0.6)
             : Colors.transparent,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
