@@ -283,7 +283,7 @@ jobs:
         working-directory: ${{ env.APP_DIR }}/ios
         run: pod install --repo-update
 
-      - name: Write ExportOptions.plist
+      - name: Write ExportOptions.plist and configure signing
         shell: bash
         run: |
           set -euo pipefail
@@ -310,6 +310,17 @@ jobs:
           </dict>
           </plist>
           EOF
+          # Inject manual signing into ios/Flutter/Release.xcconfig (Runner target only,
+          # not CocoaPods targets which have their own xcconfig chain)
+          cat >> "${APP_DIR}/ios/Flutter/Release.xcconfig" <<XCEOF
+
+          // CI manual signing
+          CODE_SIGN_STYLE = Manual
+          CODE_SIGN_IDENTITY = iPhone Distribution
+          DEVELOPMENT_TEAM = ${APPLE_TEAM_ID}
+          PROVISIONING_PROFILE = ${PP_UUID}
+          OTHER_CODE_SIGN_FLAGS = --keychain ${KC_PATH}
+          XCEOF
 
       - name: Build iOS IPA
         shell: bash
