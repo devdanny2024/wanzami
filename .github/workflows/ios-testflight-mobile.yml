@@ -18,8 +18,8 @@ concurrency:
 
 jobs:
   build-and-upload:
-    runs-on: macos-latest
-    timeout-minutes: 90
+    runs-on: macos-26
+    timeout-minutes: 120
 
     env:
       FLUTTER_VERSION: '3.29.3'
@@ -320,6 +320,7 @@ jobs:
           DEVELOPMENT_TEAM = ${APPLE_TEAM_ID}
           PROVISIONING_PROFILE = ${PP_UUID}
           OTHER_CODE_SIGN_FLAGS = --keychain ${KC_PATH}
+          IPHONEOS_DEPLOYMENT_TARGET = 13.0
           XCEOF
 
       - name: Build iOS IPA
