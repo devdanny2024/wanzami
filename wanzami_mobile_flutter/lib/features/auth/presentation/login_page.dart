@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../core/env/app_env.dart';
@@ -70,24 +72,58 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _startGoogleSignin() async {
-    final webClientId = widget.env.googleWebClientId;
+    if (Platform.isIOS) {
+      await _startGoogleSigninWeb();
+    } else {
+      await _startGoogleSigninNative();
+    }
+  }
 
+  // iOS: use system web auth session (no iOS OAuth client required)
+  Future<void> _startGoogleSigninWeb() async {
+    const callbackUri = 'wanzami://auth/callback';
+    try {
+      final authUrl = await widget.controller.getGoogleAuthUrl(redirectUri: callbackUri);
+      if (authUrl.isEmpty) throw Exception('Failed to get Google auth URL.');
+      final result = await FlutterWebAuth2.authenticate(
+        url: authUrl,
+        callbackUrlScheme: 'wanzami',
+      );
+      final uri = Uri.parse(result);
+      final code = uri.queryParameters['code'];
+      final state = uri.queryParameters['state'];
+      if (code == null || code.isEmpty) throw Exception('No authorization code received.');
+      await widget.controller.loginWithGoogleCode(
+        code: code,
+        state: state,
+        redirectUri: callbackUri,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e.toString().toLowerCase();
+      if (msg.contains('cancel')) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Google sign-in failed: $e')),
+      );
+    }
+  }
+
+  // Android: native Google Sign-In SDK
+  Future<void> _startGoogleSigninNative() async {
+    final webClientId = widget.env.googleWebClientId;
     try {
       final signIn = GoogleSignIn(
         scopes: const ['email', 'profile', 'openid'],
         serverClientId: webClientId.isEmpty ? null : webClientId,
         forceCodeForRefreshToken: true,
       );
-
       await signIn.signOut();
       final account = await signIn.signIn();
       if (account == null) return;
-
       final authCode = account.serverAuthCode;
       if (authCode == null || authCode.isEmpty) {
         throw Exception('Google did not return serverAuthCode for the configured client.');
       }
-
       await widget.controller.loginWithGoogleAuthCode(authCode);
     } catch (e) {
       if (!mounted) return;

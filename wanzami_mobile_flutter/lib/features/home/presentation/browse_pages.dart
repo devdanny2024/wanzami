@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:developer' as developer;
+import 'dart:io' show Platform;
 
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/material.dart';
@@ -1723,6 +1724,13 @@ class _PlayerPageState extends State<PlayerPage> with WidgetsBindingObserver {
       dedup[s.url] = s;
     }
     _sources = dedup.values.toList();
+
+    // AVPlayer on iOS does not support MPEG-DASH; skip those sources.
+    if (Platform.isIOS) {
+      _sources = _sources
+          .where((s) => _inferVideoFormat(s.url) != VideoFormat.dash)
+          .toList();
+    }
 
     if (_sources.isEmpty) {
       setState(() {
