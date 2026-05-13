@@ -217,8 +217,9 @@ jobs:
 
           # ── Create App Store provisioning profile ──────────────────────
           print("Creating App Store provisioning profile…")
-          import datetime
-          prof_name = f"Wanzami AppStore {datetime.date.today().strftime('%Y%m%d')}"
+          import datetime, uuid
+          # Use timestamp+uuid suffix so name is unique per CI run (avoids 409 conflicts)
+          prof_name = f"Wanzami CI {datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:6]}"
           try:
               p_resp = api("POST", "/v1/profiles", {"data":{"type":"profiles","attributes":{
                   "name": prof_name, "profileType":"IOS_APP_STORE"},
@@ -229,8 +230,9 @@ jobs:
               prof_data = p_resp["data"]
           except HTTPError as e:
               if e.code in (409, 422):
-                  print("  Profile already exists or name conflict, fetching latest…")
-                  p_list = api("GET", f"/v1/profiles?filter%5BprofileType%5D=IOS_APP_STORE&filter%5BbundleId%5D={bundle_rid}&sort=-id&limit=1")
+                  # filter[bundleId] is not a supported API filter; list by type only
+                  print("  Profile conflict — listing recent App Store profiles…")
+                  p_list = api("GET", "/v1/profiles?filter%5BprofileType%5D=IOS_APP_STORE&sort=-id&limit=10")
                   if not p_list.get("data"):
                       sys.exit("Could not create or find a provisioning profile.")
                   prof_data = p_list["data"][0]
