@@ -99,6 +99,12 @@ jobs:
             <string>automatic</string>
             <key>teamID</key>
             <string>${APPLE_TEAM_ID}</string>
+            <key>authenticationKeyID</key>
+            <string>${APP_STORE_CONNECT_KEY_ID}</string>
+            <key>authenticationKeyIssuerID</key>
+            <string>${APP_STORE_CONNECT_ISSUER_ID}</string>
+            <key>allowProvisioningUpdates</key>
+            <true/>
             <key>stripSwiftSymbols</key>
             <true/>
             <key>uploadBitcode</key>
