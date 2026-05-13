@@ -228,13 +228,15 @@ jobs:
             --region "$AWS_REGION" \
             --query 'ReplicationGroups[?ReplicationGroupId==`wanzami-redis-eu`]|[0].NodeGroups[0].PrimaryEndpoint.Address' \
             --output text)
-          MEDIA_BUCKET=$(aws s3api list-buckets \
-            --query "Buckets[?starts_with(Name, 'wanzami-media-eu')]|[0].Name" \
+          MEDIA_BUCKETS=$(aws s3api list-buckets \
+            --query "Buckets[?starts_with(Name, 'wanzami-media-eu')].Name" \
             --output text)
-          if [ -z "$MEDIA_BUCKET" ] || [ "$MEDIA_BUCKET" = "None" ]; then
-            echo "Unable to resolve live media bucket"
+          read -r -a MEDIA_BUCKET_ARRAY <<< "$MEDIA_BUCKETS"
+          if [ "${#MEDIA_BUCKET_ARRAY[@]}" -ne 1 ]; then
+            echo "Expected exactly one live media bucket, got: $MEDIA_BUCKETS"
             exit 1
           fi
+          MEDIA_BUCKET="${MEDIA_BUCKET_ARRAY[0]}"
           echo "::add-mask::$DB_PASSWORD"
           echo "db_host=$DB_HOST" >> "$GITHUB_OUTPUT"
           echo "db_username=$DB_USERNAME" >> "$GITHUB_OUTPUT"
@@ -432,3 +434,44 @@ jobs:
           echo "$UPDATED" > /tmp/td-cron.json
           REV_ARN=$(aws ecs register-task-definition --cli-input-json file:///tmp/td-cron.json --query 'taskDefinition.taskDefinitionArn' --output text)
           aws ecs update-service --cluster $CLUSTER --service $SERVICE_CRON --task-definition "$REV_ARN" --force-new-deployment
+
+      - name: Wait for ECS services to stabilize
+        run: |
+          set -euo pipefail
+          aws ecs wait services-stable \
+            --cluster "$CLUSTER" \
+            --services "$SERVICE_API" "$SERVICE_TRANSCODE" "$SERVICE_CRON"
+
+      - name: Verify live media config after rollout
+        run: |
+          set -euo pipefail
+          MEDIA_BUCKET="${{ steps.live_endpoints.outputs.media_bucket }}"
+
+          for SERVICE in "$SERVICE_API" "$SERVICE_TRANSCODE" "$SERVICE_CRON"; do
+            TD_ARN=$(aws ecs describe-services \
+              --cluster "$CLUSTER" \
+              --services "$SERVICE" \
+              --query 'services[0].taskDefinition' \
+              --output text)
+
+            ENV_JSON=$(aws ecs describe-task-definition \
+              --task-definition "$TD_ARN" \
+              --query 'taskDefinition.containerDefinitions[0].environment' \
+              --output json)
+
+            ACTUAL_BUCKET=$(echo "$ENV_JSON" | jq -r 'map(select(.name == "S3_BUCKET"))[0].value // ""')
+            ACTUAL_ACCESS_KEY=$(echo "$ENV_JSON" | jq -r 'map(select(.name == "S3_ACCESS_KEY"))[0].value // ""')
+            ACTUAL_SECRET_KEY=$(echo "$ENV_JSON" | jq -r 'map(select(.name == "S3_SECRET_KEY"))[0].value // ""')
+
+            if [ "$ACTUAL_BUCKET" != "$MEDIA_BUCKET" ]; then
+              echo "Service $SERVICE is on wrong S3 bucket: $ACTUAL_BUCKET (expected $MEDIA_BUCKET)"
+              exit 1
+            fi
+
+            if [ -n "$ACTUAL_ACCESS_KEY" ] || [ -n "$ACTUAL_SECRET_KEY" ]; then
+              echo "Service $SERVICE still has static S3 credentials wired in task definition"
+              exit 1
+            fi
+
+            echo "Verified $SERVICE -> bucket=$ACTUAL_BUCKET and no static S3 creds"
+          done
