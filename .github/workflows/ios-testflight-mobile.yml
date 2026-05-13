@@ -22,13 +22,16 @@ jobs:
     timeout-minutes: 90
 
     env:
-      FLUTTER_VERSION: '3.24.0'
+      FLUTTER_VERSION: '3.29.3'
       APP_DIR: wanzami_mobile_flutter
       APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
       APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
       APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       IOS_BUNDLE_ID: ${{ secrets.IOS_BUNDLE_ID }}
+      IOS_SIGNING_CERTIFICATE_P12_BASE64: ${{ secrets.IOS_SIGNING_CERTIFICATE_P12_BASE64 }}
+      IOS_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.IOS_SIGNING_CERTIFICATE_PASSWORD }}
+      IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
 
     steps:
       - name: Checkout
@@ -62,6 +65,43 @@ jobs:
           printf '%s' "$APP_STORE_CONNECT_PRIVATE_KEY" > "$KEY_PATH"
           chmod 600 "$KEY_PATH"
 
+      - name: Set up manual code signing (if P12 cert is provided)
+        if: ${{ env.IOS_SIGNING_CERTIFICATE_P12_BASE64 != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Create a temp keychain
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          KEYCHAIN_PASSWORD=$(uuidgen)
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Import P12 certificate
+          CERT_PATH=$RUNNER_TEMP/build_certificate.p12
+          echo "${IOS_SIGNING_CERTIFICATE_P12_BASE64}" | base64 --decode > "$CERT_PATH"
+          security import "$CERT_PATH" -P "${IOS_SIGNING_CERTIFICATE_PASSWORD:-}" \
+            -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+
+          # Install provisioning profile (if provided)
+          if [ -n "${IOS_PROVISIONING_PROFILE_BASE64:-}" ]; then
+            PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+            echo "${IOS_PROVISIONING_PROFILE_BASE64}" | base64 --decode > "$PP_PATH"
+            PP_UUID=$(security cms -D -i "$PP_PATH" | plutil -extract UUID raw -)
+            mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+            cp "$PP_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/"${PP_UUID}.mobileprovision"
+            echo "IOS_PP_UUID=${PP_UUID}" >> "$GITHUB_ENV"
+          fi
+
+          echo "SIGNING_MODE=manual" >> "$GITHUB_ENV"
+
+      - name: Set signing mode to automatic
+        if: ${{ env.IOS_SIGNING_CERTIFICATE_P12_BASE64 == '' }}
+        shell: bash
+        run: echo "SIGNING_MODE=automatic" >> "$GITHUB_ENV"
+
       - name: Flutter pub get
         working-directory: ${{ env.APP_DIR }}
         run: flutter pub get
@@ -85,17 +125,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat > "${APP_DIR}/ios/ExportOptions.plist" <<EOF
+          if [ "${SIGNING_MODE}" = "manual" ] && [ -n "${IOS_PP_UUID:-}" ]; then
+            cat > "${APP_DIR}/ios/ExportOptions.plist" <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
           <dict>
             <key>method</key>
-            <string>app-store-connect</string>
+            <string>app-store</string>
             <key>signingStyle</key>
-            <string>automatic</string>
+            <string>manual</string>
             <key>teamID</key>
             <string>${APPLE_TEAM_ID}</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>${IOS_BUNDLE_ID}</key>
+              <string>${IOS_PP_UUID}</string>
+            </dict>
             <key>stripSwiftSymbols</key>
             <true/>
             <key>uploadBitcode</key>
@@ -103,6 +149,32 @@ jobs:
           </dict>
           </plist>
           EOF
+          else
+            cat > "${APP_DIR}/ios/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
+            <key>teamID</key>
+            <string>${APPLE_TEAM_ID}</string>
+            <key>authenticationKeyID</key>
+            <string>${APP_STORE_CONNECT_KEY_ID}</string>
+            <key>authenticationKeyIssuerID</key>
+            <string>${APP_STORE_CONNECT_ISSUER_ID}</string>
+            <key>allowProvisioningUpdates</key>
+            <true/>
+            <key>stripSwiftSymbols</key>
+            <true/>
+            <key>uploadBitcode</key>
+            <false/>
+          </dict>
+          </plist>
+          EOF
+          fi
 
       - name: Build and archive iOS IPA
         shell: bash
@@ -110,20 +182,33 @@ jobs:
         run: |
           set -euo pipefail
 
-          xcodebuild \
-            -workspace ios/Runner.xcworkspace \
-            -scheme Runner \
-            -configuration Release \
-            -archivePath build/Runner.xcarchive \
-            CODE_SIGN_STYLE=Automatic \
-            DEVELOPMENT_TEAM="${APPLE_TEAM_ID}" \
-            IPHONEOS_DEPLOYMENT_TARGET=13.0 \
-            archive \
-            -destination "generic/platform=iOS" \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8 \
-            -authenticationKeyID "${APP_STORE_CONNECT_KEY_ID}" \
-            -authenticationKeyIssuerID "${APP_STORE_CONNECT_ISSUER_ID}"
+          if [ "${SIGNING_MODE}" = "manual" ]; then
+            xcodebuild \
+              -workspace ios/Runner.xcworkspace \
+              -scheme Runner \
+              -configuration Release \
+              -archivePath build/Runner.xcarchive \
+              CODE_SIGN_STYLE=Manual \
+              DEVELOPMENT_TEAM="${APPLE_TEAM_ID}" \
+              IPHONEOS_DEPLOYMENT_TARGET=13.0 \
+              archive \
+              -destination "generic/platform=iOS"
+          else
+            xcodebuild \
+              -workspace ios/Runner.xcworkspace \
+              -scheme Runner \
+              -configuration Release \
+              -archivePath build/Runner.xcarchive \
+              CODE_SIGN_STYLE=Automatic \
+              DEVELOPMENT_TEAM="${APPLE_TEAM_ID}" \
+              IPHONEOS_DEPLOYMENT_TARGET=13.0 \
+              archive \
+              -destination "generic/platform=iOS" \
+              -allowProvisioningUpdates \
+              -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8 \
+              -authenticationKeyID "${APP_STORE_CONNECT_KEY_ID}" \
+              -authenticationKeyIssuerID "${APP_STORE_CONNECT_ISSUER_ID}"
+          fi
 
           xcodebuild \
             -exportArchive \
