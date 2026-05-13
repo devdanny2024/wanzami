@@ -1,4 +1,4 @@
-# Generated for CI — sets minimum iOS deployment target so xcprivacy files compile on Xcode 16
+# Podfile â€” iOS 13 min target for all Pods (required for Xcode 16 xcprivacy support)
 platform :ios, '13.0'
 
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
