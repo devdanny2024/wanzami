@@ -145,6 +145,9 @@ jobs:
         run: |
           terraform import 'aws_iam_role.db_rotation_force_redeploy_lambda[0]' wanzami-db-rotation-force-redeploy-lambda || true
           terraform import 'aws_lambda_function.db_rotation_force_redeploy[0]' wanzami-db-rotation-force-redeploy || true
+          terraform import 'aws_cloudwatch_event_rule.db_secret_rotation[0]' wanzami-db-secret-rotation || true
+          terraform import 'aws_cloudwatch_event_target.db_secret_rotation_lambda[0]' wanzami-db-secret-rotation/wanzami-db-secret-rotation-redeploy || true
+          terraform import 'aws_lambda_permission.db_secret_rotation_eventbridge[0]' wanzami-db-rotation-force-redeploy/AllowExecutionFromEventBridgeDbSecretRotation || true
 
       - name: Terraform Apply
         working-directory: infra/terraform
