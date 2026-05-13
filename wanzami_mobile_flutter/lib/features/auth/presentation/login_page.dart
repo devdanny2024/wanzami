@@ -2,10 +2,11 @@ import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
+import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../../core/env/app_env.dart';
+import '../../../core/platform/ios_web_auth.dart';
 import '../../../core/theme/app_tokens.dart';
 import 'auth_controller.dart';
 
@@ -79,13 +80,13 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // iOS: use system web auth session (no iOS OAuth client required)
+  // iOS: use ASWebAuthenticationSession via native channel (no iOS OAuth client required)
   Future<void> _startGoogleSigninWeb() async {
     const callbackUri = 'wanzami://auth/callback';
     try {
       final authUrl = await widget.controller.getGoogleAuthUrl(redirectUri: callbackUri);
       if (authUrl.isEmpty) throw Exception('Failed to get Google auth URL.');
-      final result = await FlutterWebAuth2.authenticate(
+      final result = await IosWebAuth.authenticate(
         url: authUrl,
         callbackUrlScheme: 'wanzami',
       );
@@ -98,10 +99,14 @@ class _LoginPageState extends State<LoginPage> {
         state: state,
         redirectUri: callbackUri,
       );
+    } on PlatformException catch (e) {
+      if (!mounted) return;
+      if (e.code == 'CANCELED') return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Google sign-in failed: ${e.message}')),
+      );
     } catch (e) {
       if (!mounted) return;
-      final msg = e.toString().toLowerCase();
-      if (msg.contains('cancel')) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Google sign-in failed: $e')),
       );
