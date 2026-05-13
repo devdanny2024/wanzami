@@ -251,6 +251,10 @@ jobs:
           shutil.copy(PROF_PATH, f"{profiles_dir}/{pp_uuid}.mobileprovision")
           print(f"Provisioning profile installed: {pp_uuid}")
 
+          # ── Append our keychain to the search list (keep login keychain) ──
+          login_kc = os.path.expanduser("~/Library/Keychains/login.keychain-db")
+          run("security","list-keychain","-d","user","-s",KC_PATH,login_kc)
+
           # ── Write outputs to GITHUB_ENV ────────────────────────────────
           with open(GITHUB_ENV,"a") as f:
               f.write(f"PP_UUID={pp_uuid}\n")
@@ -305,36 +309,14 @@ jobs:
           </plist>
           EOF
 
-      - name: Build and archive iOS
+      - name: Build iOS IPA
         shell: bash
         working-directory: ${{ env.APP_DIR }}
         run: |
           set -euo pipefail
-          xcodebuild \
-            -workspace ios/Runner.xcworkspace \
-            -scheme Runner \
-            -configuration Release \
-            -archivePath build/Runner.xcarchive \
-            CODE_SIGN_STYLE=Manual \
-            DEVELOPMENT_TEAM="${APPLE_TEAM_ID}" \
-            PROVISIONING_PROFILE="${PP_UUID}" \
-            CODE_SIGN_IDENTITY="iPhone Distribution" \
-            IPHONEOS_DEPLOYMENT_TARGET=13.0 \
-            OTHER_CODE_SIGN_FLAGS="--keychain ${KC_PATH}" \
-            archive \
-            -destination "generic/platform=iOS"
-
-      - name: Export IPA
-        shell: bash
-        working-directory: ${{ env.APP_DIR }}
-        run: |
-          set -euo pipefail
-          xcodebuild \
-            -exportArchive \
-            -archivePath build/Runner.xcarchive \
-            -exportOptionsPlist ios/ExportOptions.plist \
-            -exportPath build/ios/ipa \
-            OTHER_CODE_SIGN_FLAGS="--keychain ${KC_PATH}"
+          flutter build ipa \
+            --release \
+            --export-options-plist=ios/ExportOptions.plist
 
       - name: Upload IPA to TestFlight
         shell: bash
