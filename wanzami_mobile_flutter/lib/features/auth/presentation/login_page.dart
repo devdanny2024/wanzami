@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import '../../../core/env/app_env.dart';
 import '../../../core/theme/app_tokens.dart';
 import 'auth_controller.dart';
 
@@ -11,10 +12,12 @@ class LoginPage extends StatefulWidget {
     super.key,
     required this.controller,
     required this.onShowRegister,
+    required this.env,
   });
 
   final AuthController controller;
   final VoidCallback onShowRegister;
+  final AppEnv env;
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -67,8 +70,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _startGoogleSignin() async {
-    // Must be the Google OAuth Web client ID from Cloud Console.
-    const webClientId = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID', defaultValue: '');
+    final webClientId = widget.env.googleWebClientId;
 
     try {
       final signIn = GoogleSignIn(
@@ -83,7 +85,7 @@ class _LoginPageState extends State<LoginPage> {
 
       final authCode = account.serverAuthCode;
       if (authCode == null || authCode.isEmpty) {
-        throw Exception('Google did not return serverAuthCode. Set GOOGLE_WEB_CLIENT_ID for this build.');
+        throw Exception('Google did not return serverAuthCode for the configured client.');
       }
 
       await widget.controller.loginWithGoogleAuthCode(authCode);

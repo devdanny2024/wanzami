@@ -732,94 +732,48 @@ class _DetailPageState extends State<DetailPage> {
   }
 
   Future<void> _startPayment() async {
-    final method = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: AppTokens.surface,
-      builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.account_balance_wallet),
-              title: const Text('Pay with Flutterwave'),
-              onTap: () => Navigator.pop(context, 'flutterwave'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.credit_card),
-              title: const Text('Pay with Paystack'),
-              onTap: () => Navigator.pop(context, 'paystack'),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    if (method == null) return;
-
     setState(() {
       _paying = true;
-      _paymentStatus = 'Opening secure checkout…';
+      _paymentStatus = 'Opening Paystack checkout…';
     });
     try {
-      String? authUrl;
-      String? reference;
-
-      if (method == 'flutterwave') {
-        final payload =
-            await widget.repository.initiateFlutterwavePurchase(widget.item.id);
-        authUrl = (payload['redirectUrl'] ??
-                payload['authorization_url'] ??
-                payload['authorizationUrl'] ??
-                payload['url'] ??
-                payload['link'])
-            ?.toString();
-        _setPendingFlutterwaveTxRef(
-          (payload['txRef'] ?? payload['tx_ref'] ?? payload['appSessionId'])
-              ?.toString(),
-        );
-      } else {
-        final payload =
-            await widget.repository.initiatePaystackPurchase(widget.item.id);
-        authUrl = (payload['authorization_url'] ??
-                payload['authorizationUrl'] ??
-                payload['url'] ??
-                payload['link'])
-            ?.toString();
-        reference =
-            (payload['reference'] ?? payload['txRef'] ?? payload['tx_ref'])
-                ?.toString();
-      }
+      final payload =
+          await widget.repository.initiatePaystackPurchase(widget.item.id);
+      final authUrl = (payload['authorization_url'] ??
+              payload['authorizationUrl'] ??
+              payload['url'] ??
+              payload['link'])
+          ?.toString();
+      final reference =
+          (payload['reference'] ?? payload['txRef'] ?? payload['tx_ref'])
+              ?.toString();
 
       if (authUrl == null || authUrl.isEmpty) {
         throw Exception('Payment URL missing from backend response');
       }
 
-      _setPaymentStatus('Complete your payment in the checkout window.');
+      _setPaymentStatus('Complete your payment in the Paystack checkout window.');
       if (!mounted) return;
       final callback = await Navigator.of(context).push<Map<String, String>?>(
         MaterialPageRoute(
           builder: (_) => InAppCheckoutPage(
-            url: authUrl!,
-            providerName: method == 'flutterwave' ? 'Flutterwave' : 'Paystack',
-            providerKey: method,
-            initialTxRef: _pendingFlutterwaveTxRef,
+            url: authUrl,
+            providerName: 'Paystack',
+            providerKey: 'paystack',
           ),
         ),
       );
-      if (method == 'flutterwave') {
-        await _finalizeFlutterwavePayment(callback);
-      } else {
-        if (callback == null) return;
-        _setPaymentStatus('Verifying Paystack payment…');
-        final finalRef = callback['reference'] ??
-            callback['trxref'] ??
-            callback['trxRef'] ??
-            reference;
-        if (finalRef != null && finalRef.isNotEmpty) {
-          await widget.repository.verifyPaystackPurchase(finalRef);
-        }
-        await _loadAccess();
+      if (callback == null) return;
+
+      _setPaymentStatus('Verifying Paystack payment…');
+      final finalRef = callback['reference'] ??
+          callback['trxref'] ??
+          callback['trxRef'] ??
+          reference;
+      if (finalRef != null && finalRef.isNotEmpty) {
+        await widget.repository.verifyPaystackPurchase(finalRef);
       }
+      await _loadAccess();
 
       if (mounted && (_ppvAccess?.hasAccess == true)) {
         _setPaymentStatus('Access granted. Starting playback…');

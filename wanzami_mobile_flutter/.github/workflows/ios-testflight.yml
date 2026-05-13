@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 60
 
     env:
-      FLUTTER_VERSION: '3.24.0'
+      FLUTTER_VERSION: '3.29.3'
       APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }} # required
       APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }} # required
       APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }} # required (.p8 content)
@@ -72,6 +72,15 @@ jobs:
           cd ios
           pod install --repo-update
 
+      - name: Prepare App Store Connect API key
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.appstoreconnect/private_keys
+          KEY_PATH=~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
+          printf '%s' "$APP_STORE_CONNECT_PRIVATE_KEY" > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+
       - name: Create ExportOptions.plist
         shell: bash
         run: |
@@ -102,15 +111,6 @@ jobs:
       - name: Build iOS IPA
         run: |
           flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
-
-      - name: Prepare App Store Connect API key
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p ~/.appstoreconnect/private_keys
-          KEY_PATH=~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
-          printf '%s' "$APP_STORE_CONNECT_PRIVATE_KEY" > "$KEY_PATH"
-          chmod 600 "$KEY_PATH"
 
       - name: Upload IPA to TestFlight
         shell: bash
