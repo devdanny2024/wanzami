@@ -228,11 +228,19 @@ jobs:
             --region "$AWS_REGION" \
             --query 'ReplicationGroups[?ReplicationGroupId==`wanzami-redis-eu`]|[0].NodeGroups[0].PrimaryEndpoint.Address' \
             --output text)
+          MEDIA_BUCKET=$(aws s3api list-buckets \
+            --query "Buckets[?starts_with(Name, 'wanzami-media-eu')]|[0].Name" \
+            --output text)
+          if [ -z "$MEDIA_BUCKET" ] || [ "$MEDIA_BUCKET" = "None" ]; then
+            echo "Unable to resolve live media bucket"
+            exit 1
+          fi
           echo "::add-mask::$DB_PASSWORD"
           echo "db_host=$DB_HOST" >> "$GITHUB_OUTPUT"
           echo "db_username=$DB_USERNAME" >> "$GITHUB_OUTPUT"
           echo "db_password=$DB_PASSWORD" >> "$GITHUB_OUTPUT"
           echo "redis_host=$REDIS_HOST" >> "$GITHUB_OUTPUT"
+          echo "media_bucket=$MEDIA_BUCKET" >> "$GITHUB_OUTPUT"
 
       - name: Register API task definition revision
         id: reg_api_td
@@ -243,8 +251,9 @@ jobs:
           DB_USERNAME="${{ steps.live_endpoints.outputs.db_username }}"
           DB_PASSWORD="${{ steps.live_endpoints.outputs.db_password }}"
           REDIS_HOST="${{ steps.live_endpoints.outputs.redis_host }}"
+          MEDIA_BUCKET="${{ steps.live_endpoints.outputs.media_bucket }}"
           TD=$(aws ecs describe-task-definition --task-definition $TASKDEF_API_USE)
-          UPDATED=$(echo "$TD" | jq --arg IMG "$IMAGE" --arg DB_HOST "$DB_HOST" --arg DB_USERNAME "$DB_USERNAME" --arg DB_PASSWORD "$DB_PASSWORD" --arg REDIS_HOST "$REDIS_HOST" '
+          UPDATED=$(echo "$TD" | jq --arg IMG "$IMAGE" --arg DB_HOST "$DB_HOST" --arg DB_USERNAME "$DB_USERNAME" --arg DB_PASSWORD "$DB_PASSWORD" --arg REDIS_HOST "$REDIS_HOST" --arg MEDIA_BUCKET "$MEDIA_BUCKET" '
             .taskDefinition
             | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
             | .containerDefinitions[0].image = $IMG
@@ -267,6 +276,10 @@ jobs:
                          else ""
                          end)
                       )
+                    elif .name == "S3_BUCKET" and ($MEDIA_BUCKET | length) > 0 then
+                      .value = $MEDIA_BUCKET
+                    elif .name == "S3_ACCESS_KEY" or .name == "S3_SECRET_KEY" then
+                      .value = ""
                     else . end
                   )
               )
@@ -338,8 +351,9 @@ jobs:
           DB_USERNAME="${{ steps.live_endpoints.outputs.db_username }}"
           DB_PASSWORD="${{ steps.live_endpoints.outputs.db_password }}"
           REDIS_HOST="${{ steps.live_endpoints.outputs.redis_host }}"
+          MEDIA_BUCKET="${{ steps.live_endpoints.outputs.media_bucket }}"
           TD=$(aws ecs describe-task-definition --task-definition $TASKDEF_TRANSCODE_USE)
-          UPDATED=$(echo "$TD" | jq --arg IMG "$IMAGE" --arg DB_HOST "$DB_HOST" --arg DB_USERNAME "$DB_USERNAME" --arg DB_PASSWORD "$DB_PASSWORD" --arg REDIS_HOST "$REDIS_HOST" '
+          UPDATED=$(echo "$TD" | jq --arg IMG "$IMAGE" --arg DB_HOST "$DB_HOST" --arg DB_USERNAME "$DB_USERNAME" --arg DB_PASSWORD "$DB_PASSWORD" --arg REDIS_HOST "$REDIS_HOST" --arg MEDIA_BUCKET "$MEDIA_BUCKET" '
             .taskDefinition
             | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
             | .containerDefinitions[0].image = $IMG
@@ -362,6 +376,10 @@ jobs:
                          else ""
                          end)
                       )
+                    elif .name == "S3_BUCKET" and ($MEDIA_BUCKET | length) > 0 then
+                      .value = $MEDIA_BUCKET
+                    elif .name == "S3_ACCESS_KEY" or .name == "S3_SECRET_KEY" then
+                      .value = ""
                     else . end
                   )
               )
@@ -378,8 +396,9 @@ jobs:
           DB_USERNAME="${{ steps.live_endpoints.outputs.db_username }}"
           DB_PASSWORD="${{ steps.live_endpoints.outputs.db_password }}"
           REDIS_HOST="${{ steps.live_endpoints.outputs.redis_host }}"
+          MEDIA_BUCKET="${{ steps.live_endpoints.outputs.media_bucket }}"
           TD=$(aws ecs describe-task-definition --task-definition $TASKDEF_CRON_USE)
-          UPDATED=$(echo "$TD" | jq --arg IMG "$IMAGE" --arg DB_HOST "$DB_HOST" --arg DB_USERNAME "$DB_USERNAME" --arg DB_PASSWORD "$DB_PASSWORD" --arg REDIS_HOST "$REDIS_HOST" '
+          UPDATED=$(echo "$TD" | jq --arg IMG "$IMAGE" --arg DB_HOST "$DB_HOST" --arg DB_USERNAME "$DB_USERNAME" --arg DB_PASSWORD "$DB_PASSWORD" --arg REDIS_HOST "$REDIS_HOST" --arg MEDIA_BUCKET "$MEDIA_BUCKET" '
             .taskDefinition
             | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
             | .containerDefinitions[0].image = $IMG
@@ -402,6 +421,10 @@ jobs:
                          else ""
                          end)
                       )
+                    elif .name == "S3_BUCKET" and ($MEDIA_BUCKET | length) > 0 then
+                      .value = $MEDIA_BUCKET
+                    elif .name == "S3_ACCESS_KEY" or .name == "S3_SECRET_KEY" then
+                      .value = ""
                     else . end
                   )
               )
