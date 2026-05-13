@@ -48,142 +48,191 @@ jobs:
           set -euo pipefail
           for v in APP_STORE_CONNECT_ISSUER_ID APP_STORE_CONNECT_KEY_ID APP_STORE_CONNECT_PRIVATE_KEY APPLE_TEAM_ID IOS_BUNDLE_ID; do
             if [ -z "${!v:-}" ]; then
-              echo "Missing required secret: $v"
+              echo "ERROR: Missing required secret: $v"
               exit 1
             fi
           done
 
-      - name: Provision signing via App Store Connect API
-        shell: bash
+      - name: Provision signing certificate and profile
+        shell: python3 {0}
+        env:
+          RUNNER_TEMP: ${{ runner.temp }}
+          GITHUB_ENV: ${{ github.env }}
         run: |
-          set -euo pipefail
+          import json, base64, time, subprocess, sys, os, shutil, pathlib
+          from urllib.request import urlopen, Request
+          from urllib.error import HTTPError
 
-          # ── Write the API private key ──────────────────────────────────
-          KEY_PATH="$RUNNER_TEMP/asc_api.p8"
-          printf '%s' "$APP_STORE_CONNECT_PRIVATE_KEY" > "$KEY_PATH"
-          chmod 600 "$KEY_PATH"
+          KEY_ID     = os.environ["APP_STORE_CONNECT_KEY_ID"]
+          ISSUER_ID  = os.environ["APP_STORE_CONNECT_ISSUER_ID"]
+          PRIV_KEY   = os.environ["APP_STORE_CONNECT_PRIVATE_KEY"]
+          BUNDLE_ID  = os.environ["IOS_BUNDLE_ID"]
+          TEAM_ID    = os.environ["APPLE_TEAM_ID"]
+          TMP        = os.environ.get("RUNNER_TEMP", "/tmp")
+          GITHUB_ENV = os.environ.get("GITHUB_ENV", "/dev/null")
 
-          # Also install for xcodebuild auto-signing fallback
-          mkdir -p ~/.appstoreconnect/private_keys
-          cp "$KEY_PATH" ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
+          KEY_PATH   = f"{TMP}/asc_api.p8"
+          DIST_KEY   = f"{TMP}/dist.key"
+          DIST_CSR   = f"{TMP}/dist.csr"
+          DIST_CER   = f"{TMP}/dist.cer"
+          DIST_PEM   = f"{TMP}/dist.pem"
+          DIST_P12   = f"{TMP}/dist.p12"
+          P12_PASS   = "ci_wanzami_signing"
+          PROF_PATH  = f"{TMP}/dist.mobileprovision"
+          KC_PATH    = f"{TMP}/signing.keychain-db"
+          KC_PASS    = "ci_kc_pass_wanzami"
 
-          # ── Generate JWT for App Store Connect REST API ────────────────
-          NOW=$(date +%s)
-          EXP=$((NOW + 600))
-          HDR=$(printf '{"alg":"ES256","kid":"%s","typ":"JWT"}' \
-            "$APP_STORE_CONNECT_KEY_ID" | \
-            openssl base64 -A | tr -d '=' | tr '+/' '-_')
-          PAY=$(printf '{"iss":"%s","iat":%d,"exp":%d,"aud":"appstoreconnect-v1"}' \
-            "$APP_STORE_CONNECT_ISSUER_ID" "$NOW" "$EXP" | \
-            openssl base64 -A | tr -d '=' | tr '+/' '-_')
-          SIG=$(printf '%s.%s' "$HDR" "$PAY" | \
-            openssl dgst -sha256 -sign "$KEY_PATH" -binary | \
-            openssl base64 -A | tr -d '=' | tr '+/' '-_')
-          JWT="${HDR}.${PAY}.${SIG}"
+          def run(*args, **kw):
+              kw.setdefault("check", True)
+              kw.setdefault("capture_output", True)
+              return subprocess.run(list(args), **kw)
 
-          asc_get() { curl -sf -H "Authorization: Bearer $JWT" "$@"; }
-          asc_post() { curl -sf -X POST -H "Authorization: Bearer $JWT" \
-            -H "Content-Type: application/json" -d "$2" "$1"; }
+          def b64url(data):
+              if isinstance(data, str): data = data.encode()
+              return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
 
-          # ── Create distribution certificate from a fresh CSR ──────────
-          openssl ecparam -name prime256v1 -genkey -noout \
-            -out "$RUNNER_TEMP/dist.key" 2>/dev/null
-          openssl req -new -key "$RUNNER_TEMP/dist.key" \
-            -out "$RUNNER_TEMP/dist.csr" \
-            -subj "/CN=iPhone Distribution/O=${APPLE_TEAM_ID}/C=US" 2>/dev/null
+          def make_jwt():
+              now = int(time.time())
+              hdr = b64url(json.dumps({"alg":"ES256","kid":KEY_ID,"typ":"JWT"}))
+              pay = b64url(json.dumps({"iss":ISSUER_ID,"iat":now,"exp":now+500,"aud":"appstoreconnect-v1"}))
+              si  = f"{hdr}.{pay}".encode()
+              r   = run("openssl","dgst","-sha256","-sign",KEY_PATH, input=si, check=False)
+              if r.returncode != 0:
+                  sys.exit(f"JWT sign error: {r.stderr.decode()}")
+              return f"{hdr}.{pay}.{b64url(r.stdout)}"
 
-          CSR_B64=$(openssl base64 -A -in "$RUNNER_TEMP/dist.csr")
+          def api(method, path, body=None):
+              jwt  = make_jwt()
+              url  = f"https://api.appstoreconnect.apple.com{path}"
+              hdrs = {"Authorization": f"Bearer {jwt}", "Content-Type": "application/json"}
+              data = json.dumps(body).encode() if body else None
+              req  = Request(url, data=data, headers=hdrs, method=method)
+              try:
+                  with urlopen(req) as r:
+                      raw = r.read()
+                      return json.loads(raw) if raw else {}
+              except HTTPError as e:
+                  txt = e.read().decode()
+                  print(f"  API {method} {path} → HTTP {e.code}")
+                  print(f"  Response: {txt[:500]}")
+                  raise
 
-          echo "Creating iOS Distribution certificate..."
-          CERT_RESP=$(asc_post \
-            "https://api.appstoreconnect.apple.com/v1/certificates" \
-            "{\"data\":{\"type\":\"certificates\",\"attributes\":{\"certificateType\":\"IOS_DISTRIBUTION\",\"csrContent\":\"${CSR_B64}\"}}}" \
-          ) || {
-            echo "Certificate creation failed. Checking existing certificates..."
-            EXISTING=$(asc_get \
-              "https://api.appstoreconnect.apple.com/v1/certificates?filter[certificateType]=IOS_DISTRIBUTION&sort=-id&limit=1")
-            CERT_COUNT=$(echo "$EXISTING" | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('data',[])))")
-            if [ "$CERT_COUNT" -gt 0 ]; then
-              # Revoke oldest cert to free a slot then retry
-              OLDEST_ID=$(asc_get \
-                "https://api.appstoreconnect.apple.com/v1/certificates?filter[certificateType]=IOS_DISTRIBUTION&sort=id&limit=1" | \
-                python3 -c "import sys,json; d=json.load(sys.stdin); print(d['data'][0]['id'])")
-              echo "Revoking oldest certificate $OLDEST_ID to free a slot..."
-              curl -sf -X DELETE \
-                -H "Authorization: Bearer $JWT" \
-                "https://api.appstoreconnect.apple.com/v1/certificates/$OLDEST_ID" || true
-              # Retry certificate creation
-              CERT_RESP=$(asc_post \
-                "https://api.appstoreconnect.apple.com/v1/certificates" \
-                "{\"data\":{\"type\":\"certificates\",\"attributes\":{\"certificateType\":\"IOS_DISTRIBUTION\",\"csrContent\":\"${CSR_B64}\"}}}")
-            else
-              echo "ERROR: Cannot create certificate and no existing certificate found." >&2
-              exit 1
-            fi
-          }
+          # ── Write API key ──────────────────────────────────────────────
+          with open(KEY_PATH, "w") as f: f.write(PRIV_KEY)
+          os.chmod(KEY_PATH, 0o600)
+          asc_keys = os.path.expanduser("~/.appstoreconnect/private_keys")
+          os.makedirs(asc_keys, exist_ok=True)
+          shutil.copy(KEY_PATH, f"{asc_keys}/AuthKey_{KEY_ID}.p8")
+          print(f"API key written: {KEY_PATH}")
 
-          CERT_ID=$(echo "$CERT_RESP" | \
-            python3 -c "import sys,json; d=json.load(sys.stdin); print(d['data']['id'])")
-          CERT_CONTENT=$(echo "$CERT_RESP" | \
-            python3 -c "import sys,json; d=json.load(sys.stdin); print(d['data']['attributes']['certificateContent'])")
+          # ── Generate private key + CSR ─────────────────────────────────
+          run("openssl","ecparam","-name","prime256v1","-genkey","-noout","-out",DIST_KEY)
+          run("openssl","req","-new","-key",DIST_KEY,"-out",DIST_CSR,
+              "-subj",f"/CN=iPhone Distribution/O={TEAM_ID}/C=US")
+          with open(DIST_CSR,"rb") as f:
+              csr_b64 = base64.b64encode(f.read()).decode()
+          print("CSR generated.")
 
-          echo "$CERT_CONTENT" | base64 --decode > "$RUNNER_TEMP/dist.cer"
-          openssl x509 -inform DER -in "$RUNNER_TEMP/dist.cer" \
-            -out "$RUNNER_TEMP/dist.pem" 2>/dev/null
-          P12_PASS="ci_$(uuidgen | tr -d '-')"
-          openssl pkcs12 -export \
-            -inkey "$RUNNER_TEMP/dist.key" \
-            -in "$RUNNER_TEMP/dist.pem" \
-            -out "$RUNNER_TEMP/dist.p12" \
-            -passout "pass:${P12_PASS}" 2>/dev/null
-          echo "P12_PASS=${P12_PASS}" >> "$GITHUB_ENV"
+          # ── Create distribution certificate via ASC API ────────────────
+          print("Creating iOS Distribution certificate via ASC API...")
+          cert_id = cert_content = None
+          try:
+              resp = api("POST", "/v1/certificates", {"data":{"type":"certificates","attributes":{
+                  "certificateType":"IOS_DISTRIBUTION","csrContent":csr_b64}}})
+              cert_id      = resp["data"]["id"]
+              cert_content = resp["data"]["attributes"]["certificateContent"]
+              print(f"Certificate created: {cert_id}")
+          except HTTPError as e:
+              if e.code == 422:
+                  print("  Certificate limit hit — revoking oldest distribution cert…")
+                  existing = api("GET", "/v1/certificates?filter%5BcertificateType%5D=IOS_DISTRIBUTION&sort=id&limit=1")
+                  if existing.get("data"):
+                      old_id = existing["data"][0]["id"]
+                      api("DELETE", f"/v1/certificates/{old_id}")
+                      print(f"  Revoked {old_id}. Retrying…")
+                      resp = api("POST", "/v1/certificates", {"data":{"type":"certificates","attributes":{
+                          "certificateType":"IOS_DISTRIBUTION","csrContent":csr_b64}}})
+                      cert_id      = resp["data"]["id"]
+                      cert_content = resp["data"]["attributes"]["certificateContent"]
+                      print(f"Certificate created: {cert_id}")
+                  else:
+                      sys.exit("No certificates to revoke and cannot create a new one.")
+              elif e.code == 403:
+                  print("\n" + "="*60)
+                  print("PERMISSION ERROR: The App Store Connect API key does not")
+                  print("have sufficient access to create certificates.")
+                  print("Action required: in App Store Connect → Users & Access →")
+                  print("Integrations → API Keys, upgrade key N6475BU82P to")
+                  print("Admin or Developer role.")
+                  print("="*60)
+                  sys.exit(1)
+              else:
+                  sys.exit(f"Certificate creation failed: HTTP {e.code}")
 
-          # Import into a dedicated keychain
-          KC_PATH="$RUNNER_TEMP/signing.keychain-db"
-          KC_PASS=$(uuidgen)
-          security create-keychain -p "$KC_PASS" "$KC_PATH"
-          security set-keychain-settings -lut 21600 "$KC_PATH"
-          security unlock-keychain -p "$KC_PASS" "$KC_PATH"
-          security import "$RUNNER_TEMP/dist.p12" \
-            -P "$P12_PASS" -A -t cert -f pkcs12 -k "$KC_PATH"
-          security list-keychain -d user -s "$KC_PATH"
-          echo "KC_PATH=${KC_PATH}" >> "$GITHUB_ENV"
+          # ── Convert to P12 and import into keychain ────────────────────
+          with open(DIST_CER,"wb") as f: f.write(base64.b64decode(cert_content))
+          run("openssl","x509","-inform","DER","-in",DIST_CER,"-out",DIST_PEM)
+          run("openssl","pkcs12","-export","-inkey",DIST_KEY,"-in",DIST_PEM,
+              "-out",DIST_P12,"-passout",f"pass:{P12_PASS}")
 
-          # ── Get or create App Store provisioning profile ───────────────
-          echo "Looking up bundle ID resource ID..."
-          BUNDLE_RESP=$(asc_get \
-            "https://api.appstoreconnect.apple.com/v1/bundleIds?filter[identifier]=${IOS_BUNDLE_ID}&filter[platform]=IOS")
-          BUNDLE_RID=$(echo "$BUNDLE_RESP" | \
-            python3 -c "import sys,json; d=json.load(sys.stdin); print(d['data'][0]['id'])")
-          echo "Bundle resource ID: $BUNDLE_RID"
+          run("security","create-keychain","-p",KC_PASS,KC_PATH)
+          run("security","set-keychain-settings","-lut","21600",KC_PATH)
+          run("security","unlock-keychain","-p",KC_PASS,KC_PATH)
+          run("security","import",DIST_P12,"-P",P12_PASS,"-A","-t","cert","-f","pkcs12","-k",KC_PATH)
+          run("security","list-keychain","-d","user","-s",KC_PATH)
+          print("Certificate imported into keychain.")
 
-          echo "Creating App Store provisioning profile..."
-          PROF_RESP=$(asc_post \
-            "https://api.appstoreconnect.apple.com/v1/profiles" \
-            "{\"data\":{\"type\":\"profiles\",\"attributes\":{\"name\":\"Wanzami AppStore CI $(date +%Y%m%d)\",\"profileType\":\"IOS_APP_STORE\"},\"relationships\":{\"bundleId\":{\"data\":{\"type\":\"bundleIds\",\"id\":\"${BUNDLE_RID}\"}},\"certificates\":{\"data\":[{\"type\":\"certificates\",\"id\":\"${CERT_ID}\"}]}}}}" \
-          ) || {
-            # Profile with same name may already exist — list and reuse latest
-            echo "Profile creation failed, listing existing profiles..."
-            PROF_RESP=$(asc_get \
-              "https://api.appstoreconnect.apple.com/v1/profiles?filter[profileType]=IOS_APP_STORE&filter[name]=Wanzami%20AppStore%20CI&sort=-id&limit=1")
-          }
+          # ── Look up bundle ID resource ─────────────────────────────────
+          print(f"Looking up bundle ID: {BUNDLE_ID}")
+          b_resp = api("GET", f"/v1/bundleIds?filter%5Bidentifier%5D={BUNDLE_ID}&filter%5Bplatform%5D=IOS")
+          if not b_resp.get("data"):
+              sys.exit(f"Bundle ID {BUNDLE_ID} not found in App Store Connect. "
+                       "Register it at developer.apple.com first.")
+          bundle_rid = b_resp["data"][0]["id"]
+          print(f"Bundle resource ID: {bundle_rid}")
 
-          PROF_CONTENT=$(echo "$PROF_RESP" | \
-            python3 -c "import sys,json; d=json.load(sys.stdin); \
-              data=d.get('data',{}); \
-              data=data[0] if isinstance(data,list) else data; \
-              print(data['attributes']['profileContent'])")
+          # ── Create App Store provisioning profile ──────────────────────
+          print("Creating App Store provisioning profile…")
+          import datetime
+          prof_name = f"Wanzami AppStore {datetime.date.today().strftime('%Y%m%d')}"
+          try:
+              p_resp = api("POST", "/v1/profiles", {"data":{"type":"profiles","attributes":{
+                  "name": prof_name, "profileType":"IOS_APP_STORE"},
+                  "relationships":{
+                      "bundleId":{"data":{"type":"bundleIds","id":bundle_rid}},
+                      "certificates":{"data":[{"type":"certificates","id":cert_id}]}
+                  }}})
+              prof_data = p_resp["data"]
+          except HTTPError as e:
+              if e.code in (409, 422):
+                  print("  Profile already exists or name conflict, fetching latest…")
+                  p_list = api("GET", f"/v1/profiles?filter%5BprofileType%5D=IOS_APP_STORE&filter%5BbundleId%5D={bundle_rid}&sort=-id&limit=1")
+                  if not p_list.get("data"):
+                      sys.exit("Could not create or find a provisioning profile.")
+                  prof_data = p_list["data"][0]
+              else:
+                  sys.exit(f"Profile creation failed: HTTP {e.code}")
 
-          echo "$PROF_CONTENT" | base64 --decode > "$RUNNER_TEMP/dist.mobileprovision"
-          PP_UUID=$(security cms -D -i "$RUNNER_TEMP/dist.mobileprovision" | \
-            plutil -extract UUID raw -)
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          cp "$RUNNER_TEMP/dist.mobileprovision" \
-            ~/Library/MobileDevice/Provisioning\ Profiles/"${PP_UUID}.mobileprovision"
+          prof_content = prof_data["attributes"]["profileContent"]
+          with open(PROF_PATH,"wb") as f: f.write(base64.b64decode(prof_content))
 
-          echo "PP_UUID=${PP_UUID}" >> "$GITHUB_ENV"
-          echo "CERT_ID=${CERT_ID}" >> "$GITHUB_ENV"
-          echo "Signing provisioned: cert=$CERT_ID, profile=$PP_UUID"
+          # Extract UUID and install
+          r = run("security","cms","-D","-i",PROF_PATH, capture_output=True, check=False)
+          plist_out = r.stdout
+          r2 = subprocess.run(["plutil","-extract","UUID","raw","-"],
+                              input=plist_out, capture_output=True)
+          pp_uuid = r2.stdout.decode().strip()
+          profiles_dir = os.path.expanduser("~/Library/MobileDevice/Provisioning Profiles")
+          os.makedirs(profiles_dir, exist_ok=True)
+          shutil.copy(PROF_PATH, f"{profiles_dir}/{pp_uuid}.mobileprovision")
+          print(f"Provisioning profile installed: {pp_uuid}")
+
+          # ── Write outputs to GITHUB_ENV ────────────────────────────────
+          with open(GITHUB_ENV,"a") as f:
+              f.write(f"PP_UUID={pp_uuid}\n")
+              f.write(f"KC_PATH={KC_PATH}\n")
+              f.write(f"CERT_ID={cert_id}\n")
+          print(f"\nSigning ready — cert={cert_id}  profile={pp_uuid}")
 
       - name: Flutter pub get
         working-directory: ${{ env.APP_DIR }}
@@ -244,12 +293,12 @@ jobs:
             -archivePath build/Runner.xcarchive \
             CODE_SIGN_STYLE=Manual \
             DEVELOPMENT_TEAM="${APPLE_TEAM_ID}" \
-            PROVISIONING_PROFILE_SPECIFIER="${PP_UUID}" \
+            PROVISIONING_PROFILE="${PP_UUID}" \
             CODE_SIGN_IDENTITY="iPhone Distribution" \
             IPHONEOS_DEPLOYMENT_TARGET=13.0 \
+            OTHER_CODE_SIGN_FLAGS="--keychain ${KC_PATH}" \
             archive \
-            -destination "generic/platform=iOS" \
-            OTHER_CODE_SIGN_FLAGS="--keychain ${KC_PATH}"
+            -destination "generic/platform=iOS"
 
       - name: Export IPA
         shell: bash
