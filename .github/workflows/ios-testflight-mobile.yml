@@ -146,9 +146,9 @@ jobs:
           shutil.copy(KEY_PATH, f"{asc_keys}/AuthKey_{KEY_ID}.p8")
           print(f"API key written: {KEY_PATH}")
 
-          # ── Generate private key + CSR (DER format for Apple API) ─────────
+          # ── Generate private key + CSR (Apple requires RSA-2048, DER format) ─
           DIST_CSR_PEM = f"{TMP}/dist_pem.csr"
-          run("openssl","ecparam","-name","prime256v1","-genkey","-noout","-out",DIST_KEY)
+          run("openssl","genrsa","-out",DIST_KEY,"2048")
           run("openssl","req","-new","-key",DIST_KEY,"-out",DIST_CSR_PEM,
               "-subj",f"/CN=iPhone Distribution/O={TEAM_ID}/C=US")
           # Apple API requires DER-encoded CSR content, base64-encoded (not PEM)
