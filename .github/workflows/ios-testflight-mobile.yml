@@ -53,8 +53,6 @@ jobs:
             fi
           done
 
-      # Install the App Store Connect API key BEFORE building so xcodebuild can
-      # use it for automatic managed signing (no local distribution cert needed).
       - name: Install App Store Connect API key
         shell: bash
         run: |
@@ -102,40 +100,29 @@ jobs:
             <true/>
             <key>uploadBitcode</key>
             <false/>
-            <key>installerSigningCertificate</key>
-            <string>Apple Distribution</string>
           </dict>
           </plist>
           EOF
 
-      - name: Build iOS archive (xcodebuild)
+      - name: Build and archive iOS IPA
         shell: bash
         working-directory: ${{ env.APP_DIR }}
         run: |
           set -euo pipefail
 
-          # Run flutter build ios --release to generate .xcarchive
-          flutter build ios --release --no-codesign
-
-          # Archive via xcodebuild with ASC API key for managed signing
           xcodebuild \
             -workspace ios/Runner.xcworkspace \
             -scheme Runner \
             -configuration Release \
             -archivePath build/Runner.xcarchive \
-            archive \
             CODE_SIGN_STYLE=Automatic \
             DEVELOPMENT_TEAM="${APPLE_TEAM_ID}" \
+            archive \
             -allowProvisioningUpdates \
             -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8 \
             -authenticationKeyID "${APP_STORE_CONNECT_KEY_ID}" \
-            -authenticationKeyIssuerID "${APP_STORE_CONNECT_ISSUER_ID}"
-
-      - name: Export IPA
-        shell: bash
-        working-directory: ${{ env.APP_DIR }}
-        run: |
-          set -euo pipefail
+            -authenticationKeyIssuerID "${APP_STORE_CONNECT_ISSUER_ID}" \
+            | xcpretty || true
 
           xcodebuild \
             -exportArchive \
