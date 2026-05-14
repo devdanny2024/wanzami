@@ -39,7 +39,7 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   Future<void> _startGoogleSignupWeb() async {
-    const callbackUri = 'wanzami://auth/callback';
+    const callbackUri = 'https://api.blvckcode.io/api/auth/google/mobile-callback';
     try {
       final authUrl = await widget.controller.getGoogleAuthUrl(redirectUri: callbackUri);
       if (authUrl.isEmpty) throw Exception('Failed to get Google auth URL.');
@@ -48,6 +48,8 @@ class _RegisterPageState extends State<RegisterPage> {
         callbackUrlScheme: 'wanzami',
       );
       final uri = Uri.parse(result);
+      final error = uri.queryParameters['error'];
+      if (error != null && error.isNotEmpty) throw Exception('Google sign-up cancelled or failed.');
       final code = uri.queryParameters['code'];
       final state = uri.queryParameters['state'];
       if (code == null || code.isEmpty) throw Exception('No authorization code received.');

@@ -9,6 +9,7 @@ import {
   completeOnboarding,
   googleAuthUrl,
   googleAuthCallback,
+  googleMobileCallback,
   verifyEmail,
   resendVerification,
   updateDeviceLabel,
@@ -55,6 +56,7 @@ router.post("/auth/reset-password", resetPassword);
 router.post("/auth/complete-onboarding", requireAuth, completeOnboarding);
 router.get("/auth/me", requireAuth, me);
 router.get("/auth/google/url", googleAuthUrl);
+router.get("/auth/google/mobile-callback", googleMobileCallback);
 router.post("/auth/google/callback", googleAuthCallback);
 
 // Admin auth (same service but locked down)

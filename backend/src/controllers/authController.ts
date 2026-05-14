@@ -297,6 +297,20 @@ export const googleAuthUrl = async (req: Request, res: Response) => {
   }
 };
 
+// Google OAuth: mobile deep-link bridge
+// Google redirects here after iOS ASWebAuthenticationSession login.
+// We forward code+state back to the app via the wanzami:// custom scheme
+// so ASWebAuthenticationSession captures it (callbackUrlScheme: 'wanzami').
+export const googleMobileCallback = async (req: Request, res: Response) => {
+  const { code, state, error } = req.query as Record<string, string | undefined>;
+  if (error || !code) {
+    return res.redirect(`wanzami://auth/callback?error=${encodeURIComponent(error ?? "no_code")}`);
+  }
+  const params = new URLSearchParams({ code });
+  if (state) params.set("state", state);
+  return res.redirect(`wanzami://auth/callback?${params.toString()}`);
+};
+
 // Google OAuth: handle callback, issue app tokens
 export const googleAuthCallback = async (req: Request, res: Response) => {
   const { code, state, redirectUri } = req.body as { code?: string; state?: string; redirectUri?: string };
