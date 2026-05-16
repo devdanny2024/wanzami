@@ -25,6 +25,7 @@ jobs:
       taskdef_worker_cron_family: ${{ steps.tfout.outputs.taskdef_worker_cron_family }}
       ecs_sg_id: ${{ steps.tfout.outputs.ecs_sg_id }}
       private_subnets_csv: ${{ steps.tfout.outputs.private_subnets_csv }}
+      media_cdn_base: ${{ steps.tfout.outputs.media_cdn_base }}
 
     steps:
       - name: Checkout
@@ -167,6 +168,10 @@ jobs:
           echo "taskdef_worker_cron_family=$(terraform output -raw taskdef_worker_cron_family)" >> "$GITHUB_OUTPUT"
           echo "ecs_sg_id=$(terraform output -raw ecs_sg_id)" >> "$GITHUB_OUTPUT"
           echo "private_subnets_csv=$(terraform output -raw private_subnets_csv)" >> "$GITHUB_OUTPUT"
+          CF_DOMAIN=$(terraform output -raw cloudfront_domain 2>/dev/null || true)
+          if [ -n "$CF_DOMAIN" ]; then
+            echo "media_cdn_base=https://${CF_DOMAIN}" >> "$GITHUB_OUTPUT"
+          fi
 
   build-and-deploy:
     needs: terraform-apply
@@ -185,6 +190,7 @@ jobs:
       TASKDEF_CRON: ${{ needs.terraform-apply.outputs.taskdef_worker_cron_family }}
       ECS_SG_ID: ${{ needs.terraform-apply.outputs.ecs_sg_id }}
       PRIVATE_SUBNETS_CSV: ${{ needs.terraform-apply.outputs.private_subnets_csv }}
+      MEDIA_CDN_BASE: ${{ needs.terraform-apply.outputs.media_cdn_base }}
 
     steps:
       - name: Checkout
@@ -258,13 +264,16 @@ jobs:
           REDIS_HOST="${{ steps.live_endpoints.outputs.redis_host }}"
           MEDIA_BUCKET="${{ steps.live_endpoints.outputs.media_bucket }}"
           TD=$(aws ecs describe-task-definition --task-definition $TASKDEF_API_USE)
-          UPDATED=$(echo "$TD" | jq --arg IMG "$IMAGE" --arg DB_HOST "$DB_HOST" --arg DB_USERNAME "$DB_USERNAME" --arg DB_PASSWORD "$DB_PASSWORD" --arg REDIS_HOST "$REDIS_HOST" --arg MEDIA_BUCKET "$MEDIA_BUCKET" '
+          UPDATED=$(echo "$TD" | jq --arg IMG "$IMAGE" --arg DB_HOST "$DB_HOST" --arg DB_USERNAME "$DB_USERNAME" --arg DB_PASSWORD "$DB_PASSWORD" --arg REDIS_HOST "$REDIS_HOST" --arg MEDIA_BUCKET "$MEDIA_BUCKET" --arg CDN_BASE "$MEDIA_CDN_BASE" '
             .taskDefinition
             | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
             | .containerDefinitions[0].image = $IMG
             | .containerDefinitions[0].command = ["node", "dist/index.js"]
             | .containerDefinitions[0].environment = (
                 (.containerDefinitions[0].environment // [])
+                | (if ($CDN_BASE | length) > 0
+                   then (map(select(.name != "MEDIA_CDN_BASE")) + [{name: "MEDIA_CDN_BASE", value: $CDN_BASE}])
+                   else . end)
                 | map(
                     if .name == "DATABASE_URL" then
                       .value = (
@@ -358,13 +367,16 @@ jobs:
           REDIS_HOST="${{ steps.live_endpoints.outputs.redis_host }}"
           MEDIA_BUCKET="${{ steps.live_endpoints.outputs.media_bucket }}"
           TD=$(aws ecs describe-task-definition --task-definition $TASKDEF_TRANSCODE_USE)
-          UPDATED=$(echo "$TD" | jq --arg IMG "$IMAGE" --arg DB_HOST "$DB_HOST" --arg DB_USERNAME "$DB_USERNAME" --arg DB_PASSWORD "$DB_PASSWORD" --arg REDIS_HOST "$REDIS_HOST" --arg MEDIA_BUCKET "$MEDIA_BUCKET" '
+          UPDATED=$(echo "$TD" | jq --arg IMG "$IMAGE" --arg DB_HOST "$DB_HOST" --arg DB_USERNAME "$DB_USERNAME" --arg DB_PASSWORD "$DB_PASSWORD" --arg REDIS_HOST "$REDIS_HOST" --arg MEDIA_BUCKET "$MEDIA_BUCKET" --arg CDN_BASE "$MEDIA_CDN_BASE" '
             .taskDefinition
             | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
             | .containerDefinitions[0].image = $IMG
             | .containerDefinitions[0].command = ["node", "dist/worker/transcodeWorker.js"]
             | .containerDefinitions[0].environment = (
                 (.containerDefinitions[0].environment // [])
+                | (if ($CDN_BASE | length) > 0
+                   then (map(select(.name != "MEDIA_CDN_BASE")) + [{name: "MEDIA_CDN_BASE", value: $CDN_BASE}])
+                   else . end)
                 | map(
                     if .name == "DATABASE_URL" then
                       .value = (
@@ -403,13 +415,16 @@ jobs:
           REDIS_HOST="${{ steps.live_endpoints.outputs.redis_host }}"
           MEDIA_BUCKET="${{ steps.live_endpoints.outputs.media_bucket }}"
           TD=$(aws ecs describe-task-definition --task-definition $TASKDEF_CRON_USE)
-          UPDATED=$(echo "$TD" | jq --arg IMG "$IMAGE" --arg DB_HOST "$DB_HOST" --arg DB_USERNAME "$DB_USERNAME" --arg DB_PASSWORD "$DB_PASSWORD" --arg REDIS_HOST "$REDIS_HOST" --arg MEDIA_BUCKET "$MEDIA_BUCKET" '
+          UPDATED=$(echo "$TD" | jq --arg IMG "$IMAGE" --arg DB_HOST "$DB_HOST" --arg DB_USERNAME "$DB_USERNAME" --arg DB_PASSWORD "$DB_PASSWORD" --arg REDIS_HOST "$REDIS_HOST" --arg MEDIA_BUCKET "$MEDIA_BUCKET" --arg CDN_BASE "$MEDIA_CDN_BASE" '
             .taskDefinition
             | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
             | .containerDefinitions[0].image = $IMG
             | .containerDefinitions[0].command = ["node", "dist/worker/cron.js"]
             | .containerDefinitions[0].environment = (
                 (.containerDefinitions[0].environment // [])
+                | (if ($CDN_BASE | length) > 0
+                   then (map(select(.name != "MEDIA_CDN_BASE")) + [{name: "MEDIA_CDN_BASE", value: $CDN_BASE}])
+                   else . end)
                 | map(
                     if .name == "DATABASE_URL" then
                       .value = (
