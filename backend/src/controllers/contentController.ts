@@ -256,6 +256,9 @@ const resolvePlaybackUrl = async (
   }
 
   if (isPublicMediaKey(extractedKey)) {
+    if (config.mediaCdnBase) {
+      return `${config.mediaCdnBase}/${extractedKey}`;
+    }
     if (/^https?:\/\//i.test(trimmedUrl)) {
       return trimmedUrl;
     }
@@ -298,34 +301,26 @@ export const streamMediaAsset = async (req: Request, res: Response) => {
       return res.status(500).json({ message: "Media bucket not configured" });
     }
 
+    const ttlRemaining = Math.max(60, payload.exp - Math.floor(Date.now() / 1000));
+
+    // Video segments: redirect client directly to S3 — no data passes through ECS
+    if (key.endsWith(".ts") || key.endsWith(".mp4") || key.endsWith(".fmp4")) {
+      const presigned = await presignGetObject(key, ttlRemaining);
+      return res.redirect(302, presigned);
+    }
+
+    // Manifests (.m3u8): fetch from S3 and rewrite segment URLs
     const object = await getObjectResponse(key, bucket);
     if (!object.Body) {
       return res.status(404).json({ message: "Media not found" });
     }
 
-    const ttlRemaining = Math.max(60, payload.exp - Math.floor(Date.now() / 1000));
-    const contentType = object.ContentType || (key.endsWith(".m3u8")
-      ? "application/vnd.apple.mpegurl"
-      : key.endsWith(".ts")
-      ? "video/MP2T"
-      : "application/octet-stream");
-
     res.setHeader("Cache-Control", "private, no-store, max-age=0");
-    res.setHeader("Content-Type", contentType);
-    if (object.ContentLength != null) {
-      res.setHeader("Content-Length", String(object.ContentLength));
-    }
+    res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
 
-    if (key.endsWith(".m3u8")) {
-      const body = await readBodyAsString(object.Body);
-      const rewritten = rewriteHlsPlaylist(body, getRequestOrigin(req), key, ttlRemaining);
-      return res.status(200).send(rewritten);
-    }
-
-    for await (const chunk of object.Body as AsyncIterable<any>) {
-      res.write(chunk);
-    }
-    return res.end();
+    const body = await readBodyAsString(object.Body);
+    const rewritten = rewriteHlsPlaylist(body, getRequestOrigin(req), key, ttlRemaining);
+    return res.status(200).send(rewritten);
   } catch (err: any) {
     const code = err?.name ?? err?.Code ?? "UnknownError";
     const detail = err?.message ?? String(err);
