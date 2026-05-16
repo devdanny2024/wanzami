@@ -29,6 +29,7 @@ model User {
   ppvLastStrikeAt DateTime?
   ppvBanned    Boolean    @default(false)
   emailVerified Boolean @default(false)
+  appleId   String?  @unique
   verificationToken String? @unique
   verificationTokenExpires DateTime?
   resetToken String?

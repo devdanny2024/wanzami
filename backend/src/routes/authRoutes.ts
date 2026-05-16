@@ -10,6 +10,7 @@ import {
   googleAuthUrl,
   googleAuthCallback,
   googleMobileCallback,
+  appleAuthCallback,
   verifyEmail,
   resendVerification,
   updateDeviceLabel,
@@ -58,6 +59,7 @@ router.get("/auth/me", requireAuth, me);
 router.get("/auth/google/url", googleAuthUrl);
 router.get("/auth/google/mobile-callback", googleMobileCallback);
 router.post("/auth/google/callback", googleAuthCallback);
+router.post("/auth/apple/callback", appleAuthCallback);
 
 // Admin auth (same service but locked down)
 router.post("/admin/login", adminLogin);

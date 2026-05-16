@@ -21,6 +21,7 @@ import {
   googleAuthUrl as googleAuthUrlService,
   googleAuthCallback as googleAuthCallbackService,
 } from "../services/googleAuth.js";
+import { appleAuthCallback as appleAuthCallbackService } from "../services/appleAuth.js";
 import { welcomeEmailTemplate } from "../templates/welcomeEmailTemplate.js";
 import { createNotification } from "./notificationController.js";
 
@@ -1144,4 +1145,20 @@ export const resetPassword = async (req: Request, res: Response) => {
   });
   await prisma.session.deleteMany({ where: { userId: user.id } });
   return res.json({ message: "Password updated. Please log in." });
+};
+
+export const appleAuthCallback = async (req: Request, res: Response) => {
+  const { identityToken, name } = req.body as {
+    identityToken?: string;
+    name?: string;
+  };
+  if (!identityToken) {
+    return res.status(400).json({ message: "Missing identityToken" });
+  }
+  try {
+    const issued = await appleAuthCallbackService({ identityToken, name });
+    return res.json(issued);
+  } catch (err: any) {
+    return res.status(401).json({ message: err?.message ?? "Apple sign-in failed" });
+  }
 };

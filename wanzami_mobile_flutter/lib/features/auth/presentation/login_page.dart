@@ -4,6 +4,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../../../core/env/app_env.dart';
 import '../../../core/platform/ios_web_auth.dart';
@@ -117,6 +118,41 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  Future<void> _startAppleSignin() async {
+    try {
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+      final identityToken = credential.identityToken;
+      if (identityToken == null || identityToken.isEmpty) {
+        throw Exception('Apple did not return an identity token.');
+      }
+      final name = [
+        credential.givenName,
+        credential.familyName,
+      ].where((s) => s != null && s.isNotEmpty).join(' ');
+
+      await widget.controller.loginWithApple(
+        identityToken: identityToken,
+        name: name.isEmpty ? null : name,
+      );
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) return;
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Apple sign-in failed: ${e.message}')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Apple sign-in failed: $e')),
+      );
+    }
+  }
+
   // Android: native Google Sign-In SDK
   Future<void> _startGoogleSigninNative() async {
     final webClientId = widget.env.googleWebClientId;
@@ -187,11 +223,7 @@ class _LoginPageState extends State<LoginPage> {
                   _SocialButton(
                     label: 'Continue with Apple',
                     icon: const Icon(Icons.apple, color: Colors.black, size: 22),
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Apple sign-in is coming soon.')),
-                      );
-                    },
+                    onTap: _startAppleSignin,
                   ),
                   const SizedBox(height: 22),
                   const _OrDivider(),

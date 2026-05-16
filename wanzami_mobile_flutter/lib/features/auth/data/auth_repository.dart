@@ -121,6 +121,38 @@ class AuthRepository {
     }
   }
 
+  Future<SessionTokens> loginWithApple({
+    required String identityToken,
+    String? name,
+  }) async {
+    final uri = Uri.parse('${env.apiBaseUrl}/auth/apple/callback');
+    final response = await client.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'identityToken': identityToken,
+        if (name != null && name.isNotEmpty) 'name': name,
+      }),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(_extractError(response, fallback: 'Apple sign-in failed'));
+    }
+
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    final tokens = SessionTokens(
+      accessToken: (json['accessToken'] ?? '') as String,
+      refreshToken: (json['refreshToken'] ?? '') as String,
+    );
+
+    if (tokens.accessToken.isEmpty || tokens.refreshToken.isEmpty) {
+      throw Exception('Apple token payload is incomplete');
+    }
+
+    await tokenStore.save(tokens.accessToken, tokens.refreshToken);
+    return tokens;
+  }
+
   Future<void> forgotPassword(String email) async {
     final uri = Uri.parse('${env.apiBaseUrl}/auth/forgot-password');
     final response = await client.post(

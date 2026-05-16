@@ -98,6 +98,25 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> loginWithApple({
+    required String identityToken,
+    String? name,
+  }) async {
+    status = AuthStatus.loading;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _authRepository.loginWithApple(identityToken: identityToken, name: name);
+      status = AuthStatus.authenticated;
+    } catch (e) {
+      status = AuthStatus.error;
+      errorMessage = e.toString();
+    }
+
+    notifyListeners();
+  }
+
   Future<void> forgotPassword(String email) async {
     status = AuthStatus.loading;
     errorMessage = null;
