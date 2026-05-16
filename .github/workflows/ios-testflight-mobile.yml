@@ -168,19 +168,22 @@ jobs:
               print(f"Certificate created: {cert_id}")
           except HTTPError as e:
               if e.code in (409, 422):
-                  print("  Certificate conflict/limit — revoking existing distribution cert…")
-                  existing = api("GET", "/v1/certificates?filter%5BcertificateType%5D=IOS_DISTRIBUTION&sort=id&limit=1")
-                  if existing.get("data"):
-                      old_id = existing["data"][0]["id"]
-                      api("DELETE", f"/v1/certificates/{old_id}")
-                      print(f"  Revoked {old_id}. Retrying…")
-                      resp = api("POST", "/v1/certificates", {"data":{"type":"certificates","attributes":{
-                          "certificateType":"IOS_DISTRIBUTION","csrContent":csr_b64}}})
-                      cert_id      = resp["data"]["id"]
-                      cert_content = resp["data"]["attributes"]["certificateContent"]
-                      print(f"Certificate created: {cert_id}")
-                  else:
+                  print("  Certificate conflict — revoking ALL existing iOS Distribution certs…")
+                  existing = api("GET", "/v1/certificates?filter%5BcertificateType%5D=IOS_DISTRIBUTION&limit=200")
+                  certs_to_revoke = existing.get("data", [])
+                  if not certs_to_revoke:
                       sys.exit("No certificates to revoke and cannot create a new one.")
+                  for cert in certs_to_revoke:
+                      old_id = cert["id"]
+                      api("DELETE", f"/v1/certificates/{old_id}")
+                      print(f"  Revoked {old_id}.")
+                  print(f"  Revoked {len(certs_to_revoke)} cert(s). Waiting 5s for Apple API to settle…")
+                  time.sleep(5)
+                  resp = api("POST", "/v1/certificates", {"data":{"type":"certificates","attributes":{
+                      "certificateType":"IOS_DISTRIBUTION","csrContent":csr_b64}}})
+                  cert_id      = resp["data"]["id"]
+                  cert_content = resp["data"]["attributes"]["certificateContent"]
+                  print(f"Certificate created: {cert_id}")
               elif e.code == 403:
                   print("\n" + "="*60)
                   print("PERMISSION ERROR: The App Store Connect API key does not")
