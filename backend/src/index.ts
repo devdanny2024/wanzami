@@ -128,6 +128,14 @@ async function bootstrapSuperAdmin() {
   console.log("Bootstrapped SUPER_ADMIN:", { id: user.id.toString(), email: user.email });
 }
 
+process.on("unhandledRejection", (reason) => {
+  console.error("unhandledRejection:", reason);
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("uncaughtException:", err);
+});
+
 void (async () => {
   try {
     await bootstrapSuperAdmin();

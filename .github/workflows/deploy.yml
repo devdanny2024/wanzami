@@ -3,7 +3,15 @@ name: Deploy backend
 on:
   push:
     branches: [main, new-backend-testing]
+    paths:
+      - 'backend/**'
+      - 'infra/**'
+      - '.github/workflows/deploy.yml'
   workflow_dispatch:
+
+concurrency:
+  group: deploy-backend-${{ github.ref_name }}
+  cancel-in-progress: false
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION }}
@@ -304,7 +312,6 @@ jobs:
 
       - name: Run Prisma migrations inside ECS (private RDS)
         id: prisma_migrate
-        continue-on-error: true
         run: |
           set -euo pipefail
 
@@ -346,11 +353,6 @@ jobs:
             aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$TASK_ARN"
             exit 1
           fi
-
-      - name: Warn if migration failed (deployment continues)
-        if: steps.prisma_migrate.outcome == 'failure'
-        run: |
-          echo "WARNING: Prisma migration failed in CI, but service deployment is continuing."
 
       - name: Update API service
         run: |
