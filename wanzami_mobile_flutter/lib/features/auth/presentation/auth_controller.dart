@@ -151,6 +151,9 @@ class AuthController extends ChangeNotifier {
   }
 
   Future<void> bootstrap() async {
+    // Restore the persisted access token before any API calls fire,
+    // so the first requests don't all hit 401 and race to refresh.
+    await _authRepository.initializeTokenStore();
     final valid = await _authRepository.hasValidSession();
     status = valid ? AuthStatus.authenticated : AuthStatus.unauthenticated;
     notifyListeners();

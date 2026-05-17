@@ -13,6 +13,13 @@ class AuthRepository {
   final AppEnv env;
   final TokenStore tokenStore;
 
+  // Mutex: ensures only one refresh is in flight at a time.
+  // Concurrent callers all await the same Future instead of each launching
+  // their own request with the same (soon-to-be-rotated) refresh token.
+  Future<bool>? _pendingRefresh;
+
+  Future<void> initializeTokenStore() => tokenStore.initialize();
+
   Future<SessionTokens> login({required String email, required String password}) async {
     final uri = Uri.parse('${env.apiBaseUrl}/auth/login');
     final response = await client.post(
@@ -179,37 +186,51 @@ class AuthRepository {
     }
   }
 
-  Future<bool> tryRefreshSession() async {
+  Future<bool> tryRefreshSession() {
+    _pendingRefresh ??= _doRefreshSession().whenComplete(() {
+      _pendingRefresh = null;
+    });
+    return _pendingRefresh!;
+  }
+
+  Future<bool> _doRefreshSession() async {
     final refreshToken = await tokenStore.getRefreshToken();
     if (refreshToken == null || refreshToken.isEmpty) return false;
 
     final uri = Uri.parse('${env.apiBaseUrl}/auth/refresh');
-    final response = await client.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'refreshToken': refreshToken}),
-    );
+    try {
+      final response = await client.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'refreshToken': refreshToken}),
+      );
 
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      await tokenStore.clear();
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        // Token is genuinely invalid — clear it so we don't retry forever.
+        await tokenStore.clear();
+        return false;
+      }
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        // Network error or server-side problem — keep the token, just fail.
+        return false;
+      }
+
+      final json = jsonDecode(response.body) as Map<String, dynamic>;
+      final newAccessToken = (json['accessToken'] ?? '') as String;
+      final newRefreshToken = (json['refreshToken'] ?? refreshToken) as String;
+
+      if (newAccessToken.isEmpty) return false;
+
+      await tokenStore.save(newAccessToken, newRefreshToken);
+      return true;
+    } catch (_) {
+      // Network / parse failure — keep the token, just fail.
       return false;
     }
-
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
-    final newAccessToken = (json['accessToken'] ?? '') as String;
-    final newRefreshToken = (json['refreshToken'] ?? refreshToken) as String;
-
-    if (newAccessToken.isEmpty) {
-      return false;
-    }
-
-    await tokenStore.save(newAccessToken, newRefreshToken);
-    return true;
   }
 
-  Future<bool> hasValidSession() async {
-    return tryRefreshSession();
-  }
+  Future<bool> hasValidSession() => tryRefreshSession();
 
   Future<void> logout() async {
     final refreshToken = await tokenStore.getRefreshToken();
