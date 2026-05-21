@@ -16,6 +16,7 @@ import { AuthenticatedRequest } from "../middleware/auth.js";
 import { sendEmail } from "../utils/mailer.js";
 import { resolveCountry } from "../utils/country.js";
 import { verifyEmailTemplate } from "../templates/verifyEmailTemplate.js";
+import { resetPasswordTemplate } from "../templates/resetPasswordTemplate.js";
 import { isPasswordStrong } from "../utils/passwordStrength.js";
 import {
   googleAuthUrl as googleAuthUrlService,
@@ -1099,13 +1100,13 @@ export const forgotPassword = async (req: Request, res: Response) => {
       where: { id: user.id },
       data: { resetToken: token, resetTokenExpires: expiresAt },
     });
-    const resetUrl = `${process.env.ADMIN_APP_ORIGIN ?? "http://localhost:3001"}/reset-password?token=${token}&email=${encodeURIComponent(
+    const resetUrl = `${process.env.APP_ORIGIN ?? "https://www.wanzami.tv"}/reset-password?token=${token}&email=${encodeURIComponent(
       email
     )}`;
     await sendEmail({
       to: email,
       subject: "Reset your Wanzami password",
-      html: verifyEmailTemplate({ name: user.name, verifyUrl: resetUrl }),
+      html: resetPasswordTemplate({ name: user.name, resetUrl }),
     });
   }
   return res.json({ message: "If that account exists, a reset link has been sent." });
