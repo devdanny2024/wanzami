@@ -95,15 +95,15 @@ export function BlogSearchPage({ onBack, onPostClick }: BlogSearchPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-gray-950 to-black pt-24 pb-12">
+    <div className="min-h-screen bg-gradient-to-b from-black via-gray-950 to-black pt-20 sm:pt-24 pb-12">
       {/* Header */}
-      <div className="px-4 md:px-12 lg:px-16 mb-8">
+      <div className="container-page mb-6 sm:mb-8">
         <div className="max-w-7xl mx-auto">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-full backdrop-blur-md transition-all group mb-8"
+            className="flex items-center gap-2 px-4 py-2 min-h-[40px] bg-white/5 hover:bg-white/10 border border-white/10 text-foreground rounded-full backdrop-blur-md transition-all group mb-6 sm:mb-8"
           >
-            <ArrowLeft className="w-5 h-5 group-hover:text-[#fd7e14] transition-colors" />
+            <ArrowLeft className="w-5 h-5 group-hover:text-brand transition-colors" />
             <span>Back</span>
           </button>
 
@@ -111,23 +111,23 @@ export function BlogSearchPage({ onBack, onPostClick }: BlogSearchPageProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <h1 className="text-white text-4xl md:text-5xl mb-8">Search Stories</h1>
+            <h1 className="font-heading text-foreground text-4xl sm:text-5xl tracking-wide leading-none mb-6 sm:mb-8">Search Stories</h1>
 
             {/* Search Bar */}
             <div className="relative max-w-3xl">
-              <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-500" />
+              <Search className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 w-5 h-5 sm:w-6 sm:h-6 text-gray-500" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch(searchQuery)}
                 placeholder="Search articles, authors, topics..."
-                className="w-full pl-16 pr-16 py-5 bg-white/10 border-2 border-white/20 focus:border-[#fd7e14] rounded-2xl text-white text-lg placeholder-gray-500 focus:outline-none backdrop-blur-md transition-all"
+                className="w-full pl-12 sm:pl-16 pr-14 sm:pr-16 py-4 sm:py-5 bg-white/5 border-2 border-white/10 focus:border-brand rounded-2xl text-foreground text-base sm:text-lg placeholder-gray-500 focus:outline-none backdrop-blur-md transition-all"
               />
               {searchQuery && (
                 <button
                   onClick={clearSearch}
-                  className="absolute right-6 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all"
+                  className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all"
                 >
                   <X className="w-5 h-5 text-white" />
                 </button>
@@ -142,10 +142,10 @@ export function BlogSearchPage({ onBack, onPostClick }: BlogSearchPageProps) {
                 className="mt-6"
               >
                 <div className="flex items-center gap-2 mb-4">
-                  <TrendingUp className="w-5 h-5 text-[#fd7e14]" />
-                  <span className="text-gray-400">Trending Searches</span>
+                  <TrendingUp className="w-5 h-5 text-brand" />
+                  <span className="text-muted-foreground">Trending Searches</span>
                 </div>
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-2.5 sm:gap-3">
                   {trendingSearches.map((term, index) => (
                     <motion.button
                       key={term}
@@ -153,9 +153,9 @@ export function BlogSearchPage({ onBack, onPostClick }: BlogSearchPageProps) {
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: 0.3 + index * 0.05 }}
                       onClick={() => handleSearch(term)}
-                      className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#fd7e14] rounded-full text-white text-sm transition-all group"
+                      className="px-4 py-2 min-h-[40px] bg-white/5 hover:bg-white/10 border border-white/10 hover:border-brand rounded-full text-foreground text-sm transition-all group"
                     >
-                      <span className="group-hover:text-[#fd7e14] transition-colors">
+                      <span className="group-hover:text-brand transition-colors">
                         {term}
                       </span>
                     </motion.button>
@@ -170,17 +170,17 @@ export function BlogSearchPage({ onBack, onPostClick }: BlogSearchPageProps) {
       {hasSearched && (
         <>
           {/* Filter Bar */}
-          <div className="px-4 md:px-12 lg:px-16 mb-8">
+          <div className="container-page mb-6 sm:mb-8">
             <div className="max-w-7xl mx-auto">
-              <div className="flex items-center justify-between mb-6">
-                <p className="text-gray-400">
-                  Found <span className="text-white">{searchResults.length}</span> results for{' '}
-                  <span className="text-[#fd7e14]">"{searchQuery}"</span>
+              <div className="flex items-center justify-between mb-5 sm:mb-6">
+                <p className="text-muted-foreground text-sm sm:text-base">
+                  Found <span className="text-foreground">{searchResults.length}</span> results for{' '}
+                  <span className="text-brand">"{searchQuery}"</span>
                 </p>
               </div>
 
-              <div className="flex items-center gap-3 overflow-x-auto pb-2">
-                <div className="flex items-center gap-2 text-gray-400 whitespace-nowrap">
+              <div className="flex items-center gap-3 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+                <div className="flex items-center gap-2 text-muted-foreground whitespace-nowrap">
                   <Filter className="w-4 h-4" />
                   <span>Sort by:</span>
                 </div>
@@ -188,10 +188,10 @@ export function BlogSearchPage({ onBack, onPostClick }: BlogSearchPageProps) {
                   <button
                     key={filter}
                     onClick={() => setSelectedFilter(filter)}
-                    className={`px-4 py-2 rounded-lg whitespace-nowrap transition-all ${
+                    className={`px-4 py-2 min-h-[40px] rounded-lg whitespace-nowrap transition-all ${
                       selectedFilter === filter
-                        ? 'bg-[#fd7e14] text-white'
-                        : 'bg-white/10 hover:bg-white/20 border border-white/20 text-white'
+                        ? 'bg-brand text-white'
+                        : 'bg-white/5 hover:bg-white/10 border border-white/10 text-foreground'
                     }`}
                   >
                     {filter}
@@ -202,9 +202,9 @@ export function BlogSearchPage({ onBack, onPostClick }: BlogSearchPageProps) {
           </div>
 
           {/* Results */}
-          <div className="px-4 md:px-12 lg:px-16">
+          <div className="container-page">
             <div className="max-w-7xl mx-auto">
-              <div className="space-y-6">
+              <div className="space-y-5 sm:space-y-6">
                 {searchResults.map((post, index) => (
                   <motion.div
                     key={post.id}
@@ -212,43 +212,43 @@ export function BlogSearchPage({ onBack, onPostClick }: BlogSearchPageProps) {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1 }}
                     onClick={() => onPostClick(post)}
-                    className="bg-gradient-to-br from-gray-900/50 to-gray-900/20 backdrop-blur-sm rounded-2xl overflow-hidden border border-white/10 hover:border-[#fd7e14] transition-all cursor-pointer group"
+                    className="bg-card rounded-2xl overflow-hidden border border-white/10 hover:border-brand transition-all cursor-pointer group"
                   >
-                    <div className="flex flex-col md:flex-row gap-6 p-6">
+                    <div className="flex flex-col md:flex-row gap-5 sm:gap-6 p-4 sm:p-6">
                       {/* Image */}
-                      <div className="relative w-full md:w-80 h-48 flex-shrink-0 rounded-xl overflow-hidden">
+                      <div className="relative w-full md:w-80 h-44 sm:h-48 flex-shrink-0 rounded-xl overflow-hidden">
                         <ImageWithFallback
                           src={post.image}
                           alt={post.title}
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                         />
                         <div className="absolute top-3 left-3">
-                          <span className="px-3 py-1 bg-[#fd7e14] text-white text-xs rounded-full">
+                          <span className="px-3 py-1 bg-brand text-white text-xs rounded-full">
                             {post.category}
                           </span>
                         </div>
                       </div>
 
                       {/* Content */}
-                      <div className="flex-1 flex flex-col justify-between">
+                      <div className="flex-1 min-w-0 flex flex-col justify-between gap-4">
                         <div>
-                          <h3 className="text-white text-2xl mb-3 group-hover:text-[#fd7e14] transition-colors line-clamp-2">
+                          <h3 className="font-heading text-foreground text-xl sm:text-2xl tracking-wide leading-tight mb-3 group-hover:text-brand transition-colors line-clamp-2">
                             {post.title}
                           </h3>
-                          <p className="text-gray-400 mb-4 line-clamp-2">
+                          <p className="text-muted-foreground mb-0 line-clamp-2">
                             {post.excerpt}
                           </p>
                         </div>
 
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
                             <img
                               src={post.author.avatar}
                               alt={post.author.name}
-                              className="w-8 h-8 rounded-full"
+                              className="w-8 h-8 rounded-full shrink-0"
                             />
-                            <div>
-                              <div className="text-white text-sm">{post.author.name}</div>
+                            <div className="min-w-0">
+                              <div className="text-foreground text-sm truncate">{post.author.name}</div>
                               <div className="flex items-center gap-2 text-xs text-gray-500">
                                 <span>{post.date}</span>
                                 <span>•</span>
@@ -258,7 +258,7 @@ export function BlogSearchPage({ onBack, onPostClick }: BlogSearchPageProps) {
                           </div>
 
                           {post.views && (
-                            <div className="text-gray-500 text-sm">
+                            <div className="text-gray-500 text-xs sm:text-sm shrink-0">
                               {post.views.toLocaleString()} views
                             </div>
                           )}
@@ -270,8 +270,8 @@ export function BlogSearchPage({ onBack, onPostClick }: BlogSearchPageProps) {
               </div>
 
               {/* Load More */}
-              <div className="flex justify-center mt-12">
-                <button className="px-8 py-3 bg-white/10 hover:bg-white/20 border border-white/20 hover:border-[#fd7e14] text-white rounded-xl backdrop-blur-md transition-all">
+              <div className="flex justify-center mt-10 sm:mt-12">
+                <button className="px-8 py-3 min-h-[44px] bg-white/5 hover:bg-white/10 border border-white/10 hover:border-brand text-foreground rounded-xl backdrop-blur-md transition-all">
                   Load More Results
                 </button>
               </div>
@@ -282,18 +282,18 @@ export function BlogSearchPage({ onBack, onPostClick }: BlogSearchPageProps) {
 
       {/* No results state (you can add this if needed) */}
       {hasSearched && searchResults.length === 0 && (
-        <div className="px-4 md:px-12 lg:px-16">
+        <div className="container-page">
           <div className="max-w-7xl mx-auto text-center py-16">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-white/10 rounded-full mb-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-white/5 rounded-full mb-4">
               <Search className="w-8 h-8 text-gray-500" />
             </div>
-            <h3 className="text-white text-2xl mb-2">No results found</h3>
-            <p className="text-gray-400 mb-6">
+            <h3 className="font-heading text-foreground text-2xl tracking-wide mb-2">No results found</h3>
+            <p className="text-muted-foreground mb-6">
               Try searching with different keywords or browse our categories
             </p>
             <button
               onClick={clearSearch}
-              className="px-6 py-3 bg-[#fd7e14] hover:bg-[#e86f0f] text-white rounded-xl transition-colors"
+              className="px-6 py-3 min-h-[44px] bg-brand hover:bg-brand-dark text-white rounded-xl transition-colors font-semibold"
             >
               Clear Search
             </button>

@@ -236,7 +236,7 @@ export default function SeriesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black home-root">
+    <div className="min-h-screen bg-background home-root">
       {loading ? (
         <HomeSkeleton />
       ) : (

@@ -160,14 +160,14 @@ export function BlogCategoryPage({ category, onBack, onPostClick }: BlogCategory
   const description = categoryDescriptions[category] || "Explore articles in this category";
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-gray-950 to-black pt-24 pb-12">
+    <div className="min-h-screen bg-gradient-to-b from-black via-gray-950 to-black pt-20 sm:pt-24 pb-12">
       {/* Back Button */}
-      <div className="px-4 md:px-12 lg:px-16 mb-8">
+      <div className="container-page mb-6 sm:mb-8">
         <button
           onClick={onBack}
-          className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-full backdrop-blur-md transition-all group"
+          className="flex items-center gap-2 px-4 py-2 min-h-[40px] bg-white/5 hover:bg-white/10 border border-white/10 text-foreground rounded-full backdrop-blur-md transition-all group"
         >
-          <ArrowLeft className="w-5 h-5 group-hover:text-[#fd7e14] transition-colors" />
+          <ArrowLeft className="w-5 h-5 group-hover:text-brand transition-colors" />
           <span>Back to Stories</span>
         </button>
       </div>
@@ -176,36 +176,36 @@ export function BlogCategoryPage({ category, onBack, onPostClick }: BlogCategory
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="px-4 md:px-12 lg:px-16 mb-12"
+        className="container-page mb-10 sm:mb-12"
       >
         <div className="max-w-7xl mx-auto">
-          <div className="inline-block px-4 py-2 bg-[#fd7e14]/20 border border-[#fd7e14] rounded-full mb-4">
-            <span className="text-[#fd7e14]">CATEGORY</span>
+          <div className="inline-block px-4 py-1.5 bg-brand/20 border border-brand rounded-full mb-4">
+            <span className="font-heading text-brand tracking-widest text-sm">CATEGORY</span>
           </div>
-          <h1 className="text-white text-4xl md:text-5xl lg:text-6xl mb-4">
+          <h1 className="font-heading text-foreground text-4xl sm:text-5xl lg:text-6xl tracking-wide leading-none mb-4">
             {category}
           </h1>
-          <p className="text-gray-400 text-lg md:text-xl max-w-3xl">
+          <p className="text-muted-foreground text-base sm:text-lg md:text-xl max-w-3xl">
             {description}
           </p>
         </div>
       </motion.div>
 
       {/* Filter Bar */}
-      <div className="px-4 md:px-12 lg:px-16 mb-8">
+      <div className="container-page mb-6 sm:mb-8">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center gap-4 overflow-x-auto pb-2">
-            <button className="flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 text-white rounded-lg whitespace-nowrap">
+          <div className="flex items-center gap-3 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+            <button className="flex items-center gap-2 px-4 py-2 min-h-[40px] bg-white/5 border border-white/10 text-foreground rounded-lg whitespace-nowrap">
               <Filter className="w-4 h-4" />
               Filter
             </button>
-            <button className="px-4 py-2 bg-[#fd7e14] text-white rounded-lg whitespace-nowrap">
+            <button className="px-4 py-2 min-h-[40px] bg-brand text-white rounded-lg whitespace-nowrap">
               Latest
             </button>
-            <button className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-lg whitespace-nowrap transition-all">
+            <button className="px-4 py-2 min-h-[40px] bg-white/5 hover:bg-white/10 border border-white/10 text-foreground rounded-lg whitespace-nowrap transition-all">
               Most Popular
             </button>
-            <button className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-lg whitespace-nowrap transition-all">
+            <button className="px-4 py-2 min-h-[40px] bg-white/5 hover:bg-white/10 border border-white/10 text-foreground rounded-lg whitespace-nowrap transition-all">
               Most Viewed
             </button>
           </div>
@@ -213,10 +213,10 @@ export function BlogCategoryPage({ category, onBack, onPostClick }: BlogCategory
       </div>
 
       {/* Posts Grid */}
-      <div className="px-4 md:px-12 lg:px-16">
+      <div className="container-page">
         <div className="max-w-7xl mx-auto">
           {posts.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
               {posts.map((post, index) => (
                 <motion.div
                   key={post.id}
@@ -224,42 +224,42 @@ export function BlogCategoryPage({ category, onBack, onPostClick }: BlogCategory
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
                   onClick={() => onPostClick(post)}
-                  className="bg-gradient-to-br from-gray-900/50 to-gray-900/20 backdrop-blur-sm rounded-2xl overflow-hidden border border-white/10 hover:border-[#fd7e14] transition-all cursor-pointer group"
+                  className="bg-card rounded-2xl overflow-hidden border border-white/10 hover:border-brand transition-all cursor-pointer group"
                 >
-                  <div className="relative h-56 overflow-hidden">
+                  <div className="relative h-48 sm:h-56 overflow-hidden">
                     <ImageWithFallback
                       src={post.image}
                       alt={post.title}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-                    
+
                     {/* Category badge */}
                     <div className="absolute top-4 left-4">
-                      <span className="px-3 py-1 bg-[#fd7e14] text-white text-xs rounded-full">
+                      <span className="px-3 py-1 bg-brand text-white text-xs rounded-full">
                         {post.category}
                       </span>
                     </div>
                   </div>
 
-                  <div className="p-6">
-                    <h3 className="text-white text-xl mb-3 group-hover:text-[#fd7e14] transition-colors line-clamp-2">
+                  <div className="p-5 sm:p-6">
+                    <h3 className="font-heading text-foreground text-lg sm:text-xl tracking-wide leading-tight mb-3 group-hover:text-brand transition-colors line-clamp-2">
                       {post.title}
                     </h3>
-                    <p className="text-gray-400 mb-4 line-clamp-2 text-sm">
+                    <p className="text-muted-foreground mb-4 line-clamp-2 text-sm">
                       {post.excerpt}
                     </p>
 
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         <img
                           src={post.author.avatar}
                           alt={post.author.name}
-                          className="w-6 h-6 rounded-full"
+                          className="w-6 h-6 rounded-full shrink-0"
                         />
-                        <span className="text-gray-400 text-sm">{post.author.name}</span>
+                        <span className="text-muted-foreground text-sm truncate">{post.author.name}</span>
                       </div>
-                      <div className="flex items-center gap-3 text-xs text-gray-500">
+                      <div className="flex items-center gap-3 text-xs text-gray-500 shrink-0">
                         <span>{post.readTime}</span>
                       </div>
                     </div>
@@ -269,11 +269,11 @@ export function BlogCategoryPage({ category, onBack, onPostClick }: BlogCategory
             </div>
           ) : (
             <div className="text-center py-16">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-white/10 rounded-full mb-4">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-white/5 rounded-full mb-4">
                 <Filter className="w-8 h-8 text-gray-500" />
               </div>
-              <h3 className="text-white text-2xl mb-2">No posts yet</h3>
-              <p className="text-gray-400">
+              <h3 className="font-heading text-foreground text-2xl tracking-wide mb-2">No posts yet</h3>
+              <p className="text-muted-foreground">
                 Check back soon for new content in this category
               </p>
             </div>
@@ -281,8 +281,8 @@ export function BlogCategoryPage({ category, onBack, onPostClick }: BlogCategory
 
           {/* Load More */}
           {posts.length > 0 && (
-            <div className="flex justify-center mt-12">
-              <button className="px-8 py-3 bg-white/10 hover:bg-white/20 border border-white/20 hover:border-[#fd7e14] text-white rounded-xl backdrop-blur-md transition-all">
+            <div className="flex justify-center mt-10 sm:mt-12">
+              <button className="px-8 py-3 min-h-[44px] bg-white/5 hover:bg-white/10 border border-white/10 hover:border-brand text-foreground rounded-xl backdrop-blur-md transition-all">
                 Load More Articles
               </button>
             </div>

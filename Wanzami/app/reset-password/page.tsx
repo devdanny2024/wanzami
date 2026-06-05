@@ -48,32 +48,32 @@ function ResetPasswordForm() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center px-4 auth-root">
+    <div className="min-h-screen bg-black text-white flex items-center justify-center px-4 sm:px-6 py-10 auth-root">
       <TopLoader active={loading} />
-      <div className="w-full max-w-md bg-white/5 border border-white/10 rounded-2xl p-8">
-        <h1 className="text-2xl font-semibold mb-3">Reset Password</h1>
-        <p className="text-gray-400 mb-6">Enter a new password for {email}.</p>
+      <div className="w-full max-w-md bg-graphite border border-white/10 rounded-2xl p-6 sm:p-8">
+        <h1 className="font-heading text-3xl sm:text-4xl tracking-wide leading-none mb-3">Reset Password</h1>
+        <p className="text-ash mb-6 break-words">Enter a new password for {email}.</p>
         <form className="space-y-4" onSubmit={onSubmit}>
           <div className="space-y-2">
-            <label className="text-sm text-gray-300">New Password</label>
+            <label className="text-sm text-ash">New Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full rounded-lg border border-white/10 bg-black px-3 py-3 text-white focus:border-[#fd7e14] focus:outline-none"
+              className="w-full rounded-lg border border-white/10 bg-ink-2 px-3 py-3 text-white placeholder:text-white/40 focus:border-brand focus:ring-1 focus:ring-brand focus:outline-none transition-colors"
               placeholder="Use upper, lower, number, symbol"
             />
           </div>
           <button
             type="submit"
             disabled={loading || !token || !email}
-            className="w-full bg-[#fd7e14] hover:bg-[#ff9f4d] text-white font-semibold py-3 rounded-lg transition disabled:opacity-60"
+            className="w-full bg-brand hover:bg-brand-light text-black font-semibold py-3 rounded-lg transition-colors disabled:opacity-60"
           >
             {loading ? "Updating..." : "Update password"}
           </button>
         </form>
-        {message && <p className="text-sm text-gray-300 mt-4">{message}</p>}
+        {message && <p className="text-sm text-ash mt-4">{message}</p>}
       </div>
     </div>
   );

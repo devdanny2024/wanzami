@@ -458,7 +458,7 @@ export default function HomeRoute() {
   };
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-background">
       {catalogLoading ? (
         <HomeSkeleton />
       ) : (

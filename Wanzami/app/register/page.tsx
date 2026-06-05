@@ -96,18 +96,18 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center px-6 py-16 auth-root">
+    <div className="min-h-screen bg-black text-white flex items-center justify-center px-4 sm:px-6 py-10 sm:py-16 auth-root">
       <TopLoader active={loading || googleLoading} />
       <div className="w-full max-w-md auth-card">
         <div className="flex flex-col items-center gap-3 mb-8 auth-header">
-          <Image src={orangeLogo} alt="Wanzami" width={110} height={110} priority />
+          <Image src={orangeLogo} alt="Wanzami" width={96} height={96} priority className="h-20 w-20 sm:h-24 sm:w-24" />
           <div className="text-center">
-            <h1 className="text-white text-3xl font-semibold">Create your account</h1>
-            <p className="text-white/70 text-sm">Join Wanzami to start streaming.</p>
+            <h1 className="font-heading text-white text-4xl sm:text-5xl tracking-wide leading-none">Create Your Account</h1>
+            <p className="text-white/70 text-sm mt-1">Join Wanzami to start streaming.</p>
           </div>
         </div>
 
-        <div className="rounded-3xl bg-[#0d0d0f] border border-white/10 shadow-[0_30px_80px_rgba(0,0,0,0.55)] p-8 auth-panel">
+        <div className="rounded-3xl bg-[#0d0d0f] border border-white/10 shadow-[0_30px_80px_rgba(0,0,0,0.55)] p-6 sm:p-8 auth-panel">
           <div className="space-y-3 mb-6">
             <button
               type="button"
@@ -219,7 +219,7 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#e25a00] hover:bg-[#fd7e14] text-white py-3 rounded-lg transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+              className="w-full bg-brand hover:bg-brand-light text-black font-semibold py-3 rounded-lg transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {loading ? "Creating account..." : "Create account"}
             </button>

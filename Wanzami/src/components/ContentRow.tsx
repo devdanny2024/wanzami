@@ -15,16 +15,12 @@ export function ContentRow({ title, movies, onMovieClick, maxVisible }: ContentR
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(true);
-  const [cardWidth, setCardWidth] = useState(220);
-
-  const ITEMS_PER_VIEW = 3.5;
-  const GAP_PX = 16; // matches gap-4 at desktop
 
   const handleScroll = (direction: 'left' | 'right') => {
     const container = scrollContainerRef.current;
     if (!container) return;
 
-    const scrollAmount = container.clientWidth * 0.8;
+    const scrollAmount = container.clientWidth * 0.85;
     const newScrollLeft =
       direction === 'left'
         ? container.scrollLeft - scrollAmount
@@ -40,44 +36,22 @@ export function ContentRow({ title, movies, onMovieClick, maxVisible }: ContentR
     const container = scrollContainerRef.current;
     if (!container) return;
 
-    setShowLeftArrow(container.scrollLeft > 0);
+    setShowLeftArrow(container.scrollLeft > 4);
     setShowRightArrow(
       container.scrollLeft < container.scrollWidth - container.clientWidth - 10
     );
   };
 
-  // Recalculate card width so exactly 6 items fit per viewport (desktop), with sensible min/max clamps.
   useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    const recalc = () => {
-      const viewportWidth = typeof window !== "undefined" ? window.innerWidth : container.clientWidth;
-
-      // On mobile, use a fixed narrower card width so more cards are visible in the viewport.
-      if (viewportWidth < 768) {
-        setCardWidth(200);
-        setShowLeftArrow(container.scrollLeft > 0);
-        setShowRightArrow(container.scrollLeft < container.scrollWidth - container.clientWidth - 10);
-        return;
-      }
-
-      const available = container.clientWidth - GAP_PX * (ITEMS_PER_VIEW - 1);
-      const target = available / ITEMS_PER_VIEW;
-      const clamped = Math.max(300, Math.min(420, target));
-      setCardWidth(clamped);
-      setShowLeftArrow(container.scrollLeft > 0);
-      setShowRightArrow(container.scrollLeft < container.scrollWidth - container.clientWidth - 10);
-    };
-
-    recalc();
-    window.addEventListener('resize', recalc);
-    return () => window.removeEventListener('resize', recalc);
+    checkScroll();
+    window.addEventListener('resize', checkScroll);
+    return () => window.removeEventListener('resize', checkScroll);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [displayMovies.length]);
 
   return (
-    <div className="group/row relative mb-8 md:mb-12 px-6 md:px-10 lg:px-14">
-      <h2 className="text-white mb-4 px-0 tracking-tight text-xl md:text-2xl">
+    <div className="group/row relative mb-8 md:mb-10">
+      <h2 className="container-page font-heading text-foreground mb-3 md:mb-4 tracking-wide uppercase text-2xl md:text-3xl">
         {title}
       </h2>
 
@@ -89,27 +63,24 @@ export function ContentRow({ title, movies, onMovieClick, maxVisible }: ContentR
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => handleScroll('left')}
-            className="hidden md:flex absolute left-0 top-0 bottom-0 z-10 items-center justify-center w-12 bg-black/80 hover:bg-black/90 text-white opacity-0 group-hover/row:opacity-100 transition-opacity"
+            aria-label="Scroll left"
+            className="hidden md:flex absolute left-0 top-0 bottom-0 z-20 items-center justify-center w-12 lg:w-16 bg-gradient-to-r from-black via-black/80 to-transparent text-foreground opacity-0 group-hover/row:opacity-100 transition-opacity"
           >
             <ChevronLeft className="w-8 h-8" />
           </motion.button>
         )}
 
-        {/* Scrollable container */}
+        {/* Scrollable container — responsive snap carousel */}
         <div
           ref={scrollContainerRef}
           onScroll={checkScroll}
-          className="flex gap-2 md:gap-4 overflow-x-auto scrollbar-hide px-4 md:px-12 lg:px-16 scroll-smooth"
+          className="flex gap-3 md:gap-4 overflow-x-auto scrollbar-hide scroll-smooth snap-x snap-mandatory px-4 sm:px-6 lg:px-10 2xl:px-12"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {displayMovies.map((movie) => (
             <div
               key={movie.id}
-              className="flex-none p-2"
-              style={{
-                width: `${cardWidth}px`,
-                minWidth: `${cardWidth}px`,
-              }}
+              className="flex-none snap-start w-[44%] sm:w-[32%] md:w-[26%] lg:w-[22%] xl:w-[18.5%] 2xl:w-[15.5%]"
             >
               <MovieCard movie={movie} onClick={onMovieClick} />
             </div>
@@ -123,7 +94,8 @@ export function ContentRow({ title, movies, onMovieClick, maxVisible }: ContentR
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => handleScroll('right')}
-            className="hidden md:flex absolute right-0 top-0 bottom-0 z-10 items-center justify-center w-12 bg-black/80 hover:bg-black/90 text-white opacity-0 group-hover/row:opacity-100 transition-opacity"
+            aria-label="Scroll right"
+            className="hidden md:flex absolute right-0 top-0 bottom-0 z-20 items-center justify-center w-12 lg:w-16 bg-gradient-to-l from-black via-black/80 to-transparent text-foreground opacity-0 group-hover/row:opacity-100 transition-opacity"
           >
             <ChevronRight className="w-8 h-8" />
           </motion.button>

@@ -8,9 +8,6 @@ export const metadata: Metadata = {
   description: 'Terms of use, privacy policy, and frequently asked questions for Wanzami.',
 };
 
-const accent = '#c0410a';
-const displayFont = 'var(--font-display), Impact, sans-serif';
-
 const termsCopy =
   'By using Wanzami, you agree to access content for personal, non-commercial use only. Creators retain full rights to their content. Any unauthorized copying, sharing, or distribution is prohibited. We reserve the right to suspend accounts that violate these terms.';
 
@@ -64,7 +61,7 @@ function SectionEyebrow({ children }: { children: React.ReactNode }) {
 
 function PullQuote({ title, quote }: { title: string; quote: string }) {
   return (
-    <aside className="rounded-[24px] border border-[#2a2a2a] border-l-4 border-l-[#c0410a] bg-[#151515] p-5 sm:p-6">
+    <aside className="rounded-[24px] border border-[#2a2a2a] border-l-4 border-l-brand bg-[#151515] p-5 sm:p-6">
       <p className="text-xs uppercase tracking-[0.24em] text-[#c78667]">{title}</p>
       <p className="mt-3 text-lg leading-8 text-zinc-100 sm:text-xl">{quote}</p>
     </aside>
@@ -105,7 +102,7 @@ export default function PolicyPage() {
       </header>
 
       <section className="relative isolate overflow-hidden border-b border-[#2a2a2a]">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(192,65,10,0.20),_transparent_38%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(253,126,20,0.18),_transparent_38%)]" />
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.03)_0%,rgba(13,13,13,0.0)_24%,rgba(13,13,13,0.88)_100%)]" />
         <div className="film-grain pointer-events-none absolute -inset-[140px] opacity-[0.10] bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIj48ZmlsdGVyIGlkPSJhIj48ZmVUdXJidWxlbmNlIGJhc2VGcmVxdWVuY3k9Ii43NSIgc3RpdGNoVGlsZXM9InN0aXRjaCIgdHlwZT0iZnJhY3RhbE5vaXNlIi8+PGZlQ29sb3JNYXRyaXggdHlwZT0ic2F0dXJhdGUiIHZhbHVlcz0iMCIvPjwvZmlsdGVyPjxwYXRoIGQ9Ik0wIDBoMzAwdjMwMEgweiIgZmlsdGVyPSJ1cmwoI2EpIiBvcGFjaXR5PSIuMDUiLz48L3N2Zz4=')]" />
 
@@ -115,10 +112,7 @@ export default function PolicyPage() {
               Wanzami Policy Center
             </div>
 
-            <h1
-              className="mt-6 max-w-4xl text-5xl uppercase leading-[0.92] tracking-[0.04em] text-white sm:text-6xl md:text-7xl lg:text-[5.5rem]"
-              style={{ fontFamily: displayFont }}
-            >
+            <h1 className="font-heading mt-6 max-w-4xl text-5xl uppercase leading-[0.92] tracking-[0.04em] text-white sm:text-6xl md:text-7xl lg:text-[5.5rem]">
               Clear Rules. No Surprises.
             </h1>
 
@@ -130,7 +124,7 @@ export default function PolicyPage() {
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/policy#terms"
-                className="group inline-flex items-center justify-center gap-2 rounded-full border border-[#c0410a] bg-[#c0410a] px-6 py-3 text-sm font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#d24b11] hover:shadow-[0_16px_32px_rgba(192,65,10,0.28)]"
+                className="group inline-flex items-center justify-center gap-2 rounded-full border border-brand bg-brand px-6 py-3 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-brand-dark hover:shadow-[0_16px_32px_rgba(253,126,20,0.28)]"
               >
                 Read the terms
                 <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
@@ -158,7 +152,7 @@ export default function PolicyPage() {
                   className="group flex items-center justify-between rounded-2xl border border-transparent bg-[#1a1a1a] px-4 py-3 text-sm text-zinc-300 transition-all duration-300 hover:border-[#4a2416] hover:bg-[#202020] hover:text-white"
                 >
                   <span>{item.label}</span>
-                  <ChevronRight className="h-4 w-4 text-[#c0410a] transition-transform duration-300 group-hover:translate-x-0.5" />
+                  <ChevronRight className="h-4 w-4 text-brand transition-transform duration-300 group-hover:translate-x-0.5" />
                 </Link>
               ))}
             </nav>
@@ -180,10 +174,7 @@ export default function PolicyPage() {
             style={{ animationDelay: '0.18s' }}
           >
             <SectionEyebrow>Terms of Use</SectionEyebrow>
-            <h2
-              className="mt-3 text-4xl uppercase tracking-[0.05em] text-white sm:text-5xl"
-              style={{ fontFamily: displayFont }}
-            >
+            <h2 className="font-heading mt-3 text-4xl uppercase tracking-[0.05em] text-white sm:text-5xl">
               Watch responsibly.
             </h2>
             <div className="mt-8 grid gap-6">
@@ -203,10 +194,7 @@ export default function PolicyPage() {
             style={{ animationDelay: '0.28s' }}
           >
             <SectionEyebrow>Privacy Policy</SectionEyebrow>
-            <h2
-              className="mt-3 text-4xl uppercase tracking-[0.05em] text-white sm:text-5xl"
-              style={{ fontFamily: displayFont }}
-            >
+            <h2 className="font-heading mt-3 text-4xl uppercase tracking-[0.05em] text-white sm:text-5xl">
               Your data stays respected.
             </h2>
             <div className="mt-8 grid gap-6">
@@ -228,10 +216,7 @@ export default function PolicyPage() {
             <SectionEyebrow>FAQ</SectionEyebrow>
             <div className="mt-3 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
               <div>
-                <h2
-                  className="text-4xl uppercase tracking-[0.05em] text-white sm:text-5xl"
-                  style={{ fontFamily: displayFont }}
-                >
+                <h2 className="font-heading text-4xl uppercase tracking-[0.05em] text-white sm:text-5xl">
                   The essentials.
                 </h2>
                 <p className="mt-3 max-w-2xl text-base leading-8 text-zinc-400 sm:text-lg">
@@ -248,10 +233,7 @@ export default function PolicyPage() {
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p
-                        className="text-5xl leading-none text-[#c0410a]/80"
-                        style={{ fontFamily: displayFont }}
-                      >
+                      <p className="font-heading text-5xl leading-none text-brand/80">
                         {(index + 1).toString().padStart(2, '0')}
                       </p>
                       <h3 className="mt-4 text-xl font-medium text-white">{item.question}</h3>
@@ -265,16 +247,13 @@ export default function PolicyPage() {
 
           <section
             id="contact"
-            className="fade-up scroll-mt-28 overflow-hidden rounded-[32px] border border-[#4a2416] bg-[linear-gradient(135deg,rgba(192,65,10,0.16),rgba(26,26,26,0.98)_38%,rgba(26,26,26,1)_100%)] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.32)] sm:p-8 lg:p-10"
+            className="fade-up scroll-mt-28 overflow-hidden rounded-[32px] border border-brand/40 bg-[linear-gradient(135deg,rgba(253,126,20,0.16),rgba(26,26,26,0.98)_38%,rgba(26,26,26,1)_100%)] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.32)] sm:p-8 lg:p-10"
             style={{ animationDelay: '0.48s' }}
           >
             <SectionEyebrow>Contact</SectionEyebrow>
             <div className="mt-3 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
               <div className="max-w-2xl">
-                <h2
-                  className="text-4xl uppercase tracking-[0.05em] text-white sm:text-5xl"
-                  style={{ fontFamily: displayFont }}
-                >
+                <h2 className="font-heading text-4xl uppercase tracking-[0.05em] text-white sm:text-5xl">
                   Need a human answer?
                 </h2>
                 <p className="mt-4 text-base leading-8 text-zinc-300 sm:text-lg">
@@ -284,7 +263,7 @@ export default function PolicyPage() {
               </div>
               <Link
                 href="/contact"
-                className="group inline-flex items-center justify-center gap-2 rounded-full border border-[#c0410a] bg-[#c0410a] px-6 py-3 text-sm font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#d24b11] hover:shadow-[0_16px_32px_rgba(192,65,10,0.28)]"
+                className="group inline-flex items-center justify-center gap-2 rounded-full border border-brand bg-brand px-6 py-3 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-brand-dark hover:shadow-[0_16px_32px_rgba(253,126,20,0.28)]"
               >
                 Go to contact
                 <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />

@@ -42,7 +42,7 @@ export function PPVContentRow({ title, movies, onMovieClick }: PPVContentRowProp
 
   return (
     <div className="group/row relative mb-8 md:mb-12">
-      <h2 className="text-white mb-4 px-4 md:px-12 lg:px-16 tracking-tight text-xl md:text-2xl">
+      <h2 className="font-heading uppercase text-foreground mb-4 px-4 md:px-12 lg:px-16 tracking-wide text-2xl md:text-3xl">
         {title}
       </h2>
 

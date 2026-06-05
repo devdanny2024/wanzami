@@ -259,40 +259,46 @@ export default function LiveDetailPage({ params }: { params: { id: string } }) {
   };
 
   if (loading) {
-    return <div className="min-h-screen bg-black text-white px-4 md:px-12 pt-28">Loading live event...</div>;
+    return (
+      <div className="min-h-screen bg-background text-foreground pt-24 sm:pt-28">
+        <div className="container-page text-muted-foreground">Loading live event...</div>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-black text-white px-4 md:px-12 lg:px-16 pt-28 pb-10">
+    <div className="min-h-screen bg-background text-foreground pt-24 sm:pt-28 pb-12">
+      <div className="container-page">
       <div className="mb-4">
-        <Link href="/live" className="text-sm text-neutral-400 hover:text-white">← Back to Live</Link>
+        <Link href="/live" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors">← Back to Live</Link>
       </div>
 
-      {error && <p className="text-red-400 mb-4">{error}</p>}
+      {error && <p className="text-destructive mb-4">{error}</p>}
 
       {!event ? null : (
         <>
-          <div className="flex items-start justify-between gap-3 mb-3">
-            <div>
-              <h1 className="text-3xl font-semibold">{event.title}</h1>
-              {event.category ? <p className="text-xs text-neutral-400 mt-1">Category: {event.category}</p> : null}
-              {event.description && <p className="text-neutral-400 mt-2">{event.description}</p>}
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
+            <div className="min-w-0">
+              <h1 className="font-heading text-3xl sm:text-4xl uppercase tracking-wide leading-tight">{event.title}</h1>
+              {event.category ? <p className="text-xs text-muted-foreground mt-1">Category: {event.category}</p> : null}
+              {event.description && <p className="text-muted-foreground mt-2 text-sm sm:text-base">{event.description}</p>}
             </div>
             <span
-              className={`text-xs px-2 py-1 rounded-full border ${
+              className={`shrink-0 inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full border ${
                 event.status === "LIVE"
-                  ? "border-red-500/40 text-red-300 bg-red-500/10"
+                  ? "border-red-500/50 text-red-200 bg-red-500/15"
                   : event.status === "SCHEDULED"
-                  ? "border-blue-500/40 text-blue-300 bg-blue-500/10"
-                  : "border-neutral-500/40 text-neutral-300 bg-neutral-500/10"
+                  ? "border-brand/50 text-brand bg-brand/15"
+                  : "border-white/20 text-muted-foreground bg-graphite-2"
               }`}
             >
+              {event.status === "LIVE" && <span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />}
               {event.status}
             </span>
           </div>
 
           {event.status === "SCHEDULED" && (
-            <div className="mb-4 text-blue-300 text-sm">
+            <div className="mb-4 text-brand text-sm">
               Starts in {formatCountdown(event.scheduledStartAt) ?? "soon"}
             </div>
           )}
@@ -303,7 +309,7 @@ export default function LiveDetailPage({ params }: { params: { id: string } }) {
 
           <div className="grid gap-5 xl:grid-cols-[1fr_340px]">
             <div>
-              <div className="relative w-full max-w-5xl aspect-video bg-neutral-900 rounded-xl overflow-hidden">
+              <div className="relative w-full max-w-5xl aspect-video bg-graphite-2 rounded-xl overflow-hidden border border-white/10">
                 {primaryPlaybackUrl ? (
                   <video ref={videoRef} controls autoPlay playsInline className="w-full h-full bg-black" />
                 ) : event.status === "ENDED" ? (
@@ -311,15 +317,15 @@ export default function LiveDetailPage({ params }: { params: { id: string } }) {
                 ) : event.thumbnailUrl ? (
                   <div className="relative w-full h-full">
                     <Image src={event.thumbnailUrl} alt={event.title} fill className="object-cover" unoptimized />
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-neutral-200 text-sm">
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-foreground text-sm">
                       Stream is not available yet.
                     </div>
                   </div>
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-neutral-400">Stream is not available yet.</div>
+                  <div className="w-full h-full flex items-center justify-center text-muted-foreground">Stream is not available yet.</div>
                 )}
 
-                <div className="absolute top-3 right-3 bg-black/60 px-2 py-1 rounded text-xs">Quality: {qualityLabel}</div>
+                <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-md text-xs border border-white/10">Quality: {qualityLabel}</div>
                 {burstReactions.length ? (
                   <div className="absolute bottom-3 right-3 flex flex-col gap-1 text-lg">
                     {burstReactions.slice(0, 5).map((icon, idx) => (
@@ -330,10 +336,10 @@ export default function LiveDetailPage({ params }: { params: { id: string } }) {
               </div>
 
               {availableLevels.length ? (
-                <div className="mt-3 flex items-center gap-2 text-xs text-neutral-300">
+                <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
                   <span>Video quality:</span>
                   <select
-                    className="bg-neutral-900 border border-neutral-700 rounded px-2 py-1"
+                    className="bg-graphite border border-white/10 text-foreground rounded-md px-2 py-1.5"
                     value={selectedLevel}
                     onChange={(e) => {
                       const level = Number(e.target.value);
@@ -361,26 +367,26 @@ export default function LiveDetailPage({ params }: { params: { id: string } }) {
                     <button
                       key={item}
                       onClick={() => void emitReaction(item)}
-                      className="px-3 py-1.5 rounded-full border border-neutral-700 bg-neutral-900 hover:bg-neutral-800 text-sm"
+                      className="min-h-[40px] px-3 py-1.5 rounded-full border border-white/10 bg-graphite hover:bg-graphite-2 hover:border-brand/40 text-sm transition-colors"
                     >
-                      {item} {count > 0 ? <span className="text-neutral-400">{count}</span> : null}
+                      {item} {count > 0 ? <span className="text-muted-foreground">{count}</span> : null}
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            <aside className="border border-neutral-800 rounded-xl bg-neutral-950 p-3 h-[70vh] flex flex-col">
-              <h3 className="text-sm font-semibold mb-2">Live chat</h3>
+            <aside className="border border-white/10 rounded-2xl bg-card p-3 h-[60vh] xl:h-[70vh] flex flex-col">
+              <h3 className="font-heading text-base uppercase tracking-wide mb-2">Live chat</h3>
               <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-                {messages.length === 0 ? <p className="text-xs text-neutral-500">No messages yet.</p> : null}
+                {messages.length === 0 ? <p className="text-xs text-muted-foreground">No messages yet.</p> : null}
                 {messages.map((m) => (
-                  <div key={m.id} className="text-xs bg-neutral-900/70 rounded p-2">
-                    <p className="text-neutral-300">
-                      <span className="text-white font-medium">{m.userName}</span>
-                      {m.userRole && m.userRole !== "USER" ? <span className="ml-1 text-amber-300">({m.userRole})</span> : null}
+                  <div key={m.id} className="text-xs bg-graphite-2 rounded-lg p-2.5">
+                    <p className="text-muted-foreground">
+                      <span className="text-foreground font-medium">{m.userName}</span>
+                      {m.userRole && m.userRole !== "USER" ? <span className="ml-1 text-brand">({m.userRole})</span> : null}
                     </p>
-                    <p className="text-neutral-200 mt-0.5 break-words">{m.message}</p>
+                    <p className="text-foreground/90 mt-0.5 break-words">{m.message}</p>
                   </div>
                 ))}
               </div>
@@ -396,12 +402,12 @@ export default function LiveDetailPage({ params }: { params: { id: string } }) {
                   }}
                   placeholder="Say something..."
                   maxLength={500}
-                  className="flex-1 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
+                  className="flex-1 min-h-[40px] rounded-lg border border-white/10 bg-graphite-2 px-3 py-2 text-sm focus:outline-none focus:border-brand/50"
                 />
                 <button
                   disabled={chatSending || !chatInput.trim()}
                   onClick={() => void submitChat()}
-                  className="px-3 py-2 rounded-md bg-[#fd7e14] text-white disabled:opacity-50"
+                  className="min-h-[40px] px-4 py-2 rounded-lg bg-brand hover:bg-brand-dark text-primary-foreground font-semibold disabled:opacity-50 transition-colors"
                 >
                   Send
                 </button>
@@ -410,6 +416,7 @@ export default function LiveDetailPage({ params }: { params: { id: string } }) {
           </div>
         </>
       )}
+      </div>
     </div>
   );
 }

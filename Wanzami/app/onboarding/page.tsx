@@ -56,10 +56,10 @@ function GenresStep({
   return (
     <div className="w-full max-w-4xl mx-auto">
       <div className="mb-8 text-center">
-        <h2 className="text-3xl font-semibold text-white mb-2">Choose your favorite genres</h2>
+        <h2 className="font-heading text-3xl sm:text-4xl tracking-wide leading-none text-white mb-2">Choose your favorite genres</h2>
         <p className="text-white/60">Select all the genres you enjoy watching</p>
         {selectedCount > 0 && (
-          <p className="text-orange-500 mt-2">
+          <p className="text-brand mt-2">
             {selectedCount} {selectedCount === 1 ? "genre" : "genres"} selected
           </p>
         )}
@@ -74,12 +74,12 @@ function GenresStep({
               onClick={() => handleGenreClick(genre)}
               className={`relative p-5 rounded-xl border-2 transition-all text-left ${
                 isSelected
-                  ? "bg-orange-600/20 border-orange-600 shadow-lg shadow-orange-600/20"
-                  : "bg-white/5 border-white/20 hover:border-orange-600/50 hover:bg-white/10"
+                  ? "bg-brand/20 border-brand shadow-lg shadow-brand/20"
+                  : "bg-white/5 border-white/20 hover:border-brand/50 hover:bg-white/10"
               }`}
             >
               {isSelected && (
-                <div className="absolute top-3 right-3 bg-orange-600 rounded-full p-1">
+                <div className="absolute top-3 right-3 bg-brand rounded-full p-1">
                   <Check className="w-4 h-4 text-white" />
                 </div>
               )}
@@ -93,7 +93,7 @@ function GenresStep({
         <button
           onClick={onNext}
           disabled={selectedCount === 0}
-          className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="bg-brand hover:bg-brand-light text-black font-semibold px-8 py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Continue
         </button>
@@ -131,7 +131,7 @@ function DiscoveryStep({
   return (
     <div className="w-full max-w-3xl mx-auto">
       <div className="mb-8 text-center">
-        <h2 className="text-3xl font-semibold text-white mb-2">How did you hear about us?</h2>
+        <h2 className="font-heading text-3xl sm:text-4xl tracking-wide leading-none text-white mb-2">How did you hear about us?</h2>
         <p className="text-white/60">Help us understand how you discovered Wanzami</p>
       </div>
 
@@ -145,11 +145,11 @@ function DiscoveryStep({
               onClick={() => onUpdateSource(item.id)}
               className={`p-6 rounded-xl border transition-all ${
                 isSelected
-                  ? "bg-orange-600/20 border-orange-600 shadow-lg shadow-orange-600/20"
-                  : "bg-white/10 border-white/20 hover:border-orange-600/50"
+                  ? "bg-brand/20 border-brand shadow-lg shadow-brand/20"
+                  : "bg-white/10 border-white/20 hover:border-brand/50"
               }`}
             >
-              <Icon className={`w-8 h-8 mx-auto mb-3 ${isSelected ? "text-orange-600" : "text-white/60"}`} />
+              <Icon className={`w-8 h-8 mx-auto mb-3 ${isSelected ? "text-brand" : "text-white/60"}`} />
               <p className={`text-center ${isSelected ? "text-white" : "text-white/80"}`}>{item.label}</p>
             </button>
           );
@@ -166,7 +166,7 @@ function DiscoveryStep({
             type="text"
             value={otherText}
             onChange={(e) => onUpdateOther(e.target.value)}
-            className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-orange-600 focus:ring-1 focus:ring-orange-600 transition-colors"
+            className="w-full bg-ink-2 border border-white/20 rounded-lg px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
             placeholder="Tell us where you heard about Wanzami"
           />
         </div>
@@ -182,7 +182,7 @@ function DiscoveryStep({
         <button
           onClick={onComplete}
           disabled={!source || (source === "other" && !otherText.trim())}
-          className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="bg-brand hover:bg-brand-light text-black font-semibold px-8 py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Finish
         </button>
@@ -282,20 +282,20 @@ export default function OnboardingPage() {
         <Image src={whiteLogo} alt="Wanzami" width={80} height={80} priority />
       </div>
 
-      <div className="flex-1 max-w-6xl mx-auto px-6 py-10">
+      <div className="flex-1 w-full max-w-5xl mx-auto container-page py-10">
         <div className="mb-10 text-center md:text-left">
-          <h1 className="text-3xl md:text-4xl font-semibold mb-2">Let&apos;s personalize Wanzami for you</h1>
+          <h1 className="font-heading text-4xl md:text-5xl tracking-wide leading-none mb-2">Let&apos;s personalize Wanzami for you</h1>
           <p className="text-white/70">
             Choose the genres you love and tell us how you discovered Wanzami. This helps power your For You
             recommendations.
           </p>
         </div>
 
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-10 shadow-2xl flex flex-col gap-8">
+        <div className="bg-graphite border border-white/10 rounded-3xl p-5 sm:p-6 md:p-10 shadow-2xl flex flex-col gap-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div className="space-y-1">
               <p className="text-sm text-white/60 uppercase tracking-wide">Onboarding</p>
-              <h2 className="text-2xl font-semibold">Tell us what you like</h2>
+              <h2 className="font-heading text-2xl sm:text-3xl tracking-wide">Tell us what you like</h2>
             </div>
 
             <div className="flex items-center gap-3 text-sm text-white/80">
@@ -307,9 +307,9 @@ export default function OnboardingPage() {
                     <div
                       className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-colors ${
                         done
-                          ? "bg-orange-600 border-orange-600"
+                          ? "bg-brand border-brand"
                           : active
-                          ? "border-orange-600 text-orange-500"
+                          ? "border-brand text-brand"
                           : "border-white/20 text-white/60"
                       }`}
                     >

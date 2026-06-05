@@ -112,13 +112,13 @@ export function HomePage({
   const hasCatalog = movies.length > 0;
 
   return (
-    <div className="min-h-screen bg-black home-root">
+    <div className="min-h-screen bg-background home-root">
       <Hero onPlayClick={onMovieClick} featured={featured} />
-      <div className="relative -mt-24 md:-mt-32 z-10 pb-12 md:pb-16 home-content">
+      <div className="relative z-10 pb-12 md:pb-16 home-content">
         {loading ? (
-          <div className="text-gray-400 px-4 md:px-12 lg:px-16">Loading catalog...</div>
+          <div className="container-page text-ash">Loading catalog...</div>
         ) : error ? (
-          <div className="text-red-400 px-4 md:px-12 lg:px-16">Failed to load movies: {error}</div>
+          <div className="container-page text-destructive">Failed to load movies: {error}</div>
         ) : hasCatalog ? (
           <>
             {forYouItems.length > 0 && (
@@ -146,8 +146,8 @@ export function HomePage({
             )}
             {moviesOnly.length > 0 || top10Movies.length > 0 || trendingMovies.length > 0 ? (
               <>
-                <div className="md:px-12 lg:px-16 mt-6">
-                  <h2 className="text-white text-2xl mb-3">Movies</h2>
+                <div className="container-page mt-8 md:mt-10 mb-1">
+                  <h2 className="font-heading text-foreground tracking-wide uppercase text-3xl md:text-4xl">Movies</h2>
                 </div>
                 {top10Movies.length > 0 && (
                   <ContentRow title="Top 10 Movies" movies={top10Movies} onMovieClick={onMovieClick} />
@@ -169,8 +169,8 @@ export function HomePage({
 
             {seriesOnly.length > 0 || top10Series.length > 0 || trendingSeries.length > 0 ? (
               <>
-                <div className="md:px-12 lg:px-16 mt-6">
-                  <h2 className="text-white text-2xl mb-3">Series</h2>
+                <div className="container-page mt-8 md:mt-10 mb-1">
+                  <h2 className="font-heading text-foreground tracking-wide uppercase text-3xl md:text-4xl">Series</h2>
                 </div>
                 {top10Series.length > 0 && (
                   <ContentRow title="Top 10 Series" movies={top10Series} onMovieClick={onMovieClick} />
@@ -202,10 +202,10 @@ export function HomePage({
         ) : null}
       </div>
       {recsLoading && (
-        <div className="text-gray-400 px-4 md:px-12 lg:px-16 mt-4">Loading personalized rows...</div>
+        <div className="container-page text-ash mt-4">Loading personalized rows...</div>
       )}
       {recsError && (
-        <div className="text-red-400 px-4 md:px-12 lg:px-16 mt-4">Personalized rows unavailable: {recsError}</div>
+        <div className="container-page text-destructive mt-4">Personalized rows unavailable: {recsError}</div>
       )}
     </div>
   );

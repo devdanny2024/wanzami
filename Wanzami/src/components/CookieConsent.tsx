@@ -71,57 +71,48 @@ export function CookieConsent() {
   };
 
   return (
-    <div className="fixed left-0 right-0 top-2/3 bottom-0 z-[10010] pointer-events-none">
-      <div className="absolute inset-0 bg-black/40" />
-      <div className="absolute inset-0 pointer-events-auto">
-        <div className="w-full h-full bg-[#fcd68f] text-black px-4 py-6 md:px-10 md:py-8 shadow-2xl border-t border-black/10 overflow-auto">
-          <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-10 items-start">
-            <div className="lg:col-span-2 space-y-3">
-              <div className="text-lg md:text-xl font-semibold text-black">This website uses cookies</div>
-              <p className="text-sm leading-relaxed text-black/80">
-                We use cookies to provide the best experience on our website. This includes cookies for website functionality, to manage
-                our commercial objectives and optimization. You can decide which cookie categories you would like to permit.
-              </p>
-              <p className="text-sm leading-relaxed text-black/80">
-                Please note that depending on your settings, the full functionality of our website may no longer be available. For more
-                detailed information about our cookies, and to change your preferences at a later time, see our{" "}
-                <a className="underline" href="/privacy-policy">
-                  privacy policy
-                </a>{" "}
-                and{" "}
-                <a className="underline" href="/imprint">
-                  imprint
-                </a>
-                .
-              </p>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-3 text-sm">
-                {categories.map((cat) => (
-                  <label key={cat.key} className="flex items-center gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 border border-black accent-[#fd7e14]"
-                      checked={Boolean(prefs[cat.key])}
-                      onChange={() => togglePref(cat.key)}
-                    />
-                    <span>{cat.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div className="flex flex-col gap-3 lg:items-end">
-              <button
-                className="w-full lg:w-48 h-12 rounded-full bg-[#fd7e14] text-white text-sm font-semibold hover:opacity-90 transition"
-                onClick={handleAcceptAll}
-              >
-                Accept All
-              </button>
-              <button
-                className="w-full lg:w-48 h-12 rounded-full bg-white text-black text-sm font-semibold border border-black/20 hover:bg-black/5 transition"
-                onClick={handleSave}
-              >
-                Save
-              </button>
-            </div>
+    <div className="fixed inset-x-0 bottom-0 z-[10010] p-3 sm:p-4 pointer-events-none">
+      <div className="pointer-events-auto mx-auto max-w-3xl rounded-2xl bg-card/95 text-foreground border border-white/10 shadow-2xl shadow-black/60 backdrop-blur-xl p-4 sm:p-6">
+        <div className="space-y-3">
+          <div className="font-heading text-lg sm:text-xl tracking-wide text-foreground">This website uses cookies</div>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            We use cookies to provide the best experience on our website. This includes cookies for website functionality, to manage
+            our commercial objectives and optimization. You can decide which cookie categories you would like to permit. See our{" "}
+            <a className="text-brand underline hover:text-brand-light" href="/privacy-policy">
+              privacy policy
+            </a>{" "}
+            and{" "}
+            <a className="text-brand underline hover:text-brand-light" href="/imprint">
+              imprint
+            </a>
+            .
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-2.5 text-sm">
+            {categories.map((cat) => (
+              <label key={cat.key} className="flex items-center gap-2 cursor-pointer select-none text-foreground">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border border-white/20 accent-brand"
+                  checked={Boolean(prefs[cat.key])}
+                  onChange={() => togglePref(cat.key)}
+                />
+                <span>{cat.label}</span>
+              </label>
+            ))}
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 pt-1 sm:justify-end">
+            <button
+              className="w-full sm:w-auto px-6 h-11 min-h-[44px] rounded-full bg-white/5 text-foreground text-sm font-semibold border border-white/10 hover:bg-white/10 transition order-2 sm:order-1"
+              onClick={handleSave}
+            >
+              Save
+            </button>
+            <button
+              className="w-full sm:w-auto px-6 h-11 min-h-[44px] rounded-full bg-brand text-white text-sm font-semibold hover:bg-brand-dark transition order-1 sm:order-2"
+              onClick={handleAcceptAll}
+            >
+              Accept All
+            </button>
           </div>
         </div>
       </div>

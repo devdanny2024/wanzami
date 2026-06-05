@@ -218,11 +218,12 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
         ) : null}
 
         {/* Content */}
-        <div className="absolute inset-0 flex items-end pb-12 md:pb-16 px-4 md:px-12 lg:px-16">
+        <div className="absolute inset-0 flex items-end pb-12 md:pb-16">
+          <div className="container-page">
           <div className="max-w-3xl space-y-4 md:space-y-6">
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-              <div className="inline-block px-3 py-1 bg-[#fd7e14]/20 border border-[#fd7e14] rounded-md backdrop-blur-sm mb-4">
-                <span className="text-[#fd7e14] text-xs md:text-sm tracking-wider">WANZAMI ORIGINAL</span>
+              <div className="inline-block px-3 py-1 bg-brand/20 border border-brand rounded-md backdrop-blur-sm mb-4">
+                <span className="text-brand text-xs md:text-sm tracking-[0.2em] uppercase">Wanzami Original</span>
               </div>
             </motion.div>
 
@@ -230,7 +231,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="text-white text-4xl md:text-6xl lg:text-7xl tracking-tight"
+              className="font-heading uppercase text-foreground text-5xl md:text-7xl lg:text-8xl tracking-wide leading-[0.9]"
             >
               {movie.title}
             </motion.h1>
@@ -239,17 +240,17 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="flex items-center gap-4 text-sm md:text-base flex-wrap"
+              className="flex items-center gap-3 md:gap-4 text-sm md:text-base flex-wrap"
             >
-              <span className="text-[#fd7e14] border border-[#fd7e14] px-2 py-0.5 rounded text-xs">{movie.rating || '16+'}</span>
-              <span className="text-gray-300">{movie.year || '2024'}</span>
-              <span className="text-gray-500">·</span>
-              <span className="text-gray-300">{movie.duration || '2h 15m'}</span>
-              <span className="text-gray-500">·</span>
-              <span className="text-gray-300">{movie.genre || 'Drama'}</span>
+              <span className="text-brand border border-brand px-2 py-0.5 rounded text-xs">{movie.rating || '16+'}</span>
+              <span className="text-foreground/80">{movie.year || '2024'}</span>
+              <span className="text-muted-foreground">·</span>
+              <span className="text-foreground/80">{movie.duration || '2h 15m'}</span>
+              <span className="text-muted-foreground">·</span>
+              <span className="text-foreground/80">{movie.genre || 'Drama'}</span>
               <div className="flex items-center gap-2">
                 {qualityBadges.map((badge) => (
-                  <span key={badge} className="text-[11px] uppercase tracking-wide text-white bg-white/10 border border-white/20 px-2 py-1 rounded-md">
+                  <span key={badge} className="text-[11px] uppercase tracking-wide text-foreground bg-white/10 border border-white/20 px-2 py-1 rounded-md">
                     {badge}
                   </span>
                 ))}
@@ -260,7 +261,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
-              className="text-gray-300 text-sm md:text-lg max-w-2xl"
+              className="text-foreground/80 text-sm md:text-lg max-w-2xl"
             >
               {movie.description ||
                 'An epic tale of ambition, power, and the price of success in modern Nigeria. Experience the gripping story that captivated millions.'}
@@ -279,7 +280,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
               ) : ppvInfo?.isPpv && !ppvInfo?.hasAccess ? (
                 <button
                   onClick={() => onBuyClick?.()}
-                  className="flex items-center gap-2 bg-[#fd7e14] hover:bg-[#e86f0f] text-white px-6 md:px-8 py-3 md:py-4 rounded-xl transition-all duration-200 hover:scale-105"
+                  className="flex items-center gap-2 bg-brand hover:bg-brand-dark text-primary-foreground font-semibold px-6 md:px-8 py-3 md:py-4 rounded-xl transition-all duration-200 hover:scale-105 min-h-[44px]"
                 >
                   <Play className="w-5 h-5 md:w-6 md:h-6 fill-current" />
                   <span className="text-sm md:text-base">
@@ -289,7 +290,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
               ) : (
                 <button
                   onClick={() => onPlayClick(movie)}
-                  className="flex items-center gap-2 bg-[#fd7e14] hover:bg-[#e86f0f] text-white px-6 md:px-8 py-3 md:py-4 rounded-xl transition-all duration-200 hover:scale-105"
+                  className="flex items-center gap-2 bg-brand hover:bg-brand-dark text-primary-foreground font-semibold px-6 md:px-8 py-3 md:py-4 rounded-xl transition-all duration-200 hover:scale-105 min-h-[44px]"
                 >
                   <Play className="w-5 h-5 md:w-6 md:h-6 fill-current" />
                   <span className="text-sm md:text-base">Play</span>
@@ -299,7 +300,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
               {movie?.trailerUrl && (
                 <button
                   onClick={() => setShowTrailerModal(true)}
-                  className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-6 md:px-7 py-3 md:py-4 rounded-xl backdrop-blur-md border border-white/20 transition-colors"
+                  className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-foreground px-6 md:px-7 py-3 md:py-4 rounded-xl backdrop-blur-md border border-white/20 transition-colors min-h-[44px]"
                 >
                   <Play className="w-5 h-5 md:w-6 md:h-6" />
                   <span className="text-sm md:text-base">Watch Trailer</span>
@@ -312,8 +313,8 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
                   const nextVal = toggleMyList(targetId);
                   setInList(nextVal);
                 }}
-                className={`flex items-center gap-2 px-6 md:px-8 py-3 md:py-4 rounded-xl backdrop-blur-md border transition-colors ${
-                  inList ? 'bg-[#fd7e14] border-[#fd7e14] text-white hover:bg-[#e86f0f]' : 'bg-white/10 hover:bg-white/20 text-white border-white/20'
+                className={`flex items-center gap-2 px-6 md:px-8 py-3 md:py-4 rounded-xl backdrop-blur-md border transition-colors min-h-[44px] ${
+                  inList ? 'bg-brand border-brand text-primary-foreground hover:bg-brand-dark' : 'bg-white/10 hover:bg-white/20 text-foreground border-white/20'
                 }`}
               >
                 <Plus className="w-5 h-5 md:w-6 md:h-6" />
@@ -323,7 +324,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
               <button
                 onClick={handleLikeToggle}
                 className={`flex items-center justify-center w-12 h-12 md:w-14 md:h-14 rounded-xl backdrop-blur-md border transition-colors ${
-                  liked ? 'bg-[#fd7e14]/20 border-[#fd7e14] text-white' : 'bg-white/10 hover:bg-white/20 text-white border-white/20'
+                  liked ? 'bg-brand/20 border-brand text-foreground' : 'bg-white/10 hover:bg-white/20 text-foreground border-white/20'
                 }`}
               >
                 <ThumbsUp className="w-5 h-5" />
@@ -331,12 +332,13 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
 
               <button
                 onClick={handleShare}
-                className="flex items-center justify-center w-12 h-12 md:w-14 md:h-14 bg-white/10 hover:bg-white/20 text-white rounded-xl backdrop-blur-md border border-white/20 transition-colors"
+                className="flex items-center justify-center w-12 h-12 md:w-14 md:h-14 bg-white/10 hover:bg-white/20 text-foreground rounded-xl backdrop-blur-md border border-white/20 transition-colors"
               >
                 <Share2 className="w-5 h-5" />
               </button>
             </motion.div>
             {shareError && <p className="text-xs text-red-300">{shareError}</p>}
+          </div>
           </div>
         </div>
       </div>
@@ -362,18 +364,18 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
       )}
 
       {/* Details section */}
-      <div className="px-4 md:px-12 lg:px-16 py-8 md:py-12">
+      <div className="container-page py-8 md:py-12">
         <div className="max-w-7xl mx-auto">
           {/* Episodes section (only for series) */}
           {isSeries && seriesEpisodes.length > 0 && (
             <div className="mb-12 space-y-4 max-w-5xl">
-              <div className="flex items-center gap-4 px-1">
-                <h2 className="text-white text-xl md:text-2xl">Episodes</h2>
+              <div className="flex flex-wrap items-center gap-3 md:gap-4 px-1">
+                <h2 className="font-heading uppercase tracking-wide text-foreground text-2xl md:text-3xl">Episodes</h2>
                 {seasonNumbers.length > 0 && (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-400">Season</span>
+                    <span className="text-sm text-muted-foreground">Season</span>
                     <select
-                      className="bg-gray-900 border border-gray-700 text-white text-sm rounded-md px-3 py-2"
+                      className="bg-graphite border border-white/10 text-foreground text-sm rounded-md px-3 py-2 min-h-[40px]"
                       value={String(selectedSeason ?? seasonNumbers[0] ?? '')}
                       onChange={(e) => setSelectedSeason(Number(e.target.value))}
                     >
@@ -396,7 +398,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
                   return (
                     <motion.div
                       key={episode.id ?? idx}
-                      className="group rounded-xl border border-gray-800 bg-gray-900/70 hover:border-[#fd7e14]/60 transition-all overflow-hidden"
+                      className="group rounded-xl border border-white/10 bg-card hover:border-brand/60 transition-all overflow-hidden"
                       whileHover={{ scale: 1.005 }}
                     >
                       <div className="flex gap-3 p-4 md:p-5 max-w-5xl mx-auto items-start">
@@ -416,21 +418,21 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
                               locked ? 'opacity-100 bg-black/40' : 'opacity-0 group-hover:opacity-100'
                             }`}
                           >
-                            <div className="w-12 h-12 rounded-full bg-[#fd7e14] shadow-lg shadow-[#fd7e14]/40 flex items-center justify-center">
-                              {locked ? <Lock className="w-6 h-6 text-white" /> : <Play className="w-6 h-6 fill-current text-white" />}
+                            <div className="w-12 h-12 rounded-full bg-brand shadow-lg shadow-brand/40 flex items-center justify-center">
+                              {locked ? <Lock className="w-6 h-6 text-primary-foreground" /> : <Play className="w-6 h-6 fill-current text-primary-foreground" />}
                             </div>
                           </button>
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-4">
-                            <h3 className="text-white text-base md:text-lg font-semibold leading-tight">Episode {episode.episodeNumber ?? idx + 1}</h3>
-                            <div className="text-xs md:text-sm text-gray-400 whitespace-nowrap">
+                            <h3 className="text-foreground text-base md:text-lg font-semibold leading-tight">Episode {episode.episodeNumber ?? idx + 1}</h3>
+                            <div className="text-xs md:text-sm text-muted-foreground whitespace-nowrap">
                               {episode.runtimeMinutes ? `${episode.runtimeMinutes}m` : episode.duration || ''}
                             </div>
                           </div>
                           <div className="max-h-0 group-hover:max-h-40 transition-[max-height] duration-300 overflow-hidden">
-                            <p className="text-gray-300 text-sm mt-3 leading-relaxed">{episode.synopsis ?? episode.description ?? 'Episode details coming soon.'}</p>
-                            <div className="flex flex-wrap items-center gap-3 text-xs md:text-sm text-gray-400 mt-3">
+                            <p className="text-foreground/80 text-sm mt-3 leading-relaxed">{episode.synopsis ?? episode.description ?? 'Episode details coming soon.'}</p>
+                            <div className="flex flex-wrap items-center gap-3 text-xs md:text-sm text-muted-foreground mt-3">
                               <span className="px-2 py-1 rounded-md bg-white/5 border border-white/10">Season {episode.seasonNumber ?? selectedSeason ?? '-'}</span>
                               <span className="px-2 py-1 rounded-md bg-white/5 border border-white/10">Maturity: {movie.maturityRating ?? 'N/A'}</span>
                               {episode.runtimeMinutes && (
@@ -450,7 +452,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
           {/* More Like This */}
           {relatedItems.length > 0 && (
             <div>
-              <h2 className="text-white mb-6 text-xl md:text-2xl">More Like This</h2>
+              <h2 className="font-heading uppercase tracking-wide text-foreground mb-6 text-2xl md:text-3xl">More Like This</h2>
               <div className="flex gap-3 md:gap-4 overflow-x-auto scrollbar-hide px-1 max-w-6xl mx-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 {relatedItems.slice(0, 5).map((item, idx) => {
                   const itemId = (item as any).backendId || item.id || idx;
@@ -465,7 +467,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
                   return (
                     <motion.div
                       key={itemId}
-                      className="group cursor-pointer rounded-xl overflow-hidden border border-gray-800 bg-white/5 hover:border-[#fd7e14]/60 transition-all relative h-full flex flex-col"
+                      className="group cursor-pointer rounded-xl overflow-hidden border border-white/10 bg-card hover:border-brand/60 transition-all relative h-full flex flex-col"
                       style={{ aspectRatio: '16 / 9', width: '220px', minWidth: '220px' }}
                       whileHover={{ scale: 1.01 }}
                       onClick={() => {
@@ -478,14 +480,14 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
                       <div className="relative w-full h-full">
                         <ImageWithFallback src={thumb} alt={title} className="w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <button className="absolute bottom-3 left-3 bg-[#fd7e14] hover:bg-[#e86f0f] text-white px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-2">
+                        <button className="absolute bottom-3 left-3 bg-brand hover:bg-brand-dark text-primary-foreground px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-2">
                           <Play className="w-4 h-4 fill-current" />
                           Play
                         </button>
                       </div>
                       <div className="p-3 space-y-1 flex-1">
-                        <p className="text-white font-semibold text-sm line-clamp-1">{title}</p>
-                        <p className="text-xs text-gray-400 line-clamp-2">
+                        <p className="text-foreground font-semibold text-sm line-clamp-1">{title}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-2">
                           {genre} · {runtime ? `${Math.round(Number(runtime))}m` : '90m'}
                         </p>
                       </div>

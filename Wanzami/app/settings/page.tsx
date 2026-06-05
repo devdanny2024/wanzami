@@ -184,10 +184,10 @@ export default function SettingsPage() {
 
   if (!hasAuth) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-[#0b0b0c] text-white px-6 home-root">
+      <main className="min-h-screen flex items-center justify-center bg-ink text-foreground px-6 home-root">
         <div className="text-center space-y-3 max-w-xl">
-          <h1 className="text-3xl font-semibold">Sign in to manage your account</h1>
-          <p className="text-gray-400">
+          <h1 className="font-heading text-4xl sm:text-5xl tracking-wide leading-none">Sign in to manage your account</h1>
+          <p className="text-ash">
             Profiles are available after you log in.
           </p>
         </div>
@@ -196,45 +196,45 @@ export default function SettingsPage() {
   }
 
     return (
-      <main className="min-h-screen bg-[#0b0b0c] text-white px-4 md:px-6 pt-24 md:pt-28 pb-10 home-root">
-        <div className="w-full max-w-6xl mx-auto space-y-8 md:space-y-10">
-        <div className="flex flex-col gap-2">
+      <main className="min-h-screen bg-ink text-foreground pt-24 md:pt-28 pb-10 container-page home-root">
+        <div className="w-full max-w-5xl mx-auto space-y-8 md:space-y-10">
+        <div className="flex flex-col gap-3">
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.back()}
-              className="px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-sm text-white/80"
+              className="min-h-10 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-sm text-ash hover:text-foreground transition-colors"
             >
               Back
             </button>
-            <h1 className="text-4xl font-semibold">Account Settings</h1>
+            <h1 className="font-heading text-4xl sm:text-5xl tracking-wide leading-none">Account Settings</h1>
           </div>
-          <p className="text-gray-400">
+          <p className="text-ash">
             Manage your Wanzami profiles. Billing and wallet will return with the next design update.
           </p>
         </div>
 
           {loading ? (
-            <div className="flex items-center justify-center gap-3 text-gray-300 py-20">
+            <div className="flex items-center justify-center gap-3 text-ash py-20">
             <Loader />
             <span>Loading your settings…</span>
           </div>
         ) : (
             <div className="space-y-8">
             {/* Profiles */}
-            <section className="bg-[#141414] border border-gray-800 rounded-xl p-6 space-y-6">
-              <div className="flex items-center justify-between gap-4">
+            <section className="bg-graphite border border-white/10 rounded-2xl p-5 sm:p-6 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-2xl font-semibold">Profiles</h2>
-                  <p className="text-gray-400 text-sm">
+                  <h2 className="font-heading text-2xl sm:text-3xl tracking-wide">Profiles</h2>
+                  <p className="text-ash text-sm">
                     Create and edit viewing profiles (Netflix-style, up to 4).
                   </p>
                 </div>
                 {profiles.length < 4 && (
                   <button
                     onClick={() => setShowProfileModal(true)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/10 hover:bg-white/15 text-sm"
+                    className="self-start sm:self-auto flex items-center gap-2 min-h-10 px-4 py-2 rounded-full bg-white/10 border border-white/10 hover:bg-white/15 text-sm transition-colors"
                   >
-                    <span className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center">+</span>
+                    <span className="w-6 h-6 rounded-full bg-brand/20 text-brand flex items-center justify-center">+</span>
                     Add profile
                   </button>
                 )}
@@ -244,14 +244,14 @@ export default function SettingsPage() {
                 {profiles.map((p) => (
                   <div
                     key={p.id}
-                    className="border border-gray-800 rounded-lg p-4 bg-[#0f0f10] space-y-3"
+                    className="border border-white/10 rounded-xl p-4 bg-ink-2 space-y-3"
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 md:w-14 md:h-14 rounded-full overflow-hidden border border-white/10">
                         {p.avatarUrl ? (
                           <img src={p.avatarUrl} alt={p.name} className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full bg-[#fd7e14]/20 flex items-center justify-center text-white text-xl font-semibold">
+                          <div className="w-full h-full bg-brand/20 flex items-center justify-center text-white text-xl font-semibold">
                             {p.name.slice(0, 1).toUpperCase()}
                           </div>
                         )}
@@ -278,11 +278,11 @@ export default function SettingsPage() {
               </section>
 
               {/* Profile preferences */}
-              <section className="border border-white/10 rounded-2xl bg-black/40 p-5 md:p-6 space-y-4">
+              <section className="border border-white/10 rounded-2xl bg-graphite p-5 md:p-6 space-y-4">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                   <div>
-                    <h2 className="text-lg font-semibold">Profile preferences</h2>
-                    <p className="text-gray-400 text-sm">
+                    <h2 className="font-heading text-xl sm:text-2xl tracking-wide">Profile preferences</h2>
+                    <p className="text-ash text-sm">
                       Playback, data and notifications for your selected profile.
                     </p>
                   </div>
@@ -297,8 +297,8 @@ export default function SettingsPage() {
                             onClick={() => setActiveProfileFromProfile(p)}
                             className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                               isActive
-                                ? "bg-[#fd7e14] border-[#fd7e14] text-black"
-                                : "bg-black/40 border-white/15 text-gray-200 hover:border-white/40"
+                                ? "bg-brand border-brand text-black"
+                                : "bg-ink-2 border-white/15 text-foreground hover:border-white/40"
                             }`}
                           >
                             {p.name}
@@ -315,7 +315,7 @@ export default function SettingsPage() {
                     <select
                       value={language}
                       onChange={(e) => setLanguage(e.target.value)}
-                      className="w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2 text-sm text-white"
+                      className="w-full rounded-lg bg-ink-2 border border-white/10 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
                     >
                       <option value="en">English</option>
                       <option value="fr">French</option>
@@ -335,7 +335,7 @@ export default function SettingsPage() {
                       onClick={() => setAutoplay((v) => !v)}
                       className={`w-12 h-7 rounded-full border transition-colors flex items-center px-1 ${
                         autoplay
-                          ? "bg-[#fd7e14] border-[#fd7e14] justify-end"
+                          ? "bg-brand border-brand justify-end"
                           : "bg-black/40 border-white/20 justify-start"
                       }`}
                     >
@@ -351,7 +351,7 @@ export default function SettingsPage() {
                     <select
                       value={defaultQuality}
                       onChange={(e) => setDefaultQuality(e.target.value as any)}
-                      className="w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2 text-sm text-white"
+                      className="w-full rounded-lg bg-ink-2 border border-white/10 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
                     >
                       <option value="auto">Auto</option>
                       <option value="hd">HD</option>
@@ -370,7 +370,7 @@ export default function SettingsPage() {
                       onClick={() => setDataSaver((v) => !v)}
                       className={`w-12 h-7 rounded-full border transition-colors flex items-center px-1 ${
                         dataSaver
-                          ? "bg-[#fd7e14] border-[#fd7e14] justify-end"
+                          ? "bg-brand border-brand justify-end"
                           : "bg-black/40 border-white/20 justify-start"
                       }`}
                     >
@@ -393,7 +393,7 @@ export default function SettingsPage() {
                       onClick={() => setEmailUpdates((v) => !v)}
                       className={`w-12 h-7 rounded-full border transition-colors flex items-center px-1 ${
                         emailUpdates
-                          ? "bg-[#fd7e14] border-[#fd7e14] justify-end"
+                          ? "bg-brand border-brand justify-end"
                           : "bg-black/40 border-white/20 justify-start"
                       }`}
                     >
@@ -413,7 +413,7 @@ export default function SettingsPage() {
                       onClick={() => setProductNews((v) => !v)}
                       className={`w-12 h-7 rounded-full border transition-colors flex items-center px-1 ${
                         productNews
-                          ? "bg-[#fd7e14] border-[#fd7e14] justify-end"
+                          ? "bg-brand border-brand justify-end"
                           : "bg-black/40 border-white/20 justify-start"
                       }`}
                     >
@@ -426,7 +426,7 @@ export default function SettingsPage() {
                   <button
                     type="button"
                     onClick={savePreferences}
-                    className="px-4 py-2 rounded-lg bg-[#fd7e14] hover:bg-[#ff9f4d] text-black font-semibold text-sm"
+                    className="min-h-10 px-5 py-2.5 rounded-lg bg-brand hover:bg-brand-light text-black font-semibold text-sm transition-colors"
                   >
                     Save changes
                   </button>
@@ -438,29 +438,29 @@ export default function SettingsPage() {
       </div>
       {showProfileModal && (
         <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center px-4">
-          <div className="w-full max-w-xl md:max-w-2xl bg-[#111]/95 border border-white/10 rounded-2xl p-6 text-white shadow-2xl max-h-[80vh] overflow-auto">
-            <div className="flex items-center justify-between mb-4">
+          <div className="w-full max-w-lg md:max-w-2xl bg-graphite border border-white/10 rounded-2xl p-5 sm:p-6 text-foreground shadow-2xl max-h-[85vh] overflow-auto">
+            <div className="flex items-center justify-between mb-5">
               <div>
-                <h3 className="text-xl font-semibold">Create profile</h3>
-                <p className="text-gray-400 text-sm">Pick an avatar and name.</p>
+                <h3 className="font-heading text-2xl sm:text-3xl tracking-wide">Create profile</h3>
+                <p className="text-ash text-sm">Pick an avatar and name.</p>
               </div>
               <button
                 onClick={() => setShowProfileModal(false)}
-                className="w-9 h-9 rounded-full border border-white/15 bg-white/5 hover:bg-white/10"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/5 hover:bg-white/10 transition-colors"
                 aria-label="Close"
               >
                 ✕
               </button>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4 justify-items-center">
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-5 justify-items-center">
               {AVATAR_OPTIONS.map((src) => (
                 <button
                   key={src}
                   onClick={() => setSelectedAvatar(src)}
-                  className={`rounded-xl border w-24 h-24 overflow-hidden ${
+                  className={`rounded-2xl border-2 w-full aspect-square max-w-[88px] overflow-hidden transition-all ${
                     selectedAvatar === src
-                      ? "border-[#fd7e14] bg-[#fd7e14]/10"
+                      ? "border-brand ring-2 ring-brand/40"
                       : "border-white/10 hover:border-white/30"
                   }`}
                 >
@@ -469,23 +469,23 @@ export default function SettingsPage() {
               ))}
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm text-gray-300">Profile name</label>
+                <label className="text-sm text-ash">Profile name</label>
                 <input
-                  className="w-full rounded-lg bg-black/40 border border-white/10 px-3 py-3 text-white text-sm"
+                  className="w-full rounded-lg bg-ink-2 border border-white/10 px-3 py-3 text-foreground text-sm focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
                   placeholder="e.g. Peter"
                   value={profileName}
                   onChange={(e) => setProfileName(e.target.value)}
                 />
               </div>
 
-              <label className="flex items-center gap-2 text-sm text-gray-300">
+              <label className="flex items-center gap-2 text-sm text-ash">
                 <input
                   type="checkbox"
                   checked={kidMode}
                   onChange={(e) => setKidMode(e.target.checked)}
-                  className="rounded"
+                  className="rounded accent-brand"
                 />
                 Kids profile
               </label>
@@ -493,14 +493,14 @@ export default function SettingsPage() {
               <div className="flex items-center justify-end gap-3">
                 <button
                   onClick={() => setShowProfileModal(false)}
-                  className="px-4 py-2 rounded-lg border border-white/10 text-gray-300 hover:bg-white/5 text-sm"
+                  className="min-h-10 px-4 py-2.5 rounded-lg border border-white/10 text-ash hover:text-foreground hover:bg-white/5 text-sm transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={createProfile}
                   disabled={profiles.length >= 4}
-                  className="px-4 py-2 rounded-lg bg-[#fd7e14] hover:bg-[#ff9f4d] text-black font-semibold disabled:opacity-60 text-sm"
+                  className="min-h-10 px-5 py-2.5 rounded-lg bg-brand hover:bg-brand-light text-black font-semibold disabled:opacity-60 text-sm transition-colors"
                 >
                   {profiles.length >= 4 ? "Profile limit reached" : "Add profile"}
                 </button>

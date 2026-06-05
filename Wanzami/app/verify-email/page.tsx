@@ -89,24 +89,24 @@ function VerifyEmailContent() {
       );
     }
     return (
-      <div className="bg-orange-600/10 border border-orange-600/30 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
-        <Mail className="w-10 h-10 text-orange-500" />
+      <div className="bg-brand/10 border border-brand/30 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
+        <Mail className="w-10 h-10 text-brand" />
       </div>
     );
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center px-6 auth-root">
+    <div className="min-h-screen bg-black text-white flex items-center justify-center px-4 sm:px-6 py-10 auth-root">
       <TopLoader active={status === "pending" || resendLoading} />
       <div className="max-w-md w-full text-center">
         {renderIcon()}
-        <h1 className="text-3xl font-semibold mb-3">
+        <h1 className="font-heading text-4xl sm:text-5xl tracking-wide leading-none mb-3">
           {status === "success" ? "Email verified!" : status === "error" ? "Verification failed" : "Verify your email"}
         </h1>
         <p className="text-white/70 mb-6">{message}</p>
 
         {status !== "success" && email && (
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 mb-6 text-left">
+          <div className="bg-graphite border border-white/10 rounded-2xl p-6 mb-6 text-left">
             <p className="text-white/80 mb-3">We sent a verification link to</p>
             <p className="text-white font-semibold mb-4 break-all">{email}</p>
             <ul className="text-white/60 space-y-2 list-disc list-inside">
@@ -120,7 +120,7 @@ function VerifyEmailContent() {
         {status === "success" ? (
           <button
             onClick={() => router.push("/login")}
-            className="w-full bg-orange-600 hover:bg-orange-700 text-white py-3 rounded-lg transition-colors"
+            className="w-full bg-brand hover:bg-brand-light text-black font-semibold py-3 rounded-lg transition-colors"
           >
             Continue to login
           </button>
@@ -129,7 +129,7 @@ function VerifyEmailContent() {
             <button
               onClick={handleResend}
               disabled={resendLoading || cooldown > 0}
-              className="w-full bg-orange-600 hover:bg-orange-700 text-white py-3 rounded-lg transition-colors disabled:opacity-60"
+              className="w-full bg-brand hover:bg-brand-light text-black font-semibold py-3 rounded-lg transition-colors disabled:opacity-60"
             >
               {resendLoading ? "Resending..." : cooldown > 0 ? `Resend in ${cooldown}s` : "Resend verification email"}
             </button>

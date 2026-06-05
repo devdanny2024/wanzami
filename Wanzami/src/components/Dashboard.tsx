@@ -28,15 +28,15 @@ export function Dashboard({ onMovieClick }: DashboardProps) {
         animate={{ opacity: 1, y: 0 }}
         className="px-4 md:px-12 lg:px-16 mb-8 md:mb-12"
       >
-        <h1 className="text-white text-3xl md:text-4xl mb-2">My Wanzami</h1>
-        <p className="text-gray-400">Your personalized streaming experience</p>
+        <h1 className="font-heading text-white text-4xl md:text-5xl tracking-wide leading-none mb-2">My Wanzami</h1>
+        <p className="text-ash">Your personalized streaming experience</p>
       </motion.div>
 
       {/* Continue Watching */}
       <div className="mb-8 md:mb-12">
         <div className="flex items-center justify-between px-4 md:px-12 lg:px-16 mb-4">
-          <h2 className="text-white text-xl md:text-2xl flex items-center gap-2">
-            <Clock className="w-6 h-6 text-[#fd7e14]" />
+          <h2 className="font-heading text-white text-2xl md:text-3xl tracking-wide flex items-center gap-2">
+            <Clock className="w-6 h-6 text-brand" />
             Continue Watching
           </h2>
         </div>
@@ -98,8 +98,8 @@ export function Dashboard({ onMovieClick }: DashboardProps) {
       {/* My List */}
       <div className="mb-8 md:mb-12">
         <div className="flex items-center justify-between px-4 md:px-12 lg:px-16 mb-4">
-          <h2 className="text-white text-xl md:text-2xl flex items-center gap-2">
-            <Star className="w-6 h-6 text-[#fd7e14]" />
+          <h2 className="font-heading text-white text-2xl md:text-3xl tracking-wide flex items-center gap-2">
+            <Star className="w-6 h-6 text-brand" />
             My List
           </h2>
         </div>
@@ -155,7 +155,7 @@ export function Dashboard({ onMovieClick }: DashboardProps) {
       {/* Recently Added */}
       <div>
         <div className="px-4 md:px-12 lg:px-16 mb-4">
-          <h2 className="text-white text-xl md:text-2xl">Personalized Picks</h2>
+          <h2 className="font-heading text-white text-2xl md:text-3xl tracking-wide">Personalized Picks</h2>
         </div>
 
         <div className="px-4 md:px-12 lg:px-16">
@@ -205,8 +205,8 @@ export function Dashboard({ onMovieClick }: DashboardProps) {
       {/* Purchased PPV Movies */}
       <div className="mb-8 md:mb-12">
         <div className="flex items-center justify-between px-4 md:px-12 lg:px-16 mb-4">
-          <h2 className="text-white text-xl md:text-2xl flex items-center gap-2">
-            <Star className="w-6 h-6 text-[#fd7e14]" />
+          <h2 className="font-heading text-white text-2xl md:text-3xl tracking-wide flex items-center gap-2">
+            <Star className="w-6 h-6 text-brand" />
             Purchased PPV Movies
           </h2>
         </div>
@@ -270,8 +270,8 @@ export function Dashboard({ onMovieClick }: DashboardProps) {
       {/* Owned Movies */}
       <div className="mb-8 md:mb-12">
         <div className="flex items-center justify-between px-4 md:px-12 lg:px-16 mb-4">
-          <h2 className="text-white text-xl md:text-2xl flex items-center gap-2">
-            <Star className="w-6 h-6 text-[#fd7e14]" />
+          <h2 className="font-heading text-white text-2xl md:text-3xl tracking-wide flex items-center gap-2">
+            <Star className="w-6 h-6 text-brand" />
             Owned Movies
           </h2>
         </div>

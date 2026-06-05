@@ -171,16 +171,16 @@ export function RegistrationFlow({ onAuth, onBack, onLogin }: RegistrationFlowPr
                       priority
                     />
                   </motion.div>
-                  <h1 className="text-white text-4xl md:text-5xl mb-4 tracking-tight">
+                  <h1 className="font-heading text-white text-5xl md:text-6xl mb-4 tracking-wide leading-none">
                     Welcome to Wanzami
                   </h1>
-                  <p className="text-gray-400 text-lg">
+                  <p className="text-gray-400 text-base md:text-lg">
                     Let's customize your movie experience
                   </p>
                 </div>
 
                 {/* Form */}
-                <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-8 md:p-12 border border-white/10 shadow-2xl space-y-6">
+                <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-6 sm:p-8 md:p-12 border border-white/10 shadow-2xl space-y-6">
                   <div className="flex flex-col gap-3">
                     <button
                       type="button"
@@ -270,16 +270,16 @@ export function RegistrationFlow({ onAuth, onBack, onLogin }: RegistrationFlowPr
               >
                 {/* Header */}
                 <div className="text-center mb-12">
-                  <h1 className="text-white text-4xl md:text-5xl mb-4 tracking-tight">
+                  <h1 className="font-heading text-white text-5xl md:text-6xl mb-4 tracking-wide leading-none">
                     What do you love?
                   </h1>
-                  <p className="text-gray-400 text-lg">
+                  <p className="text-gray-400 text-base md:text-lg">
                     Select your favorite genres (pick at least 3)
                   </p>
                 </div>
 
                 {/* Genre Pills */}
-                <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-8 md:p-12 border border-white/10 shadow-2xl">
+                <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-6 sm:p-8 md:p-12 border border-white/10 shadow-2xl">
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     {genres.map((genre, index) => {
                       const Icon = genre.icon;
@@ -363,16 +363,16 @@ export function RegistrationFlow({ onAuth, onBack, onLogin }: RegistrationFlowPr
                   >
                     <Check className="w-10 h-10 text-white" />
                   </motion.div>
-                  <h1 className="text-white text-4xl md:text-5xl mb-4 tracking-tight">
+                  <h1 className="font-heading text-white text-5xl md:text-6xl mb-4 tracking-wide leading-none">
                     Ready to begin your journey?
                   </h1>
-                  <p className="text-gray-400 text-lg">
+                  <p className="text-gray-400 text-base md:text-lg">
                     Here's what we've set up for you
                   </p>
                 </div>
 
                 {/* Summary */}
-                <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-8 md:p-12 border border-white/10 shadow-2xl space-y-6">
+                <div className="bg-white/5 backdrop-blur-xl rounded-3xl p-6 sm:p-8 md:p-12 border border-white/10 shadow-2xl space-y-6">
                   <div className="space-y-4">
                     <div>
                       <div className="text-gray-400 text-sm mb-1">Name</div>

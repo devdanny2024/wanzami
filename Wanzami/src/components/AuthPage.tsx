@@ -88,19 +88,19 @@ export function AuthPage({ onAuth, onShowSignup }: AuthPageProps) {
   return (
     <div className="min-h-screen bg-black text-white relative overflow-hidden auth-root">
       <TopLoader active={loading || googleLoading} />
-      <div className="flex items-center justify-center px-6 py-16 w-full auth-shell">
+      <div className="flex items-center justify-center px-4 sm:px-6 py-10 sm:py-16 w-full auth-shell">
         <div className="w-full max-w-md auth-card">
           <div className="flex flex-col items-center gap-3 mb-8 auth-header">
-            <Image src={orangeLogo} alt="Wanzami" width={110} height={110} priority className="mx-auto" />
+            <Image src={orangeLogo} alt="Wanzami" width={96} height={96} priority className="mx-auto h-20 w-20 sm:h-24 sm:w-24" />
             <div className="text-center">
-              <h1 className="text-white text-3xl font-semibold">Welcome back</h1>
-              <p className="text-white/70 text-sm">Sign in to continue your streaming journey.</p>
+              <h1 className="font-heading text-4xl sm:text-5xl tracking-wide text-white leading-none">Welcome Back</h1>
+              <p className="text-white/70 text-sm mt-1">Sign in to continue your streaming journey.</p>
             </div>
           </div>
 
-          <div className="rounded-3xl bg-[#0d0d0f] border border-white/10 shadow-[0_30px_80px_rgba(0,0,0,0.55)] p-8 auth-panel">
+          <div className="rounded-3xl bg-[#0d0d0f] border border-white/10 shadow-[0_30px_80px_rgba(0,0,0,0.55)] p-6 sm:p-8 auth-panel">
             <div className="mb-6">
-              <h2 className="text-2xl font-semibold mb-1">Sign in</h2>
+              <h2 className="font-heading text-2xl sm:text-3xl tracking-wide mb-1">Sign in</h2>
               <p className="text-white/70 text-sm">Enter your details below.</p>
             </div>
 
@@ -194,7 +194,7 @@ export function AuthPage({ onAuth, onShowSignup }: AuthPageProps) {
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
                 disabled={loading}
-                className="w-full bg-[#e25a00] hover:bg-[#fd7e14] text-white py-3 rounded-lg transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+                className="w-full bg-brand hover:bg-brand-light text-black font-semibold py-3 rounded-lg transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 <span className="flex items-center justify-center gap-2">
                   {loading && <Loader size={16} />}

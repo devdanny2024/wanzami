@@ -3,6 +3,7 @@ import {WanzamiHypeTeaser} from './compositions/WanzamiHypeTeaser';
 import {WanzamiHypeTeaserPoster} from './compositions/WanzamiHypeTeaserPoster';
 import {WanzamiPromo, type WanzamiPromoProps} from './compositions/WanzamiPromo';
 import {WanzamiPulseTrailer} from './compositions/WanzamiPulseTrailer';
+import {WanzamiLaunch, WanzamiLaunch169} from './compositions/WanzamiLaunch';
 
 const defaultProps: WanzamiPromoProps = {
   prompt: 'African stories. Live moments. Premium streaming at your fingertips.',
@@ -61,6 +62,24 @@ export const RemotionRoot: React.FC = () => {
           cta: 'START WATCHING',
           accentColor: '#fd7e14',
         }}
+      />
+      <Composition
+        id="WanzamiLaunch"
+        component={WanzamiLaunch}
+        durationInFrames={900}
+        fps={30}
+        width={1080}
+        height={1920}
+        defaultProps={{portrait: true}}
+      />
+      <Composition
+        id="WanzamiLaunch169"
+        component={WanzamiLaunch169}
+        durationInFrames={900}
+        fps={30}
+        width={1920}
+        height={1080}
+        defaultProps={{}}
       />
     </>
   );

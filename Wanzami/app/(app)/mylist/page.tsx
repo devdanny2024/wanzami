@@ -93,29 +93,29 @@ export default function MyListPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black pt-32 md:pt-0 pb-12 px-4 md:px-12 lg:px-16 home-root">
-      <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
+    <div className="min-h-screen bg-background pt-28 md:pt-32 pb-12 container-page home-root">
+      <div className="flex items-end justify-between flex-wrap gap-4 mb-8">
         <div>
-          <h1 className="text-white text-3xl md:text-4xl">My List</h1>
-          <p className="text-gray-400 mt-2">All titles you saved to watch later.</p>
+          <h1 className="font-heading text-foreground text-5xl md:text-6xl tracking-wide uppercase">My List</h1>
+          <p className="text-ash mt-2">All titles you saved to watch later.</p>
         </div>
         {items.length > 0 && (
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-ash">
             {items.length} item{items.length === 1 ? "" : "s"}
           </div>
         )}
       </div>
 
-      {loading && <p className="text-gray-400">Loading your list...</p>}
-      {error && <p className="text-red-400">{error}</p>}
+      {loading && <p className="text-ash">Loading your list...</p>}
+      {error && <p className="text-destructive">{error}</p>}
       {emptyState && (
-        <div className="text-gray-400">
+        <div className="text-ash">
           You haven&apos;t added anything yet. Open a title and tap &quot;My List&quot; to save it here.
         </div>
       )}
 
       {!loading && !error && items.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-4">
           {items.map((movie) => (
             <motion.div
               key={movie.backendId ?? movie.id}
@@ -123,11 +123,11 @@ export default function MyListPage() {
               whileHover={{ scale: 1.03 }}
               onClick={() => handleOpen(movie)}
             >
-              <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-900">
+              <div className="relative aspect-video rounded-xl overflow-hidden bg-graphite border border-white/10 group-hover:border-brand/60 transition-colors">
                 <ImageWithFallback src={movie.image} alt={movie.title} className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 <button
-                  className="absolute top-2 right-2 w-9 h-9 rounded-full bg-black/70 backdrop-blur border border-white/20 text-white opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center hover:bg-red-600"
+                  className="absolute top-2 right-2 w-10 h-10 rounded-full bg-black/70 backdrop-blur border border-white/20 text-white opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center hover:bg-destructive"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleRemove(movie.backendId ?? movie.id);
@@ -138,8 +138,8 @@ export default function MyListPage() {
                 </button>
               </div>
               <div className="mt-2">
-                <p className="text-white text-sm font-semibold line-clamp-1">{movie.title}</p>
-                <p className="text-xs text-gray-500 line-clamp-1">
+                <p className="text-foreground text-sm font-semibold line-clamp-1">{movie.title}</p>
+                <p className="text-xs text-ash line-clamp-1">
                   {movie.genre || movie.genres?.[0] || movie.type || "Title"}
                 </p>
               </div>

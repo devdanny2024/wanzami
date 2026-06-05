@@ -115,14 +115,23 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
 
   return (
     <motion.div
-      className="relative group cursor-pointer flex-shrink-0 min-w-[200px] sm:min-w-0 rounded-2xl border border-white/10 bg-white/5 p-4 hover:z-50"
+      role="button"
+      tabIndex={0}
+      aria-label={movie.title}
+      className="relative group cursor-pointer flex-shrink-0 w-full rounded-2xl border border-white/10 bg-graphite p-2 sm:p-2.5 hover:z-50 hover:border-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand transition-colors"
       onMouseEnter={handleEnter}
       onMouseLeave={handleLeave}
       onClick={() => onClick(movie)}
-      whileHover={{ scale: 1.12, y: -8 }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick(movie);
+        }
+      }}
+      whileHover={{ scale: 1.06, y: -6 }}
       transition={{ duration: 0.18 }}
     >
-      <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-900">
+      <div className="relative aspect-video rounded-xl overflow-hidden bg-graphite-2">
         <ImageWithFallback
           src={movie.image}
           alt={movie.title}
@@ -147,9 +156,9 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
 
         {/* Play overlay for owned titles */}
         {owned && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
-            <div className="w-14 h-14 rounded-full bg-[#fd7e14] shadow-lg shadow-[#fd7e14]/40 flex items-center justify-center">
-              <Play className="w-6 h-6 fill-current text-white" />
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-brand shadow-lg shadow-brand/40 flex items-center justify-center">
+              <Play className="w-5 h-5 sm:w-6 sm:h-6 fill-current text-white" />
             </div>
           </div>
         )}
@@ -159,7 +168,7 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="absolute inset-0 rounded-xl border-2 border-[#fd7e14] pointer-events-none"
+            className="absolute inset-0 rounded-xl border-2 border-brand pointer-events-none"
           />
         )}
 
@@ -167,7 +176,7 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
         {typeof movie.completionPercent === 'number' && movie.completionPercent >= 0 && (
           <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-white/20">
             <div
-              className="h-full bg-[#fd7e14]"
+              className="h-full bg-brand"
               style={{
                 // Clamp progress so that any tracked title shows at least
                 // a small visible bar, instead of disappearing when the
@@ -183,13 +192,13 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
       </div>
 
       {/* Title, meta, and CTA */}
-      <div className="mt-3 flex items-center gap-3 justify-between">
+      <div className="mt-2.5 flex items-center gap-2 justify-between">
         <div className="flex-1 min-w-0">
-          <div className="text-white text-sm line-clamp-1">{movie.title}</div>
+          <div className="text-foreground text-sm font-medium line-clamp-1">{movie.title}</div>
           {(movie.rating || movie.genre) && (
-            <div className="flex items-center gap-2 text-xs text-gray-400 mt-1">
+            <div className="flex items-center gap-2 text-xs text-ash mt-1">
               {movie.rating && (
-                <span className="text-[#fd7e14] border border-[#fd7e14] px-1.5 py-0.5 rounded">
+                <span className="text-brand border border-brand px-1.5 py-0.5 rounded shrink-0">
                   {movie.rating}
                 </span>
               )}
@@ -203,10 +212,11 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
             e.stopPropagation();
             onClick(movie);
           }}
-          className="inline-flex items-center justify-center gap-2 bg-[#fd7e14] hover:bg-[#e86f0f] text-white px-4 py-2 rounded-lg text-sm transition-colors"
+          aria-label={owned || isFree ? `Play ${movie.title}` : `Buy ${movie.title}`}
+          className="inline-flex items-center justify-center gap-1.5 shrink-0 min-h-[40px] bg-brand hover:bg-brand-dark text-white px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-colors active:scale-95"
         >
           {owned || isFree ? <Play className="w-4 h-4 fill-current" /> : <Info className="w-4 h-4" />}
-          <span>{owned || isFree ? "Play" : "Buy"}</span>
+          <span className="hidden sm:inline">{owned || isFree ? "Play" : "Buy"}</span>
         </button>
       </div>
     </motion.div>

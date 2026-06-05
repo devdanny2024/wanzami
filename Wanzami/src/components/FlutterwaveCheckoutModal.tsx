@@ -231,10 +231,10 @@ export function FlutterwaveCheckoutModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl bg-[#0d0d0d] border border-white/10 text-white">
+      <DialogContent className="max-w-2xl w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto bg-card border border-white/10 text-foreground">
         <DialogHeader>
-          <DialogTitle className="text-lg">Flutterwave Checkout</DialogTitle>
-          <DialogDescription className="text-sm text-white/60">
+          <DialogTitle className="font-heading uppercase tracking-wide text-2xl">Flutterwave Checkout</DialogTitle>
+          <DialogDescription className="text-sm text-muted-foreground">
             {amountLabel ? `Pay ${amountLabel} ${currency ?? ""}` : "Complete your purchase"}
           </DialogDescription>
         </DialogHeader>
@@ -245,10 +245,10 @@ export function FlutterwaveCheckoutModal({
               <button
                 key={opt.key}
                 type="button"
-                className={`px-3 py-1.5 rounded-full text-sm border transition ${
+                className={`px-3 py-1.5 min-h-[40px] rounded-full text-sm border transition ${
                   method === opt.key
-                    ? "bg-[#fd7e14] text-black border-[#fd7e14]"
-                    : "border-white/15 text-white/70 hover:border-white/40"
+                    ? "bg-brand text-primary-foreground border-brand"
+                    : "border-white/15 text-muted-foreground hover:border-white/40 hover:text-foreground"
                 }`}
                 onClick={() => setMethod(opt.key)}
               >
@@ -259,7 +259,7 @@ export function FlutterwaveCheckoutModal({
 
           {(method === "opay" || method === "ussd") ? (
             <input
-              className="bg-black/40 border border-white/10 rounded px-3 py-2 text-sm"
+              className="bg-graphite-2 border border-white/10 rounded-lg px-3 py-2 text-sm min-h-[44px] focus:outline-none focus:border-brand/50"
               placeholder="Phone number"
               value={customerPhone}
               onChange={(e) => setCustomerPhone(e.target.value)}
@@ -269,33 +269,33 @@ export function FlutterwaveCheckoutModal({
           {method === "card" ? (
             <div className="grid gap-3">
               <input
-                className="bg-black/40 border border-white/10 rounded px-3 py-2 text-sm"
+                className="bg-graphite-2 border border-white/10 rounded-lg px-3 py-2 text-sm min-h-[44px] focus:outline-none focus:border-brand/50"
                 placeholder="Card number"
                 value={card.number}
                 onChange={(e) => setCard((prev) => ({ ...prev, number: e.target.value }))}
               />
               <div className="grid grid-cols-3 gap-3">
                 <input
-                  className="bg-black/40 border border-white/10 rounded px-3 py-2 text-sm"
+                  className="bg-graphite-2 border border-white/10 rounded-lg px-3 py-2 text-sm min-h-[44px] focus:outline-none focus:border-brand/50"
                   placeholder="MM"
                   value={card.expiryMonth}
                   onChange={(e) => setCard((prev) => ({ ...prev, expiryMonth: e.target.value }))}
                 />
                 <input
-                  className="bg-black/40 border border-white/10 rounded px-3 py-2 text-sm"
+                  className="bg-graphite-2 border border-white/10 rounded-lg px-3 py-2 text-sm min-h-[44px] focus:outline-none focus:border-brand/50"
                   placeholder="YYYY"
                   value={card.expiryYear}
                   onChange={(e) => setCard((prev) => ({ ...prev, expiryYear: e.target.value }))}
                 />
                 <input
-                  className="bg-black/40 border border-white/10 rounded px-3 py-2 text-sm"
+                  className="bg-graphite-2 border border-white/10 rounded-lg px-3 py-2 text-sm min-h-[44px] focus:outline-none focus:border-brand/50"
                   placeholder="CVV"
                   value={card.cvv}
                   onChange={(e) => setCard((prev) => ({ ...prev, cvv: e.target.value }))}
                 />
               </div>
               <input
-                className="bg-black/40 border border-white/10 rounded px-3 py-2 text-sm"
+                className="bg-graphite-2 border border-white/10 rounded-lg px-3 py-2 text-sm min-h-[44px] focus:outline-none focus:border-brand/50"
                 placeholder="PIN (if required)"
                 value={card.pin}
                 onChange={(e) => setCard((prev) => ({ ...prev, pin: e.target.value }))}
@@ -306,13 +306,13 @@ export function FlutterwaveCheckoutModal({
           {method === "ussd" ? (
             <div className="grid gap-3">
               <input
-                className="bg-black/40 border border-white/10 rounded px-3 py-2 text-sm"
+                className="bg-graphite-2 border border-white/10 rounded-lg px-3 py-2 text-sm min-h-[44px] focus:outline-none focus:border-brand/50"
                 placeholder="Bank code"
                 value={ussd.bankCode}
                 onChange={(e) => setUssd((prev) => ({ ...prev, bankCode: e.target.value }))}
               />
               <input
-                className="bg-black/40 border border-white/10 rounded px-3 py-2 text-sm"
+                className="bg-graphite-2 border border-white/10 rounded-lg px-3 py-2 text-sm min-h-[44px] focus:outline-none focus:border-brand/50"
                 placeholder="Phone number"
                 value={ussd.phoneNumber}
                 onChange={(e) => setUssd((prev) => ({ ...prev, phoneNumber: e.target.value }))}
@@ -323,7 +323,7 @@ export function FlutterwaveCheckoutModal({
           {method === "googlepay" || method === "applepay" ? (
             <div className="grid gap-3">
               <input
-                className="bg-black/40 border border-white/10 rounded px-3 py-2 text-sm"
+                className="bg-graphite-2 border border-white/10 rounded-lg px-3 py-2 text-sm min-h-[44px] focus:outline-none focus:border-brand/50"
                 placeholder="Card holder name"
                 value={walletName}
                 onChange={(e) => setWalletName(e.target.value)}
@@ -331,12 +331,12 @@ export function FlutterwaveCheckoutModal({
             </div>
           ) : null}
 
-          {error ? <p className="text-sm text-red-400">{error}</p> : null}
+          {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
           <div className="flex flex-wrap gap-3">
             <button
               type="button"
-              className="px-4 py-2 rounded bg-[#fd7e14] text-black text-sm font-semibold disabled:opacity-60"
+              className="px-5 py-2.5 min-h-[44px] rounded-lg bg-brand hover:bg-brand-dark text-primary-foreground text-sm font-semibold disabled:opacity-60 transition-colors"
               disabled={loading}
               onClick={startPayment}
             >
@@ -345,7 +345,7 @@ export function FlutterwaveCheckoutModal({
             {chargeId ? (
               <button
                 type="button"
-                className="px-4 py-2 rounded border border-white/20 text-sm"
+                className="px-5 py-2.5 min-h-[44px] rounded-lg border border-white/20 hover:bg-white/5 text-sm transition-colors"
                 disabled={loading}
                 onClick={verify}
               >
@@ -355,8 +355,8 @@ export function FlutterwaveCheckoutModal({
           </div>
 
           {nextAction || paymentInstruction ? (
-            <div className="rounded-lg border border-white/10 bg-black/40 p-3 text-sm space-y-2">
-              <div className="flex flex-wrap gap-3 text-xs text-white/60">
+            <div className="rounded-xl border border-white/10 bg-graphite-2 p-3 text-sm space-y-2">
+              <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
                 {reference ? <span>Ref: {reference}</span> : null}
                 {chargeId ? <span>Charge: {chargeId}</span> : null}
                 {status ? <span>Status: {status}</span> : null}
@@ -364,9 +364,9 @@ export function FlutterwaveCheckoutModal({
 
               {redirectUrl ? (
                 <div>
-                  <p className="text-white/70 mb-2">Complete payment in the new window.</p>
+                  <p className="text-foreground/70 mb-2">Complete payment in the new window.</p>
                   <a
-                    className="inline-flex px-3 py-2 rounded bg-white/10 text-white"
+                    className="inline-flex min-h-[44px] items-center px-4 py-2 rounded-lg bg-brand hover:bg-brand-dark text-primary-foreground font-semibold transition-colors"
                     href={redirectUrl}
                     target="_blank"
                     rel="noreferrer"
@@ -377,9 +377,9 @@ export function FlutterwaveCheckoutModal({
               ) : null}
 
               {paymentInstruction ? (
-                <div className="text-white/70">
+                <div className="text-foreground/70">
                   <p className="mb-2 font-semibold">Payment instructions</p>
-                  <pre className="whitespace-pre-wrap text-xs text-white/70 bg-black/50 p-2 rounded">
+                  <pre className="whitespace-pre-wrap text-xs text-foreground/70 bg-black/50 p-2 rounded-lg overflow-x-auto">
                     {JSON.stringify(paymentInstruction, null, 2)}
                   </pre>
                 </div>
@@ -389,7 +389,7 @@ export function FlutterwaveCheckoutModal({
                 <div className="space-y-2">
                   {nextAction?.type === "requires_pin" ? (
                     <input
-                      className="bg-black/40 border border-white/10 rounded px-3 py-2 text-sm"
+                      className="bg-graphite-2 border border-white/10 rounded-lg px-3 py-2 text-sm min-h-[44px] focus:outline-none focus:border-brand/50"
                       placeholder="Enter card PIN"
                       value={pin}
                       onChange={(e) => setPin(e.target.value)}
@@ -397,7 +397,7 @@ export function FlutterwaveCheckoutModal({
                   ) : null}
                   {nextAction?.type === "requires_otp" ? (
                     <input
-                      className="bg-black/40 border border-white/10 rounded px-3 py-2 text-sm"
+                      className="bg-graphite-2 border border-white/10 rounded-lg px-3 py-2 text-sm min-h-[44px] focus:outline-none focus:border-brand/50"
                       placeholder="Enter OTP"
                       value={otp}
                       onChange={(e) => setOtp(e.target.value)}
@@ -405,7 +405,7 @@ export function FlutterwaveCheckoutModal({
                   ) : null}
                   {nextAction?.type === "requires_additional_fields" ? (
                     <textarea
-                      className="bg-black/40 border border-white/10 rounded px-3 py-2 text-xs min-h-[120px]"
+                      className="bg-graphite-2 border border-white/10 rounded-lg px-3 py-2 text-xs min-h-[120px] focus:outline-none focus:border-brand/50"
                       placeholder="Paste authorization JSON for additional fields"
                       value={additionalJson}
                       onChange={(e) => setAdditionalJson(e.target.value)}
@@ -413,7 +413,7 @@ export function FlutterwaveCheckoutModal({
                   ) : null}
                   <button
                     type="button"
-                    className="px-3 py-2 rounded border border-white/20 text-sm"
+                    className="px-5 py-2.5 min-h-[44px] rounded-lg border border-white/20 hover:bg-white/5 text-sm transition-colors"
                     disabled={loading}
                     onClick={authorize}
                   >
