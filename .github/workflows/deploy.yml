@@ -1,12 +1,9 @@
-name: Deploy backend
+name: Deploy backend (AWS ECS — legacy)
 
+# LEGACY AWS ECS pipeline. Production cut over to the Hetzner VPS (deploy-vps.yml)
+# on 2026-06-04; AWS is kept only as a manual rollback target. Trigger by hand from
+# the Actions tab — it no longer runs automatically on push.
 on:
-  push:
-    branches: [main, new-backend-testing]
-    paths:
-      - 'backend/**'
-      - 'infra/**'
-      - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
 concurrency:

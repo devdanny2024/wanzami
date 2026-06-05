@@ -1,0 +1,110 @@
+# Wanzami backend — single-VPS stack (replaces ECS Fargate + ALB + RDS + ElastiCache).
+# Media lives in Cloudflare R2 (configured via S3_* in .env), NOT in this stack.
+#
+#   docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
+#
+# All three app roles share ONE image (built once) and differ only by `command`.
+name: wanzami
+
+x-app: &app
+  build:
+    context: ..
+    dockerfile: deploy/Dockerfile
+  image: wanzami-app:local
+  env_file: [.env]
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-wanzami}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
+      POSTGRES_DB: ${POSTGRES_DB:-wanzami}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wanzami} -d ${POSTGRES_DB:-wanzami}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # Not published to the host — only reachable on the internal compose network.
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    <<: *app
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    # Apply DB migrations once, then start the API.
+    command: ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
+    expose: ["4000"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:4000/',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+
+  worker-cron:
+    <<: *app
+    command: ["node", "dist/worker/cron.js"]
+    depends_on:
+      backend: { condition: service_started }
+      redis: { condition: service_healthy }
+
+  worker-transcode:
+    <<: *app
+    command: ["node", "dist/worker/transcodeWorker.js"]
+    depends_on:
+      backend: { condition: service_started }
+      redis: { condition: service_healthy }
+    # Transcoding is CPU-heavy. On a shared box, cap it so it can't starve the API.
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: "2.0"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      backend: { condition: service_started }
+    environment:
+      - API_DOMAIN=${API_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+
+  # Restarts any container whose Docker healthcheck goes unhealthy (e.g. backend hung).
+  autoheal:
+    image: willfarrell/autoheal
+    restart: unless-stopped
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: all
+      AUTOHEAL_INTERVAL: "30"
+      AUTOHEAL_START_PERIOD: "60"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  pgdata:
+  redisdata:
+  caddydata:
+  caddyconfig:

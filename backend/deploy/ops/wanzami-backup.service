@@ -1,0 +1,6 @@
+[Unit]
+Description=Wanzami nightly DB backup
+
+[Service]
+Type=oneshot
+ExecStart=/root/wanzami/ops/backup.sh

@@ -1,0 +1,24 @@
+# Caddy = TLS termination + reverse proxy (replaces the AWS ALB).
+# API_DOMAIN comes from deploy/.env.
+#
+# PRODUCTION: set API_DOMAIN=api.wanzami.tv (or api.blvckcode.io). Once DNS A-record
+# points at this VPS, Caddy auto-provisions a Let's Encrypt certificate.
+#   NOTE: if the domain is proxied through Cloudflare (orange cloud), use Cloudflare
+#   "Full (strict)" SSL, or grey-cloud the api record so Caddy can issue the cert.
+#
+# TEST on a free VPS with no domain: set API_DOMAIN=:80 in .env to serve plain HTTP
+# on the IP (http://<vps-ip>/), skipping certificates entirely.
+
+{$API_DOMAIN} {
+	encode zstd gzip
+
+	# Allow large uploads to the presign/init endpoints if proxied through here.
+	request_body {
+		max_size 100MB
+	}
+
+	reverse_proxy backend:4000 {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-For {remote_host}
+	}
+}

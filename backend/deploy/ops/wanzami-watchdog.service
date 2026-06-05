@@ -1,0 +1,6 @@
+[Unit]
+Description=Wanzami API health watchdog
+
+[Service]
+Type=oneshot
+ExecStart=/root/wanzami/ops/healthcheck.sh
