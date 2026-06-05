@@ -64,12 +64,15 @@
   "devDependencies": {
     "@remotion/cli": "^4.0.446",
     "@remotion/renderer": "^4.0.446",
+    "@tailwindcss/postcss": "^4.3.0",
     "@types/node": "^20.10.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "eslint": "^8.57.1",
     "eslint-config-next": "14.2.15",
+    "postcss": "^8.5.15",
     "remotion": "^4.0.446",
+    "tailwindcss": "^4.3.0",
     "typescript": "^5.6.3"
   }
 }
