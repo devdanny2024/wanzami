@@ -2,7 +2,6 @@
 
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { TopLoader } from "@/components/TopLoader";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -183,7 +182,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <TopLoader active />
       <Navbar
         currentPage={currentPage}
         onNavigate={(page) => {
