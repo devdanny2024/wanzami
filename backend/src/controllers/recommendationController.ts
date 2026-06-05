@@ -77,6 +77,7 @@ export const continueWatching = async (req: AuthenticatedRequest, res: Response)
     lastAt: Date;
     positionSec?: number;
     durationSec?: number;
+    episodeId?: bigint;
   };
   const latestByTitle = new Map<bigint, ProgressStats>();
   for (const e of events) {
@@ -117,6 +118,7 @@ export const continueWatching = async (req: AuthenticatedRequest, res: Response)
       lastAt: e.occurredAt,
       positionSec: Number.isFinite(positionSec) ? Math.max(0, Math.floor(positionSec)) : undefined,
       durationSec: Number.isFinite(durationSec) ? Math.max(0, Math.floor(durationSec)) : undefined,
+      episodeId: e.episodeId ?? undefined,
     });
   }
 
@@ -126,6 +128,7 @@ export const continueWatching = async (req: AuthenticatedRequest, res: Response)
       completion: stats.completion,
       positionSec: stats.positionSec,
       durationSec: stats.durationSec,
+      episodeId: stats.episodeId,
       lastAt: stats.lastAt.getTime(),
     }))
     // Continue Watching should only surface titles still in progress.
@@ -161,6 +164,7 @@ export const continueWatching = async (req: AuthenticatedRequest, res: Response)
         completionPercent: Math.max(0, Math.min(1, c.completion)),
         positionSec: c.positionSec,
         durationSec: c.durationSec,
+        episodeId: c.episodeId ? c.episodeId.toString() : null,
         lastWatchedAt: new Date(c.lastAt).toISOString(),
       };
     })
