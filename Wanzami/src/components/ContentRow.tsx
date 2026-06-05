@@ -55,7 +55,7 @@ export function ContentRow({ title, movies, onMovieClick, maxVisible }: ContentR
         {title}
       </h2>
 
-      <div className="relative">
+      <div className="relative mx-auto w-full max-w-[96rem]">
         {/* Left Arrow */}
         {showLeftArrow && (
           <motion.button

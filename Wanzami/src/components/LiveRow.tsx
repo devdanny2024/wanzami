@@ -16,7 +16,7 @@ export function LiveRow({ events, onSelect }: LiveRowProps) {
         <h2 className="font-heading text-foreground tracking-wide uppercase text-2xl md:text-3xl">Live</h2>
         <span className="text-xs text-ash shrink-0">Now streaming &amp; upcoming</span>
       </div>
-      <div className="flex gap-3 md:gap-4 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory px-4 sm:px-6 lg:px-10 2xl:px-12">
+      <div className="mx-auto w-full max-w-[96rem] flex gap-3 md:gap-4 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory px-4 sm:px-6 lg:px-10 2xl:px-12">
         {events.map((event) => {
           const isLive = event.status === "LIVE";
           return (
