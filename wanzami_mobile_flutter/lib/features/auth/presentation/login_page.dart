@@ -85,7 +85,7 @@ class _LoginPageState extends State<LoginPage> {
   // Google redirects to the backend HTTPS bridge which forwards code+state
   // back to the wanzami:// scheme captured by ASWebAuthenticationSession.
   Future<void> _startGoogleSigninWeb() async {
-    const callbackUri = 'https://api.blvckcode.io/api/auth/google/mobile-callback';
+    const callbackUri = 'https://api.wanzami.tv/api/auth/google/mobile-callback';
     try {
       final authUrl = await widget.controller.getGoogleAuthUrl(redirectUri: callbackUri);
       if (authUrl.isEmpty) throw Exception('Failed to get Google auth URL.');
@@ -260,7 +260,7 @@ class _LoginPageState extends State<LoginPage> {
                                 style: const TextStyle(color: Colors.redAccent),
                               ),
                             ),
-                          FilledButton(
+                          _GradientButton(
                             onPressed: loading
                                 ? null
                                 : () => widget.controller.login(
@@ -274,7 +274,10 @@ class _LoginPageState extends State<LoginPage> {
                                       SizedBox(
                                         width: 16,
                                         height: 16,
-                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: AppTokens.onBrandOrange,
+                                        ),
                                       ),
                                       SizedBox(width: 10),
                                       Text('Signing in...'),
@@ -337,6 +340,39 @@ class _Appear extends StatelessWidget {
       builder: (context, value, _) => Opacity(
         opacity: value,
         child: Transform.translate(offset: Offset(0, 12 * (1 - value)), child: child),
+      ),
+    );
+  }
+}
+
+/// Primary CTA with the brand orange sweep + glow. Falls back to a flat
+/// disabled surface while loading so the spinner stays legible.
+class _GradientButton extends StatelessWidget {
+  const _GradientButton({required this.onPressed, required this.child});
+
+  final VoidCallback? onPressed;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: enabled ? AppTokens.brandGradient : null,
+        color: enabled ? null : AppTokens.elevated,
+        borderRadius: BorderRadius.circular(AppTokens.radiusMd),
+        boxShadow: enabled ? AppTokens.brandGlow : null,
+      ),
+      child: FilledButton(
+        onPressed: onPressed,
+        style: FilledButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          foregroundColor: AppTokens.onBrandOrange,
+          disabledBackgroundColor: Colors.transparent,
+          disabledForegroundColor: AppTokens.onBrandOrange,
+          shadowColor: Colors.transparent,
+        ),
+        child: child,
       ),
     );
   }

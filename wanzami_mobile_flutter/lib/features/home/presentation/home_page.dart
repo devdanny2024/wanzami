@@ -3,8 +3,8 @@ import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_tokens.dart';
-import '../../../core/theme/network_image_with_skeleton.dart';
 import '../../../core/theme/section_image_reveal.dart';
+import '../../../core/widgets/wanzami_kit.dart';
 import '../../content/data/content_models.dart';
 import '../../content/data/content_repository.dart';
 
@@ -143,16 +143,29 @@ class _HomePageState extends State<HomePage> {
                     key: ValueKey('home-hero-${featured.id}'),
                     imageUrls: [featured.bannerUrl],
                     skeleton: const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 24),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: AppTokens.spacingLg),
                       child: SizedBox(
-                        height: 236,
+                        height: 380,
                         child: PulseSkeleton(
-                          borderRadius: BorderRadius.all(Radius.circular(24)),
+                          borderRadius:
+                              BorderRadius.all(Radius.circular(AppTokens.radiusXl)),
                         ),
                       ),
                     ),
-                    child: _HeroBanner(
-                        item: featured, onTap: () => widget.onOpen(featured)),
+                    child: HeroBanner(
+                      item: featured,
+                      height: 380,
+                      label: 'Wanzami Original',
+                      onPlay: () => widget.onOpen(featured),
+                      onInfo: () => widget.onOpen(featured),
+                      onAdd: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text('Added to My List.')),
+                        );
+                      },
+                    ),
                   ),
                   const SizedBox(height: 20),
                   if (continueWatching.isNotEmpty)
@@ -163,10 +176,17 @@ class _HomePageState extends State<HomePage> {
                           .toList(),
                       skeleton: const _ContinueWatchingSkeleton(
                           title: 'Continue Watching'),
-                      child: _ContinueWatchingRow(
+                      child: ContentCarousel(
                         title: 'Continue Watching',
-                        items: continueWatching,
-                        onOpen: (entry) => widget.onOpen(entry.item),
+                        height: 234,
+                        itemCount: continueWatching.length,
+                        itemBuilder: (_, i) {
+                          final entry = continueWatching[i];
+                          return ContinueWatchingCard(
+                            entry: entry,
+                            onTap: () => widget.onOpen(entry.item),
+                          );
+                        },
                       ),
                     ),
                   if (live.isNotEmpty)
@@ -174,9 +194,17 @@ class _HomePageState extends State<HomePage> {
                       key: const ValueKey('home-live'),
                       imageUrls: live.map((e) => e.thumbnailUrl ?? '').toList(),
                       skeleton: const _LiveStripSkeleton(),
-                      child: _LiveStrip(
-                        events: live,
-                        onOpen: (event) => _openLiveAsItem(event),
+                      child: ContentCarousel(
+                        title: 'Live Events Happening Now',
+                        height: 210,
+                        itemCount: live.length,
+                        itemBuilder: (_, i) {
+                          final event = live[i];
+                          return LiveStreamCard(
+                            event: event,
+                            onTap: () => _openLiveAsItem(event),
+                          );
+                        },
                       ),
                     ),
                   if (items.isNotEmpty)
@@ -186,7 +214,7 @@ class _HomePageState extends State<HomePage> {
                           items.take(12).map((e) => e.thumbnailUrl).toList(),
                       skeleton: const _PosterRowSkeleton(
                           title: 'Trending in Nigeria'),
-                      child: _PosterRow(
+                      child: _PosterCarousel(
                         title: 'Trending in Nigeria',
                         items: items.take(12).toList(),
                         onOpen: widget.onOpen,
@@ -199,7 +227,7 @@ class _HomePageState extends State<HomePage> {
                           movies.take(8).map((e) => e.thumbnailUrl).toList(),
                       skeleton:
                           const _PosterRowSkeleton(title: 'Wanzami Originals'),
-                      child: _PosterRow(
+                      child: _PosterCarousel(
                         title: 'Wanzami Originals',
                         items: movies.take(8).toList(),
                         onOpen: widget.onOpen,
@@ -212,7 +240,7 @@ class _HomePageState extends State<HomePage> {
                           series.take(12).map((e) => e.thumbnailUrl).toList(),
                       skeleton:
                           const _PosterRowSkeleton(title: 'Popular Series'),
-                      child: _PosterRow(
+                      child: _PosterCarousel(
                         title: 'Popular Series',
                         items: series.take(12).toList(),
                         onOpen: widget.onOpen,
@@ -228,7 +256,7 @@ class _HomePageState extends State<HomePage> {
                           .toList(),
                       skeleton:
                           const _PosterRowSkeleton(title: 'New on Wanzami'),
-                      child: _PosterRow(
+                      child: _PosterCarousel(
                         title: 'New on Wanzami',
                         items: items.skip(1).take(12).toList(),
                         onOpen: widget.onOpen,
@@ -259,6 +287,32 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
+/// Poster row built on the locked [ContentCarousel] + [PosterCard] kit.
+class _PosterCarousel extends StatelessWidget {
+  const _PosterCarousel({
+    required this.title,
+    required this.items,
+    required this.onOpen,
+  });
+
+  final String title;
+  final List<MediaItem> items;
+  final ValueChanged<MediaItem> onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    return ContentCarousel(
+      title: title,
+      height: 224,
+      itemCount: items.length,
+      itemBuilder: (_, index) {
+        final item = items[index];
+        return PosterCard(item: item, onTap: () => onOpen(item));
+      },
+    );
+  }
+}
+
 class _HomeLoadingScaffold extends StatelessWidget {
   const _HomeLoadingScaffold({this.onOpenSearch, this.onOpenProfile});
 
@@ -281,11 +335,12 @@ class _HomeLoadingScaffold extends StatelessWidget {
             children: [
               SizedBox(height: 12),
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24),
+                padding: EdgeInsets.symmetric(horizontal: AppTokens.spacingLg),
                 child: SizedBox(
-                  height: 236,
+                  height: 380,
                   child: PulseSkeleton(
-                    borderRadius: BorderRadius.all(Radius.circular(24)),
+                    borderRadius:
+                        BorderRadius.all(Radius.circular(AppTokens.radiusXl)),
                   ),
                 ),
               ),
@@ -338,9 +393,20 @@ class _StickyTopBarDelegate extends SliverPersistentHeaderDelegate {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Image.asset('assets/images/wanzami_logo.png',
-                        width: 28, height: 28),
-                    const SizedBox(width: 8),
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        borderRadius:
+                            BorderRadius.circular(AppTokens.radiusMd),
+                        gradient: AppTokens.brandGradient,
+                        boxShadow: AppTokens.brandGlow,
+                      ),
+                      padding: const EdgeInsets.all(4),
+                      child: Image.asset('assets/images/wanzami_logo.png',
+                          fit: BoxFit.contain),
+                    ),
+                    const SizedBox(width: 10),
                     const Text.rich(
                       TextSpan(
                         children: [
@@ -367,7 +433,7 @@ class _StickyTopBarDelegate extends SliverPersistentHeaderDelegate {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'African Stories • Global Stage',
+                  'African Stories  •  Global Stage',
                   style: TextStyle(
                     color: AppTokens.secondaryText,
                     fontSize: 12,
@@ -379,12 +445,12 @@ class _StickyTopBarDelegate extends SliverPersistentHeaderDelegate {
             ),
           ),
           _HeaderAction(
-            icon: Icons.search,
+            icon: Icons.search_rounded,
             onTap: onOpenSearch,
           ),
           const SizedBox(width: 10),
           _HeaderAction(
-            icon: Icons.notifications_none,
+            icon: Icons.notifications_none_rounded,
             showDot: true,
             onTap: () {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -393,18 +459,24 @@ class _StickyTopBarDelegate extends SliverPersistentHeaderDelegate {
             },
           ),
           const SizedBox(width: 10),
-          InkWell(
-            borderRadius: BorderRadius.circular(99),
+          Pressable(
             onTap: onOpenProfile,
             child: Container(
               width: 40,
               height: 40,
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: AppTokens.brandOrange, width: 2),
-                color: AppTokens.elevated,
+                gradient: AppTokens.brandGradient,
+                boxShadow: AppTokens.brandGlow,
               ),
-              child: const Icon(Icons.person, size: 20),
+              padding: const EdgeInsets.all(2),
+              child: Container(
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppTokens.elevated,
+                ),
+                child: const Icon(Icons.person, size: 20),
+              ),
             ),
           ),
         ],
@@ -429,239 +501,26 @@ class _HeaderAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(999),
+    return Pressable(
       onTap: onTap,
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: const BoxDecoration(
-          color: AppTokens.surface,
-          shape: BoxShape.circle,
-        ),
-        child: Stack(
-          children: [
-            Center(child: Icon(icon, size: 21)),
-            if (showDot)
-              Positioned(
-                top: 11,
-                right: 11,
-                child: Container(
-                  width: 7,
-                  height: 7,
-                  decoration: const BoxDecoration(
-                    color: AppTokens.brandOrange,
-                    shape: BoxShape.circle,
-                  ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          FrostedIconButton(icon: icon, onTap: onTap, size: 40),
+          if (showDot)
+            Positioned(
+              top: 9,
+              right: 9,
+              child: Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: AppTokens.brandOrange,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppTokens.background, width: 1.5),
                 ),
               ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _HeroBanner extends StatelessWidget {
-  const _HeroBanner({required this.item, required this.onTap});
-
-  final MediaItem item;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: GestureDetector(
-        onTap: onTap,
-        child: SizedBox(
-          height: 236,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (item.bannerUrl.isNotEmpty)
-                  NetworkImageWithSkeleton(
-                      url: item.bannerUrl, fit: BoxFit.cover)
-                else
-                  Container(color: AppTokens.surface),
-                Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Colors.transparent, Color(0xD9000000)],
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 16,
-                  right: 16,
-                  bottom: 16,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppTokens.brandOrange,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: const Text('Wanzami Original',
-                            style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: AppTokens.onBrandOrange)),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(item.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              fontSize: 24, fontWeight: FontWeight.w800)),
-                      const SizedBox(height: 10),
-                      FilledButton.icon(
-                        onPressed: onTap,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppTokens.brandOrange,
-                          foregroundColor: AppTokens.onBrandOrange,
-                          minimumSize: const Size(132, 44),
-                        ),
-                        icon: const Icon(Icons.play_arrow),
-                        label: const Text('Play'),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ContinueWatchingRow extends StatelessWidget {
-  const _ContinueWatchingRow({
-    required this.title,
-    required this.items,
-    required this.onOpen,
-  });
-
-  final String title;
-  final List<ContinueWatchingItem> items;
-  final ValueChanged<ContinueWatchingItem> onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Text(title,
-                style:
-                    const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 228,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              scrollDirection: Axis.horizontal,
-              itemBuilder: (_, i) {
-                final entry = items[i];
-                final item = entry.item;
-                return GestureDetector(
-                  onTap: () => onOpen(entry),
-                  child: Container(
-                    width: 320,
-                    decoration: BoxDecoration(
-                      color: AppTokens.surface,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        AspectRatio(
-                          aspectRatio: 16 / 9,
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              item.bannerUrl.isNotEmpty
-                                  ? NetworkImageWithSkeleton(
-                                      url: item.bannerUrl,
-                                      fit: BoxFit.cover,
-                                    )
-                                  : item.thumbnailUrl.isNotEmpty
-                                      ? NetworkImageWithSkeleton(
-                                          url: item.thumbnailUrl,
-                                          fit: BoxFit.cover,
-                                        )
-                                      : Container(color: AppTokens.elevated),
-                              const DecoratedBox(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [Colors.transparent, Color(0x88000000)],
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                left: 0,
-                                right: 0,
-                                bottom: 0,
-                                child: Container(
-                                  height: 4,
-                                  color: AppTokens.elevated,
-                                  child: FractionallySizedBox(
-                                    alignment: Alignment.centerLeft,
-                                    widthFactor:
-                                        entry.completionPercent.clamp(0, 1).toDouble(),
-                                    child: Container(color: AppTokens.brandOrange),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-                          child: Text(
-                            item.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-                          child: Text(
-                            '${entry.watchedPercent}% watched • ${entry.remainingText}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppTokens.secondaryText,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-              separatorBuilder: (_, __) => const SizedBox(width: 14),
-              itemCount: items.length,
-            ),
-          ),
         ],
       ),
     );
@@ -680,23 +539,19 @@ class _ContinueWatchingSkeleton extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Text(title,
-                style:
-                    const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-          ),
+          SectionHeader(title: title),
           const SizedBox(height: 12),
           SizedBox(
-            height: 228,
+            height: 234,
             child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: AppTokens.spacingLg),
               scrollDirection: Axis.horizontal,
               itemBuilder: (_, __) => Container(
-                width: 320,
+                width: 300,
                 decoration: BoxDecoration(
                   color: AppTokens.surface,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(AppTokens.radiusLg),
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: const Column(
@@ -737,152 +592,6 @@ class _ContinueWatchingSkeleton extends StatelessWidget {
   }
 }
 
-class _PosterRow extends StatelessWidget {
-  const _PosterRow(
-      {required this.title, required this.items, required this.onOpen});
-
-  final String title;
-  final List<MediaItem> items;
-  final ValueChanged<MediaItem> onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    if (items.isEmpty) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Text(title,
-                style:
-                    const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 208,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              scrollDirection: Axis.horizontal,
-              itemBuilder: (_, index) {
-                final item = items[index];
-                return GestureDetector(
-                  onTap: () => onOpen(item),
-                  child: SizedBox(
-                    width: 132,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: item.thumbnailUrl.isNotEmpty
-                                ? NetworkImageWithSkeleton(
-                                    url: item.thumbnailUrl, fit: BoxFit.cover)
-                                : Container(color: AppTokens.surface),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(item.title,
-                            maxLines: 1, overflow: TextOverflow.ellipsis),
-                      ],
-                    ),
-                  ),
-                );
-              },
-              separatorBuilder: (_, __) => const SizedBox(width: 14),
-              itemCount: items.length,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LiveStrip extends StatelessWidget {
-  const _LiveStrip({required this.events, required this.onOpen});
-
-  final List<LiveEvent> events;
-  final ValueChanged<LiveEvent> onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24),
-            child: Text('Live Events Happening Now',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 160,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              scrollDirection: Axis.horizontal,
-              itemBuilder: (_, i) {
-                final event = events[i];
-                return GestureDetector(
-                  onTap: () => onOpen(event),
-                  child: SizedBox(
-                    width: 270,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          if ((event.thumbnailUrl ?? '').isNotEmpty)
-                            NetworkImageWithSkeleton(
-                                url: event.thumbnailUrl!, fit: BoxFit.cover)
-                          else
-                            Container(color: AppTokens.surface),
-                          Positioned(
-                            top: 10,
-                            left: 10,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(
-                                  color: AppTokens.brandOrange,
-                                  borderRadius: BorderRadius.circular(999)),
-                              child: const Text('LIVE',
-                                  style: TextStyle(
-                                      color: AppTokens.onBrandOrange,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 11)),
-                            ),
-                          ),
-                          Positioned(
-                            left: 10,
-                            right: 10,
-                            bottom: 10,
-                            child: Text(event.title,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w700)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemCount: events.length,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _PosterRowSkeleton extends StatelessWidget {
   const _PosterRowSkeleton({required this.title});
 
@@ -895,22 +604,22 @@ class _PosterRowSkeleton extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Text(title,
-                style:
-                    const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-          ),
+          SectionHeader(title: title),
           const SizedBox(height: 12),
           SizedBox(
-            height: 208,
+            height: 224,
             child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: AppTokens.spacingLg),
               scrollDirection: Axis.horizontal,
               itemBuilder: (_, __) => const SizedBox(
                 width: 132,
-                child: PulseSkeleton(
-                    borderRadius: BorderRadius.all(Radius.circular(12))),
+                child: AspectRatio(
+                  aspectRatio: 2 / 3,
+                  child: PulseSkeleton(
+                      borderRadius:
+                          BorderRadius.all(Radius.circular(AppTokens.radiusMd))),
+                ),
               ),
               separatorBuilder: (_, __) => const SizedBox(width: 14),
               itemCount: 6,
@@ -932,24 +641,22 @@ class _LiveStripSkeleton extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24),
-            child: Text('Live Events Happening Now',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-          ),
+          const SectionHeader(title: 'Live Events Happening Now'),
           const SizedBox(height: 12),
           SizedBox(
-            height: 160,
+            height: 210,
             child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: AppTokens.spacingLg),
               scrollDirection: Axis.horizontal,
               itemBuilder: (_, __) => const SizedBox(
-                width: 270,
+                width: 280,
                 child: PulseSkeleton(
-                  borderRadius: BorderRadius.all(Radius.circular(16)),
+                  borderRadius:
+                      BorderRadius.all(Radius.circular(AppTokens.radiusLg)),
                 ),
               ),
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              separatorBuilder: (_, __) => const SizedBox(width: 14),
               itemCount: 2,
             ),
           ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/widgets/wanzami_kit.dart';
 import '../data/notification_models.dart';
 import '../data/notification_repository.dart';
 
@@ -94,18 +95,31 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final unreadCount = _items.where((n) => !n.isRead).length;
     return Scaffold(
       backgroundColor: AppTokens.background,
       appBar: AppBar(
         backgroundColor: AppTokens.surface,
-        title: const Text('Notifications',
-            style: TextStyle(fontWeight: FontWeight.w700)),
+        title: Row(
+          children: [
+            const Text('Notifications',
+                style: TextStyle(fontWeight: FontWeight.w700)),
+            if (unreadCount > 0) ...[
+              const SizedBox(width: 10),
+              BrandPill(label: '$unreadCount new'),
+            ],
+          ],
+        ),
         actions: [
-          if (_items.any((n) => !n.isRead))
-            TextButton(
+          if (unreadCount > 0)
+            TextButton.icon(
               onPressed: _markAllRead,
-              child: const Text('Mark all read',
-                  style: TextStyle(color: AppTokens.brandOrange)),
+              icon: const Icon(Icons.done_all,
+                  size: 18, color: AppTokens.brandOrange),
+              label: const Text('Mark all read',
+                  style: TextStyle(
+                      color: AppTokens.brandOrange,
+                      fontWeight: FontWeight.w600)),
             ),
         ],
       ),
@@ -114,15 +128,27 @@ class _NotificationsPageState extends State<NotificationsPage> {
           : _items.isEmpty
               ? _EmptyState(onRefresh: _load)
               : RefreshIndicator(
+                  color: AppTokens.brandOrange,
+                  backgroundColor: AppTokens.elevated,
                   onRefresh: _load,
-                  child: ListView.builder(
+                  child: ListView.separated(
                     controller: _scroll,
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                     itemCount: _items.length + (_loadingMore ? 1 : 0),
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
                     itemBuilder: (context, i) {
                       if (i == _items.length) {
                         return const Padding(
                           padding: EdgeInsets.all(16),
-                          child: Center(child: CircularProgressIndicator()),
+                          child: Center(
+                            child: SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2.4,
+                                  color: AppTokens.brandOrange),
+                            ),
+                          ),
                         );
                       }
                       final n = _items[i];
@@ -158,78 +184,118 @@ class _NotificationTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final unread = !notification.isRead;
-    return InkWell(
+    return Pressable(
       onTap: onTap,
+      scale: 0.985,
       child: Container(
-        color: unread
-            ? AppTokens.surface.withOpacity(0.6)
-            : Colors.transparent,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: unread ? AppTokens.surface : AppTokens.surface.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(AppTokens.radiusLg),
+          border: Border.all(
+            color: unread ? AppTokens.brandOrangeTint : AppTokens.border,
+          ),
+          boxShadow: unread ? AppTokens.cardShadow : null,
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: IntrinsicHeight(
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Orange accent bar for unread items.
               Container(
-                width: 40,
-                height: 40,
+                width: 4,
                 decoration: BoxDecoration(
-                  color: unread
-                      ? AppTokens.brandOrangeTint
-                      : AppTokens.elevated,
-                  borderRadius: BorderRadius.circular(20),
+                  gradient: unread ? AppTokens.brandGradient : null,
+                  color: unread ? null : Colors.transparent,
                 ),
-                child: Icon(_icon,
-                    size: 20,
-                    color: unread
-                        ? AppTokens.brandOrange
-                        : AppTokens.secondaryText),
               ),
-              const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            notification.title,
-                            style: TextStyle(
-                              fontWeight: unread
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: unread
+                              ? AppTokens.brandOrangeTint
+                              : AppTokens.elevated,
+                          borderRadius:
+                              BorderRadius.circular(AppTokens.radiusMd),
+                          boxShadow: unread ? AppTokens.brandGlow : null,
                         ),
-                        if (unread)
-                          Container(
-                            width: 8,
-                            height: 8,
-                            margin: const EdgeInsets.only(left: 8),
-                            decoration: const BoxDecoration(
-                              color: AppTokens.brandOrange,
-                              shape: BoxShape.circle,
+                        child: Icon(_icon,
+                            size: 21,
+                            color: unread
+                                ? AppTokens.brandOrange
+                                : AppTokens.secondaryText),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    notification.title,
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      color: AppTokens.primaryText,
+                                      fontWeight: unread
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (unread)
+                                  Container(
+                                    width: 9,
+                                    height: 9,
+                                    margin: const EdgeInsets.only(left: 8),
+                                    decoration: const BoxDecoration(
+                                      color: AppTokens.brandOrange,
+                                      shape: BoxShape.circle,
+                                      boxShadow: AppTokens.brandGlow,
+                                    ),
+                                  ),
+                              ],
                             ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      notification.body,
-                      style: const TextStyle(
-                          color: AppTokens.secondaryText, height: 1.4),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _formatTime(notification.createdAt),
-                      style: const TextStyle(
-                          color: AppTokens.mutedText, fontSize: 12),
-                    ),
-                  ],
+                            const SizedBox(height: 5),
+                            Text(
+                              notification.body,
+                              style: const TextStyle(
+                                  color: AppTokens.secondaryText,
+                                  height: 1.4,
+                                  fontSize: 13),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                const Icon(Icons.schedule,
+                                    size: 13, color: AppTokens.mutedText),
+                                const SizedBox(width: 5),
+                                Text(
+                                  _formatTime(notification.createdAt),
+                                  style: const TextStyle(
+                                      color: AppTokens.mutedText,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -260,22 +326,40 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.notifications_none,
-              size: 64, color: AppTokens.secondaryText),
-          const SizedBox(height: 16),
+          Container(
+            width: 96,
+            height: 96,
+            decoration: BoxDecoration(
+              color: AppTokens.surface,
+              shape: BoxShape.circle,
+              border: Border.all(color: AppTokens.brandOrangeTint),
+              boxShadow: AppTokens.brandGlow,
+            ),
+            child: const Icon(Icons.notifications_none_rounded,
+                size: 44, color: AppTokens.brandOrange),
+          ),
+          const SizedBox(height: 24),
           const Text('No notifications yet',
               style: TextStyle(
-                  color: AppTokens.secondaryText,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500)),
+                  color: AppTokens.primaryText,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
           const Text("We'll let you know when something happens",
-              style: TextStyle(color: AppTokens.mutedText, fontSize: 14)),
-          const SizedBox(height: 24),
-          TextButton(
+              style: TextStyle(color: AppTokens.secondaryText, fontSize: 14)),
+          const SizedBox(height: 26),
+          OutlinedButton.icon(
             onPressed: onRefresh,
-            child: const Text('Refresh',
-                style: TextStyle(color: AppTokens.brandOrange)),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppTokens.brandOrange,
+              side: const BorderSide(color: AppTokens.brandOrange),
+              shape: const StadiumBorder(),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+            ),
+            icon: const Icon(Icons.refresh, size: 18),
+            label: const Text('Refresh',
+                style: TextStyle(fontWeight: FontWeight.w600)),
           ),
         ],
       ),

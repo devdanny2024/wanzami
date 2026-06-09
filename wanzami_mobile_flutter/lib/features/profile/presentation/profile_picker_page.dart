@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/widgets/wanzami_kit.dart';
 import '../data/profile_repository.dart';
 
 class ProfilePickerPage extends StatefulWidget {
@@ -63,63 +64,240 @@ class _ProfilePickerPageState extends State<ProfilePickerPage> {
     }
   }
 
+  static const List<Gradient> _avatarGradients = [
+    LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [AppTokens.brandOrangeLight, AppTokens.brandOrange],
+    ),
+    LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [AppTokens.brandGold, AppTokens.brandOrange],
+    ),
+    LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [AppTokens.brandOrange, AppTokens.brandOrangeDark],
+    ),
+    LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [Color(0xFFFF9F4D), AppTokens.brandOrangeDark],
+    ),
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTokens.background,
-      appBar: AppBar(
-        title: const Text('Who is watching?'),
-        actions: [
-          IconButton(onPressed: _addProfile, icon: const Icon(Icons.add)),
-          IconButton(onPressed: widget.onLogout, icon: const Icon(Icons.logout)),
-        ],
+      body: Container(
+        width: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0x1AFF6A00), AppTokens.background, AppTokens.background],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                    AppTokens.spacingMd, AppTokens.spacingXs, AppTokens.spacingMd, 0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    FrostedIconButton(
+                      icon: Icons.add,
+                      size: 40,
+                      onTap: _addProfile,
+                    ),
+                    const SizedBox(width: AppTokens.spacingXs),
+                    FrostedIconButton(
+                      icon: Icons.logout,
+                      size: 40,
+                      onTap: widget.onLogout,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppTokens.spacingXs),
+              const Text(
+                "Who's watching?",
+                style: TextStyle(
+                  color: AppTokens.primaryText,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Select a profile to continue',
+                style: TextStyle(color: AppTokens.secondaryText, fontSize: 14),
+              ),
+              const SizedBox(height: AppTokens.spacingLg),
+              Expanded(
+                child: _loading
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                            color: AppTokens.brandOrange),
+                      )
+                    : _profiles.isEmpty
+                        ? _EmptyState(onCreate: _addProfile)
+                        : GridView.builder(
+                            padding: const EdgeInsets.all(AppTokens.spacingLg),
+                            itemCount: _profiles.length,
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              mainAxisSpacing: AppTokens.spacingMd,
+                              crossAxisSpacing: AppTokens.spacingMd,
+                              childAspectRatio: 0.92,
+                            ),
+                            itemBuilder: (_, i) {
+                              final p = _profiles[i];
+                              final name = (p['name'] ?? 'Profile').toString();
+                              final initial = name.trim().isNotEmpty
+                                  ? name.trim()[0].toUpperCase()
+                                  : 'W';
+                              return _ProfileAvatar(
+                                name: name,
+                                initial: initial,
+                                kid: p['kidMode'] == true,
+                                gradient: _avatarGradients[
+                                    i % _avatarGradients.length],
+                                onTap: () => widget.onPicked(p),
+                              );
+                            },
+                          ),
+              ),
+            ],
+          ),
+        ),
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _profiles.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text('No profile yet'),
-                      const SizedBox(height: 12),
-                      FilledButton.icon(onPressed: _addProfile, icon: const Icon(Icons.add), label: const Text('Create profile')),
-                    ],
-                  ),
-                )
-              : GridView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _profiles.length,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 1.25,
-                  ),
-                  itemBuilder: (_, i) {
-                    final p = _profiles[i];
-                    final name = (p['name'] ?? 'Profile').toString();
-                    return InkWell(
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: () => widget.onPicked(p),
-                      child: Ink(
-                        decoration: BoxDecoration(
-                          color: AppTokens.surface,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppTokens.elevated),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const CircleAvatar(radius: 28, child: Icon(Icons.person, size: 30)),
-                            const SizedBox(height: 10),
-                            Text(name, style: const TextStyle(fontWeight: FontWeight.w700)),
-                          ],
+    );
+  }
+}
+
+class _ProfileAvatar extends StatelessWidget {
+  const _ProfileAvatar({
+    required this.name,
+    required this.initial,
+    required this.kid,
+    required this.gradient,
+    required this.onTap,
+  });
+
+  final String name;
+  final String initial;
+  final bool kid;
+  final Gradient gradient;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Pressable(
+      onTap: onTap,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: AppTokens.brandGradient,
+              boxShadow: AppTokens.brandGlow,
+            ),
+            child: Container(
+              width: 88,
+              height: 88,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppTokens.background,
+              ),
+              padding: const EdgeInsets.all(3),
+              child: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: gradient,
+                ),
+                alignment: Alignment.center,
+                child: kid
+                    ? const Icon(Icons.child_care_rounded,
+                        color: Colors.white, size: 40)
+                    : Text(
+                        initial,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 34,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
-                    );
-                  },
-                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppTokens.spacingSm),
+          Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppTokens.primaryText,
+              fontWeight: FontWeight.w600,
+              fontSize: 15,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({required this.onCreate});
+
+  final VoidCallback onCreate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: AppTokens.brandOrangeTint,
+              borderRadius: BorderRadius.circular(AppTokens.radiusXl),
+            ),
+            child: const Icon(Icons.person_add_alt_1_rounded,
+                color: AppTokens.brandOrange, size: 34),
+          ),
+          const SizedBox(height: AppTokens.spacingMd),
+          const Text(
+            'No profile yet',
+            style: TextStyle(
+              color: AppTokens.primaryText,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Create a profile to start watching',
+            style: TextStyle(color: AppTokens.secondaryText, fontSize: 14),
+          ),
+          const SizedBox(height: AppTokens.spacingLg),
+          FilledButton.icon(
+            onPressed: onCreate,
+            icon: const Icon(Icons.add),
+            label: const Text('Create profile'),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -51,11 +51,23 @@ class _SplashPageState extends State<SplashPage>
               children: [
                 ScaleTransition(
                   scale: _pulseController,
-                  child: Image.asset(
-                    'assets/images/wanzami_logo.png',
-                    width: 128,
-                    height: 128,
-                    fit: BoxFit.contain,
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0x33FF6A00),
+                          blurRadius: 60,
+                          spreadRadius: 8,
+                        ),
+                      ],
+                    ),
+                    child: Image.asset(
+                      'assets/images/wanzami_logo.png',
+                      width: 128,
+                      height: 128,
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 28),

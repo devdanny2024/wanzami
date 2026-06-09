@@ -40,7 +40,7 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   Future<void> _startGoogleSignupWeb() async {
-    const callbackUri = 'https://api.blvckcode.io/api/auth/google/mobile-callback';
+    const callbackUri = 'https://api.wanzami.tv/api/auth/google/mobile-callback';
     try {
       final authUrl = await widget.controller.getGoogleAuthUrl(redirectUri: callbackUri);
       if (authUrl.isEmpty) throw Exception('Failed to get Google auth URL.');
@@ -149,7 +149,7 @@ class _RegisterPageState extends State<RegisterPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0x1AFFB020), AppTokens.background, AppTokens.background],
+            colors: [Color(0x1AFF6A00), AppTokens.background, AppTokens.background],
           ),
         ),
         child: SafeArea(
@@ -224,7 +224,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     animation: widget.controller,
                     builder: (_, __) {
                       final loading = widget.controller.status == AuthStatus.loading;
-                      return FilledButton(
+                      return _GradientButton(
                         onPressed: loading
                             ? null
                             : () async {
@@ -250,7 +250,10 @@ class _RegisterPageState extends State<RegisterPage> {
                                   SizedBox(
                                     width: 16,
                                     height: 16,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppTokens.onBrandOrange,
+                                    ),
                                   ),
                                   SizedBox(width: 10),
                                   Text('Creating account...'),
@@ -288,6 +291,39 @@ class _RegisterPageState extends State<RegisterPage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Primary CTA with the brand orange sweep + glow. Falls back to a flat
+/// disabled surface while loading so the spinner stays legible.
+class _GradientButton extends StatelessWidget {
+  const _GradientButton({required this.onPressed, required this.child});
+
+  final VoidCallback? onPressed;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: enabled ? AppTokens.brandGradient : null,
+        color: enabled ? null : AppTokens.elevated,
+        borderRadius: BorderRadius.circular(AppTokens.radiusMd),
+        boxShadow: enabled ? AppTokens.brandGlow : null,
+      ),
+      child: FilledButton(
+        onPressed: onPressed,
+        style: FilledButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          foregroundColor: AppTokens.onBrandOrange,
+          disabledBackgroundColor: Colors.transparent,
+          disabledForegroundColor: AppTokens.onBrandOrange,
+          shadowColor: Colors.transparent,
+        ),
+        child: child,
       ),
     );
   }

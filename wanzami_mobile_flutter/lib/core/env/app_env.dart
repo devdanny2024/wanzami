@@ -2,7 +2,7 @@ enum AppFlavor { dev, stage, prod }
 
 class AppEnv {
   // Use backend API origin directly in production to avoid frontend-proxy outages.
-  static const String _prodDefaultBaseUrl = 'https://api.blvckcode.io/api';
+  static const String _prodDefaultBaseUrl = 'https://api.wanzami.tv/api';
   static const String _prodDefaultGoogleWebClientId =
       '306551457195-vssk5g58mjf3r1roo2qob1ftaj541488.apps.googleusercontent.com';
 

@@ -247,50 +247,126 @@ class _HomeShellPageState extends State<HomeShellPage> {
           ),
         ],
       ),
-      bottomNavigationBar: NavigationBarTheme(
-        data: NavigationBarThemeData(
-          backgroundColor: AppTokens.surface,
-          indicatorColor: AppTokens.brandOrangeTint,
-          labelTextStyle: WidgetStateProperty.resolveWith((states) => TextStyle(
-                color: states.contains(WidgetState.selected)
-                    ? AppTokens.brandOrange
-                    : AppTokens.primaryText,
-                fontWeight: states.contains(WidgetState.selected)
-                    ? FontWeight.w700
-                    : FontWeight.w500,
-              )),
-          iconTheme: WidgetStateProperty.resolveWith((states) => IconThemeData(
-                color: states.contains(WidgetState.selected)
-                    ? AppTokens.brandOrange
-                    : AppTokens.secondaryText,
-              )),
+      bottomNavigationBar: _BrandNavBar(
+        selectedIndex: _tabIndex,
+        onSelect: (value) => setState(() => _tabIndex = value),
+      ),
+    );
+  }
+}
+
+/// Cinematic bottom navigation: surface fill, top hairline, and an orange
+/// active tab that lifts with a glowing pill indicator. Index/navigation
+/// logic stays in [HomeShellPage]; this is presentation only.
+class _BrandNavBar extends StatelessWidget {
+  const _BrandNavBar({
+    required this.selectedIndex,
+    required this.onSelect,
+  });
+
+  final int selectedIndex;
+  final ValueChanged<int> onSelect;
+
+  static const _items = <_NavItem>[
+    _NavItem(Icons.home_outlined, Icons.home_rounded, 'Home'),
+    _NavItem(Icons.movie_outlined, Icons.movie_rounded, 'Movies'),
+    _NavItem(Icons.tv_outlined, Icons.tv_rounded, 'Series'),
+    _NavItem(Icons.live_tv_outlined, Icons.live_tv_rounded, 'Live'),
+    _NavItem(Icons.person_outline, Icons.person_rounded, 'Profile'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppTokens.surface,
+        border: Border(
+          top: BorderSide(color: AppTokens.border, width: 1),
         ),
-        child: NavigationBar(
-          selectedIndex: _tabIndex,
-          onDestinationSelected: (value) => setState(() => _tabIndex = value),
-          destinations: const [
-            NavigationDestination(
-                icon: Icon(Icons.home_outlined),
-                selectedIcon: Icon(Icons.home),
-                label: 'Home'),
-            NavigationDestination(
-                icon: Icon(Icons.movie_outlined),
-                selectedIcon: Icon(Icons.movie),
-                label: 'Movies'),
-            NavigationDestination(
-                icon: Icon(Icons.tv_outlined),
-                selectedIcon: Icon(Icons.tv),
-                label: 'Series'),
-            NavigationDestination(
-                icon: Icon(Icons.live_tv_outlined),
-                selectedIcon: Icon(Icons.live_tv),
-                label: 'Live'),
-            NavigationDestination(
-                icon: Icon(Icons.person_outline),
-                selectedIcon: Icon(Icons.person),
-                label: 'Profile'),
-          ],
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x66000000),
+            blurRadius: 20,
+            offset: Offset(0, -6),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 64,
+          child: Row(
+            children: [
+              for (var i = 0; i < _items.length; i++)
+                Expanded(
+                  child: _NavTab(
+                    item: _items[i],
+                    selected: i == selectedIndex,
+                    onTap: () => onSelect(i),
+                  ),
+                ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+class _NavItem {
+  const _NavItem(this.icon, this.selectedIcon, this.label);
+
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+}
+
+class _NavTab extends StatelessWidget {
+  const _NavTab({
+    required this.item,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final _NavItem item;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color =
+        selected ? AppTokens.brandOrange : AppTokens.secondaryText;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppTokens.radiusLg),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 5),
+            decoration: BoxDecoration(
+              color: selected ? AppTokens.brandOrangeTint : Colors.transparent,
+              borderRadius: BorderRadius.circular(AppTokens.radiusPill),
+              boxShadow: selected ? AppTokens.brandGlow : null,
+            ),
+            child: Icon(
+              selected ? item.selectedIcon : item.icon,
+              size: 24,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            item.label,
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/widgets/wanzami_kit.dart';
 import '../../profile/data/profile_repository.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -90,73 +91,379 @@ class _ProfilePageState extends State<ProfilePage> {
         : _me;
     final name = (userPayload['name'] ?? userPayload['displayName'] ?? userPayload['username'] ?? 'Wanzami User').toString();
     final email = (userPayload['email'] ?? _me['email'] ?? '').toString();
+    final initial = name.trim().isNotEmpty ? name.trim()[0].toUpperCase() : 'W';
 
     return Scaffold(
       backgroundColor: AppTokens.background,
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: CircularProgressIndicator(color: AppTokens.brandOrange),
+            )
           : RefreshIndicator(
+              color: AppTokens.brandOrange,
+              backgroundColor: AppTokens.surface,
               onRefresh: _load,
               child: ListView(
+                padding: EdgeInsets.zero,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(24, 54, 24, 24),
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [AppTokens.surface, AppTokens.background],
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        const CircleAvatar(radius: 44, child: Icon(Icons.person, size: 40)),
-                        const SizedBox(height: 12),
-                        Text(name, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                        Text(email, style: const TextStyle(color: AppTokens.secondaryText)),
-                      ],
-                    ),
-                  ),
+                  _Header(name: name, email: email, initial: initial),
+                  const SizedBox(height: AppTokens.spacingLg),
+                  _StatsCard(profileCount: _profiles.length),
+                  const SizedBox(height: AppTokens.spacingLg),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: AppTokens.spacingLg),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Profiles', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
-                        TextButton.icon(onPressed: _addProfile, icon: const Icon(Icons.add), label: const Text('Add')),
+                        Row(
+                          children: [
+                            Container(
+                              width: 4,
+                              height: 20,
+                              decoration: BoxDecoration(
+                                gradient: AppTokens.brandGradient,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            const Text(
+                              'Profiles',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 20,
+                                color: AppTokens.primaryText,
+                              ),
+                            ),
+                          ],
+                        ),
+                        TextButton.icon(
+                          onPressed: _addProfile,
+                          icon: const Icon(Icons.add,
+                              size: 18, color: AppTokens.brandOrangeLight),
+                          label: const Text(
+                            'Add',
+                            style: TextStyle(
+                                color: AppTokens.brandOrangeLight,
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                  ..._profiles.map(
-                    (p) => ListTile(
-                      leading: const CircleAvatar(child: Icon(Icons.person_outline)),
-                      title: Text((p['name'] ?? 'Profile').toString()),
-                      subtitle: Text((p['kidMode'] == true) ? 'Kids profile' : 'Standard profile'),
-                      trailing: PopupMenuButton<String>(
-                        onSelected: (v) {
-                          if (v == 'rename') _renameProfile(p);
-                          if (v == 'delete') _deleteProfile(p);
-                        },
-                        itemBuilder: (_) => const [
-                          PopupMenuItem(value: 'rename', child: Text('Rename')),
-                          PopupMenuItem(value: 'delete', child: Text('Delete')),
-                        ],
-                      ),
+                  const SizedBox(height: AppTokens.spacingXs),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: AppTokens.spacingLg),
+                    child: Column(
+                      children: [
+                        for (final p in _profiles)
+                          _ProfileTile(
+                            name: (p['name'] ?? 'Profile').toString(),
+                            subtitle: (p['kidMode'] == true)
+                                ? 'Kids profile'
+                                : 'Standard profile',
+                            kid: p['kidMode'] == true,
+                            onRename: () => _renameProfile(p),
+                            onDelete: () => _deleteProfile(p),
+                          ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppTokens.spacingLg),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: FilledButton.icon(
-                      onPressed: widget.onLogout,
-                      icon: const Icon(Icons.logout),
-                      label: const Text('Logout'),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: AppTokens.spacingLg),
+                    child: _LogoutTile(onTap: widget.onLogout),
+                  ),
+                  const SizedBox(height: AppTokens.spacingXl),
+                  const Center(
+                    child: Column(
+                      children: [
+                        Text(
+                          'WANZAMI v2.0.1',
+                          style: TextStyle(
+                              color: AppTokens.mutedText, fontSize: 12),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          '© 2026 Wanzami Entertainment',
+                          style: TextStyle(
+                              color: AppTokens.mutedText, fontSize: 12),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 100),
                 ],
               ),
             ),
+    );
+  }
+}
+
+class _Header extends StatelessWidget {
+  const _Header({required this.name, required this.email, required this.initial});
+
+  final String name;
+  final String email;
+  final String initial;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 56, 24, 28),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [AppTokens.surface, AppTokens.background],
+        ),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 96,
+            height: 96,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: AppTokens.brandGradient,
+              boxShadow: AppTokens.brandGlow,
+            ),
+            padding: const EdgeInsets.all(3),
+            child: Container(
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppTokens.elevated,
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                initial,
+                style: const TextStyle(
+                  color: AppTokens.primaryText,
+                  fontSize: 36,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            name,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: AppTokens.primaryText,
+            ),
+          ),
+          if (email.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              email,
+              style: const TextStyle(color: AppTokens.secondaryText, fontSize: 14),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _StatsCard extends StatelessWidget {
+  const _StatsCard({required this.profileCount});
+
+  final int profileCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppTokens.spacingLg),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 16),
+        decoration: BoxDecoration(
+          color: AppTokens.surface,
+          borderRadius: BorderRadius.circular(AppTokens.radiusXl),
+          border: Border.all(color: AppTokens.border),
+          boxShadow: AppTokens.cardShadow,
+        ),
+        child: Row(
+          children: [
+            const Expanded(child: _Stat(value: '127', label: 'Hours Watched')),
+            Container(width: 1, height: 36, color: AppTokens.border),
+            const Expanded(child: _Stat(value: '43', label: 'Completed')),
+            Container(width: 1, height: 36, color: AppTokens.border),
+            Expanded(
+                child: _Stat(value: '$profileCount', label: 'Profiles')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Stat extends StatelessWidget {
+  const _Stat({required this.value, required this.label});
+
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            color: AppTokens.primaryText,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: const TextStyle(color: AppTokens.secondaryText, fontSize: 12),
+        ),
+      ],
+    );
+  }
+}
+
+class _ProfileTile extends StatelessWidget {
+  const _ProfileTile({
+    required this.name,
+    required this.subtitle,
+    required this.kid,
+    required this.onRename,
+    required this.onDelete,
+  });
+
+  final String name;
+  final String subtitle;
+  final bool kid;
+  final VoidCallback onRename;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppTokens.spacingSm),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppTokens.surface,
+        borderRadius: BorderRadius.circular(AppTokens.radiusLg),
+        border: Border.all(color: AppTokens.border),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppTokens.brandOrangeTint,
+              borderRadius: BorderRadius.circular(AppTokens.radiusMd),
+            ),
+            child: Icon(
+              kid ? Icons.child_care_rounded : Icons.person_rounded,
+              color: AppTokens.brandOrange,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    color: AppTokens.primaryText,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                      color: AppTokens.secondaryText, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: AppTokens.secondaryText),
+            color: AppTokens.elevated,
+            onSelected: (v) {
+              if (v == 'rename') onRename();
+              if (v == 'delete') onDelete();
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'rename', child: Text('Rename')),
+              PopupMenuItem(value: 'delete', child: Text('Delete')),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LogoutTile extends StatelessWidget {
+  const _LogoutTile({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Pressable(
+      scale: 0.98,
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppTokens.brandOrangeTint,
+          borderRadius: BorderRadius.circular(AppTokens.radiusLg),
+          border: Border.all(color: AppTokens.brandOrange.withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppTokens.brandOrange.withValues(alpha: 0.22),
+                borderRadius: BorderRadius.circular(AppTokens.radiusMd),
+              ),
+              child: const Icon(Icons.logout_rounded,
+                  color: AppTokens.brandOrange, size: 24),
+            ),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Logout',
+                    style: TextStyle(
+                      color: AppTokens.brandOrange,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Sign out of your account',
+                    style:
+                        TextStyle(color: AppTokens.secondaryText, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: AppTokens.brandOrange),
+          ],
+        ),
+      ),
     );
   }
 }
