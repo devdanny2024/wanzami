@@ -28,6 +28,26 @@ export function HomeSkeleton() {
   );
 }
 
+export function RowSkeleton() {
+  return (
+    <div className="mb-8 md:mb-10">
+      <Skeleton className="container-page h-8 w-48 rounded mb-3 md:mb-4" />
+      <div className="mx-auto w-full max-w-[96rem] flex gap-3 md:gap-4 overflow-hidden px-4 sm:px-6 lg:px-10 2xl:px-12">
+        {Array.from({ length: 8 }).map((_, idx) => (
+          <div
+            key={idx}
+            className="flex-none w-[44%] sm:w-[32%] md:w-[26%] lg:w-[22%] xl:w-[18.5%] 2xl:w-[15.5%] rounded-2xl border border-white/10 bg-graphite p-2 sm:p-2.5 space-y-2.5"
+          >
+            <Skeleton className="aspect-video w-full rounded-xl" />
+            <Skeleton className="h-4 w-3/4 rounded" />
+            <Skeleton className="h-3 w-1/2 rounded" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function ListSkeleton({ title }: { title: string }) {
   return (
     <div className="min-h-screen bg-background text-foreground">
