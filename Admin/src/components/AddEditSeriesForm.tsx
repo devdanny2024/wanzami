@@ -3,11 +3,13 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Switch } from "./ui/switch";
 import { MovieTitle } from "./MoviesManagement"; // reuse shape
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { useUploadQueue } from "@/context/UploadQueueProvider";
+import { FormSection } from "./FormSection";
+import { FileDrop } from "./FileDrop";
+import { FileText, Tag, Image as ImageIcon, Wallet } from "lucide-react";
 
 const GENRE_OPTIONS = [
   "Action",
@@ -176,14 +178,8 @@ export function AddEditSeriesForm({
   };
 
   return (
-    <Tabs defaultValue="basic" className="w-full">
-      <TabsList className="bg-neutral-800 border-neutral-700">
-        <TabsTrigger value="basic" className="data-[state=active]:bg-[#fd7e14] data-[state=active]:text-white">
-          Basic Info
-        </TabsTrigger>
-      </TabsList>
-
-      <TabsContent value="basic" className="space-y-4 mt-4">
+    <div className="space-y-5">
+      <FormSection title="Basics" icon={FileText}>
         <div>
           <Label className="text-neutral-300">Title</Label>
           <Input
@@ -239,31 +235,34 @@ export function AddEditSeriesForm({
             placeholder="Enter series description"
           />
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div>
-            <Label className="text-neutral-300">Genres</Label>
-            <div className="mt-1 flex flex-wrap gap-2">
-              {GENRE_OPTIONS.map((g) => {
-                const active = genres.includes(g);
-                return (
-                  <button
-                    type="button"
-                    key={g}
-                    onClick={() =>
-                      setGenres((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]))
-                    }
-                    className={`px-3 py-1 rounded-full text-sm border ${
-                      active
-                        ? "bg-[#fd7e14]/20 border-[#fd7e14] text-[#fd7e14]"
-                        : "bg-neutral-900 border-neutral-700 text-neutral-300 hover:border-neutral-500"
-                    }`}
-                  >
-                    {g}
-                  </button>
-                );
-              })}
-            </div>
+      </FormSection>
+
+      <FormSection title="Classification" icon={Tag}>
+        <div>
+          <Label className="text-neutral-300">Genres</Label>
+          <div className="mt-1 flex flex-wrap gap-2">
+            {GENRE_OPTIONS.map((g) => {
+              const active = genres.includes(g);
+              return (
+                <button
+                  type="button"
+                  key={g}
+                  onClick={() =>
+                    setGenres((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]))
+                  }
+                  className={`px-3 py-1 rounded-full text-sm border ${
+                    active
+                      ? "bg-[#fd7e14]/20 border-[#fd7e14] text-[#fd7e14]"
+                      : "bg-neutral-900 border-neutral-700 text-neutral-300 hover:border-neutral-500"
+                  }`}
+                >
+                  {g}
+                </button>
+              );
+            })}
           </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <Label className="text-neutral-300">Language</Label>
             <Select value={language} onValueChange={setLanguage}>
@@ -279,12 +278,10 @@ export function AddEditSeriesForm({
               </SelectContent>
             </Select>
           </div>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
           <div>
             <Label className="text-neutral-300">Maturity Rating</Label>
             <Select value={maturityRating} onValueChange={setMaturityRating}>
-              <SelectTrigger className="mt-1 bg-neutral-950 border-neutral-800 text-white">
+              <SelectTrigger className="mt-1 bg-neutral-950 border-neutral-800 text-white w-full min-w-0">
                 <SelectValue placeholder="Select rating" />
               </SelectTrigger>
               <SelectContent className="bg-neutral-900 border-neutral-800">
@@ -296,31 +293,31 @@ export function AddEditSeriesForm({
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label className="text-neutral-300">Country Availability</Label>
-            <div className="mt-1 flex flex-wrap gap-2">
-              {["NG", "US", "UK", "CA", "ZA", "GH", "KE", "DE", "FR", "IN"].map((code) => {
-                const active = countryAvailability.includes(code);
-                return (
-                  <button
-                    type="button"
-                    key={code}
-                    onClick={() =>
-                      setCountryAvailability((prev) =>
-                        prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
-                      )
-                    }
-                    className={`px-3 py-1 rounded-full text-sm border ${
-                      active
-                        ? "bg-[#fd7e14]/20 border-[#fd7e14] text-[#fd7e14]"
-                        : "bg-neutral-900 border-neutral-700 text-neutral-300 hover:border-neutral-500"
-                    }`}
-                  >
-                    {code}
-                  </button>
-                );
-              })}
-            </div>
+        </div>
+        <div>
+          <Label className="text-neutral-300">Country Availability</Label>
+          <div className="mt-1 flex flex-wrap gap-2">
+            {["NG", "US", "UK", "CA", "ZA", "GH", "KE", "DE", "FR", "IN"].map((code) => {
+              const active = countryAvailability.includes(code);
+              return (
+                <button
+                  type="button"
+                  key={code}
+                  onClick={() =>
+                    setCountryAvailability((prev) =>
+                      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
+                    )
+                  }
+                  className={`px-3 py-1 rounded-full text-sm border ${
+                    active
+                      ? "bg-[#fd7e14]/20 border-[#fd7e14] text-[#fd7e14]"
+                      : "bg-neutral-900 border-neutral-700 text-neutral-300 hover:border-neutral-500"
+                  }`}
+                >
+                  {code}
+                </button>
+              );
+            })}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -332,104 +329,44 @@ export function AddEditSeriesForm({
             className="h-4 w-4"
           />
         </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label className="text-neutral-300">Poster</Label>
-            {series?.posterUrl && !posterFile && (
-              <p className="text-xs text-neutral-500 mb-1">
-                Current:{" "}
-                <a className="text-[#fd7e14]" href={series.posterUrl} target="_blank" rel="noreferrer">
-                  {series.posterUrl}
-                </a>
-              </p>
-            )}
-            <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                id="series-poster-upload"
-                onChange={(e) => setPosterFile(e.target.files?.[0] ?? null)}
-              />
-              <label htmlFor="series-poster-upload" className="block text-neutral-400">
-                {posterFile ? `Selected: ${posterFile.name}` : "Drop or click to upload poster"}
-              </label>
-            </div>
-          </div>
-          <div>
-            <Label className="text-neutral-300">Thumbnail</Label>
-            {series?.thumbnailUrl && !thumbFile && (
-              <p className="text-xs text-neutral-500 mb-1">
-                Current:{" "}
-                <a className="text-[#fd7e14]" href={series.thumbnailUrl} target="_blank" rel="noreferrer">
-                  {series.thumbnailUrl}
-                </a>
-              </p>
-            )}
-            <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                id="series-thumb-upload"
-                onChange={(e) => setThumbFile(e.target.files?.[0] ?? null)}
-              />
-              <label htmlFor="series-thumb-upload" className="block text-neutral-400">
-                {thumbFile ? `Selected: ${thumbFile.name}` : "Drop or click to upload thumbnail"}
-              </label>
-            </div>
-          </div>
+      </FormSection>
+
+      <FormSection title="Artwork and media" icon={ImageIcon}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <FileDrop
+            id="series-poster-upload"
+            label="Poster (2:3)"
+            accept="image/*"
+            file={posterFile}
+            currentUrl={series?.posterUrl}
+            onSelect={setPosterFile}
+          />
+          <FileDrop
+            id="series-thumb-upload"
+            label="Thumbnail (16:9)"
+            accept="image/*"
+            file={thumbFile}
+            currentUrl={series?.thumbnailUrl}
+            onSelect={setThumbFile}
+          />
         </div>
+        <FileDrop
+          id="series-trailer-upload"
+          label="Trailer"
+          accept="video/*"
+          file={trailerFile}
+          currentUrl={series?.trailerUrl}
+          onSelect={setTrailerFile}
+        />
         <div>
-          <Label className="text-neutral-300">Trailer</Label>
-          {series?.trailerUrl && !trailerFile && (
-            <p className="text-xs text-neutral-500 mb-1">
-              Current:{" "}
-              <a className="text-[#fd7e14]" href={series.trailerUrl} target="_blank" rel="noreferrer">
-                {series.trailerUrl}
-              </a>
-            </p>
-          )}
-          <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
-            <input
-              type="file"
-              accept="video/*"
-              className="hidden"
-              id="series-trailer-upload"
-              onChange={(e) => setTrailerFile(e.target.files?.[0] ?? null)}
-            />
-            <label htmlFor="series-trailer-upload" className="block text-neutral-400">
-              {trailerFile ? `Selected: ${trailerFile.name}` : "Drop or click to upload trailer"}
-            </label>
-          </div>
-        </div>
-        <div>
-          <Label className="text-neutral-300">Short Trailer (hero background)</Label>
-          {(series as any)?.shortTrailerUrl && !shortTrailerFile && (
-            <p className="text-xs text-neutral-500 mb-1">
-              Current:{" "}
-              <a
-                className="text-[#fd7e14]"
-                href={shortTrailerUrlText || (series as any)?.shortTrailerUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {shortTrailerUrlText || (series as any)?.shortTrailerUrl}
-              </a>
-            </p>
-          )}
-          <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
-            <input
-              type="file"
-              accept="video/*"
-              className="hidden"
-              id="series-short-trailer-upload"
-              onChange={(e) => setShortTrailerFile(e.target.files?.[0] ?? null)}
-            />
-            <label htmlFor="series-short-trailer-upload" className="block text-neutral-400">
-              {shortTrailerFile ? `Selected: ${shortTrailerFile.name}` : "Drop or click to upload short trailer"}
-            </label>
-          </div>
+          <FileDrop
+            id="series-short-trailer-upload"
+            label="Short trailer (hero background)"
+            accept="video/*"
+            file={shortTrailerFile}
+            currentUrl={shortTrailerUrlText || (series as any)?.shortTrailerUrl}
+            onSelect={setShortTrailerFile}
+          />
           <div className="mt-2">
             <Label className="text-neutral-300">Or link</Label>
             <Input
@@ -440,53 +377,53 @@ export function AddEditSeriesForm({
             />
           </div>
         </div>
-        {error && <p className="text-red-400 text-sm">{error}</p>}
-        <div className="flex justify-end gap-3 border-t border-neutral-800 pt-4">
-          <Button variant="outline" onClick={onClose} className="border-neutral-700 text-neutral-300 hover:bg-neutral-800">
-            Cancel
-          </Button>
-          <Button disabled={saving} onClick={handleSave} className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
-            {saving ? "Saving..." : "Save Series"}
-          </Button>
+      </FormSection>
+      <FormSection title="Monetization (PPV)" icon={Wallet}>
+        <div className="flex items-center gap-2">
+          <Switch
+            checked={ppvEnabled}
+            onCheckedChange={setPpvEnabled}
+            className="data-[state=checked]:bg-[#fd7e14]"
+          />
+          <Label className="text-neutral-300">Enable PPV (Buy, 30-day access)</Label>
         </div>
-
-        <div className="border-t border-neutral-800 pt-4 mt-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <Switch
-              checked={ppvEnabled}
-              onCheckedChange={setPpvEnabled}
-              className="data-[state=checked]:bg-[#fd7e14]"
-            />
-            <Label className="text-neutral-300">Enable PPV (Buy, 30-day access)</Label>
-          </div>
-          {ppvEnabled && (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="text-neutral-300">PPV Price</Label>
-                <Input
-                  type="number"
-                  value={ppvPrice}
-                  onChange={(e) => setPpvPrice(e.target.value)}
-                  className="mt-1 bg-neutral-950 border-neutral-800 text-white"
-                  placeholder="1500"
-                />
-              </div>
-              <div>
-                <Label className="text-neutral-300">Currency</Label>
-                <Select value={ppvCurrency} onValueChange={setPpvCurrency}>
-                  <SelectTrigger className="mt-1 bg-neutral-950 border-neutral-800 text-white">
-                    <SelectValue placeholder="Currency" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-neutral-900 border-neutral-800">
-                    <SelectItem value="NGN">NGN</SelectItem>
-                    <SelectItem value="USD">USD</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+        {ppvEnabled && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Label className="text-neutral-300">PPV Price</Label>
+              <Input
+                type="number"
+                value={ppvPrice}
+                onChange={(e) => setPpvPrice(e.target.value)}
+                className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+                placeholder="1500"
+              />
             </div>
-          )}
-        </div>
-      </TabsContent>
-    </Tabs>
+            <div>
+              <Label className="text-neutral-300">Currency</Label>
+              <Select value={ppvCurrency} onValueChange={setPpvCurrency}>
+                <SelectTrigger className="mt-1 bg-neutral-950 border-neutral-800 text-white">
+                  <SelectValue placeholder="Currency" />
+                </SelectTrigger>
+                <SelectContent className="bg-neutral-900 border-neutral-800">
+                  <SelectItem value="NGN">NGN</SelectItem>
+                  <SelectItem value="USD">USD</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
+      </FormSection>
+
+      {error && <p className="text-red-400 text-sm">{error}</p>}
+      <div className="sticky bottom-0 flex justify-end gap-3 border-t border-neutral-800 bg-neutral-950/80 backdrop-blur-sm py-3 -mx-1 px-1">
+        <Button variant="outline" onClick={onClose} className="border-neutral-700 text-neutral-300 hover:bg-neutral-800">
+          Cancel
+        </Button>
+        <Button disabled={saving} onClick={handleSave} className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
+          {saving ? "Saving..." : "Save Series"}
+        </Button>
+      </div>
+    </div>
   );
 }
