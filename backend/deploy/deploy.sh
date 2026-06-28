@@ -30,7 +30,7 @@ for i in $(seq 1 40); do
 done
 
 echo "==> External health check"
-URL="${HEALTH_URL:-https://api.blvckcode.io/api/health}"
+URL="${HEALTH_URL:-https://api.wanzami.tv/api/health}"
 code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$URL" || echo 000)"
 echo "$URL -> $code"
 [ "$code" = "200" ] || { echo "external health check failed"; exit 1; }
