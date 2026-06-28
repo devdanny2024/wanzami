@@ -131,6 +131,12 @@ enum TitleType {
   SERIES
 }
 
+enum AvailabilityStatus {
+  LIVE
+  COMING_SOON
+  LEAVING_SOON
+}
+
 enum Rendition {
   R4K
   R2K
@@ -241,6 +247,9 @@ model Title {
   countryAvailability String[] @default([])
   isOriginal  Boolean   @default(false)
   releaseDate DateTime?
+  availability  AvailabilityStatus @default(LIVE)
+  availableFrom DateTime?
+  leavingAt     DateTime?
   posterUrl   String?
   thumbnailUrl String?
   trailerUrl   String?
@@ -268,6 +277,8 @@ model Title {
   similarAsTarget  TitleSimilarity[] @relation("TargetTitle")
   ppvPurchases     PpvPurchase[]
   ppvViolations    PpvViolation[]
+
+  @@index([availability, availableFrom, leavingAt])
 }
 
 model Episode {

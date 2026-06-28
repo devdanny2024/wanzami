@@ -21,6 +21,8 @@ import { SupportTickets } from './components/SupportTickets';
 import { ProcessManagement } from './components/ProcessManagement';
 import { CreatorHub } from './components/CreatorHub';
 import { LiveStudio } from './components/LiveStudio';
+import { CommandPalette } from './components/CommandPalette';
+import { findNav } from './lib/nav';
 
 export default function App() {
   return (
@@ -34,7 +36,27 @@ function AppContent() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const [currentPage, setCurrentPage] = useState('dashboard');
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const { tasks, serverJobs, removeTask, clearTasks, retryTask, retryServerJob } = useUploadQueue();
+
+  // Lightweight deep-linking: keep the active screen in the URL hash so screens
+  // are shareable and the browser back/forward buttons move between them.
+  useEffect(() => {
+    const applyHash = () => {
+      const id = window.location.hash.replace(/^#/, '');
+      if (id && findNav(id)) setCurrentPage(id);
+    };
+    applyHash();
+    window.addEventListener('hashchange', applyHash);
+    return () => window.removeEventListener('hashchange', applyHash);
+  }, []);
+
+  const navigate = (page: string) => {
+    setCurrentPage(page);
+    if (typeof window !== 'undefined' && window.location.hash !== `#${page}`) {
+      window.location.hash = page;
+    }
+  };
 
   useEffect(() => {
     const verify = async () => {
@@ -155,13 +177,14 @@ function AppContent() {
 
   return (
     <div className="flex h-screen bg-neutral-950">
-      <Sidebar currentPage={currentPage} onNavigate={setCurrentPage} />
+      <Sidebar currentPage={currentPage} onNavigate={navigate} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header onLogout={handleLogout} />
+        <Header currentPage={currentPage} onOpenSearch={() => setPaletteOpen(true)} onLogout={handleLogout} />
         <main className="flex-1 overflow-y-auto p-8">
           {renderPage()}
         </main>
       </div>
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} onNavigate={navigate} />
       <UploadDock
         tasks={tasks}
         serverJobs={serverJobs}

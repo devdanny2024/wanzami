@@ -3,10 +3,12 @@ import cron from "node-cron";
 import { computePopularitySnapshots } from "../jobs/popularity.js";
 import { computeProfilePreferences } from "../jobs/preferences.js";
 import { computeRecentViews } from "../jobs/recentViews.js";
+import { processAvailabilityTransitions } from "../jobs/availability.js";
 
 const popularityCron = process.env.POPULARITY_CRON || "0 3 * * *"; // daily at 03:00
 const preferencesCron = process.env.PREFERENCES_CRON || "30 3 * * *"; // daily at 03:30
 const recentViewsCron = process.env.RECENT_VIEWS_CRON || "0 4 * * *"; // daily at 04:00
+const availabilityCron = process.env.AVAILABILITY_CRON || "*/5 * * * *"; // every 5 minutes
 
 cron.schedule(popularityCron, async () => {
   try {
@@ -35,6 +37,19 @@ cron.schedule(recentViewsCron, async () => {
     console.log("[cron] recent views done");
   } catch (err) {
     console.error("[cron] recent views failed", err);
+  }
+});
+
+cron.schedule(availabilityCron, async () => {
+  try {
+    const result = await processAvailabilityTransitions();
+    if (result.wentLive > 0 || result.removed > 0) {
+      console.log(
+        `[cron] availability transitions: ${result.wentLive} went live, ${result.removed} removed`
+      );
+    }
+  } catch (err) {
+    console.error("[cron] availability transitions failed", err);
   }
 });
 

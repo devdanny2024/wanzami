@@ -55,6 +55,9 @@ export type Title = {
   runtimeMinutes?: number | null;
   countryAvailability?: string[];
   isOriginal?: boolean;
+  availability?: "LIVE" | "COMING_SOON" | "LEAVING_SOON";
+  availableFrom?: string | null;
+  leavingAt?: string | null;
   posterUrl?: string | null;
   thumbnailUrl?: string | null;
   trailerUrl?: string | null;

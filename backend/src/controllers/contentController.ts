@@ -7,13 +7,36 @@ import { config } from "../config.js";
 import { resolveCountry } from "../utils/country.js";
 import { auditLog } from "../utils/audit.js";
 import { localizePrice } from "../utils/pricing.js";
-import { AssetStatus } from "@prisma/client";
+import { AssetStatus, AvailabilityStatus } from "@prisma/client";
 import { createNotification } from "./notificationController.js";
 import { DeleteObjectsCommand, S3Client } from "@aws-sdk/client-s3";
 import { verifyAccessToken } from "../auth/jwt.js";
 
 const kidSafeRatings = ["G", "PG", "TV-Y", "TV-G", "TV-PG", "PG-13"];
 const teenSafeRatings = ["PG-13", "TV-14"];
+
+// Normalize the availability status + its scheduled dates. Only keep the date
+// that is relevant to the chosen status so we never leave a stale flip date.
+const normalizeAvailability = (
+  availability?: string | null,
+  availableFrom?: string | null,
+  leavingAt?: string | null
+): { availability: AvailabilityStatus; availableFrom: Date | null; leavingAt: Date | null } => {
+  const status: AvailabilityStatus =
+    availability === "COMING_SOON" || availability === "LEAVING_SOON"
+      ? (availability as AvailabilityStatus)
+      : AvailabilityStatus.LIVE;
+  const parseDate = (v?: string | null): Date | null => {
+    if (!v) return null;
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? null : d;
+  };
+  return {
+    availability: status,
+    availableFrom: status === "COMING_SOON" ? parseDate(availableFrom) : null,
+    leavingAt: status === "LEAVING_SOON" ? parseDate(leavingAt) : null,
+  };
+};
 
 const parseOptionalNumber = (val: any): number | undefined => {
   if (val === null || val === undefined) return undefined;
@@ -48,6 +71,9 @@ export const listTitles = async (_req: Request, res: Response) => {
       runtimeMinutes: t.runtimeMinutes,
       countryAvailability: t.countryAvailability,
       isOriginal: t.isOriginal,
+      availability: t.availability,
+      availableFrom: t.availableFrom,
+      leavingAt: t.leavingAt,
       posterUrl: t.posterUrl,
       thumbnailUrl: t.thumbnailUrl,
       trailerUrl: t.trailerUrl,
@@ -639,6 +665,9 @@ export const getTitleWithEpisodes = async (req: Request, res: Response) => {
       runtimeMinutes: title.runtimeMinutes,
       countryAvailability: title.countryAvailability,
       isOriginal: title.isOriginal,
+      availability: title.availability,
+      availableFrom: title.availableFrom,
+      leavingAt: title.leavingAt,
       posterUrl: title.posterUrl,
       thumbnailUrl: title.thumbnailUrl,
       trailerUrl,
@@ -746,6 +775,9 @@ export const createTitle = async (req: Request, res: Response) => {
   runtimeMinutes,
   countryAvailability,
   isOriginal,
+  availability,
+  availableFrom,
+  leavingAt,
   pendingReview,
   introStartSec,
   introEndSec,
@@ -772,6 +804,9 @@ export const createTitle = async (req: Request, res: Response) => {
   runtimeMinutes?: number | string;
   countryAvailability?: string[];
   isOriginal?: boolean;
+  availability?: "LIVE" | "COMING_SOON" | "LEAVING_SOON";
+  availableFrom?: string | null;
+  leavingAt?: string | null;
   pendingReview?: boolean;
   introStartSec?: number;
   introEndSec?: number;
@@ -802,6 +837,8 @@ export const createTitle = async (req: Request, res: Response) => {
     isPpv && ppvPriceNaira !== undefined && ppvPriceNaira !== null && !Number.isNaN(Number(ppvPriceNaira))
       ? Number(ppvPriceNaira)
       : null;
+  const { availability: normalizedAvailability, availableFrom: parsedAvailableFrom, leavingAt: parsedLeavingAt } =
+    normalizeAvailability(availability, availableFrom, leavingAt);
 
   const title = await prisma.title.create({
     data: {
@@ -825,6 +862,9 @@ export const createTitle = async (req: Request, res: Response) => {
       runtimeMinutes: parsedRuntime,
       countryAvailability: Array.isArray(countryAvailability) ? countryAvailability.map(String) : [],
       isOriginal: isOriginal ?? false,
+      availability: normalizedAvailability,
+      availableFrom: parsedAvailableFrom,
+      leavingAt: parsedLeavingAt,
       archived: false,
       pendingReview: pendingReview ?? false,
       isPpv: isPpv ?? false,
@@ -880,6 +920,9 @@ export const updateTitle = async (req: Request, res: Response) => {
   runtimeMinutes,
   countryAvailability,
   isOriginal,
+  availability,
+  availableFrom,
+  leavingAt,
   pendingReview,
   introStartSec,
   introEndSec,
@@ -905,6 +948,9 @@ export const updateTitle = async (req: Request, res: Response) => {
   runtimeMinutes?: number | string;
   countryAvailability?: string[];
   isOriginal?: boolean;
+  availability?: "LIVE" | "COMING_SOON" | "LEAVING_SOON";
+  availableFrom?: string | null;
+  leavingAt?: string | null;
   pendingReview?: boolean;
   introStartSec?: number;
   introEndSec?: number;
@@ -939,6 +985,12 @@ export const updateTitle = async (req: Request, res: Response) => {
     data.countryAvailability = Array.isArray(countryAvailability) ? countryAvailability.map(String) : [];
   }
   if (isOriginal !== undefined) data.isOriginal = isOriginal;
+  if (availability !== undefined) {
+    const normalized = normalizeAvailability(availability, availableFrom, leavingAt);
+    data.availability = normalized.availability;
+    data.availableFrom = normalized.availableFrom;
+    data.leavingAt = normalized.leavingAt;
+  }
   if (pendingReview !== undefined) data.pendingReview = pendingReview;
   if (isPpv !== undefined) {
     data.isPpv = isPpv;

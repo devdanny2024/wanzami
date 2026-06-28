@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Play, Info } from 'lucide-react';
+import { Play, Info, Clock } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { getAvailabilityBadge, isComingSoon } from '@/lib/availability';
 
 export interface MovieData {
   id: number;
@@ -30,6 +31,9 @@ export interface MovieData {
   currentEpisodeLabel?: string;
   resumePositionSec?: number;
   isOriginal?: boolean;
+  availability?: "LIVE" | "COMING_SOON" | "LEAVING_SOON";
+  availableFrom?: string | null;
+  leavingAt?: string | null;
   assetVersions?: any;
   maturityRating?: string | null;
 }
@@ -68,6 +72,9 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
       typeof movie.completionPercent === 'number',
     ) ||
     ownedByCache;
+
+  const availabilityBadge = getAvailabilityBadge(movie);
+  const comingSoon = isComingSoon(movie);
 
   const hoverTrailerUrl = movie.shortTrailerUrl || movie.trailerUrl;
   const canHoverPlayTrailer = Boolean(
@@ -138,6 +145,20 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
           className="w-full h-full object-cover"
         />
 
+        {/* Coming Soon / Leaving Soon badge */}
+        {availabilityBadge && (
+          <div
+            className={`absolute top-2 left-2 z-10 inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-bold uppercase tracking-wide shadow-lg backdrop-blur-sm ${
+              availabilityBadge.kind === 'COMING_SOON'
+                ? 'bg-sky-500/90 text-white'
+                : 'bg-rose-500/90 text-white'
+            }`}
+          >
+            <Clock className="w-3 h-3" />
+            {availabilityBadge.label}
+          </div>
+        )}
+
         {/* Hover trailer preview (muted autoplay) */}
         {canHoverPlayTrailer && hoverTrailerUrl && (
           <video
@@ -155,7 +176,7 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
         )}
 
         {/* Play overlay for owned titles */}
-        {owned && (
+        {owned && !comingSoon && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
             <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-brand shadow-lg shadow-brand/40 flex items-center justify-center">
               <Play className="w-5 h-5 sm:w-6 sm:h-6 fill-current text-white" />
@@ -207,17 +228,31 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
           )}
         </div>
         {/* External CTA */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onClick(movie);
-          }}
-          aria-label={owned || isFree ? `Play ${movie.title}` : `Buy ${movie.title}`}
-          className="inline-flex items-center justify-center gap-1.5 shrink-0 min-h-[40px] bg-brand hover:bg-brand-dark text-white px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-colors active:scale-95"
-        >
-          {owned || isFree ? <Play className="w-4 h-4 fill-current" /> : <Info className="w-4 h-4" />}
-          <span className="hidden sm:inline">{owned || isFree ? "Play" : "Buy"}</span>
-        </button>
+        {comingSoon ? (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onClick(movie);
+            }}
+            aria-label={`${movie.title} — coming soon`}
+            className="inline-flex items-center justify-center gap-1.5 shrink-0 min-h-[40px] bg-white/10 text-foreground px-3 sm:px-4 py-2 rounded-lg text-sm font-medium border border-white/15 transition-colors active:scale-95"
+          >
+            <Clock className="w-4 h-4" />
+            <span className="hidden sm:inline">Coming soon</span>
+          </button>
+        ) : (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onClick(movie);
+            }}
+            aria-label={owned || isFree ? `Play ${movie.title}` : `Buy ${movie.title}`}
+            className="inline-flex items-center justify-center gap-1.5 shrink-0 min-h-[40px] bg-brand hover:bg-brand-dark text-white px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-colors active:scale-95"
+          >
+            {owned || isFree ? <Play className="w-4 h-4 fill-current" /> : <Info className="w-4 h-4" />}
+            <span className="hidden sm:inline">{owned || isFree ? "Play" : "Buy"}</span>
+          </button>
+        )}
       </div>
     </motion.div>
   );

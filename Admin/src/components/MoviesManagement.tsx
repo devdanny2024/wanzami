@@ -9,6 +9,8 @@ import { Switch } from "./ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { Badge } from "./ui/badge";
+import { StatusBadge } from "./StatusBadge";
+import { titleStatus } from "../lib/status";
 import { Plus, Edit, Trash2, Search } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { useUploadQueue } from "@/context/UploadQueueProvider";
@@ -39,6 +41,9 @@ export type MovieTitle = {
   maturityRating?: string | null;
   countryAvailability?: string[];
   isOriginal?: boolean;
+  availability?: "LIVE" | "COMING_SOON" | "LEAVING_SOON";
+  availableFrom?: string | null;
+  leavingAt?: string | null;
   genres?: string[];
 };
 
@@ -234,11 +239,7 @@ export function MoviesManagement() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredMovies.map((movie) => {
-                const statusLabel = movie.archived
-                  ? "Archived"
-                  : movie.pendingReview
-                  ? "Pending review"
-                  : "Live";
+                const status = titleStatus(movie);
                 return (
                   <div
                     key={movie.id}
@@ -275,19 +276,9 @@ export function MoviesManagement() {
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <p className="text-white font-semibold line-clamp-1">{movie.name}</p>
-                          <p className="text-xs text-neutral-400">{statusLabel}</p>
+                          <p className="text-xs text-neutral-400">{status.label}</p>
                         </div>
-                        <Badge
-                          className={
-                            movie.archived
-                              ? "bg-neutral-700 text-neutral-200"
-                              : movie.pendingReview
-                              ? "bg-amber-500/20 text-amber-300"
-                              : "bg-emerald-500/20 text-emerald-300"
-                          }
-                        >
-                          {statusLabel}
-                        </Badge>
+                        <StatusBadge tone={status.tone} label={status.label} />
                       </div>
                       <div className="flex flex-wrap gap-2">
                         <Button
@@ -378,6 +369,11 @@ function AddEditMovieForm({
   const [releaseDate, setReleaseDate] = useState<string>(movie?.releaseDate?.slice(0, 10) ?? "");
   const [countryAvailability, setCountryAvailability] = useState<string[]>([]);
   const [isOriginal, setIsOriginal] = useState<boolean>(!!movie?.isOriginal);
+  const [availability, setAvailability] = useState<"LIVE" | "COMING_SOON" | "LEAVING_SOON">(
+    movie?.availability ?? "LIVE"
+  );
+  const [availableFrom, setAvailableFrom] = useState<string>((movie as any)?.availableFrom?.slice(0, 16) ?? "");
+  const [leavingAt, setLeavingAt] = useState<string>((movie as any)?.leavingAt?.slice(0, 16) ?? "");
   const [posterFile, setPosterFile] = useState<File | null>(null);
   const [thumbFile, setThumbFile] = useState<File | null>(null);
   const [trailerFile, setTrailerFile] = useState<File | null>(null);
@@ -409,6 +405,9 @@ function AddEditMovieForm({
     setReleaseDate((movie as any)?.releaseDate?.slice(0, 10) ?? "");
     setCountryAvailability(((movie as any)?.countryAvailability ?? []) as string[]);
     setIsOriginal(!!(movie as any)?.isOriginal);
+    setAvailability(((movie as any)?.availability ?? "LIVE") as "LIVE" | "COMING_SOON" | "LEAVING_SOON");
+    setAvailableFrom((movie as any)?.availableFrom?.slice(0, 16) ?? "");
+    setLeavingAt((movie as any)?.leavingAt?.slice(0, 16) ?? "");
     setGenres(((movie as any)?.genres ?? []) as string[]);
     setPpvEnabled(!!(movie as any)?.isPpv);
     setPpvPrice((movie as any)?.ppvPriceNaira ? String((movie as any).ppvPriceNaira) : "");
@@ -434,6 +433,11 @@ function AddEditMovieForm({
         releaseDate: releaseDate ? new Date(releaseDate).toISOString() : undefined,
         countryAvailability,
         isOriginal,
+        availability,
+        availableFrom:
+          availability === "COMING_SOON" && availableFrom ? new Date(availableFrom).toISOString() : undefined,
+        leavingAt:
+          availability === "LEAVING_SOON" && leavingAt ? new Date(leavingAt).toISOString() : undefined,
         genres,
       };
       if (trailerFile) {
@@ -492,6 +496,16 @@ function AddEditMovieForm({
       }
       if (!payload.releaseDate) {
         setError("Release date is required.");
+        setSaving(false);
+        return;
+      }
+      if (availability === "COMING_SOON" && !payload.availableFrom) {
+        setError("Pick the date this title becomes available (Coming Soon).");
+        setSaving(false);
+        return;
+      }
+      if (availability === "LEAVING_SOON" && !payload.leavingAt) {
+        setError("Pick the date this title leaves the catalog (Leaving Soon).");
         setSaving(false);
         return;
       }
@@ -710,6 +724,61 @@ function AddEditMovieForm({
               className="data-[state=checked]:bg-[#fd7e14]"
             />
             <Label className="text-neutral-300">Wanzami Original</Label>
+          </div>
+
+          <div className="mt-4">
+            <Label className="text-neutral-300">Availability</Label>
+            <div className="mt-1 flex flex-wrap gap-2">
+              {([
+                { key: "LIVE", label: "Live" },
+                { key: "COMING_SOON", label: "Coming Soon" },
+                { key: "LEAVING_SOON", label: "Leaving Soon" },
+              ] as const).map((opt) => {
+                const active = availability === opt.key;
+                return (
+                  <button
+                    type="button"
+                    key={opt.key}
+                    onClick={() => setAvailability(opt.key)}
+                    className={`px-3 py-1 rounded-full text-sm border ${
+                      active
+                        ? "bg-[#fd7e14]/20 border-[#fd7e14] text-[#fd7e14]"
+                        : "bg-neutral-900 border-neutral-700 text-neutral-300 hover:border-neutral-500"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+            {availability === "COMING_SOON" && (
+              <div className="mt-3">
+                <Label className="text-neutral-300">Available from</Label>
+                <Input
+                  type="datetime-local"
+                  value={availableFrom}
+                  onChange={(e) => setAvailableFrom(e.target.value)}
+                  className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+                />
+                <p className="mt-1 text-xs text-neutral-500">
+                  Shows a “Coming Soon” badge and stays unplayable until this date, then auto-flips to Live.
+                </p>
+              </div>
+            )}
+            {availability === "LEAVING_SOON" && (
+              <div className="mt-3">
+                <Label className="text-neutral-300">Leaving on</Label>
+                <Input
+                  type="datetime-local"
+                  value={leavingAt}
+                  onChange={(e) => setLeavingAt(e.target.value)}
+                  className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+                />
+                <p className="mt-1 text-xs text-neutral-500">
+                  Shows a “Leaving Soon” badge; the title is auto-archived after this date.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 

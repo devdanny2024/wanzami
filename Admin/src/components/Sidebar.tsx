@@ -1,58 +1,26 @@
 import { useEffect, useState } from 'react';
-import { 
-  LayoutDashboard, 
-  Film, 
-  Tv, 
-  CreditCard, 
-  FileText, 
-  Users, 
-  Wallet, 
-  Shield, 
-  BarChart3, 
-  Settings,
-  ShieldQuestion,
-  Bug,
-  Mail,
-  MessageCircle,
-  Activity,
-  Video,
-} from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
+import { navGroups } from '../lib/nav';
 
 interface SidebarProps {
   currentPage: string;
   onNavigate: (page: string) => void;
 }
 
-// Movies/Series management is part of the admin surface.
-const ENABLE_MOVIES_AND_SERIES_NAV = true;
-
-const navItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  ...(ENABLE_MOVIES_AND_SERIES_NAV
-    ? [
-        { id: 'movies', label: 'Movies', icon: Film },
-        { id: 'series', label: 'Series', icon: Tv },
-      ]
-    : []),
-  { id: 'ppv', label: 'PPV', icon: CreditCard },
-  { id: 'blog', label: 'Blog', icon: FileText },
-  { id: 'users', label: 'Users', icon: Users },
-  { id: 'team', label: 'Team', icon: ShieldQuestion },
-  { id: 'email', label: 'Email Service', icon: Mail },
-  { id: 'support', label: 'Support', icon: MessageCircle },
-  { id: 'livestudio', label: 'Live Studio', icon: Video },
-  { id: 'creatorhub', label: 'Creator Hub', icon: Video },
-  { id: 'payments', label: 'Payments', icon: Wallet },
-  { id: 'invoices', label: 'Invoices', icon: CreditCard },
-  { id: 'processes', label: 'Processes', icon: Activity },
-  { id: 'moderation', label: 'Moderation', icon: Shield },
-  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-  { id: 'settings', label: 'Settings', icon: Settings },
-  { id: 'logs', label: 'Logs', icon: Bug },
-];
-
 export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
   const [openCount, setOpenCount] = useState<number>(0);
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(navGroups.map((g) => [g.id, Boolean(g.defaultCollapsed)]))
+  );
+
+  // Keep a collapsed group open if the active page lives inside it.
+  useEffect(() => {
+    const owner = navGroups.find((g) => g.items.some((i) => i.id === currentPage));
+    if (owner && collapsed[owner.id]) {
+      setCollapsed((prev) => ({ ...prev, [owner.id]: false }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage]);
 
   useEffect(() => {
     try {
@@ -75,6 +43,9 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
+  const toggleGroup = (id: string) =>
+    setCollapsed((prev) => ({ ...prev, [id]: !prev[id] }));
+
   return (
     <div className="w-64 bg-neutral-900 border-r border-neutral-800 flex flex-col">
       {/* Logo */}
@@ -91,33 +62,56 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = currentPage === item.id;
-          
+      <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto">
+        {navGroups.map((group) => {
+          const isCollapsed = collapsed[group.id];
+          const hasActive = group.items.some((i) => i.id === currentPage);
           return (
-            <button
-              key={item.id}
-              onClick={() => onNavigate(item.id)}
-              className={`
-                w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all
-                ${isActive 
-                  ? 'bg-[#fd7e14]/10 text-[#fd7e14] border-l-2 border-[#fd7e14] shadow-[0_0_20px_rgba(253,126,20,0.15)]' 
-                  : 'text-neutral-400 hover:text-white hover:bg-neutral-800/50'
-                }
-              `}
-            >
-              <Icon className="w-5 h-5" />
-              <span className="flex-1 flex items-center justify-between">
-                <span>{item.label}</span>
-                {item.id === 'support' && openCount > 0 && (
-                  <span className="ml-2 inline-flex items-center justify-center rounded-full bg-[#fd7e14] text-[10px] px-2 py-0.5 text-white">
-                    {openCount}
-                  </span>
-                )}
-              </span>
-            </button>
+            <div key={group.id}>
+              <button
+                onClick={() => toggleGroup(group.id)}
+                className="w-full flex items-center justify-between px-3 mb-1 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 hover:text-neutral-300 transition-colors"
+                aria-expanded={!isCollapsed}
+              >
+                <span className={hasActive ? 'text-neutral-300' : ''}>{group.label}</span>
+                <ChevronDown
+                  className={`w-3.5 h-3.5 transition-transform ${isCollapsed ? '-rotate-90' : ''}`}
+                />
+              </button>
+
+              {!isCollapsed && (
+                <div className="space-y-1">
+                  {group.items.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = currentPage === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => onNavigate(item.id)}
+                        aria-current={isActive ? 'page' : undefined}
+                        className={`
+                          w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all
+                          ${isActive
+                            ? 'bg-[#fd7e14]/10 text-[#fd7e14] border-l-2 border-[#fd7e14] shadow-[0_0_20px_rgba(253,126,20,0.15)]'
+                            : 'text-neutral-400 hover:text-white hover:bg-neutral-800/50'
+                          }
+                        `}
+                      >
+                        <Icon className="w-5 h-5 shrink-0" />
+                        <span className="flex-1 flex items-center justify-between text-sm">
+                          <span>{item.label}</span>
+                          {item.id === 'support' && openCount > 0 && (
+                            <span className="ml-2 inline-flex items-center justify-center rounded-full bg-[#fd7e14] text-[10px] px-2 py-0.5 text-white">
+                              {openCount}
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           );
         })}
       </nav>

@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Inter, Bebas_Neue } from "next/font/google";
 import Script from "next/script";
-import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { Providers } from "./providers";
+import { ConsentedAnalytics } from "@/components/ConsentedAnalytics";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -46,6 +46,32 @@ export default function RootLayout({
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
+
+            // Consent Mode v2 — deny analytics/ads storage until the visitor
+            // makes a choice in the cookie banner. GA will not set cookies
+            // while denied.
+            gtag('consent', 'default', {
+              ad_storage: 'denied',
+              ad_user_data: 'denied',
+              ad_personalization: 'denied',
+              analytics_storage: 'denied',
+              wait_for_update: 500
+            });
+
+            // Re-apply a returning visitor's stored choice so it survives reloads.
+            try {
+              var d = localStorage.getItem('cookieConsent');
+              if (d === 'accepted' || d === 'rejected') {
+                var p = JSON.parse(localStorage.getItem('cookiePreferences') || '{}');
+                gtag('consent', 'update', {
+                  analytics_storage: p.analytics ? 'granted' : 'denied',
+                  ad_storage: p.marketing ? 'granted' : 'denied',
+                  ad_user_data: p.marketing ? 'granted' : 'denied',
+                  ad_personalization: p.marketing ? 'granted' : 'denied'
+                });
+              }
+            } catch (e) {}
+
             gtag('config', 'G-GBHNL5BZJX');
           `}
         </Script>
@@ -83,7 +109,7 @@ export default function RootLayout({
       </head>
       <body className={`${inter.className} ${inter.variable} ${bebasNeue.variable} bg-black text-white`}>
         <Providers>{children}</Providers>
-        <Analytics />
+        <ConsentedAnalytics />
       </body>
     </html>
   );
