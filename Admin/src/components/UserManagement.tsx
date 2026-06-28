@@ -5,8 +5,17 @@ import { Input } from './ui/input';
 import { Badge } from './ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Search, Eye, Trash2 } from 'lucide-react';
+import { Search, Eye, Trash2, Copy } from 'lucide-react';
 import { toast } from 'sonner';
+import { DataTable, type Column, type BulkAction } from './DataTable';
+import { StatusBadge } from './StatusBadge';
+import type { StatusTone } from '../lib/status';
+
+const userStatusTone = (s?: string | null): { tone: StatusTone; label: string } => {
+  if (s === 'Inactive') return { tone: 'error', label: 'Inactive' };
+  if (s === 'Unverified') return { tone: 'pending', label: 'Unverified' };
+  return { tone: 'live', label: s ?? 'Active' };
+};
 
 type UserRow = {
   id: string;
@@ -91,6 +100,70 @@ export function UserManagement() {
       });
   }, [query, users, statusFilter]);
 
+  const columns: Column<UserRow>[] = [
+    { key: 'name', header: 'User', cell: (u) => <span className="text-white">{u.name || '—'}</span>, sortValue: (u) => (u.name ?? '').toLowerCase() },
+    { key: 'email', header: 'Email', cell: (u) => u.email, sortValue: (u) => u.email.toLowerCase() },
+    { key: 'createdAt', header: 'Join Date', cell: (u) => new Date(u.createdAt).toLocaleDateString(), sortValue: (u) => new Date(u.createdAt).getTime() },
+    { key: 'profileCount', header: 'Profiles', cell: (u) => u.profileCount ?? '—', sortValue: (u) => u.profileCount ?? 0, align: 'right' },
+    { key: 'totalWatchTime', header: 'Watch Time', cell: (u) => u.totalWatchTime ?? '—' },
+    { key: 'ppvPurchases', header: 'PPV', cell: (u) => u.ppvPurchases ?? '—', sortValue: (u) => u.ppvPurchases ?? 0, align: 'right' },
+    {
+      key: 'totalSpent',
+      header: 'Total Spent (NGN)',
+      cell: (u) => (u.totalSpent != null ? `₦${u.totalSpent.toLocaleString()}` : '—'),
+      sortValue: (u) => u.totalSpent ?? 0,
+      align: 'right',
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      cell: (u) => {
+        const s = userStatusTone(u.status);
+        return <StatusBadge tone={s.tone} label={s.label} />;
+      },
+      sortValue: (u) => u.status ?? 'Active',
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      cell: (u) => (
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-[#fd7e14] hover:text-[#ff9940] hover:bg-[#fd7e14]/10"
+              onClick={() => setSelectedUser(u)}
+            >
+              <Eye className="w-4 h-4 mr-1" />
+              View
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="bg-neutral-900 border-neutral-800 text-white max-w-xl">
+            <DialogHeader>
+              <DialogTitle className="text-white">User Profile</DialogTitle>
+            </DialogHeader>
+            {selectedUser && (
+              <UserProfileModal user={selectedUser} onDelete={handleDelete} deletingId={deletingId} />
+            )}
+          </DialogContent>
+        </Dialog>
+      ),
+    },
+  ];
+
+  const bulkActions: BulkAction<UserRow>[] = [
+    {
+      label: 'Copy emails',
+      icon: Copy,
+      onClick: (rows) => {
+        const emails = rows.map((r) => r.email).join(', ');
+        void navigator.clipboard?.writeText(emails);
+        toast.success(`Copied ${rows.length} email${rows.length === 1 ? '' : 's'}`);
+      },
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <div>
@@ -135,92 +208,14 @@ export function UserManagement() {
           <CardTitle className="text-white">All Users</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-neutral-800">
-                  <th className="text-left py-3 px-4 text-neutral-400">User</th>
-                  <th className="text-left py-3 px-4 text-neutral-400">Email</th>
-                  <th className="text-left py-3 px-4 text-neutral-400">Join Date</th>
-                  <th className="text-left py-3 px-4 text-neutral-400">Profiles</th>
-                  <th className="text-left py-3 px-4 text-neutral-400">Watch Time</th>
-                  <th className="text-left py-3 px-4 text-neutral-400">PPV Purchases</th>
-                  <th className="text-left py-3 px-4 text-neutral-400">Total Spent (NGN)</th>
-                  <th className="text-left py-3 px-4 text-neutral-400">Status</th>
-                  <th className="text-left py-3 px-4 text-neutral-400">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((user) => (
-                  <tr key={user.id} className="border-b border-neutral-800 hover:bg-neutral-800/50 transition-colors">
-                    <td className="py-3 px-4 text-white">{user.name || '—'}</td>
-                    <td className="py-3 px-4 text-neutral-300">{user.email}</td>
-                  <td className="py-3 px-4 text-neutral-300">
-                    {new Date(user.createdAt).toLocaleDateString()}
-                  </td>
-                    <td className="py-3 px-4 text-neutral-300">
-                      {user.profileCount ?? 'â€”'}
-                    </td>
-                    <td className="py-3 px-4 text-neutral-300">
-                      {user.totalWatchTime ?? '—'}
-                    </td>
-                    <td className="py-3 px-4 text-neutral-300">
-                      {user.ppvPurchases ?? '—'}
-                    </td>
-                    <td className="py-3 px-4 text-neutral-300">
-                      {user.totalSpent != null ? `₦${user.totalSpent.toLocaleString()}` : '—'}
-                    </td>
-                    <td className="py-3 px-4">
-                      <Badge className={user.status === 'Inactive' ? 'bg-red-500/20 text-red-400' : user.status === 'Unverified' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'}>
-                        {user.status ?? 'Active'}
-                      </Badge>
-                    </td>
-                    <td className="py-3 px-4">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-[#fd7e14] hover:text-[#ff9940] hover:bg-[#fd7e14]/10"
-                            onClick={() => setSelectedUser(user)}
-                          >
-                            <Eye className="w-4 h-4 mr-1" />
-                            View
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="bg-neutral-900 border-neutral-800 text-white max-w-xl">
-                          <DialogHeader>
-                            <DialogTitle className="text-white">User Profile</DialogTitle>
-                          </DialogHeader>
-                          {selectedUser && (
-                            <UserProfileModal
-                              user={selectedUser}
-                              onDelete={handleDelete}
-                              deletingId={deletingId}
-                            />
-                          )}
-                        </DialogContent>
-                      </Dialog>
-                    </td>
-                  </tr>
-                ))}
-                {!loading && filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="py-4 text-center text-neutral-400">
-                      No users found
-                    </td>
-                  </tr>
-                )}
-                {loading && (
-                  <tr>
-                    <td colSpan={5} className="py-4 text-center text-neutral-400">
-                      Loading...
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            columns={columns}
+            rows={filtered}
+            rowKey={(u) => u.id}
+            loading={loading}
+            emptyMessage="No users found"
+            bulkActions={bulkActions}
+          />
         </CardContent>
       </Card>
     </div>
