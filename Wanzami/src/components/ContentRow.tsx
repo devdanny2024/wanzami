@@ -8,9 +8,10 @@ interface ContentRowProps {
   movies: MovieData[];
   onMovieClick: (movie: MovieData) => void;
   maxVisible?: number;
+  ranked?: boolean;
 }
 
-export function ContentRow({ title, movies, onMovieClick, maxVisible }: ContentRowProps) {
+export function ContentRow({ title, movies, onMovieClick, maxVisible, ranked }: ContentRowProps) {
   const displayMovies = maxVisible ? movies.slice(0, maxVisible) : movies;
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
@@ -51,7 +52,7 @@ export function ContentRow({ title, movies, onMovieClick, maxVisible }: ContentR
 
   return (
     <div className="group/row relative mb-8 md:mb-10">
-      <h2 className="container-page font-heading text-foreground mb-3 md:mb-4 tracking-wide uppercase text-2xl md:text-3xl">
+      <h2 className="container-page font-heading text-foreground mb-3 md:mb-4 tracking-wide uppercase text-xl md:text-2xl">
         {title}
       </h2>
 
@@ -77,14 +78,32 @@ export function ContentRow({ title, movies, onMovieClick, maxVisible }: ContentR
           className="flex gap-3 md:gap-4 overflow-x-auto scrollbar-hide scroll-smooth snap-x snap-mandatory px-4 sm:px-6 lg:px-10 2xl:px-12"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
-          {displayMovies.map((movie) => (
-            <div
-              key={movie.id}
-              className="flex-none snap-start w-[44%] sm:w-[32%] md:w-[26%] lg:w-[22%] xl:w-[18.5%] 2xl:w-[15.5%]"
-            >
-              <MovieCard movie={movie} onClick={onMovieClick} />
-            </div>
-          ))}
+          {displayMovies.map((movie, index) =>
+            ranked ? (
+              <div
+                key={movie.id}
+                className="flex-none snap-start flex items-end gap-1 w-[62%] sm:w-[46%] md:w-[38%] lg:w-[31%] xl:w-[26%] 2xl:w-[22%]"
+              >
+                <span
+                  aria-hidden="true"
+                  className="font-heading leading-none text-transparent text-[64px] md:text-[88px] shrink-0 -mr-3 select-none"
+                  style={{ WebkitTextStroke: '2px rgba(255,255,255,0.28)' }}
+                >
+                  {index + 1}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <MovieCard movie={movie} onClick={onMovieClick} />
+                </div>
+              </div>
+            ) : (
+              <div
+                key={movie.id}
+                className="flex-none snap-start w-[44%] sm:w-[32%] md:w-[26%] lg:w-[22%] xl:w-[18.5%] 2xl:w-[15.5%]"
+              >
+                <MovieCard movie={movie} onClick={onMovieClick} />
+              </div>
+            )
+          )}
         </div>
 
         {/* Right Arrow */}

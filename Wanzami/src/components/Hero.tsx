@@ -39,7 +39,7 @@ export function Hero({ onPlayClick, onMoreInfoClick, featured }: HeroProps) {
 
   if (slides.length === 0) {
     return (
-      <div className="relative h-[70vh] min-h-[460px] sm:h-[80vh] md:h-[92vh] w-full overflow-hidden">
+      <div className="relative h-[64vh] min-h-[420px] sm:h-[72vh] md:h-[80vh] w-full overflow-hidden">
         <div className="absolute inset-0">
           <Skeleton className="h-full w-full rounded-none" />
         </div>
@@ -105,7 +105,7 @@ export function Hero({ onPlayClick, onMoreInfoClick, featured }: HeroProps) {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4, duration: 0.6 }}
-                className="font-heading text-foreground text-5xl sm:text-6xl md:text-7xl lg:text-8xl tracking-wide leading-[0.9] uppercase"
+                className="font-heading text-foreground text-4xl sm:text-5xl md:text-6xl lg:text-7xl tracking-wide leading-[0.9] uppercase"
               >
                 {current.title}
               </motion.h1>

@@ -2,6 +2,7 @@ import { Hero } from "./Hero";
 import { ContentRow } from "./ContentRow";
 import { MovieData } from "./MovieCard";
 import { LiveRow } from "./LiveRow";
+import { RowSkeleton } from "./Skeletons";
 import type { LiveEvent } from "@/lib/contentClient";
 
 interface HomePageProps {
@@ -150,19 +151,19 @@ export function HomePage({
                   <h2 className="font-heading text-foreground tracking-wide uppercase text-3xl md:text-4xl">Movies</h2>
                 </div>
                 {top10Movies.length > 0 && (
-                  <ContentRow title="Top 10 Movies" movies={top10Movies} onMovieClick={onMovieClick} />
+                  <ContentRow title="Top 10 today" movies={top10Movies} onMovieClick={onMovieClick} ranked />
                 )}
                 {trendingMovies.length > 0 && (
-                  <ContentRow title="Trending Movies" movies={trendingMovies} onMovieClick={onMovieClick} />
+                  <ContentRow title="Trending" movies={trendingMovies} onMovieClick={onMovieClick} />
                 )}
                 {movieGenreRows.map((row) => (
                   <ContentRow key={row.title} title={row.title} movies={row.items} onMovieClick={onMovieClick} />
                 ))}
                 {moviesPrimary.length > 0 && (
-                  <ContentRow title="Latest Movies" movies={moviesPrimary} onMovieClick={onMovieClick} />
+                  <ContentRow title="Latest" movies={moviesPrimary} onMovieClick={onMovieClick} />
                 )}
                 {moviesSecondary.length > 0 && (
-                  <ContentRow title="Other Movie Picks" movies={moviesSecondary} onMovieClick={onMovieClick} />
+                  <ContentRow title="More picks" movies={moviesSecondary} onMovieClick={onMovieClick} />
                 )}
               </>
             ) : null}
@@ -173,19 +174,19 @@ export function HomePage({
                   <h2 className="font-heading text-foreground tracking-wide uppercase text-3xl md:text-4xl">Series</h2>
                 </div>
                 {top10Series.length > 0 && (
-                  <ContentRow title="Top 10 Series" movies={top10Series} onMovieClick={onMovieClick} />
+                  <ContentRow title="Top 10 today" movies={top10Series} onMovieClick={onMovieClick} ranked />
                 )}
                 {trendingSeries.length > 0 && (
-                  <ContentRow title="Trending Series" movies={trendingSeries} onMovieClick={onMovieClick} />
+                  <ContentRow title="Trending" movies={trendingSeries} onMovieClick={onMovieClick} />
                 )}
                 {seriesGenreRows.map((row) => (
                   <ContentRow key={row.title} title={row.title} movies={row.items} onMovieClick={onMovieClick} />
                 ))}
                 {seriesPrimary.length > 0 && (
-                  <ContentRow title="Latest Series" movies={seriesPrimary} onMovieClick={onMovieClick} />
+                  <ContentRow title="Latest" movies={seriesPrimary} onMovieClick={onMovieClick} />
                 )}
                 {seriesSecondary.length > 0 && (
-                  <ContentRow title="Other Series Picks" movies={seriesSecondary} onMovieClick={onMovieClick} />
+                  <ContentRow title="More picks" movies={seriesSecondary} onMovieClick={onMovieClick} />
                 )}
               </>
             ) : null}
@@ -202,7 +203,10 @@ export function HomePage({
         ) : null}
       </div>
       {recsLoading && (
-        <div className="container-page text-ash mt-4">Loading personalized rows...</div>
+        <div className="mt-4 space-y-8 md:space-y-10">
+          <RowSkeleton />
+          <RowSkeleton />
+        </div>
       )}
       {recsError && (
         <div className="container-page text-destructive mt-4">Personalized rows unavailable: {recsError}</div>

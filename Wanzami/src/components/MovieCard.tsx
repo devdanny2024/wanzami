@@ -75,6 +75,17 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
 
   const availabilityBadge = getAvailabilityBadge(movie);
   const comingSoon = isComingSoon(movie);
+  const canPlay = (owned || isFree) && !comingSoon;
+
+  // Price/access shown only on hover.
+  const priceLabel =
+    movie.ppvPriceNaira != null
+      ? `${(movie.ppvCurrency ?? 'NGN') === 'NGN' ? '₦' : ''}${Number(movie.ppvPriceNaira).toLocaleString()}`
+      : null;
+  const accessLabel = isFree ? 'Free' : owned ? 'Owned' : priceLabel ?? 'Premium';
+  const accessFree = isFree || owned;
+  const ratingLabel = movie.rating || movie.maturityRating;
+  const genreLabel = movie.genre || movie.genres?.[0];
 
   const hoverTrailerUrl = movie.shortTrailerUrl || movie.trailerUrl;
   const canHoverPlayTrailer = Boolean(
@@ -125,7 +136,7 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
       role="button"
       tabIndex={0}
       aria-label={movie.title}
-      className="relative group cursor-pointer flex-shrink-0 w-full rounded-2xl border border-white/10 bg-graphite p-2 sm:p-2.5 hover:z-50 hover:border-white/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand transition-colors"
+      className="relative group cursor-pointer flex-shrink-0 w-full rounded-xl overflow-hidden bg-graphite-2 hover:z-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
       onMouseEnter={handleEnter}
       onMouseLeave={handleLeave}
       onClick={() => onClick(movie)}
@@ -135,29 +146,15 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
           onClick(movie);
         }
       }}
-      whileHover={{ scale: 1.06, y: -6 }}
+      whileHover={{ scale: 1.05, y: -4 }}
       transition={{ duration: 0.18 }}
     >
-      <div className="relative aspect-video rounded-xl overflow-hidden bg-graphite-2">
+      <div className="relative aspect-video">
         <ImageWithFallback
           src={movie.image}
           alt={movie.title}
           className="w-full h-full object-cover"
         />
-
-        {/* Coming Soon / Leaving Soon badge */}
-        {availabilityBadge && (
-          <div
-            className={`absolute top-2 left-2 z-10 inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-bold uppercase tracking-wide shadow-lg backdrop-blur-sm ${
-              availabilityBadge.kind === 'COMING_SOON'
-                ? 'bg-sky-500/90 text-white'
-                : 'bg-rose-500/90 text-white'
-            }`}
-          >
-            <Clock className="w-3 h-3" />
-            {availabilityBadge.label}
-          </div>
-        )}
 
         {/* Hover trailer preview (muted autoplay) */}
         {canHoverPlayTrailer && hoverTrailerUrl && (
@@ -170,88 +167,106 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
             muted
             playsInline
             preload="metadata"
-            // loop feels closer to Netflix hover previews
             loop
           />
         )}
 
-        {/* Play overlay for owned titles */}
-        {owned && !comingSoon && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-brand shadow-lg shadow-brand/40 flex items-center justify-center">
-              <Play className="w-5 h-5 sm:w-6 sm:h-6 fill-current text-white" />
-            </div>
+        {/* Coming Soon / Leaving Soon badge */}
+        {availabilityBadge && (
+          <div
+            className={`absolute top-2 left-2 z-20 inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-bold uppercase tracking-wide shadow-lg ${
+              availabilityBadge.kind === 'COMING_SOON' ? 'bg-sky-500/90 text-white' : 'bg-rose-500/90 text-white'
+            }`}
+          >
+            <Clock className="w-3 h-3" />
+            {availabilityBadge.label}
           </div>
         )}
 
-        {/* Hover border glow */}
+        {/* Hover ring */}
         {isHovered && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="absolute inset-0 rounded-xl border-2 border-brand pointer-events-none"
-          />
+          <div className="absolute inset-0 z-20 rounded-xl ring-2 ring-brand pointer-events-none" />
         )}
+
+        {/* Resting title scrim — always readable, hides on hover for the reveal */}
+        <div
+          className={`absolute inset-x-0 bottom-0 z-10 p-2.5 bg-gradient-to-t from-black/85 via-black/30 to-transparent transition-opacity duration-150 ${
+            isHovered ? 'opacity-0' : 'opacity-100'
+          }`}
+        >
+          <div className="text-foreground text-[13px] font-medium line-clamp-1 drop-shadow">{movie.title}</div>
+        </div>
+
+        {/* Hover reveal — actions + access + meta */}
+        <div
+          className={`absolute inset-x-0 bottom-0 z-20 p-2.5 bg-gradient-to-t from-black via-black/85 to-transparent transition-opacity duration-150 ${
+            isHovered ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          }`}
+        >
+          <div className="text-foreground text-[13px] font-medium line-clamp-1 mb-1.5">{movie.title}</div>
+          {comingSoon ? (
+            <div className="flex items-center gap-1.5 text-[11px] text-sky-300">
+              <Clock className="w-3.5 h-3.5" />
+              {availabilityBadge?.label ?? 'Coming soon'}
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 mb-1.5">
+                {canPlay ? (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onClick(movie);
+                    }}
+                    aria-label={`Play ${movie.title}`}
+                    className="w-8 h-8 rounded-full bg-brand hover:bg-brand-dark text-black flex items-center justify-center transition-colors"
+                  >
+                    <Play className="w-4 h-4 fill-current" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onClick(movie);
+                    }}
+                    aria-label={`Buy ${movie.title}`}
+                    className="h-8 px-3 rounded-full bg-brand hover:bg-brand-dark text-black text-xs font-semibold flex items-center transition-colors"
+                  >
+                    {priceLabel ?? 'Buy'}
+                  </button>
+                )}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onClick(movie);
+                  }}
+                  aria-label={`More info about ${movie.title}`}
+                  className="w-8 h-8 rounded-full border border-white/30 text-white flex items-center justify-center hover:border-white/60 transition-colors"
+                >
+                  <Info className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="flex items-center gap-1.5 text-[11px] text-ash">
+                <span className={accessFree ? 'text-emerald-400 font-medium' : 'text-brand font-medium'}>
+                  {accessLabel}
+                </span>
+                {ratingLabel && <span>· {ratingLabel}</span>}
+                {genreLabel && <span className="line-clamp-1">· {genreLabel}</span>}
+              </div>
+            </>
+          )}
+        </div>
 
         {/* Progress bar for continue watching */}
         {typeof movie.completionPercent === 'number' && movie.completionPercent >= 0 && (
-          <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-white/20">
+          <div className="absolute bottom-0 left-0 right-0 z-30 h-1.5 bg-white/20">
             <div
               className="h-full bg-brand"
               style={{
-                // Clamp progress so that any tracked title shows at least
-                // a small visible bar, instead of disappearing when the
-                // completion value is very small.
-                width: `${Math.min(
-                  100,
-                  Math.max(4, movie.completionPercent * 100),
-                )}%`,
+                width: `${Math.min(100, Math.max(4, movie.completionPercent * 100))}%`,
               }}
             />
           </div>
-        )}
-      </div>
-
-      {/* Title, meta, and CTA */}
-      <div className="mt-2.5 flex items-center gap-2 justify-between">
-        <div className="flex-1 min-w-0">
-          <div className="text-foreground text-sm font-medium line-clamp-1">{movie.title}</div>
-          {(movie.rating || movie.genre) && (
-            <div className="flex items-center gap-2 text-xs text-ash mt-1">
-              {movie.rating && (
-                <span className="text-brand border border-brand px-1.5 py-0.5 rounded shrink-0">
-                  {movie.rating}
-                </span>
-              )}
-              {movie.genre && <span className="line-clamp-1">{movie.genre}</span>}
-            </div>
-          )}
-        </div>
-        {/* External CTA */}
-        {comingSoon ? (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onClick(movie);
-            }}
-            aria-label={`${movie.title} — coming soon`}
-            className="inline-flex items-center justify-center gap-1.5 shrink-0 min-h-[40px] bg-white/10 text-foreground px-3 sm:px-4 py-2 rounded-lg text-sm font-medium border border-white/15 transition-colors active:scale-95"
-          >
-            <Clock className="w-4 h-4" />
-            <span className="hidden sm:inline">Coming soon</span>
-          </button>
-        ) : (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onClick(movie);
-            }}
-            aria-label={owned || isFree ? `Play ${movie.title}` : `Buy ${movie.title}`}
-            className="inline-flex items-center justify-center gap-1.5 shrink-0 min-h-[40px] bg-brand hover:bg-brand-dark text-white px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-colors active:scale-95"
-          >
-            {owned || isFree ? <Play className="w-4 h-4 fill-current" /> : <Info className="w-4 h-4" />}
-            <span className="hidden sm:inline">{owned || isFree ? "Play" : "Buy"}</span>
-          </button>
         )}
       </div>
     </motion.div>
