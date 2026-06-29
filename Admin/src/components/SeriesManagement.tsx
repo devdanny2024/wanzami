@@ -6,7 +6,6 @@ import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
-import { Badge } from "./ui/badge";
 import { Plus, Edit, Search, Upload, Layers, Trash2 } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { AddEditSeriesForm } from "./AddEditSeriesForm";
@@ -14,6 +13,8 @@ import { useUploadQueue } from "@/context/UploadQueueProvider";
 import { authFetch } from "@/lib/authClient";
 import { MovieTitle } from "./MoviesManagement"; // reuse shape for series titles
 import { Eye } from "lucide-react";
+import { StatusBadge } from "./StatusBadge";
+import { titleStatus } from "../lib/status";
 import { toast } from "sonner";
 
 type SeriesTitle = MovieTitle & {
@@ -223,9 +224,14 @@ export function SeriesManagement() {
                 alt={item.name}
                 className="w-full h-48 object-cover"
               />
-              {item.pendingReview && (
-                <Badge className="absolute top-2 left-2 bg-amber-500 text-white">Pending</Badge>
-              )}
+              {(() => {
+                const s = titleStatus(item);
+                return s.tone !== "live" ? (
+                  <div className="absolute top-2 left-2">
+                    <StatusBadge tone={s.tone} label={s.label} />
+                  </div>
+                ) : null;
+              })()}
             </div>
             <CardHeader className="pb-2">
               <CardTitle className="text-white flex items-center justify-between">
@@ -279,10 +285,6 @@ export function SeriesManagement() {
                 <span>{item.episodeCount ?? 0} episodes</span>
               </div>
               <div className="flex flex-wrap items-center gap-2 justify-end">
-                {item.pendingReview && (
-                  <Badge className="bg-amber-600 text-white border-amber-700">Pending</Badge>
-                )}
-                {item.archived && <Badge className="bg-neutral-700 text-white border-neutral-600">Archived</Badge>}
                 <Button
                   size="sm"
                   className="bg-[#fd7e14] hover:bg-[#ff9940] text-white"

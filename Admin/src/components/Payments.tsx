@@ -1,10 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Label } from './ui/label';
 import { DollarSign, CreditCard, AlertCircle } from 'lucide-react';
 import { fetchPpvPurchases, type PpvPurchase } from '@/lib/paymentsClient';
+import { DataTable, type Column } from './DataTable';
+import { StatusBadge } from './StatusBadge';
+import type { StatusTone } from '../lib/status';
+
+const payTone = (s?: string): { tone: StatusTone; label: string } =>
+  s === 'SUCCESS'
+    ? { tone: 'live', label: 'Success' }
+    : s === 'PENDING'
+    ? { tone: 'pending', label: 'Pending' }
+    : s === 'FAILED'
+    ? { tone: 'error', label: 'Failed' }
+    : { tone: 'neutral', label: s ?? '—' };
 
 export function Payments({ invoicesOnly = false }: { invoicesOnly?: boolean }) {
   const [purchases, setPurchases] = useState<PpvPurchase[]>([]);
@@ -40,6 +51,48 @@ export function Payments({ invoicesOnly = false }: { invoicesOnly?: boolean }) {
     const failed = purchases.filter((p) => p.status === 'FAILED').length;
     return { total, successCount: success.length, failedCount: failed };
   }, [purchases]);
+
+  const columns: Column<PpvPurchase>[] = [
+    {
+      key: 'title',
+      header: 'Title',
+      cell: (p) => <span className="text-white">{p.title?.name ?? 'Title'}</span>,
+      sortValue: (p) => (p.title?.name ?? '').toLowerCase(),
+    },
+    {
+      key: 'ref',
+      header: 'Ref / User',
+      cell: (p) => (
+        <div>
+          <div className="text-neutral-300">{p.paystackRef ?? p.paystackTrxId ?? p.id}</div>
+          <div className="text-xs text-neutral-500">{p.user?.email ?? p.userId}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'amount',
+      header: 'Amount (NGN)',
+      align: 'right',
+      cell: (p) => `₦${(p.amountNaira ?? 0).toLocaleString()}`,
+      sortValue: (p) => p.amountNaira ?? 0,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      cell: (p) => {
+        const s = payTone(p.status);
+        return <StatusBadge tone={s.tone} label={s.label} />;
+      },
+      sortValue: (p) => p.status ?? '',
+    },
+    { key: 'gateway', header: 'Gateway', cell: (p) => p.gateway, sortValue: (p) => p.gateway ?? '' },
+    {
+      key: 'date',
+      header: 'Date',
+      cell: (p) => (p.createdAt ? new Date(p.createdAt).toLocaleString() : '—'),
+      sortValue: (p) => (p.createdAt ? new Date(p.createdAt).getTime() : 0),
+    },
+  ];
 
   const displayTitle = invoicesOnly ? 'Invoices' : 'Payments';
   const displaySubtitle = invoicesOnly
@@ -123,57 +176,18 @@ export function Payments({ invoicesOnly = false }: { invoicesOnly?: boolean }) {
         <CardHeader>
           <CardTitle className="text-white">Transactions</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {loading && <p className="text-neutral-400 text-sm">Loading...</p>}
-          {error && <p className="text-red-400 text-sm">{error}</p>}
-          {!loading && !error && purchases.length === 0 && (
-            <p className="text-neutral-500 text-sm">No transactions found.</p>
+        <CardContent>
+          {error ? (
+            <p className="text-red-400 text-sm">{error}</p>
+          ) : (
+            <DataTable
+              columns={columns}
+              rows={purchases}
+              rowKey={(p) => String(p.id)}
+              loading={loading}
+              emptyMessage="No transactions found."
+            />
           )}
-          {!loading &&
-            !error &&
-            purchases.map((p) => (
-              <div
-                key={p.id}
-                className="flex flex-col md:flex-row md:items-center md:justify-between bg-neutral-950 border border-neutral-800 rounded-lg p-3 gap-2"
-              >
-                <div>
-                  <p className="text-white font-medium">{p.title?.name ?? 'Title'}</p>
-                  <p className="text-xs text-neutral-400">
-                    Ref: {p.paystackRef ?? p.paystackTrxId ?? p.id} · {p.user?.email ?? p.userId}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-white">
-                    ₦{(p.amountNaira ?? 0).toLocaleString()} {p.currency ?? ''}
-                  </p>
-                  <p
-                    className={`text-xs ${
-                      p.status === 'SUCCESS'
-                        ? 'text-emerald-400'
-                        : p.status === 'PENDING'
-                        ? 'text-amber-400'
-                        : 'text-red-400'
-                    }`}
-                  >
-                    {p.status} · {p.gateway}
-                  </p>
-                  {p.createdAt ? (
-                    <p className="text-[11px] text-neutral-500">
-                      {new Date(p.createdAt).toLocaleString()}
-                    </p>
-                  ) : null}
-                </div>
-                <Badge
-                  className={
-                    p.gateway === 'PAYSTACK'
-                      ? 'bg-emerald-500/20 text-emerald-300'
-                      : 'bg-amber-500/20 text-amber-300'
-                  }
-                >
-                  {p.gateway}
-                </Badge>
-              </div>
-            ))}
         </CardContent>
       </Card>
     </div>
