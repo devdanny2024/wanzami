@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "./ui/badge";
 import { StatusBadge } from "./StatusBadge";
 import { titleStatus } from "../lib/status";
+import { FileDrop } from "./FileDrop";
 import { Plus, Edit, Trash2, Search } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { useUploadQueue } from "@/context/UploadQueueProvider";
@@ -825,84 +826,45 @@ function AddEditMovieForm({
       </TabsContent>
 
       <TabsContent value="media" className="space-y-4 mt-4">
-        <div>
-          <Label className="text-neutral-300">Upload Video File</Label>
-          <label className="mt-1 block border-2 border-dashed border-neutral-800 rounded-lg p-8 text-center bg-neutral-950 cursor-pointer">
-            <p className="text-neutral-400">Drop video file here or click to browse</p>
-            <p className="text-xs text-neutral-500 mt-1">MP4, MOV, AVI (Max 5GB)</p>
-            <input
-              type="file"
-              accept="video/*"
-              className="hidden"
-              onChange={(e) => setVideoFile(e.target.files?.[0] ?? null)}
-            />
-            {videoFile && <p className="text-xs text-[#fd7e14] mt-2">Selected: {videoFile.name}</p>}
-          </label>
-          <p className="text-xs text-neutral-500 mt-1">
-            Video uploads queue after you save. You can also use the table ΓÇ£Upload videoΓÇ¥ action per row.
-          </p>
+        <FileDrop
+          id="movie-video-upload"
+          label="Video file"
+          accept="video/*"
+          file={videoFile}
+          hint="MP4, MOV, AVI · up to 5GB · queues after save"
+          onSelect={setVideoFile}
+        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <FileDrop
+            id="movie-poster-upload"
+            label="Poster (2:3)"
+            accept="image/*"
+            file={posterFile}
+            currentUrl={movie?.posterUrl}
+            hint="JPG/PNG · 1080×1920"
+            onSelect={setPosterFile}
+          />
+          <FileDrop
+            id="movie-thumb-upload"
+            label="Thumbnail (16:9)"
+            accept="image/*"
+            file={thumbFile}
+            currentUrl={movie?.thumbnailUrl}
+            hint="JPG/PNG · 1920×1080"
+            onSelect={setThumbFile}
+          />
         </div>
-
         <div>
-          <Label className="text-neutral-300">Upload Poster</Label>
-          <label className="mt-1 block border-2 border-dashed border-neutral-800 rounded-lg p-8 text-center bg-neutral-950 cursor-pointer">
-            <p className="text-neutral-400">Drop poster image here or click to browse</p>
-            <p className="text-xs text-neutral-500 mt-1">JPG, PNG (Recommended: 1080x1920)</p>
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => setPosterFile(e.target.files?.[0] ?? null)}
-            />
-            {posterFile && <p className="text-xs text-[#fd7e14] mt-2">Selected: {posterFile.name}</p>}
-          </label>
-          {movie?.posterUrl && !posterFile && (
-            <p className="text-xs text-neutral-400 mt-2">
-              Current:{" "}
-              <a className="text-[#fd7e14]" href={movie.posterUrl} target="_blank" rel="noreferrer">
-                {movie.posterUrl}
-              </a>
-            </p>
-          )}
-        </div>
-
-        <div>
-          <Label className="text-neutral-300">Upload Thumbnail</Label>
-          <label className="mt-1 block border-2 border-dashed border-neutral-800 rounded-lg p-8 text-center bg-neutral-950 cursor-pointer">
-            <p className="text-neutral-400">Drop thumbnail image here or click to browse</p>
-            <p className="text-xs text-neutral-500 mt-1">JPG, PNG (Recommended: 1920x1080)</p>
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => setThumbFile(e.target.files?.[0] ?? null)}
-            />
-            {thumbFile && <p className="text-xs text-[#fd7e14] mt-2">Selected: {thumbFile.name}</p>}
-          </label>
-          {movie?.thumbnailUrl && !thumbFile && (
-            <p className="text-xs text-neutral-400 mt-2">
-              Current:{" "}
-              <a className="text-[#fd7e14]" href={movie.thumbnailUrl} target="_blank" rel="noreferrer">
-                {movie.thumbnailUrl}
-              </a>
-            </p>
-          )}
-        </div>
-
-        <div>
-          <Label className="text-neutral-300">Short Trailer (hero background)</Label>
-          <label className="mt-1 block border-2 border-dashed border-neutral-800 rounded-lg p-8 text-center bg-neutral-950 cursor-pointer">
-            <p className="text-neutral-400">Drop short trailer file here or click to browse</p>
-            <p className="text-xs text-neutral-500 mt-1">MP4 or HLS</p>
-            <input
-              type="file"
-              accept="video/*"
-              className="hidden"
-              onChange={(e) => setShortTrailerFile(e.target.files?.[0] ?? null)}
-            />
-            {shortTrailerFile && <p className="text-xs text-[#fd7e14] mt-2">Selected: {shortTrailerFile.name}</p>}
-          </label>
-          <div className="mt-3">
+          <FileDrop
+            id="movie-short-trailer-upload"
+            label="Short trailer (hero background)"
+            accept="video/*"
+            file={shortTrailerFile}
+            currentUrl={shortTrailerUrlText || (movie as any)?.shortTrailerUrl}
+            hint="MP4 or HLS"
+            onSelect={setShortTrailerFile}
+          />
+          <div className="mt-2">
             <Label className="text-neutral-300">Or link</Label>
             <Input
               value={shortTrailerUrlText}
@@ -911,35 +873,18 @@ function AddEditMovieForm({
               placeholder="https://cdn.../short-trailer.mp4"
             />
           </div>
-          {(movie as any)?.shortTrailerUrl && !shortTrailerFile && (
-            <p className="text-xs text-neutral-400 mt-2">
-              Current:{" "}
-              <a
-                className="text-[#fd7e14]"
-                href={shortTrailerUrlText || (movie as any).shortTrailerUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {shortTrailerUrlText || (movie as any).shortTrailerUrl}
-              </a>
-            </p>
-          )}
         </div>
-
         <div>
-          <Label className="text-neutral-300">Upload Trailer</Label>
-          <label className="mt-1 block border-2 border-dashed border-neutral-800 rounded-lg p-8 text-center bg-neutral-950 cursor-pointer">
-            <p className="text-neutral-400">Drop trailer file here or click to browse</p>
-            <p className="text-xs text-neutral-500 mt-1">MP4 preferred</p>
-            <input
-              type="file"
-              accept="video/*"
-              className="hidden"
-              onChange={(e) => setTrailerFile(e.target.files?.[0] ?? null)}
-            />
-            {trailerFile && <p className="text-xs text-[#fd7e14] mt-2">Selected: {trailerFile.name}</p>}
-          </label>
-          <div className="mt-3">
+          <FileDrop
+            id="movie-trailer-upload"
+            label="Trailer"
+            accept="video/*"
+            file={trailerFile}
+            currentUrl={trailerUrlText || movie?.trailerUrl}
+            hint="MP4 preferred"
+            onSelect={setTrailerFile}
+          />
+          <div className="mt-2">
             <Label className="text-neutral-300">Or link</Label>
             <Input
               value={trailerUrlText}
@@ -948,14 +893,6 @@ function AddEditMovieForm({
               placeholder="https://youtube.com/..."
             />
           </div>
-          {movie?.trailerUrl && !trailerFile && (
-            <p className="text-xs text-neutral-400 mt-2">
-              Current:{" "}
-              <a className="text-[#fd7e14]" href={trailerUrlText || movie.trailerUrl} target="_blank" rel="noreferrer">
-                {trailerUrlText || movie.trailerUrl}
-              </a>
-            </p>
-          )}
         </div>
       </TabsContent>
 
