@@ -1,5 +1,4 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -8,11 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Switch } from "./ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { Badge } from "./ui/badge";
 import { StatusBadge } from "./StatusBadge";
 import { titleStatus } from "../lib/status";
 import { FileDrop } from "./FileDrop";
-import { Plus, Edit, Trash2, Search } from "lucide-react";
+import { Plus, Edit, Trash2, Search, Eye, MoreVertical, Rocket } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { useUploadQueue } from "@/context/UploadQueueProvider";
 import { toast } from "sonner";
@@ -58,6 +58,7 @@ export function MoviesManagement() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "live" | "coming" | "pending" | "archived">("all");
   const [movies, setMovies] = useState<MovieTitle[]>([]);
   const { startUpload, startAssetUpload, tasks } = useUploadQueue();
 
@@ -89,7 +90,28 @@ export function MoviesManagement() {
     startUpload("MOVIE", movieId, file);
   };
 
-  const filteredMovies = movies.filter((m) => m.name?.toLowerCase().includes(searchQuery.toLowerCase()));
+  const statusKey = (m: MovieTitle): "live" | "coming" | "pending" | "archived" =>
+    m.archived
+      ? "archived"
+      : m.pendingReview
+      ? "pending"
+      : m.availability === "COMING_SOON" || m.availability === "LEAVING_SOON"
+      ? "coming"
+      : "live";
+
+  const searchedMovies = movies.filter((m) => m.name?.toLowerCase().includes(searchQuery.toLowerCase()));
+  const statusCounts = {
+    all: searchedMovies.length,
+    live: 0,
+    coming: 0,
+    pending: 0,
+    archived: 0,
+  };
+  searchedMovies.forEach((m) => {
+    statusCounts[statusKey(m)] += 1;
+  });
+  const filteredMovies =
+    statusFilter === "all" ? searchedMovies : searchedMovies.filter((m) => statusKey(m) === statusFilter);
 
   const openPreview = async (movie: MovieTitle) => {
     try {
@@ -114,17 +136,17 @@ export function MoviesManagement() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-3xl text-white">Movies Management</h1>
-          <p className="text-neutral-400 mt-1">Manage all content on the platform</p>
+          <h1 className="text-2xl font-semibold text-white">Movies</h1>
+          <p className="text-sm text-neutral-400 mt-0.5">Manage all movie content on the platform</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <Button
-            variant="destructive"
-            className="bg-red-600 hover:bg-red-500 text-white"
+            variant="ghost"
+            className="text-red-400 hover:text-red-300 hover:bg-red-500/10 text-sm"
             onClick={async () => {
-              if (!confirm("This will delete ALL titles, episodes, episodes, assets. Continue?")) return;
+              if (!confirm("This will delete ALL titles, episodes, and assets. Continue?")) return;
               const res = await authFetch("/admin/titles/purge", {
                 method: "POST",
                 headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -137,13 +159,14 @@ export function MoviesManagement() {
               }
             }}
           >
-            Delete All
+            <Trash2 className="w-4 h-4 mr-1.5" />
+            Delete all
           </Button>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
                 <Plus className="w-4 h-4 mr-2" />
-                Add Movie
+                Add movie
               </Button>
             </DialogTrigger>
             <DialogContent className="bg-neutral-900 border-neutral-800 text-white max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
@@ -166,21 +189,39 @@ export function MoviesManagement() {
         </div>
       </div>
 
-      {/* Search */}
-      <Card className="bg-neutral-900 border-neutral-800">
-        <CardContent className="pt-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
-            <Input
-              type="search"
-              placeholder="Search movies..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 bg-neutral-950 border-neutral-800 text-white"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
+        <Input
+          type="search"
+          placeholder="Search movies…"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10 bg-neutral-950 border-neutral-800 text-white"
+        />
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {([
+          ["all", "All"],
+          ["live", "Live"],
+          ["coming", "Coming soon"],
+          ["pending", "Pending"],
+          ["archived", "Archived"],
+        ] as const).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setStatusFilter(key)}
+            className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
+              statusFilter === key
+                ? "bg-[#fd7e14]/15 border-[#fd7e14] text-[#fd7e14]"
+                : "bg-neutral-950 border-neutral-800 text-neutral-300 hover:border-neutral-600"
+            }`}
+          >
+            {label} <span className="opacity-60">{statusCounts[key]}</span>
+          </button>
+        ))}
+      </div>
 
       {/* Preview Dialog */}
       <Dialog open={!!previewMovie} onOpenChange={(open) => !open && setPreviewMovie(null)}>
@@ -229,120 +270,113 @@ export function MoviesManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* Movies Grid */}
-      <Card className="bg-neutral-900 border-neutral-800">
-        <CardHeader>
-          <CardTitle className="text-white">All Movies</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {filteredMovies.length === 0 ? (
-            <p className="text-neutral-500 text-sm">No movies found.</p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredMovies.map((movie) => {
-                const status = titleStatus(movie);
-                return (
-                  <div
-                    key={movie.id}
-                    className="relative rounded-xl overflow-hidden border border-neutral-800 bg-neutral-950 group"
-                  >
-                    <div className="relative h-56">
-                      <ImageWithFallback
-                        src={movie.thumbnailUrl || movie.posterUrl || ""}
-                        alt={movie.name}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                        <Button
-                          size="sm"
-                          className="bg-white/10 text-white hover:bg-white/20"
-                          onClick={() => openPreview(movie)}
-                        >
-                          Preview
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="bg-white/10 text-white hover:bg-white/20"
-                          onClick={() => {
-                            setEditingMovie(movie);
-                            setIsAddDialogOpen(true);
-                          }}
-                        >
-                          Edit
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="p-4 space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className="text-white font-semibold line-clamp-1">{movie.name}</p>
-                          <p className="text-xs text-neutral-400">{status.label}</p>
-                        </div>
-                        <StatusBadge tone={status.tone} label={status.label} />
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                          onClick={async () => {
-                            if (!confirm("Delete this title?")) return;
-                            await authFetch(`/admin/titles/${movie.id}`, {
-                              method: "DELETE",
-                              headers: token ? { Authorization: `Bearer ${token}` } : {},
-                            });
-                            void reloadMovies();
-                          }}
-                        >
-                          <Trash2 className="w-4 h-4 mr-1" />
-                          Delete
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-[#fd7e14] hover:text-[#ff9940] hover:bg-[#fd7e14]/10"
-                          onClick={async () => {
-                            await authFetch(`/admin/titles/${movie.id}`, {
-                              method: "PATCH",
-                              headers: token ? { Authorization: `Bearer ${token}` } : {},
-                              body: JSON.stringify({ archived: !movie.archived }),
-                            });
-                            void reloadMovies();
-                          }}
-                        >
-                          {movie.archived ? "Unarchive" : "Archive"}
-                        </Button>
-                        {!tasks.some(
-                          (t) =>
-                            t.kind === "MOVIE" &&
-                            String(t.targetId) === String(movie.id) &&
-                            t.status !== "completed" &&
-                            t.status !== "failed"
-                        ) && (
-                          <Button
-                            size="sm"
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white"
-                            onClick={async () => {
-                              await authFetch(`/admin/titles/${movie.id}/publish`, {
-                                method: "POST",
-                                headers: token ? { Authorization: `Bearer ${token}` } : {},
-                              });
-                              void reloadMovies();
-                            }}
-                          >
-                            Publish
-                          </Button>
-                        )}
-                      </div>
-                    </div>
+      {filteredMovies.length === 0 ? (
+        <p className="text-neutral-500 text-sm py-10 text-center">No movies match your filters.</p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredMovies.map((movie) => {
+            const status = titleStatus(movie);
+            const publishing = tasks.some(
+              (t) =>
+                t.kind === "MOVIE" &&
+                String(t.targetId) === String(movie.id) &&
+                t.status !== "completed" &&
+                t.status !== "failed"
+            );
+            const toggleArchive = async () => {
+              await authFetch(`/admin/titles/${movie.id}`, {
+                method: "PATCH",
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                body: JSON.stringify({ archived: !movie.archived }),
+              });
+              void reloadMovies();
+            };
+            const publish = async () => {
+              await authFetch(`/admin/titles/${movie.id}/publish`, {
+                method: "POST",
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+              });
+              void reloadMovies();
+            };
+            const remove = async () => {
+              if (!confirm(`Delete "${movie.name}"?`)) return;
+              await authFetch(`/admin/titles/${movie.id}`, {
+                method: "DELETE",
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+              });
+              void reloadMovies();
+            };
+            const edit = () => {
+              setEditingMovie(movie);
+              setIsAddDialogOpen(true);
+            };
+            return (
+              <div key={movie.id} className="rounded-xl overflow-hidden border border-neutral-800 bg-neutral-900 group">
+                <div className="relative aspect-video bg-neutral-950">
+                  <ImageWithFallback
+                    src={movie.thumbnailUrl || movie.posterUrl || ""}
+                    alt={movie.name}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute top-2 left-2">
+                    <StatusBadge tone={status.tone} label={status.label} />
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  <div className="absolute inset-x-0 bottom-0 p-2.5 bg-gradient-to-t from-black/85 via-black/30 to-transparent">
+                    <p className="text-white text-sm font-medium line-clamp-1">{movie.name}</p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-2 px-3 py-2.5 border-t border-white/5">
+                  {movie.pendingReview && !publishing ? (
+                    <Button size="sm" className="h-8 bg-emerald-600 hover:bg-emerald-500 text-white" onClick={publish}>
+                      <Rocket className="w-4 h-4 mr-1" />
+                      Publish
+                    </Button>
+                  ) : (
+                    <Button size="sm" className="h-8 bg-[#fd7e14]/15 text-[#fd7e14] hover:bg-[#fd7e14]/25" onClick={edit}>
+                      <Edit className="w-4 h-4 mr-1" />
+                      Edit
+                    </Button>
+                  )}
+                  <div className="flex items-center gap-1">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-neutral-300 hover:text-white"
+                      title="Preview"
+                      onClick={() => openPreview(movie)}
+                    >
+                      <Eye className="w-4 h-4" />
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-neutral-300 hover:text-white"
+                          aria-label="More actions"
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="bg-neutral-900 border-neutral-800 text-neutral-200">
+                        <DropdownMenuItem onClick={edit}>Edit</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openPreview(movie)}>Preview</DropdownMenuItem>
+                        {!publishing && <DropdownMenuItem onClick={publish}>Publish</DropdownMenuItem>}
+                        <DropdownMenuItem onClick={toggleArchive}>
+                          {movie.archived ? "Unarchive" : "Archive"}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="text-red-400 focus:text-red-300" onClick={remove}>
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
