@@ -146,7 +146,7 @@ export function MoviesManagement() {
                 Add Movie
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-neutral-900 border-neutral-800 text-white max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="bg-neutral-900 border-neutral-800 text-white max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
               <DialogHeader>
                 <DialogTitle className="text-white">Add/Edit Movie</DialogTitle>
               </DialogHeader>
@@ -680,43 +680,41 @@ function AddEditMovieForm({
         </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 mb-3">
-            <div>
-              <Label className="text-neutral-300">Release Date</Label>
-              <Input
-                type="date"
-                value={releaseDate}
-                onChange={(e) => setReleaseDate(e.target.value)}
-                className="mt-1 bg-neutral-950 border-neutral-800 text-white"
-              />
-            </div>
-        <div>
-          <Label className="text-neutral-300">Country Availability</Label>
-          <div className="mt-1 flex flex-wrap gap-2">
-            {["NG", "US", "UK", "CA", "ZA", "GH", "KE", "DE", "FR", "IN"].map((code) => {
-              const active = countryAvailability.includes(code);
-              return (
-                <button
-                  type="button"
-                  key={code}
-                  onClick={() =>
-                    setCountryAvailability((prev) =>
-                      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
-                    )
-                  }
-                  className={`px-3 py-1 rounded-full text-sm border ${
-                    active
-                      ? "bg-[#fd7e14]/20 border-[#fd7e14] text-[#fd7e14]"
-                      : "bg-neutral-900 border-neutral-700 text-neutral-300 hover:border-neutral-500"
-                  }`}
-                >
-                  {code}
-                </button>
-              );
-            })}
+          <div className="mb-3">
+            <Label className="text-neutral-300">Release Date</Label>
+            <Input
+              type="date"
+              value={releaseDate}
+              onChange={(e) => setReleaseDate(e.target.value)}
+              className="mt-1 bg-neutral-950 border-neutral-800 text-white w-full sm:max-w-xs"
+            />
           </div>
-        </div>
-      </div>
+          <div className="mb-3">
+            <Label className="text-neutral-300">Country Availability</Label>
+            <div className="mt-1 flex flex-wrap gap-2">
+              {["NG", "US", "UK", "CA", "ZA", "GH", "KE", "DE", "FR", "IN"].map((code) => {
+                const active = countryAvailability.includes(code);
+                return (
+                  <button
+                    type="button"
+                    key={code}
+                    onClick={() =>
+                      setCountryAvailability((prev) =>
+                        prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
+                      )
+                    }
+                    className={`px-3 py-1 rounded-full text-sm border ${
+                      active
+                        ? "bg-[#fd7e14]/20 border-[#fd7e14] text-[#fd7e14]"
+                        : "bg-neutral-900 border-neutral-700 text-neutral-300 hover:border-neutral-500"
+                    }`}
+                  >
+                    {code}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           <div className="flex items-center gap-2">
             <Switch
