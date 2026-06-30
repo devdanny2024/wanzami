@@ -38,13 +38,29 @@ type Episode = {
 export function SeriesManagement() {
   const [series, setSeries] = useState<SeriesTitle[]>([]);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "live" | "coming" | "pending" | "archived">("all");
   const [editingSeries, setEditingSeries] = useState<SeriesTitle | null>(null);
   const [view, setView] = useState<"list" | "addEdit">("list");
   const [episodesTarget, setEpisodesTarget] = useState<SeriesTitle | null>(null);
   const token = useMemo(() => (typeof window !== "undefined" ? localStorage.getItem("accessToken") : null), []);
   const { startUpload } = useUploadQueue();
 
-  const filtered = series.filter((s) => s.name?.toLowerCase().includes(search.toLowerCase()));
+  const seriesStatusKey = (m: MovieTitle): "live" | "coming" | "pending" | "archived" =>
+    m.archived
+      ? "archived"
+      : m.pendingReview
+      ? "pending"
+      : m.availability === "COMING_SOON" || m.availability === "LEAVING_SOON"
+      ? "coming"
+      : "live";
+
+  const searchedSeries = series.filter((s) => s.name?.toLowerCase().includes(search.toLowerCase()));
+  const seriesStatusCounts = { all: searchedSeries.length, live: 0, coming: 0, pending: 0, archived: 0 };
+  searchedSeries.forEach((s) => {
+    seriesStatusCounts[seriesStatusKey(s)] += 1;
+  });
+  const filtered =
+    statusFilter === "all" ? searchedSeries : searchedSeries.filter((s) => seriesStatusKey(s) === statusFilter);
 
   const loadSeries = useCallback(async () => {
     try {
@@ -174,45 +190,48 @@ export function SeriesManagement() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-3xl text-white">Series Management</h1>
-          <p className="text-neutral-400 mt-1">Manage episodic content with bulk or weekly uploads.</p>
+          <h1 className="text-2xl font-semibold text-white">Series</h1>
+          <p className="text-sm text-neutral-400 mt-0.5">Manage episodic content with bulk or weekly uploads</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button
-            variant="destructive"
-            className="bg-red-600 hover:bg-red-500 text-white"
-            onClick={async () => {
-              if (!confirm("This will delete ALL titles, episodes, and assets. Continue?")) return;
-              const res = await authFetch("/admin/titles/purge", {
-                method: "POST",
-                headers: token ? { Authorization: `Bearer ${token}` } : {},
-              });
-              if (res.ok) {
-                toast.success("All titles purged");
-                await loadSeries();
-              } else {
-                toast.error((res.data as any)?.message || "Purge failed");
-              }
-            }}
+        <Button onClick={openAddSeries} className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
+          <Plus className="w-4 h-4 mr-2" />
+          Add series
+        </Button>
+      </div>
+
+      <div className="relative max-w-md">
+        <Search className="w-4 h-4 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2" />
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search series…"
+          className="pl-9 bg-neutral-950 border-neutral-800 text-white"
+        />
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {([
+          ["all", "All"],
+          ["live", "Live"],
+          ["coming", "Coming soon"],
+          ["pending", "Pending"],
+          ["archived", "Archived"],
+        ] as const).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setStatusFilter(key)}
+            className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
+              statusFilter === key
+                ? "bg-[#fd7e14]/15 border-[#fd7e14] text-[#fd7e14]"
+                : "bg-neutral-950 border-neutral-800 text-neutral-300 hover:border-neutral-600"
+            }`}
           >
-            Delete All
-          </Button>
-          <div className="relative">
-            <Search className="w-4 h-4 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search series"
-              className="pl-9 bg-neutral-900 border-neutral-800 text-white"
-            />
-          </div>
-          <Button onClick={openAddSeries} className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Series
-          </Button>
-        </div>
+            {label} <span className="opacity-60">{seriesStatusCounts[key]}</span>
+          </button>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

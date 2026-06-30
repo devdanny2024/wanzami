@@ -5,14 +5,14 @@ import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Switch } from "./ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
+import { Tabs, TabsContent } from "./ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { Badge } from "./ui/badge";
 import { StatusBadge } from "./StatusBadge";
 import { titleStatus } from "../lib/status";
 import { FileDrop } from "./FileDrop";
-import { Plus, Edit, Trash2, Search, Eye, MoreVertical, Rocket } from "lucide-react";
+import { Plus, Edit, Trash2, Search, Eye, MoreVertical, Rocket, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { useUploadQueue } from "@/context/UploadQueueProvider";
 import { toast } from "sonner";
@@ -134,6 +134,40 @@ export function MoviesManagement() {
     }
   };
 
+  if (isAddDialogOpen) {
+    const closeEditor = () => {
+      setIsAddDialogOpen(false);
+      setEditingMovie(null);
+    };
+    return (
+      <div className="space-y-5 pb-4 max-w-4xl">
+        <button
+          onClick={closeEditor}
+          className="flex items-center gap-1.5 text-sm text-neutral-400 hover:text-white"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          Back to movies
+        </button>
+        <div>
+          <h1 className="text-2xl font-semibold text-white">
+            {editingMovie ? `Edit ${editingMovie.name}` : "New movie"}
+          </h1>
+          <p className="text-sm text-neutral-400 mt-0.5">Work through the steps, then save.</p>
+        </div>
+        <AddEditMovieForm
+          token={token ?? undefined}
+          onClose={closeEditor}
+          onSaved={() => {
+            void reloadMovies();
+            closeEditor();
+          }}
+          movie={editingMovie ?? undefined}
+          onQueueUpload={(id, file) => startUploadForMovie(id, file)}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -143,49 +177,15 @@ export function MoviesManagement() {
         </div>
         <div className="flex items-center gap-2">
           <Button
-            variant="ghost"
-            className="text-red-400 hover:text-red-300 hover:bg-red-500/10 text-sm"
-            onClick={async () => {
-              if (!confirm("This will delete ALL titles, episodes, and assets. Continue?")) return;
-              const res = await authFetch("/admin/titles/purge", {
-                method: "POST",
-                headers: token ? { Authorization: `Bearer ${token}` } : {},
-              });
-              if (res.ok) {
-                toast.success("All titles purged");
-                void reloadMovies();
-              } else {
-                toast.error((res.data as any)?.message || "Purge failed");
-              }
+            className="bg-[#fd7e14] hover:bg-[#ff9940] text-white"
+            onClick={() => {
+              setEditingMovie(null);
+              setIsAddDialogOpen(true);
             }}
           >
-            <Trash2 className="w-4 h-4 mr-1.5" />
-            Delete all
+            <Plus className="w-4 h-4 mr-2" />
+            Add movie
           </Button>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
-                <Plus className="w-4 h-4 mr-2" />
-                Add movie
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="bg-neutral-900 border-neutral-800 text-white max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
-              <DialogHeader>
-                <DialogTitle className="text-white">Add/Edit Movie</DialogTitle>
-              </DialogHeader>
-              <AddEditMovieForm
-                token={token ?? undefined}
-                onClose={() => setIsAddDialogOpen(false)}
-                onSaved={() => {
-                  void reloadMovies();
-                  setIsAddDialogOpen(false);
-                  setEditingMovie(null);
-                }}
-                movie={editingMovie ?? undefined}
-                onQueueUpload={(id, file) => startUploadForMovie(id, file)}
-              />
-            </DialogContent>
-          </Dialog>
         </div>
       </div>
 
@@ -428,6 +428,7 @@ function AddEditMovieForm({
   const [contentWarnings, setContentWarnings] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [step, setStep] = useState(0);
 
   useEffect(() => {
     setTitle(movie?.name ?? "");
@@ -618,23 +619,44 @@ function AddEditMovieForm({
     }
   };
 
-  return (
-    <Tabs defaultValue="basic" className="w-full">
-      <TabsList className="bg-neutral-800 border-neutral-700">
-        <TabsTrigger value="basic" className="data-[state=active]:bg-[#fd7e14] data-[state=active]:text-white">
-          Basic Info
-        </TabsTrigger>
-        <TabsTrigger value="media" className="data-[state=active]:bg-[#fd7e14] data-[state=active]:text-white">
-          Media Uploads
-        </TabsTrigger>
-        <TabsTrigger value="metadata" className="data-[state=active]:bg-[#fd7e14] data-[state=active]:text-white">
-          Metadata & SEO
-        </TabsTrigger>
-        <TabsTrigger value="restrictions" className="data-[state=active]:bg-[#fd7e14] data-[state=active]:text-white">
-          Restrictions
-        </TabsTrigger>
-      </TabsList>
+  const steps = [
+    { value: "basic", label: "Details" },
+    { value: "media", label: "Media" },
+    { value: "metadata", label: "Metadata & SEO" },
+    { value: "restrictions", label: "Restrictions" },
+  ];
+  const isLast = step === steps.length - 1;
 
+  return (
+    <div className="space-y-5">
+      {/* Stepper */}
+      <div className="flex items-center">
+        {steps.map((s, i) => (
+          <div key={s.value} className="flex items-center flex-1 last:flex-none">
+            <button type="button" onClick={() => setStep(i)} className="flex items-center gap-2 shrink-0">
+              <span
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium border ${
+                  i < step
+                    ? "bg-emerald-500 border-emerald-500 text-emerald-950"
+                    : i === step
+                    ? "bg-[#fd7e14] border-[#fd7e14] text-black"
+                    : "bg-neutral-900 border-neutral-700 text-neutral-400"
+                }`}
+              >
+                {i < step ? <Check className="w-4 h-4" /> : i + 1}
+              </span>
+              <span className={`text-xs hidden sm:inline ${i === step ? "text-white" : "text-neutral-500"}`}>
+                {s.label}
+              </span>
+            </button>
+            {i < steps.length - 1 && (
+              <span className={`flex-1 h-px mx-3 ${i < step ? "bg-[#fd7e14]" : "bg-neutral-800"}`} />
+            )}
+          </div>
+        ))}
+      </div>
+
+      <Tabs value={steps[step].value} className="w-full">
       <TabsContent value="basic" className="space-y-4 mt-4">
         <div>
           <Label className="text-neutral-300">Title</Label>
@@ -989,16 +1011,34 @@ function AddEditMovieForm({
         </div>
       </TabsContent>
 
-      {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
+      </Tabs>
 
-      <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-neutral-800">
-        <Button variant="outline" onClick={onClose} className="border-neutral-700 text-neutral-300 hover:bg-neutral-800">
-          Cancel
+      {error && <p className="text-red-400 text-sm">{error}</p>}
+
+      <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-neutral-800 bg-neutral-950/85 backdrop-blur-sm py-3">
+        <Button
+          variant="ghost"
+          disabled={step === 0}
+          onClick={() => setStep((s) => Math.max(0, s - 1))}
+          className="text-neutral-300 hover:text-white disabled:opacity-40"
+        >
+          <ChevronLeft className="w-4 h-4 mr-1" />
+          Back
         </Button>
-        <Button disabled={saving} onClick={handleSave} className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
-          {saving ? "Saving..." : "Save Movie"}
-        </Button>
+        {isLast ? (
+          <Button disabled={saving} onClick={handleSave} className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
+            {saving ? "Saving…" : "Save movie"}
+          </Button>
+        ) : (
+          <Button
+            onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}
+            className="bg-[#fd7e14] hover:bg-[#ff9940] text-white"
+          >
+            Next
+            <ChevronRight className="w-4 h-4 ml-1" />
+          </Button>
+        )}
       </div>
-    </Tabs>
+    </div>
   );
 }
