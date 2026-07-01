@@ -1434,8 +1434,9 @@ export const presignAsset = async (req: Request, res: Response) => {
       awsRegion: process.env.AWS_REGION,
     });
     const url = await presignPutObject(key, contentType ?? "application/octet-stream");
-    const publicUrl =
-      config.s3.bucket && config.s3.region
+    const publicUrl = config.mediaCdnBase
+      ? `${config.mediaCdnBase}/${key}`
+      : config.s3.bucket && config.s3.region
         ? `https://${config.s3.bucket}.s3.${config.s3.region}.amazonaws.com/${key}`
         : undefined;
     const response = { key, url, publicUrl };
