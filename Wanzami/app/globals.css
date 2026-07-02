@@ -131,6 +131,24 @@
   .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 }
 
+/* Creators page poster marquee — translate half the duplicated track for a seamless loop */
+@keyframes creators-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.creators-marquee {
+  animation: creators-marquee 60s linear infinite;
+}
+.creators-marquee-reverse {
+  animation: creators-marquee 75s linear infinite reverse;
+}
+@media (prefers-reduced-motion: reduce) {
+  .creators-marquee,
+  .creators-marquee-reverse {
+    animation: none;
+  }
+}
+
 /* Film grain (kept from previous system) */
 @keyframes grain {
   0%, 100% { transform: translate(0, 0); }
