@@ -21,6 +21,7 @@ dependencies:
   wakelock_plus: ^1.2.8
   volume_controller: ^3.4.0
   screen_brightness: ^1.0.1
+  google_fonts: ^6.2.1
 
 dev_dependencies:
   flutter_test:

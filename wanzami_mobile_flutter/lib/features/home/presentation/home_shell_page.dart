@@ -3,16 +3,19 @@ import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_tokens.dart';
+import '../../../core/theme/callsheet_tokens.dart';
+import '../../../core/widgets/callsheet_kit.dart';
 import '../../content/data/content_models.dart';
 import '../../content/data/content_repository.dart';
 import '../../notifications/data/notification_repository.dart';
 import '../../notifications/presentation/notifications_page.dart';
 import '../../profile/data/profile_repository.dart';
 import 'browse_pages.dart';
+import 'cs_browse_page.dart';
 import 'home_page.dart';
 import 'live_page.dart';
 import 'profile_page.dart';
+import 'tickets_page.dart';
 
 class HomeShellPage extends StatefulWidget {
   const HomeShellPage({
@@ -135,7 +138,7 @@ class _HomeShellPageState extends State<HomeShellPage> {
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => Scaffold(
-          backgroundColor: AppTokens.background,
+          backgroundColor: CsTokens.cinema,
           body: SearchPage(
             repository: widget.contentRepository,
             onOpen: (item) => _openDetail(item),
@@ -156,20 +159,9 @@ class _HomeShellPageState extends State<HomeShellPage> {
         onOpenSearch: _openSearch,
         onOpenProfile: () => setState(() => _tabIndex = 4),
       ),
-      BrowsePage(
-        title: 'Movies',
-        loader: () async => (await widget.contentRepository
-                .fetchTitles(profileId: widget.activeProfileId))
-            .where((e) => !e.isSeries)
-            .toList(),
-        onOpen: (item) => _openDetail(item),
-      ),
-      BrowsePage(
-        title: 'Series',
-        loader: () async => (await widget.contentRepository
-                .fetchTitles(profileId: widget.activeProfileId))
-            .where((e) => e.isSeries)
-            .toList(),
+      CsBrowsePage(
+        repository: widget.contentRepository,
+        profileId: widget.activeProfileId,
         onOpen: (item) => _openDetail(item),
       ),
       LivePage(
@@ -193,12 +185,18 @@ class _HomeShellPageState extends State<HomeShellPage> {
           ),
         ),
       ),
+      TicketsPage(
+        repository: widget.contentRepository,
+        profileId: widget.activeProfileId,
+        onOpen: (item) => _openDetail(item),
+      ),
       ProfilePage(
           onLogout: widget.onLogout,
           profileRepository: widget.profileRepository),
     ];
 
     return Scaffold(
+      backgroundColor: CsTokens.paper,
       body: Stack(
         children: [
           pages[_tabIndex],
@@ -207,39 +205,60 @@ class _HomeShellPageState extends State<HomeShellPage> {
             right: 0,
             child: SafeArea(
               child: Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: IconButton(
-                  onPressed: _openNotifications,
-                  tooltip: 'Notifications',
-                  icon: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      const Icon(Icons.notifications_outlined,
-                          color: AppTokens.primaryText),
-                      if (_unreadCount > 0)
-                        Positioned(
-                          top: -4,
-                          right: -4,
-                          child: Container(
-                            padding: const EdgeInsets.all(3),
-                            decoration: const BoxDecoration(
-                              color: AppTokens.brandOrange,
-                              shape: BoxShape.circle,
-                            ),
-                            constraints:
-                                const BoxConstraints(minWidth: 16, minHeight: 16),
-                            child: Text(
-                              _unreadCount > 99 ? '99+' : '$_unreadCount',
-                              style: const TextStyle(
-                                color: AppTokens.onBrandOrange,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w800,
+                padding: const EdgeInsets.only(right: 8, top: 2),
+                child: Semantics(
+                  button: true,
+                  label: 'Notifications',
+                  child: GestureDetector(
+                    onTap: _openNotifications,
+                    behavior: HitTestBehavior.opaque,
+                    child: SizedBox(
+                      width: CsTokens.touchTarget,
+                      height: CsTokens.touchTarget,
+                      child: Center(
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: CsTokens.paper,
+                                border: CsTokens.border(2),
                               ),
-                              textAlign: TextAlign.center,
+                              child: const Icon(
+                                Icons.notifications_outlined,
+                                size: 18,
+                                color: CsTokens.ink,
+                              ),
                             ),
-                          ),
+                            if (_unreadCount > 0)
+                              Positioned(
+                                top: -6,
+                                right: -6,
+                                child: Container(
+                                  padding: const EdgeInsets.all(3),
+                                  decoration: const BoxDecoration(
+                                    color: CsTokens.rust,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  constraints: const BoxConstraints(
+                                      minWidth: 16, minHeight: 16),
+                                  child: Text(
+                                    _unreadCount > 99 ? '99+' : '$_unreadCount',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
-                    ],
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -247,125 +266,16 @@ class _HomeShellPageState extends State<HomeShellPage> {
           ),
         ],
       ),
-      bottomNavigationBar: _BrandNavBar(
+      bottomNavigationBar: CsNavBar(
         selectedIndex: _tabIndex,
         onSelect: (value) => setState(() => _tabIndex = value),
-      ),
-    );
-  }
-}
-
-/// Cinematic bottom navigation: surface fill, top hairline, and an orange
-/// active tab that lifts with a glowing pill indicator. Index/navigation
-/// logic stays in [HomeShellPage]; this is presentation only.
-class _BrandNavBar extends StatelessWidget {
-  const _BrandNavBar({
-    required this.selectedIndex,
-    required this.onSelect,
-  });
-
-  final int selectedIndex;
-  final ValueChanged<int> onSelect;
-
-  static const _items = <_NavItem>[
-    _NavItem(Icons.home_outlined, Icons.home_rounded, 'Home'),
-    _NavItem(Icons.movie_outlined, Icons.movie_rounded, 'Movies'),
-    _NavItem(Icons.tv_outlined, Icons.tv_rounded, 'Series'),
-    _NavItem(Icons.live_tv_outlined, Icons.live_tv_rounded, 'Live'),
-    _NavItem(Icons.person_outline, Icons.person_rounded, 'Profile'),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppTokens.surface,
-        border: Border(
-          top: BorderSide(color: AppTokens.border, width: 1),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x66000000),
-            blurRadius: 20,
-            offset: Offset(0, -6),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 64,
-          child: Row(
-            children: [
-              for (var i = 0; i < _items.length; i++)
-                Expanded(
-                  child: _NavTab(
-                    item: _items[i],
-                    selected: i == selectedIndex,
-                    onTap: () => onSelect(i),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NavItem {
-  const _NavItem(this.icon, this.selectedIcon, this.label);
-
-  final IconData icon;
-  final IconData selectedIcon;
-  final String label;
-}
-
-class _NavTab extends StatelessWidget {
-  const _NavTab({
-    required this.item,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final _NavItem item;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final color =
-        selected ? AppTokens.brandOrange : AppTokens.secondaryText;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppTokens.radiusLg),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOut,
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 5),
-            decoration: BoxDecoration(
-              color: selected ? AppTokens.brandOrangeTint : Colors.transparent,
-              borderRadius: BorderRadius.circular(AppTokens.radiusPill),
-              boxShadow: selected ? AppTokens.brandGlow : null,
-            ),
-            child: Icon(
-              selected ? item.selectedIcon : item.icon,
-              size: 24,
-              color: color,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            item.label,
-            style: TextStyle(
-              color: color,
-              fontSize: 11,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-            ),
-          ),
+        items: const [
+          CsNavItem(Icons.home_outlined, Icons.home_rounded, 'Home'),
+          CsNavItem(Icons.menu_book_outlined, Icons.menu_book_rounded, 'Catalogue'),
+          CsNavItem(Icons.sensors_outlined, Icons.sensors_rounded, 'Live'),
+          CsNavItem(
+              Icons.local_activity_outlined, Icons.local_activity_rounded, 'Tickets'),
+          CsNavItem(Icons.person_outline, Icons.person_rounded, 'Profile'),
         ],
       ),
     );

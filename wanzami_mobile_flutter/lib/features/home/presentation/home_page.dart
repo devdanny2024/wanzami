@@ -2,12 +2,14 @@ import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_tokens.dart';
-import '../../../core/theme/section_image_reveal.dart';
-import '../../../core/widgets/wanzami_kit.dart';
+import '../../../core/theme/callsheet_tokens.dart';
+import '../../../core/theme/network_image_with_skeleton.dart';
+import '../../../core/widgets/callsheet_kit.dart';
 import '../../content/data/content_models.dart';
 import '../../content/data/content_repository.dart';
 
+/// Home — "the daily programme". Lights-on paper surface: premiere hero,
+/// continue watching, on-air strip, and film-strip rails of the catalog.
 class HomePage extends StatefulWidget {
   const HomePage({
     super.key,
@@ -68,18 +70,14 @@ class _HomePageState extends State<HomePage> {
       try {
         return await call();
       } catch (error) {
-        developer.log(
-          'Home $label fetch failed: $error',
-          name: 'HomePage',
-        );
+        developer.log('Home $label fetch failed: $error', name: 'HomePage');
         return <T>[];
       }
     }
 
     final results = await Future.wait([
       safeFetch<MediaItem>(
-          'titles',
-          () => widget.repository.fetchTitles(profileId: widget.profileId)),
+          'titles', () => widget.repository.fetchTitles(profileId: widget.profileId)),
       safeFetch<LiveEvent>('live events',
           () => widget.repository.fetchLiveEvents(profileId: widget.profileId)),
       safeFetch<ContinueWatchingItem>(
@@ -91,184 +89,6 @@ class _HomePageState extends State<HomePage> {
       items: results[0] as List<MediaItem>,
       liveEvents: results[1] as List<LiveEvent>,
       continueWatching: results[2] as List<ContinueWatchingItem>,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<_HomePayload>(
-      future: _future,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return _HomeLoadingScaffold(
-            onOpenSearch: widget.onOpenSearch,
-            onOpenProfile: widget.onOpenProfile,
-          );
-        }
-
-        final items = snapshot.data?.items ?? const <MediaItem>[];
-        final live =
-            snapshot.data?.liveEvents.where((e) => e.isLive).toList() ??
-                const <LiveEvent>[];
-        final continueWatching =
-            snapshot.data?.continueWatching ?? const <ContinueWatchingItem>[];
-
-        developer.log(
-          'Home sections data (items=${items.length}, live=${live.length}, continueWatching=${continueWatching.length}, refreshToken=${widget.refreshToken})',
-          name: 'HomePage',
-        );
-
-        if (items.isEmpty && continueWatching.isEmpty && live.isEmpty) {
-          return const Center(child: Text('No content available yet'));
-        }
-
-        final featured = items.isNotEmpty ? items.first : continueWatching.first.item;
-        final movies = items.where((e) => !e.isSeries).toList();
-        final series = items.where((e) => e.isSeries).toList();
-
-        return CustomScrollView(
-          slivers: [
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: _StickyTopBarDelegate(
-                onOpenSearch: widget.onOpenSearch,
-                onOpenProfile: widget.onOpenProfile,
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Column(
-                children: [
-                  const SizedBox(height: 12),
-                  SectionImageReveal(
-                    key: ValueKey('home-hero-${featured.id}'),
-                    imageUrls: [featured.bannerUrl],
-                    skeleton: const Padding(
-                      padding: EdgeInsets.symmetric(
-                          horizontal: AppTokens.spacingLg),
-                      child: SizedBox(
-                        height: 380,
-                        child: PulseSkeleton(
-                          borderRadius:
-                              BorderRadius.all(Radius.circular(AppTokens.radiusXl)),
-                        ),
-                      ),
-                    ),
-                    child: HeroBanner(
-                      item: featured,
-                      height: 380,
-                      label: 'Wanzami Original',
-                      onPlay: () => widget.onOpen(featured),
-                      onInfo: () => widget.onOpen(featured),
-                      onAdd: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('Added to My List.')),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  if (continueWatching.isNotEmpty)
-                    SectionImageReveal(
-                      key: const ValueKey('home-continue-watching'),
-                      imageUrls: continueWatching
-                          .map((e) => e.item.thumbnailUrl)
-                          .toList(),
-                      skeleton: const _ContinueWatchingSkeleton(
-                          title: 'Continue Watching'),
-                      child: ContentCarousel(
-                        title: 'Continue Watching',
-                        height: 234,
-                        itemCount: continueWatching.length,
-                        itemBuilder: (_, i) {
-                          final entry = continueWatching[i];
-                          return ContinueWatchingCard(
-                            entry: entry,
-                            onTap: () => widget.onOpen(entry.item),
-                          );
-                        },
-                      ),
-                    ),
-                  if (live.isNotEmpty)
-                    SectionImageReveal(
-                      key: const ValueKey('home-live'),
-                      imageUrls: live.map((e) => e.thumbnailUrl ?? '').toList(),
-                      skeleton: const _LiveStripSkeleton(),
-                      child: ContentCarousel(
-                        title: 'Live Events Happening Now',
-                        height: 210,
-                        itemCount: live.length,
-                        itemBuilder: (_, i) {
-                          final event = live[i];
-                          return LiveStreamCard(
-                            event: event,
-                            onTap: () => _openLiveAsItem(event),
-                          );
-                        },
-                      ),
-                    ),
-                  if (items.isNotEmpty)
-                    SectionImageReveal(
-                      key: const ValueKey('home-trending'),
-                      imageUrls:
-                          items.take(12).map((e) => e.thumbnailUrl).toList(),
-                      skeleton: const _PosterRowSkeleton(
-                          title: 'Trending in Nigeria'),
-                      child: _PosterCarousel(
-                        title: 'Trending in Nigeria',
-                        items: items.take(12).toList(),
-                        onOpen: widget.onOpen,
-                      ),
-                    ),
-                  if (movies.isNotEmpty)
-                    SectionImageReveal(
-                      key: const ValueKey('home-originals'),
-                      imageUrls:
-                          movies.take(8).map((e) => e.thumbnailUrl).toList(),
-                      skeleton:
-                          const _PosterRowSkeleton(title: 'Wanzami Originals'),
-                      child: _PosterCarousel(
-                        title: 'Wanzami Originals',
-                        items: movies.take(8).toList(),
-                        onOpen: widget.onOpen,
-                      ),
-                    ),
-                  if (series.isNotEmpty)
-                    SectionImageReveal(
-                      key: const ValueKey('home-series'),
-                      imageUrls:
-                          series.take(12).map((e) => e.thumbnailUrl).toList(),
-                      skeleton:
-                          const _PosterRowSkeleton(title: 'Popular Series'),
-                      child: _PosterCarousel(
-                        title: 'Popular Series',
-                        items: series.take(12).toList(),
-                        onOpen: widget.onOpen,
-                      ),
-                    ),
-                  if (items.length > 1)
-                    SectionImageReveal(
-                      key: const ValueKey('home-new'),
-                      imageUrls: items
-                          .skip(1)
-                          .take(12)
-                          .map((e) => e.thumbnailUrl)
-                          .toList(),
-                      skeleton:
-                          const _PosterRowSkeleton(title: 'New on Wanzami'),
-                      child: _PosterCarousel(
-                        title: 'New on Wanzami',
-                        items: items.skip(1).take(12).toList(),
-                        onOpen: widget.onOpen,
-                      ),
-                    ),
-                  const SizedBox(height: 100),
-                ],
-              ),
-            ),
-          ],
-        );
-      },
     );
   }
 
@@ -285,73 +105,469 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: CsTokens.paper,
+      child: FutureBuilder<_HomePayload>(
+        future: _future,
+        builder: (context, snapshot) {
+          final loading = snapshot.connectionState == ConnectionState.waiting;
+          final items = snapshot.data?.items ?? const <MediaItem>[];
+          final live = snapshot.data?.liveEvents.where((e) => e.isLive).toList() ??
+              const <LiveEvent>[];
+          final continueWatching =
+              snapshot.data?.continueWatching ?? const <ContinueWatchingItem>[];
+
+          return CustomScrollView(
+            slivers: [
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _CsTopBarDelegate(
+                  onOpenSearch: widget.onOpenSearch,
+                  onOpenProfile: widget.onOpenProfile,
+                ),
+              ),
+              if (loading)
+                const SliverToBoxAdapter(child: _CsHomeSkeleton())
+              else if (items.isEmpty && continueWatching.isEmpty && live.isEmpty)
+                const SliverFillRemaining(
+                  child: Center(
+                    child: CsSlug('Nothing on the call sheet yet'),
+                  ),
+                )
+              else
+                SliverToBoxAdapter(
+                  child: _CsHomeBody(
+                    items: items,
+                    live: live,
+                    continueWatching: continueWatching,
+                    onOpen: widget.onOpen,
+                    onOpenLive: _openLiveAsItem,
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
 }
 
-/// Poster row built on the locked [ContentCarousel] + [PosterCard] kit.
-class _PosterCarousel extends StatelessWidget {
-  const _PosterCarousel({
-    required this.title,
+class _CsHomeBody extends StatelessWidget {
+  const _CsHomeBody({
+    required this.items,
+    required this.live,
+    required this.continueWatching,
+    required this.onOpen,
+    required this.onOpenLive,
+  });
+
+  final List<MediaItem> items;
+  final List<LiveEvent> live;
+  final List<ContinueWatchingItem> continueWatching;
+  final ValueChanged<MediaItem> onOpen;
+  final ValueChanged<LiveEvent> onOpenLive;
+
+  @override
+  Widget build(BuildContext context) {
+    final featured =
+        items.isNotEmpty ? items.first : continueWatching.first.item;
+    final movies = items.where((e) => !e.isSeries).toList();
+    final series = items.where((e) => e.isSeries).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Featured presentation.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 16, 14, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const CsSlug('Scene 01 · Feature presentation'),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: () => onOpen(featured),
+                child: CsBox(
+                  shadow: 5,
+                  borderWidth: CsTokens.borderWidthHeavy,
+                  child: AspectRatio(
+                    aspectRatio: 16 / 9,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        NetworkImageWithSkeleton(url: featured.bannerUrl),
+                        const DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.transparent,
+                                Colors.transparent,
+                                Color(0xD9000000),
+                              ],
+                              stops: [0.0, 0.55, 1.0],
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          top: 8,
+                          left: 8,
+                          child: CsSticker(
+                            featured.isPpv ? 'Now selling' : 'Now showing',
+                          ),
+                        ),
+                        Positioned(
+                          left: 10,
+                          right: 10,
+                          bottom: 8,
+                          child: Text(
+                            featured.title.toUpperCase(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: CsTokens.display(size: 30, color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Continue watching.
+        if (continueWatching.isNotEmpty) ...[
+          const SizedBox(height: 22),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 14),
+            child: CsSlug('Continue watching'),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 128,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              itemCount: continueWatching.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (_, i) {
+                final entry = continueWatching[i];
+                return _ResumeCard(entry: entry, onTap: () => onOpen(entry.item));
+              },
+            ),
+          ),
+        ],
+
+        // Live now.
+        if (live.isNotEmpty) ...[
+          const SizedBox(height: 22),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 14),
+            child: CsSlug('On air · live now'),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 140,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              itemCount: live.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (_, i) {
+                final event = live[i];
+                return _LiveCard(event: event, onTap: () => onOpenLive(event));
+              },
+            ),
+          ),
+        ],
+
+        // Trending film strip.
+        if (items.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          CsFilmStrip(
+            caption: 'Reel A · Trending now',
+            height: 92,
+            itemCount: items.take(12).length,
+            itemBuilder: (_, i) {
+              final item = items[i];
+              return _FilmFrame(item: item, onTap: () => onOpen(item));
+            },
+          ),
+        ],
+
+        // The slate.
+        if (movies.isNotEmpty)
+          _PosterRail(
+            slug: 'The slate · Films',
+            items: movies.take(12).toList(),
+            onOpen: onOpen,
+          ),
+        if (series.isNotEmpty)
+          _PosterRail(
+            slug: 'The slate · Series',
+            items: series.take(12).toList(),
+            onOpen: onOpen,
+          ),
+        if (items.length > 1)
+          _PosterRail(
+            slug: 'Fresh prints · New on Wanzami',
+            items: items.skip(1).take(12).toList(),
+            onOpen: onOpen,
+          ),
+
+        const SizedBox(height: 28),
+        Center(
+          child: CsSlug('End of programme · roll credits', size: 10),
+        ),
+        const SizedBox(height: 96),
+      ],
+    );
+  }
+}
+
+class _ResumeCard extends StatelessWidget {
+  const _ResumeCard({required this.entry, required this.onTap});
+
+  final ContinueWatchingItem entry;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final percent = entry.completionPercent.clamp(0.02, 1.0);
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 176,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CsBox(
+              child: AspectRatio(
+                aspectRatio: 16 / 9,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    NetworkImageWithSkeleton(url: entry.item.thumbnailUrl),
+                    Align(
+                      alignment: Alignment.bottomLeft,
+                      child: FractionallySizedBox(
+                        widthFactor: percent.toDouble(),
+                        child: Container(height: 4, color: CsTokens.brand),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              entry.item.title.toUpperCase(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: CsTokens.mono(size: 10, color: CsTokens.ink),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LiveCard extends StatelessWidget {
+  const _LiveCard({required this.event, required this.onTap});
+
+  final LiveEvent event;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 220,
+        child: CsBox(
+          child: AspectRatio(
+            aspectRatio: 16 / 9,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                NetworkImageWithSkeleton(url: event.thumbnailUrl ?? ''),
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Colors.transparent, Color(0xCC000000)],
+                      stops: [0.5, 1.0],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 7,
+                  left: 7,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    color: CsTokens.rust,
+                    child: const Text(
+                      'ON AIR',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 8,
+                  right: 8,
+                  bottom: 6,
+                  child: Text(
+                    event.title.toUpperCase(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: CsTokens.display(size: 16, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FilmFrame extends StatelessWidget {
+  const _FilmFrame({required this.item, required this.onTap});
+
+  final MediaItem item;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 156,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            NetworkImageWithSkeleton(url: item.thumbnailUrl),
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.transparent, Color(0xCC000000)],
+                  stops: [0.55, 1.0],
+                ),
+              ),
+            ),
+            Positioned(
+              left: 6,
+              right: 6,
+              bottom: 4,
+              child: Text(
+                item.title.toUpperCase(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: CsTokens.mono(
+                  size: 9,
+                  color: Colors.white,
+                  weight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PosterRail extends StatelessWidget {
+  const _PosterRail({
+    required this.slug,
     required this.items,
     required this.onOpen,
   });
 
-  final String title;
+  final String slug;
   final List<MediaItem> items;
   final ValueChanged<MediaItem> onOpen;
 
   @override
   Widget build(BuildContext context) {
-    return ContentCarousel(
-      title: title,
-      height: 224,
-      itemCount: items.length,
-      itemBuilder: (_, index) {
-        final item = items[index];
-        return PosterCard(item: item, onTap: () => onOpen(item));
-      },
-    );
-  }
-}
-
-class _HomeLoadingScaffold extends StatelessWidget {
-  const _HomeLoadingScaffold({this.onOpenSearch, this.onOpenProfile});
-
-  final VoidCallback? onOpenSearch;
-  final VoidCallback? onOpenProfile;
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomScrollView(
-      slivers: [
-        SliverPersistentHeader(
-          pinned: true,
-          delegate: _StickyTopBarDelegate(
-            onOpenSearch: onOpenSearch,
-            onOpenProfile: onOpenProfile,
-          ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 22),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: CsSlug(slug),
         ),
-        const SliverToBoxAdapter(
-          child: Column(
-            children: [
-              SizedBox(height: 12),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: AppTokens.spacingLg),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 196,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            itemCount: items.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 10),
+            itemBuilder: (_, i) {
+              final item = items[i];
+              return GestureDetector(
+                onTap: () => onOpen(item),
                 child: SizedBox(
-                  height: 380,
-                  child: PulseSkeleton(
-                    borderRadius:
-                        BorderRadius.all(Radius.circular(AppTokens.radiusXl)),
+                  width: 118,
+                  child: CsBox(
+                    borderWidth: 2,
+                    child: AspectRatio(
+                      aspectRatio: 2 / 3,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          NetworkImageWithSkeleton(url: item.thumbnailUrl),
+                          const DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [Colors.transparent, Color(0xCC000000)],
+                                stops: [0.6, 1.0],
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            left: 6,
+                            right: 6,
+                            bottom: 5,
+                            child: Text(
+                              item.title.toUpperCase(),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: CsTokens.mono(
+                                size: 9,
+                                color: Colors.white,
+                                weight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              ),
-              SizedBox(height: 20),
-              _ContinueWatchingSkeleton(title: 'Continue Watching'),
-              _LiveStripSkeleton(),
-              _PosterRowSkeleton(title: 'Trending in Nigeria'),
-              _PosterRowSkeleton(title: 'Wanzami Originals'),
-              _PosterRowSkeleton(title: 'Popular Series'),
-              SizedBox(height: 100),
-            ],
+              );
+            },
           ),
         ),
       ],
@@ -359,307 +575,122 @@ class _HomeLoadingScaffold extends StatelessWidget {
   }
 }
 
-class _StickyTopBarDelegate extends SliverPersistentHeaderDelegate {
-  _StickyTopBarDelegate({this.onOpenSearch, this.onOpenProfile});
+class _CsTopBarDelegate extends SliverPersistentHeaderDelegate {
+  _CsTopBarDelegate({this.onOpenSearch, this.onOpenProfile});
 
   final VoidCallback? onOpenSearch;
   final VoidCallback? onOpenProfile;
 
   @override
-  double get maxExtent => 116;
+  double get maxExtent => 100;
 
   @override
-  double get minExtent => 116;
+  double get minExtent => 100;
 
   @override
   Widget build(
       BuildContext context, double shrinkOffset, bool overlapsContent) {
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [AppTokens.background, Color(0x000B0B0F)],
-        ),
+      decoration: BoxDecoration(
+        color: CsTokens.paper,
+        border: Border(bottom: CsTokens.side(CsTokens.borderWidthHeavy)),
       ),
-      padding: const EdgeInsets.fromLTRB(20, 42, 20, 12),
+      padding: const EdgeInsets.fromLTRB(14, 44, 8, 0),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        borderRadius:
-                            BorderRadius.circular(AppTokens.radiusMd),
-                        gradient: AppTokens.brandGradient,
-                        boxShadow: AppTokens.brandGlow,
-                      ),
-                      padding: const EdgeInsets.all(4),
-                      child: Image.asset('assets/images/wanzami_logo.png',
-                          fit: BoxFit.contain),
-                    ),
-                    const SizedBox(width: 10),
-                    const Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(
-                            text: 'WAN',
-                            style: TextStyle(
-                              color: AppTokens.brandOrange,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.1,
-                            ),
-                          ),
-                          TextSpan(
-                            text: 'ZAMI',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.1,
-                            ),
-                          ),
-                        ],
-                      ),
-                      style: TextStyle(fontSize: 24, height: 1),
-                    ),
-                  ],
+                Text(
+                  'WANZAMI · DAILY PROGRAMME',
+                  style: CsTokens.mono(
+                      size: 12, color: CsTokens.ink, weight: FontWeight.w700),
                 ),
-                const SizedBox(height: 6),
-                const Text(
-                  'African Stories  •  Global Stage',
-                  style: TextStyle(
-                    color: AppTokens.secondaryText,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    height: 1.2,
-                  ),
-                ),
+                const SizedBox(height: 3),
+                CsSlug('Call sheet № 001', size: 9),
               ],
             ),
           ),
-          _HeaderAction(
-            icon: Icons.search_rounded,
-            onTap: onOpenSearch,
-          ),
-          const SizedBox(width: 10),
-          _HeaderAction(
-            icon: Icons.notifications_none_rounded,
-            showDot: true,
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Notifications coming soon.')),
-              );
-            },
-          ),
-          const SizedBox(width: 10),
-          Pressable(
-            onTap: onOpenProfile,
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: AppTokens.brandGradient,
-                boxShadow: AppTokens.brandGlow,
-              ),
-              padding: const EdgeInsets.all(2),
-              child: Container(
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppTokens.elevated,
-                ),
-                child: const Icon(Icons.person, size: 20),
-              ),
-            ),
-          ),
+          _InkIconButton(icon: Icons.search, label: 'Search', onTap: onOpenSearch),
+          _InkIconButton(
+              icon: Icons.person_outline, label: 'Profile', onTap: onOpenProfile),
         ],
       ),
     );
   }
 
   @override
-  bool shouldRebuild(covariant _StickyTopBarDelegate oldDelegate) => false;
+  bool shouldRebuild(covariant _CsTopBarDelegate oldDelegate) => false;
 }
 
-class _HeaderAction extends StatelessWidget {
-  const _HeaderAction({
-    required this.icon,
-    this.onTap,
-    this.showDot = false,
-  });
+class _InkIconButton extends StatelessWidget {
+  const _InkIconButton({required this.icon, required this.label, this.onTap});
 
   final IconData icon;
+  final String label;
   final VoidCallback? onTap;
-  final bool showDot;
 
   @override
   Widget build(BuildContext context) {
-    return Pressable(
-      onTap: onTap,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          FrostedIconButton(icon: icon, onTap: onTap, size: 40),
-          if (showDot)
-            Positioned(
-              top: 9,
-              right: 9,
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: AppTokens.brandOrange,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppTokens.background, width: 1.5),
-                ),
-              ),
+    return Semantics(
+      button: true,
+      label: label,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: SizedBox(
+          width: CsTokens.touchTarget,
+          height: CsTokens.touchTarget,
+          child: Center(
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(border: CsTokens.border(2)),
+              child: Icon(icon, size: 18, color: CsTokens.ink),
             ),
-        ],
+          ),
+        ),
       ),
     );
   }
 }
 
-class _ContinueWatchingSkeleton extends StatelessWidget {
-  const _ContinueWatchingSkeleton({required this.title});
-
-  final String title;
+class _CsHomeSkeleton extends StatelessWidget {
+  const _CsHomeSkeleton();
 
   @override
   Widget build(BuildContext context) {
+    Widget block(double height, {double? width}) => Container(
+          height: height,
+          width: width,
+          decoration: BoxDecoration(
+            color: CsTokens.panel,
+            border: CsTokens.border(2),
+          ),
+        );
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.fromLTRB(14, 16, 14, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SectionHeader(title: title),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 234,
-            child: ListView.separated(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: AppTokens.spacingLg),
-              scrollDirection: Axis.horizontal,
-              itemBuilder: (_, __) => Container(
-                width: 300,
-                decoration: BoxDecoration(
-                  color: AppTokens.surface,
-                  borderRadius: BorderRadius.circular(AppTokens.radiusLg),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    AspectRatio(
-                      aspectRatio: 16 / 9,
-                      child: PulseSkeleton(),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(12, 10, 80, 0),
-                      child: SizedBox(
-                        height: 14,
-                        child: PulseSkeleton(
-                          borderRadius: BorderRadius.all(Radius.circular(4)),
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(12, 8, 120, 12),
-                      child: SizedBox(
-                        height: 12,
-                        child: PulseSkeleton(
-                          borderRadius: BorderRadius.all(Radius.circular(4)),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              separatorBuilder: (_, __) => const SizedBox(width: 14),
-              itemCount: 4,
-            ),
+          block(14, width: 180),
+          const SizedBox(height: 10),
+          AspectRatio(aspectRatio: 16 / 9, child: block(10)),
+          const SizedBox(height: 24),
+          block(14, width: 140),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(child: AspectRatio(aspectRatio: 16 / 9, child: block(10))),
+              const SizedBox(width: 10),
+              Expanded(child: AspectRatio(aspectRatio: 16 / 9, child: block(10))),
+            ],
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PosterRowSkeleton extends StatelessWidget {
-  const _PosterRowSkeleton({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SectionHeader(title: title),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 224,
-            child: ListView.separated(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: AppTokens.spacingLg),
-              scrollDirection: Axis.horizontal,
-              itemBuilder: (_, __) => const SizedBox(
-                width: 132,
-                child: AspectRatio(
-                  aspectRatio: 2 / 3,
-                  child: PulseSkeleton(
-                      borderRadius:
-                          BorderRadius.all(Radius.circular(AppTokens.radiusMd))),
-                ),
-              ),
-              separatorBuilder: (_, __) => const SizedBox(width: 14),
-              itemCount: 6,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LiveStripSkeleton extends StatelessWidget {
-  const _LiveStripSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SectionHeader(title: 'Live Events Happening Now'),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 210,
-            child: ListView.separated(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: AppTokens.spacingLg),
-              scrollDirection: Axis.horizontal,
-              itemBuilder: (_, __) => const SizedBox(
-                width: 280,
-                child: PulseSkeleton(
-                  borderRadius:
-                      BorderRadius.all(Radius.circular(AppTokens.radiusLg)),
-                ),
-              ),
-              separatorBuilder: (_, __) => const SizedBox(width: 14),
-              itemCount: 2,
-            ),
-          ),
+          const SizedBox(height: 24),
+          block(120),
         ],
       ),
     );

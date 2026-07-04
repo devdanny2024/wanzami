@@ -422,3 +422,28 @@ class LiveEngagementSnapshot {
             .toList(),
       );
 }
+
+/// A purchased PPV title — rendered in the app as an "ADMITTED" ticket stub.
+class PpvTicket {
+  const PpvTicket({required this.item, this.expiresAt});
+
+  final MediaItem item;
+  final DateTime? expiresAt;
+
+  int? get daysLeft =>
+      expiresAt == null ? null : expiresAt!.difference(DateTime.now()).inDays;
+
+  static PpvTicket? fromPurchaseJson(Map<String, dynamic> json) {
+    final titleJson = json['title'];
+    if (titleJson is! Map<String, dynamic>) return null;
+    final item = MediaItem.fromJson(titleJson);
+    if (item.id.isEmpty) return null;
+    final rawExpiry =
+        (json['accessExpiresAt'] ?? json['expiresAt'] ?? json['accessExpiry'])
+            ?.toString();
+    return PpvTicket(
+      item: item,
+      expiresAt: rawExpiry == null ? null : DateTime.tryParse(rawExpiry),
+    );
+  }
+}

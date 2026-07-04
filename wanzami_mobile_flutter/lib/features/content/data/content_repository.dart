@@ -288,6 +288,25 @@ class ContentRepository {
     return ordered;
   }
 
+  /// Purchased PPV titles ("My Tickets"). Mirrors the web's /ppv/my-titles.
+  Future<List<PpvTicket>> fetchMyPpvTickets({String? profileId}) async {
+    final query = (profileId != null && profileId.isNotEmpty)
+        ? '?profileId=${Uri.encodeQueryComponent(profileId)}'
+        : '';
+    final response =
+        await apiClient.get('${env.apiBaseUrl}/ppv/my-titles$query');
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Failed to fetch tickets (${response.statusCode})');
+    }
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    final purchases = ((json['activePurchases'] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>();
+    return purchases
+        .map(PpvTicket.fromPurchaseJson)
+        .whereType<PpvTicket>()
+        .toList();
+  }
+
   Future<PpvAccess> fetchPpvAccess(String titleId) async {
     final response = await apiClient
         .get('${env.apiBaseUrl}/ppv/access/$titleId?record=false');

@@ -12,6 +12,8 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/theme/callsheet_tokens.dart';
+import '../../../core/widgets/callsheet_kit.dart';
 import '../../../core/theme/network_image_with_skeleton.dart';
 import '../../../core/theme/section_image_reveal.dart';
 import '../../../core/widgets/wanzami_kit.dart';
@@ -973,126 +975,216 @@ class _DetailPageState extends State<DetailPage> {
     final hasAccess = !requiresPayment || (_ppvAccess?.hasAccess == true);
     final price = _ppvAccess?.priceNaira ?? widget.item.ppvPriceNaira;
     final currency = _ppvAccess?.currency ?? widget.item.ppvCurrency ?? 'NGN';
+    final priceLabel = price == null
+        ? 'Buy ticket'
+        : "Buy ticket \u00b7 ${currency == 'NGN' ? '\u20a6' : '$currency '}${price.toStringAsFixed(0)}";
 
     return Scaffold(
-      body: ListView(
-        children: [
-          Stack(
-            children: [
-              AspectRatio(
-                aspectRatio: 16 / 9,
-                child: widget.item.bannerUrl.isNotEmpty
-                    ? NetworkImageWithSkeleton(
-                        url: widget.item.bannerUrl, fit: BoxFit.cover)
-                    : Container(color: AppTokens.surface),
-              ),
-              Positioned(
-                top: 40,
-                left: 12,
-                child: CircleAvatar(
-                  backgroundColor: Colors.black54,
-                  child: IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(widget.item.title,
-                    style: const TextStyle(
-                        fontSize: 30, fontWeight: FontWeight.w800)),
-                const SizedBox(height: 10),
-                if (hasAccess)
-                  FilledButton.icon(
-                    onPressed:
-                        _startingPlayback ? null : () => _startPlayback(),
-                    icon: const Icon(Icons.play_arrow),
-                    label: Text(_startingPlayback ? 'Preparing...' : 'Play'),
-                  )
-                else
-                  FilledButton.icon(
-                    onPressed: _paying ? null : _startPayment,
-                    icon: const Icon(Icons.lock_open),
-                    label: Text(_paying
-                        ? 'Processing...'
-                        : 'Rent • ${price == null ? '' : '${price.toStringAsFixed(0)} $currency'}'),
-                  ),
-                if (_paymentStatus != null) ...[
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      if (_paying)
-                        const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      if (_paying) const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _paymentStatus!,
-                          style:
-                              const TextStyle(color: AppTokens.secondaryText),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                if (widget.item.trailerUrl != null &&
-                    widget.item.trailerUrl!.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  OutlinedButton.icon(
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => PlayerPage(
-                          item: MediaItem(
-                            id: widget.item.id,
-                            title: '${widget.item.title} — Trailer',
-                            description: '',
-                            type: widget.item.type,
-                            thumbnailUrl: widget.item.thumbnailUrl,
-                            bannerUrl: widget.item.bannerUrl,
-                            playbackUrl: widget.item.trailerUrl,
+      backgroundColor: CsTokens.paper,
+      body: SafeArea(
+        bottom: false,
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: 48),
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(6, 4, 14, 6),
+              child: Row(
+                children: [
+                  Semantics(
+                    button: true,
+                    label: 'Back',
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      behavior: HitTestBehavior.opaque,
+                      child: SizedBox(
+                        width: CsTokens.touchTarget,
+                        height: CsTokens.touchTarget,
+                        child: Center(
+                          child: Text(
+                            '\u2190 BACK',
+                            style: CsTokens.mono(
+                              size: 12,
+                              color: CsTokens.ink,
+                              weight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                    icon: const Icon(Icons.play_circle_outline),
-                    label: const Text('Watch Trailer'),
                   ),
+                  const Spacer(),
+                  CsSlug('Call sheet \u00b7 Title ${widget.item.id}', size: 10),
                 ],
-                const SizedBox(height: 14),
-                const Text('Synopsis',
-                    style:
-                        TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 8),
-                Text(widget.item.description,
-                    style: const TextStyle(color: AppTokens.secondaryText)),
-                if (widget.item.episodes.isNotEmpty && hasAccess) ...[
-                  const SizedBox(height: 16),
-                  const Text('Episodes',
-                      style: TextStyle(fontWeight: FontWeight.w700)),
-                  ...widget.item.episodes.map(
-                    (ep) => ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                          'S${ep.seasonNumber} E${ep.episodeNumber} • ${ep.title}'),
-                      onTap: _startingPlayback
-                          ? null
-                          : () => _startPlayback(episode: ep),
-                    ),
-                  ),
-                ],
-              ],
+              ),
             ),
-          ),
-        ],
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: CsBox(
+                shadow: 5,
+                borderWidth: CsTokens.borderWidthHeavy,
+                child: AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      widget.item.bannerUrl.isNotEmpty
+                          ? NetworkImageWithSkeleton(
+                              url: widget.item.bannerUrl, fit: BoxFit.cover)
+                          : Container(color: CsTokens.cinemaPanel),
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: CsSticker(
+                          hasAccess
+                              ? 'In your library'
+                              : (requiresPayment ? 'Now selling' : 'Now showing'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 18, 14, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CsSlug(
+                    'Scene 01 \u00b7 ${widget.item.genres.isNotEmpty ? widget.item.genres.first : widget.item.type}',
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    widget.item.title.toUpperCase(),
+                    style: CsTokens.display(size: 40),
+                  ),
+                  const SizedBox(height: 10),
+                  if (widget.item.durationLabel != null)
+                    CsSpecRow('Runtime', widget.item.durationLabel!),
+                  if (widget.item.rating != null)
+                    CsSpecRow('Rating', widget.item.rating!),
+                  if (widget.item.releaseYear != null)
+                    CsSpecRow('Year', '${widget.item.releaseYear}'),
+                  CsSpecRow('Format', widget.item.isSeries ? 'Series' : 'Feature'),
+                  const SizedBox(height: 18),
+                  if (hasAccess)
+                    CsTicketButton(
+                      slug: 'Admitted \u00b7 your ticket',
+                      title: _startingPlayback ? 'Preparing\u2026' : 'Play now',
+                      icon: Icons.play_arrow_rounded,
+                      enabled: !_startingPlayback,
+                      onTap: () => _startPlayback(),
+                    )
+                  else
+                    CsTicketButton(
+                      slug: 'Admit one \u00b7 30 days',
+                      title: _paying ? 'Processing\u2026' : priceLabel,
+                      enabled: !_paying,
+                      onTap: _startPayment,
+                    ),
+                  if (_paymentStatus != null) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        if (_paying)
+                          const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: CsTokens.rust,
+                            ),
+                          ),
+                        if (_paying) const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _paymentStatus!,
+                            style: CsTokens.mono(size: 10, color: CsTokens.rust),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  if (widget.item.trailerUrl != null &&
+                      widget.item.trailerUrl!.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    CsButton(
+                      'Watch trailer',
+                      primary: false,
+                      expand: true,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => PlayerPage(
+                            item: MediaItem(
+                              id: widget.item.id,
+                              title: '${widget.item.title} \u2014 Trailer',
+                              description: '',
+                              type: widget.item.type,
+                              thumbnailUrl: widget.item.thumbnailUrl,
+                              bannerUrl: widget.item.bannerUrl,
+                              playbackUrl: widget.item.trailerUrl,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 22),
+                  const CsSlug('The pitch'),
+                  const SizedBox(height: 6),
+                  Text(widget.item.description, style: CsTokens.body),
+                  if (widget.item.episodes.isNotEmpty && hasAccess) ...[
+                    const SizedBox(height: 22),
+                    const CsSlug('Shot list \u00b7 Episodes'),
+                    const SizedBox(height: 8),
+                    for (final ep in widget.item.episodes)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: GestureDetector(
+                          onTap: _startingPlayback
+                              ? null
+                              : () => _startPlayback(episode: ep),
+                          child: Container(
+                            constraints: const BoxConstraints(
+                                minHeight: CsTokens.touchTarget),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: CsTokens.panel,
+                              border: CsTokens.border(2),
+                            ),
+                            child: Row(
+                              children: [
+                                Text(
+                                  'S${ep.seasonNumber} E${ep.episodeNumber}',
+                                  style: CsTokens.mono(
+                                    size: 11,
+                                    color: CsTokens.rust,
+                                    weight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    ep.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: CsTokens.bodyBold,
+                                  ),
+                                ),
+                                const Icon(Icons.play_arrow_rounded,
+                                    size: 20, color: CsTokens.ink),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
