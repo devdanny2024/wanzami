@@ -1,0 +1,45 @@
+name: Android APK (mobile)
+
+# Manual-only: builds a release APK of the Flutter app and uploads it as a
+# downloadable artifact. Trigger from the Actions tab or `gh workflow run`.
+on:
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    env:
+      FLUTTER_VERSION: '3.29.3'
+      APP_DIR: wanzami_mobile_flutter
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+          cache-key: flutter-${{ runner.os }}-${{ env.FLUTTER_VERSION }}-${{ hashFiles('wanzami_mobile_flutter/pubspec.lock') }}
+
+      - name: Pub get
+        working-directory: ${{ env.APP_DIR }}
+        run: flutter pub get
+
+      - name: Build release APK
+        working-directory: ${{ env.APP_DIR }}
+        run: flutter build apk --release
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wanzami-release-apk
+          path: ${{ env.APP_DIR }}/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 14
