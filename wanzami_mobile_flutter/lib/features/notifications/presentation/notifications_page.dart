@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_tokens.dart';
-import '../../../core/widgets/wanzami_kit.dart';
+import '../../../core/theme/callsheet_tokens.dart';
+import '../../../core/widgets/callsheet_kit.dart';
 import '../data/notification_models.dart';
 import '../data/notification_repository.dart';
 
+/// Notifications — "production memos" pinned to the call sheet.
 class NotificationsPage extends StatefulWidget {
   const NotificationsPage({super.key, required this.repository});
 
@@ -97,202 +98,193 @@ class _NotificationsPageState extends State<NotificationsPage> {
   Widget build(BuildContext context) {
     final unreadCount = _items.where((n) => !n.isRead).length;
     return Scaffold(
-      backgroundColor: AppTokens.background,
-      appBar: AppBar(
-        backgroundColor: AppTokens.surface,
-        title: Row(
+      backgroundColor: CsTokens.paper,
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('Notifications',
-                style: TextStyle(fontWeight: FontWeight.w700)),
-            if (unreadCount > 0) ...[
-              const SizedBox(width: 10),
-              BrandPill(label: '$unreadCount new'),
-            ],
+            Container(
+              decoration: BoxDecoration(
+                color: CsTokens.paper,
+                border:
+                    Border(bottom: CsTokens.side(CsTokens.borderWidthHeavy)),
+              ),
+              padding: const EdgeInsets.fromLTRB(4, 4, 14, 6),
+              child: Row(
+                children: [
+                  Semantics(
+                    button: true,
+                    label: 'Back',
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      behavior: HitTestBehavior.opaque,
+                      child: SizedBox(
+                        width: CsTokens.touchTarget,
+                        height: CsTokens.touchTarget,
+                        child: Center(
+                          child: Text('←',
+                              style: CsTokens.mono(
+                                  size: 16,
+                                  color: CsTokens.ink,
+                                  weight: FontWeight.w700)),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text('PRODUCTION MEMOS',
+                        style: CsTokens.display(size: 22)),
+                  ),
+                  if (unreadCount > 0) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(border: CsTokens.border(2)),
+                      child: CsSlug('$unreadCount new', color: CsTokens.ink),
+                    ),
+                    const SizedBox(width: 10),
+                    GestureDetector(
+                      onTap: _markAllRead,
+                      behavior: HitTestBehavior.opaque,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        child: Text('MARK ALL',
+                            style: CsTokens.mono(
+                                size: 10,
+                                color: CsTokens.rust,
+                                weight: FontWeight.w700)),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            Expanded(
+              child: _loading
+                  ? const Center(
+                      child:
+                          CircularProgressIndicator(color: CsTokens.rust))
+                  : _items.isEmpty
+                      ? _EmptyState(onRefresh: _load)
+                      : RefreshIndicator(
+                          color: CsTokens.rust,
+                          onRefresh: _load,
+                          child: ListView.separated(
+                            controller: _scroll,
+                            padding:
+                                const EdgeInsets.fromLTRB(14, 14, 14, 24),
+                            itemCount:
+                                _items.length + (_loadingMore ? 1 : 0),
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 10),
+                            itemBuilder: (context, i) {
+                              if (i == _items.length) {
+                                return const Padding(
+                                  padding: EdgeInsets.all(16),
+                                  child: Center(
+                                    child: SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2.4,
+                                          color: CsTokens.rust),
+                                    ),
+                                  ),
+                                );
+                              }
+                              final n = _items[i];
+                              return _MemoTile(
+                                  notification: n,
+                                  onTap: () => _markRead(n));
+                            },
+                          ),
+                        ),
+            ),
           ],
         ),
-        actions: [
-          if (unreadCount > 0)
-            TextButton.icon(
-              onPressed: _markAllRead,
-              icon: const Icon(Icons.done_all,
-                  size: 18, color: AppTokens.brandOrange),
-              label: const Text('Mark all read',
-                  style: TextStyle(
-                      color: AppTokens.brandOrange,
-                      fontWeight: FontWeight.w600)),
-            ),
-        ],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _items.isEmpty
-              ? _EmptyState(onRefresh: _load)
-              : RefreshIndicator(
-                  color: AppTokens.brandOrange,
-                  backgroundColor: AppTokens.elevated,
-                  onRefresh: _load,
-                  child: ListView.separated(
-                    controller: _scroll,
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                    itemCount: _items.length + (_loadingMore ? 1 : 0),
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (context, i) {
-                      if (i == _items.length) {
-                        return const Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Center(
-                            child: SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2.4,
-                                  color: AppTokens.brandOrange),
-                            ),
-                          ),
-                        );
-                      }
-                      final n = _items[i];
-                      return _NotificationTile(
-                          notification: n, onTap: () => _markRead(n));
-                    },
-                  ),
-                ),
     );
   }
 }
 
-class _NotificationTile extends StatelessWidget {
-  const _NotificationTile(
-      {required this.notification, required this.onTap});
+class _MemoTile extends StatelessWidget {
+  const _MemoTile({required this.notification, required this.onTap});
 
   final AppNotification notification;
   final VoidCallback onTap;
 
-  IconData get _icon {
+  String get _kind {
     switch (notification.type) {
       case 'NEW_CONTENT':
-        return Icons.movie_outlined;
+        return 'New release';
       case 'RENTAL_EXPIRY':
-        return Icons.access_time;
+        return 'Ticket expiry';
       case 'NEW_DEVICE_LOGIN':
-        return Icons.devices_outlined;
+        return 'New device';
       default:
-        return Icons.notifications_outlined;
+        return 'Memo';
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final unread = !notification.isRead;
-    return Pressable(
+    return GestureDetector(
       onTap: onTap,
-      scale: 0.985,
       child: Container(
         decoration: BoxDecoration(
-          color: unread ? AppTokens.surface : AppTokens.surface.withOpacity(0.5),
-          borderRadius: BorderRadius.circular(AppTokens.radiusLg),
-          border: Border.all(
-            color: unread ? AppTokens.brandOrangeTint : AppTokens.border,
-          ),
-          boxShadow: unread ? AppTokens.cardShadow : null,
+          color: unread ? CsTokens.panel : CsTokens.paper,
+          border: CsTokens.border(2),
         ),
-        clipBehavior: Clip.antiAlias,
         child: IntrinsicHeight(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Orange accent bar for unread items.
-              Container(
-                width: 4,
-                decoration: BoxDecoration(
-                  gradient: unread ? AppTokens.brandGradient : null,
-                  color: unread ? null : Colors.transparent,
-                ),
-              ),
+              Container(width: 5, color: unread ? CsTokens.rust : CsTokens.panel),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-                  child: Row(
+                  padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: unread
-                              ? AppTokens.brandOrangeTint
-                              : AppTokens.elevated,
-                          borderRadius:
-                              BorderRadius.circular(AppTokens.radiusMd),
-                          boxShadow: unread ? AppTokens.brandGlow : null,
-                        ),
-                        child: Icon(_icon,
-                            size: 21,
-                            color: unread
-                                ? AppTokens.brandOrange
-                                : AppTokens.secondaryText),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    notification.title,
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      color: AppTokens.primaryText,
-                                      fontWeight: unread
-                                          ? FontWeight.w700
-                                          : FontWeight.w500,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                if (unread)
-                                  Container(
-                                    width: 9,
-                                    height: 9,
-                                    margin: const EdgeInsets.only(left: 8),
-                                    decoration: const BoxDecoration(
-                                      color: AppTokens.brandOrange,
-                                      shape: BoxShape.circle,
-                                      boxShadow: AppTokens.brandGlow,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 5),
-                            Text(
-                              notification.body,
-                              style: const TextStyle(
-                                  color: AppTokens.secondaryText,
-                                  height: 1.4,
-                                  fontSize: 13),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                const Icon(Icons.schedule,
-                                    size: 13, color: AppTokens.mutedText),
-                                const SizedBox(width: 5),
-                                Text(
-                                  _formatTime(notification.createdAt),
-                                  style: const TextStyle(
-                                      color: AppTokens.mutedText,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500),
-                                ),
-                              ],
+                      Row(
+                        children: [
+                          CsSlug(_kind, size: 9,
+                              color:
+                                  unread ? CsTokens.rust : CsTokens.mutedInk),
+                          const Spacer(),
+                          CsSlug(_formatTime(notification.createdAt), size: 9),
+                          if (unread) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: CsTokens.rust,
+                                shape: BoxShape.circle,
+                              ),
                             ),
                           ],
-                        ),
+                        ],
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        notification.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: unread
+                            ? CsTokens.bodyBold
+                            : CsTokens.body.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: CsTokens.inkSoft),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        notification.body,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: CsTokens.body.copyWith(fontSize: 13),
                       ),
                     ],
                   ),
@@ -323,45 +315,31 @@ class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 96,
-            height: 96,
-            decoration: BoxDecoration(
-              color: AppTokens.surface,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppTokens.brandOrangeTint),
-              boxShadow: AppTokens.brandGlow,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            CsBox(
+              color: CsTokens.panel,
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const CsSlug('Memo board clear'),
+                  const SizedBox(height: 6),
+                  Text('NO MEMOS YET', style: CsTokens.display(size: 28)),
+                  const SizedBox(height: 4),
+                  const Text("We'll pin one here when something happens.",
+                      style: CsTokens.body),
+                ],
+              ),
             ),
-            child: const Icon(Icons.notifications_none_rounded,
-                size: 44, color: AppTokens.brandOrange),
-          ),
-          const SizedBox(height: 24),
-          const Text('No notifications yet',
-              style: TextStyle(
-                  color: AppTokens.primaryText,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700)),
-          const SizedBox(height: 8),
-          const Text("We'll let you know when something happens",
-              style: TextStyle(color: AppTokens.secondaryText, fontSize: 14)),
-          const SizedBox(height: 26),
-          OutlinedButton.icon(
-            onPressed: onRefresh,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppTokens.brandOrange,
-              side: const BorderSide(color: AppTokens.brandOrange),
-              shape: const StadiumBorder(),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-            ),
-            icon: const Icon(Icons.refresh, size: 18),
-            label: const Text('Refresh',
-                style: TextStyle(fontWeight: FontWeight.w600)),
-          ),
-        ],
+            const SizedBox(height: 14),
+            CsButton('Refresh', primary: false, expand: true, onTap: onRefresh),
+          ],
+        ),
       ),
     );
   }

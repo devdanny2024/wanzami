@@ -1,7 +1,7 @@
 name: wanzami_mobile_flutter
 description: Wanzami mobile Flutter parity slice (auth + home shell)
 publish_to: "none"
-version: 1.0.6+16
+version: 1.0.7+17
 
 environment:
   sdk: ">=3.3.0 <4.0.0"

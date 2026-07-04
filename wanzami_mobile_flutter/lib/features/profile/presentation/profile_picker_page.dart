@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_tokens.dart';
-import '../../../core/widgets/wanzami_kit.dart';
+import '../../../core/theme/callsheet_tokens.dart';
+import '../../../core/widgets/callsheet_kit.dart';
 import '../data/profile_repository.dart';
 
+/// Profile picker — "casting call": pick who's watching from the cast board.
 class ProfilePickerPage extends StatefulWidget {
   const ProfilePickerPage({
     super.key,
@@ -50,11 +51,38 @@ class _ProfilePickerPageState extends State<ProfilePickerPage> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Create profile'),
-        content: TextField(controller: c, decoration: const InputDecoration(hintText: 'Profile name')),
+        backgroundColor: CsTokens.paper,
+        shape: Border.fromBorderSide(CsTokens.side(CsTokens.borderWidthHeavy)),
+        title: Text('NEW CAST MEMBER', style: CsTokens.display(size: 22)),
+        content: TextField(
+          controller: c,
+          style: const TextStyle(color: CsTokens.ink),
+          cursorColor: CsTokens.ink,
+          decoration: InputDecoration(
+            hintText: 'Profile name',
+            hintStyle: const TextStyle(color: CsTokens.mutedInk),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.zero,
+              borderSide: CsTokens.side(2),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.zero,
+              borderSide: CsTokens.side(2.5),
+            ),
+          ),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Create')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('CANCEL',
+                style: CsTokens.mono(size: 12, color: CsTokens.mutedInk)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('CREATE',
+                style: CsTokens.mono(
+                    size: 12, color: CsTokens.rust, weight: FontWeight.w700)),
+          ),
         ],
       ),
     );
@@ -64,115 +92,145 @@ class _ProfilePickerPageState extends State<ProfilePickerPage> {
     }
   }
 
-  static const List<Gradient> _avatarGradients = [
-    LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: [AppTokens.brandOrangeLight, AppTokens.brandOrange],
-    ),
-    LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: [AppTokens.brandGold, AppTokens.brandOrange],
-    ),
-    LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: [AppTokens.brandOrange, AppTokens.brandOrangeDark],
-    ),
-    LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: [Color(0xFFFF9F4D), AppTokens.brandOrangeDark],
-    ),
-  ];
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTokens.background,
-      body: Container(
-        width: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0x1AFF6A00), AppTokens.background, AppTokens.background],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                    AppTokens.spacingMd, AppTokens.spacingXs, AppTokens.spacingMd, 0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    FrostedIconButton(
-                      icon: Icons.add,
-                      size: 40,
-                      onTap: _addProfile,
+      backgroundColor: CsTokens.paper,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            CsPageHeader(
+              title: 'Casting call',
+              chip: 'Take 01',
+              trailing: Semantics(
+                button: true,
+                label: 'Sign out',
+                child: GestureDetector(
+                  onTap: widget.onLogout,
+                  behavior: HitTestBehavior.opaque,
+                  child: SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: Center(
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(border: CsTokens.border(2)),
+                        child: const Icon(Icons.logout,
+                            size: 16, color: CsTokens.ink),
+                      ),
                     ),
-                    const SizedBox(width: AppTokens.spacingXs),
-                    FrostedIconButton(
-                      icon: Icons.logout,
-                      size: 40,
-                      onTap: widget.onLogout,
-                    ),
-                  ],
+                  ),
                 ),
               ),
-              const SizedBox(height: AppTokens.spacingXs),
-              const Text(
-                "Who's watching?",
-                style: TextStyle(
-                  color: AppTokens.primaryText,
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
-                ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 22, 16, 6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const CsSlug('Scene 00 · Pick your player'),
+                  const SizedBox(height: 4),
+                  Text("WHO'S\nWATCHING?", style: CsTokens.display(size: 44)),
+                ],
               ),
-              const SizedBox(height: 6),
-              const Text(
-                'Select a profile to continue',
-                style: TextStyle(color: AppTokens.secondaryText, fontSize: 14),
-              ),
-              const SizedBox(height: AppTokens.spacingLg),
-              Expanded(
-                child: _loading
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                            color: AppTokens.brandOrange),
-                      )
-                    : _profiles.isEmpty
-                        ? _EmptyState(onCreate: _addProfile)
-                        : GridView.builder(
-                            padding: const EdgeInsets.all(AppTokens.spacingLg),
-                            itemCount: _profiles.length,
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              mainAxisSpacing: AppTokens.spacingMd,
-                              crossAxisSpacing: AppTokens.spacingMd,
-                              childAspectRatio: 0.92,
-                            ),
-                            itemBuilder: (_, i) {
-                              final p = _profiles[i];
-                              final name = (p['name'] ?? 'Profile').toString();
-                              final initial = name.trim().isNotEmpty
-                                  ? name.trim()[0].toUpperCase()
-                                  : 'W';
-                              return _ProfileAvatar(
-                                name: name,
-                                initial: initial,
-                                kid: p['kidMode'] == true,
-                                gradient: _avatarGradients[
-                                    i % _avatarGradients.length],
-                                onTap: () => widget.onPicked(p),
-                              );
-                            },
+            ),
+            Expanded(
+              child: _loading
+                  ? const Center(
+                      child: CircularProgressIndicator(color: CsTokens.rust),
+                    )
+                  : _profiles.isEmpty
+                      ? _EmptyCast(onCreate: _addProfile)
+                      : GridView.builder(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                          itemCount: _profiles.length + 1,
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            mainAxisSpacing: 18,
+                            crossAxisSpacing: 16,
+                            childAspectRatio: 0.95,
                           ),
+                          itemBuilder: (_, i) {
+                            if (i == _profiles.length) {
+                              return _AddCastCard(onTap: _addProfile);
+                            }
+                            final p = _profiles[i];
+                            final name = (p['name'] ?? 'Profile').toString();
+                            final initial = name.trim().isNotEmpty
+                                ? name.trim()[0].toUpperCase()
+                                : 'W';
+                            return _CastCard(
+                              name: name,
+                              initial: initial,
+                              kid: p['kidMode'] == true,
+                              onTap: () => widget.onPicked(p),
+                            );
+                          },
+                        ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CastCard extends StatelessWidget {
+  const _CastCard({
+    required this.name,
+    required this.initial,
+    required this.kid,
+    required this.onTap,
+  });
+
+  final String name;
+  final String initial;
+  final bool kid;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Watch as $name',
+      child: GestureDetector(
+        onTap: onTap,
+        child: CsBox(
+          shadow: 4,
+          color: CsTokens.panel,
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                color: CsTokens.ink,
+                alignment: Alignment.center,
+                child: kid
+                    ? const Icon(Icons.child_care_rounded,
+                        color: CsTokens.brand, size: 36)
+                    : Text(
+                        initial,
+                        style:
+                            CsTokens.display(size: 40, color: CsTokens.brand),
+                      ),
               ),
+              const SizedBox(height: 10),
+              Text(
+                name.toUpperCase(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: CsTokens.mono(
+                    size: 11, color: CsTokens.ink, weight: FontWeight.w700),
+              ),
+              if (kid) ...[
+                const SizedBox(height: 4),
+                CsSlug('Kids', size: 9),
+              ],
             ],
           ),
         ),
@@ -181,122 +239,103 @@ class _ProfilePickerPageState extends State<ProfilePickerPage> {
   }
 }
 
-class _ProfileAvatar extends StatelessWidget {
-  const _ProfileAvatar({
-    required this.name,
-    required this.initial,
-    required this.kid,
-    required this.gradient,
-    required this.onTap,
-  });
+class _AddCastCard extends StatelessWidget {
+  const _AddCastCard({required this.onTap});
 
-  final String name;
-  final String initial;
-  final bool kid;
-  final Gradient gradient;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Pressable(
-      onTap: onTap,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: AppTokens.brandGradient,
-              boxShadow: AppTokens.brandGlow,
-            ),
-            child: Container(
-              width: 88,
-              height: 88,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppTokens.background,
-              ),
-              padding: const EdgeInsets.all(3),
-              child: Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: gradient,
-                ),
-                alignment: Alignment.center,
-                child: kid
-                    ? const Icon(Icons.child_care_rounded,
-                        color: Colors.white, size: 40)
-                    : Text(
-                        initial,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 34,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-              ),
+    return Semantics(
+      button: true,
+      label: 'Add profile',
+      child: GestureDetector(
+        onTap: onTap,
+        child: CustomPaint(
+          foregroundPainter: _DashedRectPainter(),
+          child: Container(
+            color: CsTokens.paper,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.add, size: 34, color: CsTokens.mutedInk),
+                const SizedBox(height: 8),
+                CsSlug('Add cast member', size: 10),
+              ],
             ),
           ),
-          const SizedBox(height: AppTokens.spacingSm),
-          Text(
-            name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppTokens.primaryText,
-              fontWeight: FontWeight.w600,
-              fontSize: 15,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.onCreate});
+class _DashedRectPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = CsTokens.ink
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+    const dash = 7.0;
+    const gap = 5.0;
+
+    void dashedLine(Offset a, Offset b) {
+      final total = (b - a).distance;
+      final dir = (b - a) / total;
+      var d = 0.0;
+      while (d < total) {
+        final end = (d + dash) > total ? total : (d + dash);
+        canvas.drawLine(a + dir * d, a + dir * end, paint);
+        d += dash + gap;
+      }
+    }
+
+    dashedLine(Offset.zero, Offset(size.width, 0));
+    dashedLine(Offset(size.width, 0), Offset(size.width, size.height));
+    dashedLine(Offset(size.width, size.height), Offset(0, size.height));
+    dashedLine(Offset(0, size.height), Offset.zero);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _EmptyCast extends StatelessWidget {
+  const _EmptyCast({required this.onCreate});
 
   final VoidCallback onCreate;
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: AppTokens.brandOrangeTint,
-              borderRadius: BorderRadius.circular(AppTokens.radiusXl),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            CsBox(
+              color: CsTokens.panel,
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const CsSlug('Open casting'),
+                  const SizedBox(height: 6),
+                  Text('NO CAST YET', style: CsTokens.display(size: 30)),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Create a profile to start watching.',
+                    style: CsTokens.body,
+                  ),
+                ],
+              ),
             ),
-            child: const Icon(Icons.person_add_alt_1_rounded,
-                color: AppTokens.brandOrange, size: 34),
-          ),
-          const SizedBox(height: AppTokens.spacingMd),
-          const Text(
-            'No profile yet',
-            style: TextStyle(
-              color: AppTokens.primaryText,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Create a profile to start watching',
-            style: TextStyle(color: AppTokens.secondaryText, fontSize: 14),
-          ),
-          const SizedBox(height: AppTokens.spacingLg),
-          FilledButton.icon(
-            onPressed: onCreate,
-            icon: const Icon(Icons.add),
-            label: const Text('Create profile'),
-          ),
-        ],
+            const SizedBox(height: 16),
+            CsButton('Create profile', expand: true, onTap: onCreate),
+          ],
+        ),
       ),
     );
   }

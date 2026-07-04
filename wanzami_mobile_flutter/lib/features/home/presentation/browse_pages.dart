@@ -344,6 +344,7 @@ class SearchPage extends StatefulWidget {
   State<SearchPage> createState() => _SearchPageState();
 }
 
+/// Search — "the index": pull a file from the production archive.
 class _SearchPageState extends State<SearchPage> {
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
@@ -379,147 +380,154 @@ class _SearchPageState extends State<SearchPage> {
   Widget build(BuildContext context) {
     final showTrending = _controller.text.trim().isEmpty && _items.isEmpty;
 
-    return SafeArea(
-      child: Column(
-        children: [
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Pressable(
-                  onTap: () => Navigator.pop(context),
-                  child: Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: AppTokens.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppTokens.border),
-                    ),
-                    child:
-                        const Icon(Icons.close, color: AppTokens.primaryText),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    height: 54,
-                    decoration: BoxDecoration(
-                      color: AppTokens.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: _focusNode.hasFocus
-                            ? AppTokens.brandOrange
-                            : AppTokens.border,
-                        width: _focusNode.hasFocus ? 1.6 : 1,
-                      ),
-                      boxShadow: _focusNode.hasFocus ? AppTokens.brandGlow : null,
-                    ),
-                    child: TextField(
-                      controller: _controller,
-                      focusNode: _focusNode,
-                      autofocus: true,
-                      onChanged: (_) => setState(() {}),
-                      onSubmitted: (_) => _runSearch(),
-                      style: const TextStyle(
-                          fontSize: 17, fontWeight: FontWeight.w500),
-                      decoration: InputDecoration(
-                        hintText: 'Search movies, series...',
-                        hintStyle:
-                            const TextStyle(color: AppTokens.mutedText),
-                        prefixIcon: const Icon(Icons.search,
-                            color: AppTokens.brandOrangeLight),
-                        suffixIcon: _controller.text.trim().isEmpty
-                            ? null
-                            : IconButton(
-                                icon: const Icon(Icons.arrow_forward_rounded,
-                                    color: AppTokens.brandOrangeLight),
-                                onPressed: _runSearch),
-                        border: InputBorder.none,
-                        contentPadding:
-                            const EdgeInsets.symmetric(vertical: 16),
+    return Container(
+      color: CsTokens.paper,
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 10),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: Row(
+                children: [
+                  Semantics(
+                    button: true,
+                    label: 'Close search',
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      behavior: HitTestBehavior.opaque,
+                      child: Container(
+                        width: CsTokens.touchTarget,
+                        height: CsTokens.touchTarget,
+                        decoration: BoxDecoration(border: CsTokens.border()),
+                        child: const Icon(Icons.close,
+                            color: CsTokens.ink, size: 20),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 22),
-          Expanded(
-            child: showTrending
-                ? ListView(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    children: [
-                      const SectionHeader(
-                        title: 'Trending Searches',
-                        padding: EdgeInsets.zero,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Container(
+                      height: CsTokens.touchTarget,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      decoration: BoxDecoration(
+                        color: CsTokens.paper,
+                        border: CsTokens.border(
+                            _focusNode.hasFocus ? 3 : CsTokens.borderWidth),
                       ),
-                      const SizedBox(height: 16),
-                      ..._trending.map(
-                        (item) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: Pressable(
-                            onTap: () {
-                              _controller.text = item;
-                              _runSearch();
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 18),
-                              decoration: BoxDecoration(
-                                color: AppTokens.surface,
-                                borderRadius:
-                                    BorderRadius.circular(AppTokens.radiusLg),
-                                border: Border.all(color: AppTokens.border),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.trending_up,
-                                      color: AppTokens.brandOrange, size: 20),
-                                  const SizedBox(width: 14),
-                                  Expanded(
-                                    child: Text(item,
-                                        style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w600,
-                                            color: AppTokens.primaryText)),
-                                  ),
-                                  const Icon(Icons.north_east,
-                                      color: AppTokens.mutedText, size: 18),
-                                ],
+                      child: Row(
+                        children: [
+                          const Icon(Icons.search,
+                              color: CsTokens.ink, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextField(
+                              controller: _controller,
+                              focusNode: _focusNode,
+                              autofocus: true,
+                              onChanged: (_) => setState(() {}),
+                              onSubmitted: (_) => _runSearch(),
+                              style: const TextStyle(
+                                  color: CsTokens.ink,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600),
+                              cursorColor: CsTokens.ink,
+                              decoration: const InputDecoration(
+                                isDense: true,
+                                border: InputBorder.none,
+                                hintText: 'Search the index\u2026',
+                                hintStyle:
+                                    TextStyle(color: CsTokens.mutedInk),
                               ),
                             ),
                           ),
+                          if (_controller.text.trim().isNotEmpty)
+                            GestureDetector(
+                              onTap: _runSearch,
+                              child: const Padding(
+                                padding: EdgeInsets.all(6),
+                                child: Icon(Icons.arrow_forward,
+                                    color: CsTokens.rust, size: 20),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            Expanded(
+              child: showTrending
+                  ? ListView(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      children: [
+                        const CsSlug('Frequently pulled files'),
+                        const SizedBox(height: 10),
+                        for (final item in _trending)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 9),
+                            child: GestureDetector(
+                              onTap: () {
+                                _controller.text = item;
+                                _runSearch();
+                              },
+                              child: Container(
+                                constraints: const BoxConstraints(
+                                    minHeight: CsTokens.touchTarget),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12),
+                                decoration: BoxDecoration(
+                                  color: CsTokens.panel,
+                                  border: CsTokens.border(2),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.trending_up,
+                                        color: CsTokens.rust, size: 18),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(item.toUpperCase(),
+                                          style: CsTokens.mono(
+                                              size: 11,
+                                              color: CsTokens.ink,
+                                              weight: FontWeight.w700)),
+                                    ),
+                                    const Icon(Icons.north_east,
+                                        color: CsTokens.mutedInk, size: 16),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    )
+                  : _items.isEmpty
+                      ? const _SearchEmptyState()
+                      : ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(14, 0, 14, 24),
+                          itemCount: _items.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 10),
+                          itemBuilder: (context, index) {
+                            final item = _items[index];
+                            return _SearchResultTile(
+                              item: item,
+                              onTap: () => widget.onOpen(item),
+                            );
+                          },
                         ),
-                      ),
-                    ],
-                  )
-                : _items.isEmpty
-                    ? const _SearchEmptyState()
-                    : ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                        itemCount: _items.length,
-                        separatorBuilder: (_, __) =>
-                            const SizedBox(height: 12),
-                        itemBuilder: (context, index) {
-                          final item = _items[index];
-                          return _SearchResultTile(
-                            item: item,
-                            onTap: () => widget.onOpen(item),
-                          );
-                        },
-                      ),
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-/// Search result row: poster thumbnail, title, type/year meta and a play hint.
+/// Search result row: bordered file card with thumb, title, and spec meta.
 class _SearchResultTile extends StatelessWidget {
   const _SearchResultTile({required this.item, required this.onTap});
 
@@ -529,78 +537,55 @@ class _SearchResultTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final meta = <String>[
-      if (item.isSeries) 'Series' else 'Movie',
+      if (item.isSeries) 'SERIES' else 'FEATURE',
       if (item.releaseYear != null) '${item.releaseYear}',
       if (!item.isSeries && (item.durationLabel ?? '').isNotEmpty)
-        item.durationLabel!,
-    ].join(' • ');
+        item.durationLabel!.toUpperCase(),
+    ].join(' \u00b7 ');
 
-    return Pressable(
+    return GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: AppTokens.surface,
-          borderRadius: BorderRadius.circular(AppTokens.radiusLg),
-          border: Border.all(color: AppTokens.border),
-          boxShadow: AppTokens.cardShadow,
+          color: CsTokens.panel,
+          border: CsTokens.border(2),
         ),
-        clipBehavior: Clip.antiAlias,
         child: Row(
           children: [
             SizedBox(
               width: 64,
-              height: 92,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (item.thumbnailUrl.isNotEmpty)
-                    NetworkImageWithSkeleton(
-                        url: item.thumbnailUrl, fit: BoxFit.cover)
-                  else
-                    const ColoredBox(color: AppTokens.elevated),
-                  const ScrimOverlay(),
-                  if ((item.rating ?? '').isNotEmpty)
-                    Positioned(
-                      bottom: 5,
-                      left: 5,
-                      child: RatingBadge(rating: item.rating!),
-                    ),
-                ],
-              ),
+              height: 88,
+              child: item.thumbnailUrl.isNotEmpty
+                  ? NetworkImageWithSkeleton(
+                      url: item.thumbnailUrl, fit: BoxFit.cover)
+                  : const ColoredBox(color: CsTokens.cinemaPanel),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    item.title,
+                    item.title.toUpperCase(),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppTokens.primaryText,
-                    ),
+                    style: CsTokens.display(size: 18),
                   ),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 4),
                   Text(
                     meta,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12.5,
-                      color: AppTokens.secondaryText,
-                    ),
+                    style: CsTokens.mono(size: 9),
                   ),
                 ],
               ),
             ),
             const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 14),
-              child: Icon(Icons.play_circle_outline,
-                  color: AppTokens.brandOrangeLight, size: 26),
+              padding: EdgeInsets.symmetric(horizontal: 12),
+              child: Icon(Icons.play_arrow_rounded,
+                  color: CsTokens.ink, size: 24),
             ),
           ],
         ),
@@ -617,41 +602,25 @@ class _SearchEmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(40, 0, 40, 120),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 76,
-              height: 76,
-              decoration: BoxDecoration(
-                color: AppTokens.surface,
-                shape: BoxShape.circle,
-                border: Border.all(color: AppTokens.border),
-              ),
-              child: const Icon(Icons.search_off,
-                  color: AppTokens.brandOrangeLight, size: 34),
-            ),
-            const SizedBox(height: 18),
-            const Text(
-              'No results found',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppTokens.primaryText,
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Try a different title or keyword.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppTokens.secondaryText,
-                fontSize: 13.5,
-                height: 1.4,
-              ),
-            ),
-          ],
+        padding: const EdgeInsets.fromLTRB(30, 0, 30, 120),
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: CsTokens.panel,
+            border: CsTokens.border(2),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const CsSlug('File not found'),
+              const SizedBox(height: 6),
+              Text('NOTHING IN THE INDEX', style: CsTokens.display(size: 24)),
+              const SizedBox(height: 4),
+              const Text('Try a different title or keyword.',
+                  style: CsTokens.body),
+            ],
+          ),
         ),
       ),
     );

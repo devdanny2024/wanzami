@@ -138,7 +138,7 @@ class _HomeShellPageState extends State<HomeShellPage> {
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => Scaffold(
-          backgroundColor: CsTokens.cinema,
+          backgroundColor: CsTokens.paper,
           body: SearchPage(
             repository: widget.contentRepository,
             onOpen: (item) => _openDetail(item),
