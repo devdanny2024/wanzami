@@ -8,9 +8,11 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../../../core/env/app_env.dart';
 import '../../../core/platform/ios_web_auth.dart';
-import '../../../core/theme/app_tokens.dart';
+import '../../../core/theme/callsheet_tokens.dart';
+import '../../../core/widgets/callsheet_kit.dart';
 import 'auth_controller.dart';
 
+/// Login — "crew sign-in", FORM W-01 on the call sheet.
 class LoginPage extends StatefulWidget {
   const LoginPage({
     super.key,
@@ -36,15 +38,40 @@ class _LoginPageState extends State<LoginPage> {
     final email = await showDialog<String>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Forgot password'),
+        backgroundColor: CsTokens.paper,
+        shape: Border.fromBorderSide(CsTokens.side(CsTokens.borderWidthHeavy)),
+        title: Text('REQUEST A REPRINT',
+            style: CsTokens.display(size: 24)),
         content: TextField(
           controller: c,
           keyboardType: TextInputType.emailAddress,
-          decoration: const InputDecoration(hintText: 'Enter your email'),
+          style: const TextStyle(color: CsTokens.ink),
+          cursorColor: CsTokens.ink,
+          decoration: InputDecoration(
+            hintText: 'Enter your email',
+            hintStyle: const TextStyle(color: CsTokens.mutedInk),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.zero,
+              borderSide: CsTokens.side(2),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.zero,
+              borderSide: CsTokens.side(2.5),
+            ),
+          ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.pop(context, c.text.trim()), child: const Text('Send link')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('CANCEL',
+                style: CsTokens.mono(size: 12, color: CsTokens.mutedInk)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, c.text.trim()),
+            child: Text('SEND LINK',
+                style: CsTokens.mono(
+                    size: 12, color: CsTokens.rust, weight: FontWeight.w700)),
+          ),
         ],
       ),
     );
@@ -181,145 +208,139 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          color: AppTokens.background,
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0x1AFF6A00), AppTokens.background, AppTokens.background],
-          ),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-            child: _Appear(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 24),
-                  Center(
-                    child: Image.asset('assets/images/wanzami_logo.png', width: 96, height: 96),
-                  ),
-                  const SizedBox(height: 22),
-                  const Text(
-                    'Welcome Back',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w700, height: 1.1),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Sign in to continue watching',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: AppTokens.secondaryText, fontSize: 14),
-                  ),
-                  const SizedBox(height: 30),
-                  _SocialButton(
-                    label: 'Continue with Google',
-                    icon: const _GoogleMark(),
-                    onTap: _startGoogleSignin,
-                  ),
-                  const SizedBox(height: 12),
-                  _SocialButton(
-                    label: 'Continue with Apple',
-                    icon: const Icon(Icons.apple, color: Colors.black, size: 22),
-                    onTap: _startAppleSignin,
-                  ),
-                  const SizedBox(height: 22),
-                  const _OrDivider(),
-                  const SizedBox(height: 22),
-                  const _FieldLabel('Email'),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _email,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(hintText: 'your@email.com'),
-                  ),
-                  const SizedBox(height: 14),
-                  const _FieldLabel('Password'),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _password,
-                    obscureText: true,
-                    decoration: const InputDecoration(hintText: '••••••••'),
-                  ),
-                  const SizedBox(height: 18),
-                  AnimatedBuilder(
-                    animation: widget.controller,
-                    builder: (_, __) {
-                      final loading = widget.controller.status == AuthStatus.loading;
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          if (widget.controller.status == AuthStatus.error)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: Text(
-                                widget.controller.errorMessage ?? 'Unable to sign in',
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(color: Colors.redAccent),
-                              ),
-                            ),
-                          _GradientButton(
-                            onPressed: loading
-                                ? null
-                                : () => widget.controller.login(
-                                      _email.text.trim(),
-                                      _password.text,
-                                    ),
-                            child: loading
-                                ? const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      SizedBox(
-                                        width: 16,
-                                        height: 16,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: AppTokens.onBrandOrange,
-                                        ),
-                                      ),
-                                      SizedBox(width: 10),
-                                      Text('Signing in...'),
-                                    ],
-                                  )
-                                : const Text('Sign In'),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextButton(
-                    onPressed: _forgotPassword,
-                    child: const Text(
-                      'Forgot Password?',
-                      style: TextStyle(color: AppTokens.brandOrange, fontSize: 13),
-                    ),
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+      backgroundColor: CsTokens.paper,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const CsPageHeader(title: 'Wanzami Pictures', chip: 'Form W-01'),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(18, 20, 18, 24),
+                child: _Appear(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Text(
-                        'Don\'t have an account? ',
-                        style: TextStyle(color: AppTokens.secondaryText, fontSize: 14),
+                      const CsSlug('Crew sign-in · INT. Production office'),
+                      const SizedBox(height: 8),
+                      Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                                text: 'REPORT\nTO ',
+                                style: CsTokens.display(size: 52)),
+                            TextSpan(
+                              text: 'SET.',
+                              style: CsTokens.display(
+                                  size: 52, color: CsTokens.rust),
+                            ),
+                          ],
+                        ),
                       ),
+                      const SizedBox(height: 22),
+                      _CsField(
+                        label: 'Email',
+                        controller: _email,
+                        hint: 'you@setlife.com',
+                        keyboardType: TextInputType.emailAddress,
+                      ),
+                      const SizedBox(height: 12),
+                      _CsField(
+                        label: 'Password',
+                        controller: _password,
+                        hint: '••••••••',
+                        obscure: true,
+                      ),
+                      const SizedBox(height: 16),
+                      AnimatedBuilder(
+                        animation: widget.controller,
+                        builder: (_, __) {
+                          final loading =
+                              widget.controller.status == AuthStatus.loading;
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (widget.controller.status == AuthStatus.error)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 10),
+                                  child: Text(
+                                    (widget.controller.errorMessage ??
+                                            'Unable to sign in')
+                                        .toUpperCase(),
+                                    style: CsTokens.mono(
+                                        size: 10, color: CsTokens.rust),
+                                  ),
+                                ),
+                              CsButton(
+                                loading ? 'Signing in…' : 'Sign in →',
+                                expand: true,
+                                onTap: loading
+                                    ? () {}
+                                    : () => widget.controller.login(
+                                          _email.text.trim(),
+                                          _password.text,
+                                        ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 12),
                       GestureDetector(
-                        onTap: widget.onShowRegister,
-                        child: const Text(
-                          'Sign Up',
-                          style: TextStyle(
-                            color: AppTokens.brandOrange,
-                            fontWeight: FontWeight.w700,
+                        onTap: _forgotPassword,
+                        behavior: HitTestBehavior.opaque,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Text(
+                            'FORGOT PASSWORD · REQUEST A REPRINT',
+                            style: CsTokens.mono(size: 10)
+                                .copyWith(decoration: TextDecoration.underline),
                           ),
                         ),
                       ),
+                      const SizedBox(height: 10),
+                      const _CsOrDivider(),
+                      const SizedBox(height: 14),
+                      _CsSocialButton(
+                        label: 'Continue with Google',
+                        icon: const _GoogleMark(),
+                        onTap: _startGoogleSignin,
+                      ),
+                      const SizedBox(height: 10),
+                      _CsSocialButton(
+                        label: 'Continue with Apple',
+                        icon: const Icon(Icons.apple,
+                            color: CsTokens.ink, size: 20),
+                        onTap: _startAppleSignin,
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          GestureDetector(
+                            onTap: widget.onShowRegister,
+                            behavior: HitTestBehavior.opaque,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              child: Text(
+                                'NEW CREW? REGISTER →',
+                                style: CsTokens.mono(
+                                  size: 11,
+                                  color: CsTokens.ink,
+                                  weight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const CsStamp('Approved'),
+                        ],
+                      ),
                     ],
                   ),
-                ],
+                ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -345,73 +366,111 @@ class _Appear extends StatelessWidget {
   }
 }
 
-/// Primary CTA with the brand orange sweep + glow. Falls back to a flat
-/// disabled surface while loading so the spinner stays legible.
-class _GradientButton extends StatelessWidget {
-  const _GradientButton({required this.onPressed, required this.child});
-
-  final VoidCallback? onPressed;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final enabled = onPressed != null;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: enabled ? AppTokens.brandGradient : null,
-        color: enabled ? null : AppTokens.elevated,
-        borderRadius: BorderRadius.circular(AppTokens.radiusMd),
-        boxShadow: enabled ? AppTokens.brandGlow : null,
-      ),
-      child: FilledButton(
-        onPressed: onPressed,
-        style: FilledButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          foregroundColor: AppTokens.onBrandOrange,
-          disabledBackgroundColor: Colors.transparent,
-          disabledForegroundColor: AppTokens.onBrandOrange,
-          shadowColor: Colors.transparent,
-        ),
-        child: child,
-      ),
-    );
-  }
-}
-
-class _FieldLabel extends StatelessWidget {
-  const _FieldLabel(this.label);
+/// Ink-bordered field with the mono label printed inside the frame.
+class _CsField extends StatelessWidget {
+  const _CsField({
+    required this.label,
+    required this.controller,
+    required this.hint,
+    this.obscure = false,
+    this.keyboardType,
+  });
 
   final String label;
+  final TextEditingController controller;
+  final String hint;
+  final bool obscure;
+  final TextInputType? keyboardType;
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+      decoration: BoxDecoration(
+        color: CsTokens.paper,
+        border: CsTokens.border(),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CsSlug(label, size: 9),
+          TextField(
+            controller: controller,
+            obscureText: obscure,
+            keyboardType: keyboardType,
+            style: const TextStyle(color: CsTokens.ink, fontSize: 15),
+            cursorColor: CsTokens.ink,
+            decoration: InputDecoration(
+              isDense: true,
+              border: InputBorder.none,
+              hintText: hint,
+              hintStyle:
+                  const TextStyle(color: CsTokens.mutedInk, fontSize: 15),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-class _OrDivider extends StatelessWidget {
-  const _OrDivider();
+class _CsOrDivider extends StatelessWidget {
+  const _CsOrDivider();
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      children: const [
-        Expanded(child: Divider(color: AppTokens.elevated, thickness: 1)),
+      children: [
+        const Expanded(child: _HDash()),
         Padding(
-          padding: EdgeInsets.symmetric(horizontal: 10),
-          child: Text('OR', style: TextStyle(color: AppTokens.secondaryText, fontSize: 12)),
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: CsSlug('or', size: 10),
         ),
-        Expanded(child: Divider(color: AppTokens.elevated, thickness: 1)),
+        const Expanded(child: _HDash()),
       ],
     );
   }
 }
 
-class _SocialButton extends StatelessWidget {
-  const _SocialButton({required this.label, required this.icon, required this.onTap});
+class _HDash extends StatelessWidget {
+  const _HDash();
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: const Size(double.infinity, 2),
+      painter: _HDashPainter(),
+    );
+  }
+}
+
+class _HDashPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = CsTokens.ink
+      ..strokeWidth = 2;
+    const dash = 6.0;
+    const gap = 5.0;
+    var x = 0.0;
+    final y = size.height / 2;
+    while (x < size.width) {
+      final end = (x + dash) > size.width ? size.width : (x + dash);
+      canvas.drawLine(Offset(x, y), Offset(end, y), paint);
+      x += dash + gap;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _CsSocialButton extends StatelessWidget {
+  const _CsSocialButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
 
   final String label;
   final Widget icon;
@@ -419,22 +478,33 @@ class _SocialButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 56,
-      child: ElevatedButton(
-        onPressed: onTap,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            icon,
-            const SizedBox(width: 10),
-            Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-          ],
+    return Semantics(
+      button: true,
+      label: label,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: CsTokens.touchTarget),
+          decoration: BoxDecoration(
+            color: CsTokens.paper,
+            border: CsTokens.border(),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              icon,
+              const SizedBox(width: 10),
+              Text(
+                label.toUpperCase(),
+                style: const TextStyle(
+                  color: CsTokens.ink,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.7,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

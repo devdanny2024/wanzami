@@ -58,8 +58,14 @@ android {
 
     buildTypes {
         release {
-            // Use upload keystore (Play App Signing recommended).
-            signingConfig = signingConfigs.getByName("release")
+            // Use the upload keystore when key.properties is present (Play
+            // builds); fall back to debug signing so CI can produce an
+            // installable test APK without the keystore.
+            signingConfig = if (keystorePropertiesFile.exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
         debug {
             signingConfig = signingConfigs.getByName("debug")
