@@ -326,22 +326,23 @@ export function MoviesManagement() {
                   </div>
                 </div>
                 <div className="flex items-center justify-between gap-2 px-3 py-2.5 border-t border-white/5">
-                  {movie.pendingReview && !publishing ? (
-                    <Button size="sm" className="h-8 bg-emerald-600 hover:bg-emerald-500 text-white" onClick={publish}>
-                      <Rocket className="w-4 h-4 mr-1" />
-                      Publish
-                    </Button>
-                  ) : (
+                  <div className="flex items-center gap-2 min-w-0">
                     <Button size="sm" className="h-8 bg-[#fd7e14]/15 text-[#fd7e14] hover:bg-[#fd7e14]/25" onClick={edit}>
                       <Edit className="w-4 h-4 mr-1" />
                       Edit
                     </Button>
-                  )}
-                  <div className="flex items-center gap-1">
+                    {movie.pendingReview && !publishing && (
+                      <Button size="sm" className="h-8 bg-emerald-600/90 hover:bg-emerald-500 text-white" onClick={publish}>
+                        <Rocket className="w-4 h-4 mr-1" />
+                        Publish
+                      </Button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-8 w-8 text-neutral-300 hover:text-white"
+                      className="h-8 w-8 rounded-lg border border-neutral-800 bg-neutral-950 text-neutral-300 hover:text-white hover:border-neutral-600"
                       title="Preview"
                       onClick={() => openPreview(movie)}
                     >
@@ -352,7 +353,7 @@ export function MoviesManagement() {
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-8 w-8 text-neutral-300 hover:text-white"
+                          className="h-8 w-8 rounded-lg border border-neutral-800 bg-neutral-950 text-neutral-300 hover:text-white hover:border-neutral-600"
                           aria-label="More actions"
                         >
                           <MoreVertical className="w-4 h-4" />
