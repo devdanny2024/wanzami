@@ -9,7 +9,8 @@ import java.util.Properties
 
 android {
     namespace = "tv.wanzami.app"
-    compileSdk = flutter.compileSdkVersion
+    // flutter_web_auth_2's androidx.browser dependency requires SDK 36.
+    compileSdk = 36
     ndkVersion = "27.0.12077973"
 
     // Release signing (Play Store)
