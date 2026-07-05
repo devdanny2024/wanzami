@@ -155,6 +155,17 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
+/// True when a duration label ("1h 52m", "95m") reads as feature-length
+/// (60 minutes or more). Unknown formats return false.
+bool _isFeatureLength(String? durationLabel) {
+  if (durationLabel == null || durationLabel.trim().isEmpty) return false;
+  final label = durationLabel.toLowerCase();
+  final hours = RegExp(r'(\d+)\s*h').firstMatch(label);
+  if (hours != null && int.parse(hours.group(1)!) >= 1) return true;
+  final mins = RegExp(r'(\d+)\s*m').firstMatch(label);
+  return mins != null && int.parse(mins.group(1)!) >= 60;
+}
+
 class _CsHomeBody extends StatelessWidget {
   const _CsHomeBody({
     required this.items,
@@ -177,6 +188,14 @@ class _CsHomeBody extends StatelessWidget {
     final movies = items.where((e) => !e.isSeries).toList();
     final series = items.where((e) => e.isSeries).toList();
 
+    // QA item 9: the hero label must reflect the format, never a hard-coded
+    // "feature". Derived from metadata: series vs runtime length.
+    final featuredFormat = featured.isSeries
+        ? 'Series'
+        : _isFeatureLength(featured.durationLabel)
+            ? 'Feature-length'
+            : (featured.durationLabel == null ? 'Now showing' : 'Short film');
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -186,7 +205,7 @@ class _CsHomeBody extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const CsSlug('Scene 01 · Feature presentation'),
+              CsSlug('Scene 01 · $featuredFormat'),
               const SizedBox(height: 8),
               GestureDetector(
                 onTap: () => onOpen(featured),
@@ -599,17 +618,32 @@ class _CsTopBarDelegate extends SliverPersistentHeaderDelegate {
       child: Row(
         children: [
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
+            child: Row(
               children: [
-                Text(
-                  'WANZAMI · DAILY PROGRAMME',
-                  style: CsTokens.mono(
-                      size: 12, color: CsTokens.ink, weight: FontWeight.w700),
+                Image.asset(
+                  'assets/images/wanzami_logo.png',
+                  width: 30,
+                  height: 30,
+                  fit: BoxFit.contain,
                 ),
-                const SizedBox(height: 3),
-                CsSlug('Call sheet № 001', size: 9),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'WANZAMI SHOWCASE',
+                        style: CsTokens.mono(
+                            size: 12,
+                            color: CsTokens.ink,
+                            weight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 3),
+                      CsSlug('Scene 1, Act 1', size: 9),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),

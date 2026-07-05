@@ -982,7 +982,7 @@ class _DetailPageState extends State<DetailPage> {
                     ),
                   ),
                   const Spacer(),
-                  CsSlug('Call sheet \u00b7 Title ${widget.item.id}', size: 10),
+                  CsSlug('Scene 1, Act 1 \u00b7 Title ${widget.item.id}', size: 10),
                 ],
               ),
             ),

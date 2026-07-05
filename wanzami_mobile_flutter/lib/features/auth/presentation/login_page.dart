@@ -213,7 +213,7 @@ class _LoginPageState extends State<LoginPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const CsPageHeader(title: 'Wanzami Pictures', chip: 'Form W-01'),
+            const CsPageHeader(title: 'Wanzami TV', chip: 'Form W-01'),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(18, 20, 18, 24),
@@ -221,18 +221,18 @@ class _LoginPageState extends State<LoginPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const CsSlug('Crew sign-in · INT. Production office'),
+                      const CsSlug('Crew sign-in · INT. Wanzami Cinema'),
                       const SizedBox(height: 8),
                       Text.rich(
                         TextSpan(
                           children: [
                             TextSpan(
-                                text: 'REPORT\nTO ',
-                                style: CsTokens.display(size: 52)),
+                                text: 'WELCOME TO\n',
+                                style: CsTokens.display(size: 40)),
                             TextSpan(
-                              text: 'SET.',
+                              text: 'CINEMA\nREIMAGINED.',
                               style: CsTokens.display(
-                                  size: 52, color: CsTokens.rust),
+                                  size: 40, color: CsTokens.rust),
                             ),
                           ],
                         ),

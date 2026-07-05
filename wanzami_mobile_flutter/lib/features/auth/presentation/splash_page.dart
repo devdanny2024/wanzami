@@ -69,7 +69,7 @@ class _SplashPageState extends State<SplashPage>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          CsSlug('Wanzami Pictures presents', size: 10),
+                          CsSlug('Wanzami TV presents', size: 10),
                           const SizedBox(height: 6),
                           Text('WANZAMI', style: CsTokens.display(size: 56)),
                           const SizedBox(height: 12),

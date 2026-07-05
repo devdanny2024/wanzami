@@ -128,7 +128,7 @@ class _ProfilePageState extends State<ProfilePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const CsPageHeader(title: 'Cast & crew', chip: 'Crew file'),
+            const CsPageHeader(title: 'VIP', chip: 'Crew file'),
             Expanded(
               child: _loading
                   ? const Center(

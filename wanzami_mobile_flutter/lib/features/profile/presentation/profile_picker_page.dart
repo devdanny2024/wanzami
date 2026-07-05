@@ -101,7 +101,7 @@ class _ProfilePickerPageState extends State<ProfilePickerPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             CsPageHeader(
-              title: 'Casting call',
+              title: 'Crew Show',
               chip: 'Take 01',
               trailing: Semantics(
                 button: true,
@@ -130,7 +130,7 @@ class _ProfilePickerPageState extends State<ProfilePickerPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const CsSlug('Scene 00 · Pick your player'),
+                  const CsSlug('Scene 00 · Character profile'),
                   const SizedBox(height: 4),
                   Text("WHO'S\nWATCHING?", style: CsTokens.display(size: 44)),
                 ],
