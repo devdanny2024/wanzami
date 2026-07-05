@@ -217,7 +217,10 @@ class _CsHomeBody extends StatelessWidget {
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
-                        NetworkImageWithSkeleton(url: featured.bannerUrl),
+                        NetworkImageWithSkeleton(
+                          url: featured.bannerUrl,
+                          variant: CsSkeletonVariant.countdown,
+                        ),
                         const DecoratedBox(
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
@@ -371,7 +374,8 @@ class _ResumeCard extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    NetworkImageWithSkeleton(url: entry.item.thumbnailUrl),
+                    NetworkImageWithSkeleton(
+                        url: entry.item.thumbnailUrl, decodeWidth: 360),
                     Align(
                       alignment: Alignment.bottomLeft,
                       child: FractionallySizedBox(
@@ -415,7 +419,8 @@ class _LiveCard extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                NetworkImageWithSkeleton(url: event.thumbnailUrl ?? ''),
+                NetworkImageWithSkeleton(
+                    url: event.thumbnailUrl ?? '', decodeWidth: 440),
                 const DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -479,7 +484,7 @@ class _FilmFrame extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            NetworkImageWithSkeleton(url: item.thumbnailUrl),
+            NetworkImageWithSkeleton(url: item.thumbnailUrl, decodeWidth: 320),
             const DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -554,7 +559,8 @@ class _PosterRail extends StatelessWidget {
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
-                          NetworkImageWithSkeleton(url: item.thumbnailUrl),
+                          NetworkImageWithSkeleton(
+                              url: item.thumbnailUrl, decodeWidth: 260),
                           const DecoratedBox(
                             decoration: BoxDecoration(
                               gradient: LinearGradient(

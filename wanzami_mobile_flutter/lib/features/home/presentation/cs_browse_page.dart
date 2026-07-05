@@ -120,7 +120,8 @@ class _CsBrowsePageState extends State<CsBrowsePage> {
                                     fit: StackFit.expand,
                                     children: [
                                       NetworkImageWithSkeleton(
-                                          url: item.thumbnailUrl),
+                                          url: item.thumbnailUrl,
+                                          decodeWidth: 260),
                                       const DecoratedBox(
                                         decoration: BoxDecoration(
                                           gradient: LinearGradient(

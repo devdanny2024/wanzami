@@ -156,7 +156,7 @@ class _TicketStub extends StatelessWidget {
                     SizedBox(
                       width: 64,
                       child: NetworkImageWithSkeleton(
-                          url: ticket.item.thumbnailUrl),
+                          url: ticket.item.thumbnailUrl, decodeWidth: 128),
                     ),
                     Expanded(
                       child: Padding(

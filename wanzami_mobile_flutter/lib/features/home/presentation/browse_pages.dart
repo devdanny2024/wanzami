@@ -557,7 +557,9 @@ class _SearchResultTile extends StatelessWidget {
               height: 88,
               child: item.thumbnailUrl.isNotEmpty
                   ? NetworkImageWithSkeleton(
-                      url: item.thumbnailUrl, fit: BoxFit.cover)
+                      url: item.thumbnailUrl,
+                      fit: BoxFit.cover,
+                      decodeWidth: 128)
                   : const ColoredBox(color: CsTokens.cinemaPanel),
             ),
             const SizedBox(width: 12),
@@ -998,7 +1000,9 @@ class _DetailPageState extends State<DetailPage> {
                     children: [
                       widget.item.bannerUrl.isNotEmpty
                           ? NetworkImageWithSkeleton(
-                              url: widget.item.bannerUrl, fit: BoxFit.cover)
+                              url: widget.item.bannerUrl,
+                              fit: BoxFit.cover,
+                              variant: CsSkeletonVariant.countdown)
                           : Container(color: CsTokens.cinemaPanel),
                       Positioned(
                         top: 8,
