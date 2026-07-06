@@ -71,6 +71,34 @@ export type UploadProgress = {
   totalBytes: number;
 };
 
+// Retries the resume call on transient failures instead of giving up after one
+// attempt. A single network blip or backend restart used to be enough to make
+// initUpload() abandon a partially-uploaded session and start a huge file over
+// from byte 0 under a brand new key, even though the old session was still
+// resumable. Only a 409 (already completed) or 410 (upload gone on R2) means
+// the session truly can't be resumed; anything else is worth retrying.
+async function tryResume(jobId: string, token?: string): Promise<UploadInitResponse | null> {
+  const maxAttempts = 4;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const resume = await authFetch(`/admin/uploads/${jobId}/resume`, {
+      method: "POST",
+      headers: {
+        Authorization: token ? `Bearer ${token}` : "",
+      },
+    });
+    if (resume.ok) {
+      return resume.data as UploadInitResponse;
+    }
+    if (resume.status === 409 || resume.status === 410) {
+      return null;
+    }
+    if (attempt < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, attempt * 2000));
+    }
+  }
+  return null;
+}
+
 export async function initUpload(params: UploadParams, token?: string): Promise<UploadInitResponse> {
   const { file, ...rest } = params;
   const signature = getSignature(file);
@@ -82,18 +110,13 @@ export async function initUpload(params: UploadParams, token?: string): Promise<
       s.episodeId === rest.episodeId
   );
   if (existing?.jobId) {
-    const resume = await authFetch(`/admin/uploads/${existing.jobId}/resume`, {
-      method: "POST",
-      headers: {
-        Authorization: token ? `Bearer ${token}` : "",
-      },
-    });
-    if (resume.ok) {
-      return resume.data as UploadInitResponse;
+    const resumed = await tryResume(existing.jobId, token);
+    if (resumed) {
+      return resumed;
     }
-    if (resume.status === 409 || resume.status === 410) {
-      clearSession(signature);
-    }
+    // Only reached if the job is genuinely gone/completed server-side, or every
+    // resume attempt failed after retries. Safe to start a fresh session now.
+    clearSession(signature);
   }
   const res = await authFetch("/admin/uploads/init", {
     method: "POST",
