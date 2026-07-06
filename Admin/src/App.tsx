@@ -125,7 +125,11 @@ function AppContent() {
   };
 
   if (checkingSession) {
-    return <div className="min-h-screen bg-neutral-950 text-white flex items-center justify-center">Checking session...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--cs-paper)' }}>
+        <p className="cs-slug">Rolling… checking session</p>
+      </div>
+    );
   }
 
   if (!isLoggedIn) {
@@ -175,13 +179,25 @@ function AppContent() {
     }
   };
 
+  // Pages already rebuilt in the Call Sheet system render straight on paper.
+  // The rest keep their dark styling inside a "lights off" well until their batch.
+  const convertedPages = new Set(['dashboard', 'analytics', 'ppv', 'payments', 'invoices', 'users']);
+  const isConverted = convertedPages.has(currentPage);
+
   return (
-    <div className="flex h-screen bg-neutral-950">
+    <div className="flex h-screen" style={{ background: 'var(--cs-paper)' }}>
       <Sidebar currentPage={currentPage} onNavigate={navigate} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header currentPage={currentPage} onOpenSearch={() => setPaletteOpen(true)} onLogout={handleLogout} />
-        <main className="flex-1 overflow-y-auto p-8">
-          {renderPage()}
+        <main className="flex-1 overflow-y-auto p-8" style={{ background: 'var(--cs-paper)' }}>
+          {isConverted ? (
+            renderPage()
+          ) : (
+            <div>
+              <p className="cs-slug mb-2">Lights off · this room moves to the new system in the next batch</p>
+              <div className="cs-border cs-shadow bg-neutral-950 p-6">{renderPage()}</div>
+            </div>
+          )}
         </main>
       </div>
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} onNavigate={navigate} />

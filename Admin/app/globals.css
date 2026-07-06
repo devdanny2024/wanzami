@@ -1,2 +1,54 @@
 @import "../src/index.css";
 @import "../src/styles/globals.css";
+
+/* ---------------------------------------------------------------------------
+   Call Sheet system tokens — the Wanzami production office.
+   Paper-white surfaces, ink borders, hard offset shadows, Bebas + Space Mono.
+--------------------------------------------------------------------------- */
+
+:root {
+  --cs-paper: #ffffff;
+  --cs-panel: #f6f6f6;
+  --cs-ink: #161310;
+  --cs-brand: #fd7e14;
+  --cs-rust: #d1490f;
+  --cs-muted: #6e6a64;
+  --cs-line: #e3e0da;
+}
+
+.cs-display {
+  font-family: var(--font-bebas), Impact, sans-serif;
+  text-transform: uppercase;
+  line-height: 0.92;
+  letter-spacing: 0.01em;
+}
+
+.cs-mono {
+  font-family: var(--font-smono), "Courier New", monospace;
+  letter-spacing: 0.06em;
+}
+
+.cs-border {
+  border: 2.5px solid var(--cs-ink);
+}
+
+.cs-border-thin {
+  border: 1.5px solid var(--cs-ink);
+}
+
+.cs-shadow {
+  box-shadow: 4px 4px 0 var(--cs-ink);
+}
+
+.cs-shadow-sm {
+  box-shadow: 3px 3px 0 var(--cs-ink);
+}
+
+.cs-slug {
+  font-family: var(--font-smono), "Courier New", monospace;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--cs-muted);
+}

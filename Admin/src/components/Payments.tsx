@@ -1,21 +1,34 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Label } from './ui/label';
-import { DollarSign, CreditCard, AlertCircle } from 'lucide-react';
 import { fetchPpvPurchases, type PpvPurchase } from '@/lib/paymentsClient';
-import { DataTable, type Column } from './DataTable';
-import { StatusBadge } from './StatusBadge';
-import type { StatusTone } from '../lib/status';
+import { CsBox, CsPageHeader, CsSlug, CsStat, CsTable, CsTag, type CsColumn } from './cs/kit';
 
-const payTone = (s?: string): { tone: StatusTone; label: string } =>
+const payTone = (s?: string): { tone: 'good' | 'bad' | 'pending' | 'neutral'; label: string } =>
   s === 'SUCCESS'
-    ? { tone: 'live', label: 'Success' }
+    ? { tone: 'good', label: 'Success' }
     : s === 'PENDING'
     ? { tone: 'pending', label: 'Pending' }
     : s === 'FAILED'
-    ? { tone: 'error', label: 'Failed' }
+    ? { tone: 'bad', label: 'Failed' }
     : { tone: 'neutral', label: s ?? '—' };
+
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+    maximumFractionDigits: 0,
+  }).format(value);
+
+const selectStyle: React.CSSProperties = {
+  border: '2px solid var(--cs-ink)',
+  background: 'var(--cs-paper)',
+  color: 'var(--cs-ink)',
+  fontFamily: 'var(--font-smono), monospace',
+  fontSize: 11,
+  fontWeight: 700,
+  textTransform: 'uppercase',
+  letterSpacing: '0.07em',
+  padding: '8px 10px',
+};
 
 export function Payments({ invoicesOnly = false }: { invoicesOnly?: boolean }) {
   const [purchases, setPurchases] = useState<PpvPurchase[]>([]);
@@ -52,145 +65,116 @@ export function Payments({ invoicesOnly = false }: { invoicesOnly?: boolean }) {
     return { total, successCount: success.length, failedCount: failed };
   }, [purchases]);
 
-  const columns: Column<PpvPurchase>[] = [
+  const columns: CsColumn<PpvPurchase>[] = [
     {
       key: 'title',
       header: 'Title',
-      cell: (p) => <span className="text-white">{p.title?.name ?? 'Title'}</span>,
-      sortValue: (p) => (p.title?.name ?? '').toLowerCase(),
+      cell: (p) => (
+        <span className="cs-mono text-xs font-bold uppercase" style={{ color: 'var(--cs-ink)' }}>
+          {p.title?.name ?? 'Title'}
+        </span>
+      ),
     },
     {
       key: 'ref',
       header: 'Ref / User',
       cell: (p) => (
         <div>
-          <div className="text-neutral-300">{p.paystackRef ?? p.paystackTrxId ?? p.id}</div>
-          <div className="text-xs text-neutral-500">{p.user?.email ?? p.userId}</div>
+          <div className="cs-mono text-xs" style={{ color: 'var(--cs-ink)' }}>
+            {p.paystackRef ?? p.paystackTrxId ?? p.id}
+          </div>
+          <div className="cs-mono text-[10px]" style={{ color: 'var(--cs-muted)' }}>
+            {p.user?.email ?? p.userId}
+          </div>
         </div>
       ),
     },
     {
       key: 'amount',
-      header: 'Amount (NGN)',
+      header: 'Amount',
       align: 'right',
-      cell: (p) => `₦${(p.amountNaira ?? 0).toLocaleString()}`,
-      sortValue: (p) => p.amountNaira ?? 0,
+      cell: (p) => formatCurrency(p.amountNaira ?? 0),
     },
     {
       key: 'status',
       header: 'Status',
       cell: (p) => {
         const s = payTone(p.status);
-        return <StatusBadge tone={s.tone} label={s.label} />;
+        return <CsTag tone={s.tone} label={s.label} />;
       },
-      sortValue: (p) => p.status ?? '',
     },
-    { key: 'gateway', header: 'Gateway', cell: (p) => p.gateway, sortValue: (p) => p.gateway ?? '' },
+    { key: 'gateway', header: 'Gateway', cell: (p) => <span className="cs-mono text-xs">{p.gateway}</span> },
     {
       key: 'date',
       header: 'Date',
-      cell: (p) => (p.createdAt ? new Date(p.createdAt).toLocaleString() : '—'),
-      sortValue: (p) => (p.createdAt ? new Date(p.createdAt).getTime() : 0),
+      cell: (p) => (
+        <span className="cs-mono text-xs" style={{ color: 'var(--cs-muted)' }}>
+          {p.createdAt ? new Date(p.createdAt).toLocaleString() : '—'}
+        </span>
+      ),
     },
   ];
 
-  const displayTitle = invoicesOnly ? 'Invoices' : 'Payments';
-  const displaySubtitle = invoicesOnly
-    ? 'All PPV payments and totals'
-    : 'Track revenue and transaction performance';
-
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl text-white">{displayTitle}</h1>
-          <p className="text-neutral-400 mt-1">{displaySubtitle}</p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div>
-            <Label className="text-neutral-400 text-xs">Status</Label>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-36 bg-neutral-900 border-neutral-800 text-white">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent className="bg-neutral-900 border-neutral-800">
-                <SelectItem value="ALL">All</SelectItem>
-                <SelectItem value="SUCCESS">Success</SelectItem>
-                <SelectItem value="PENDING">Pending</SelectItem>
-                <SelectItem value="FAILED">Failed</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label className="text-neutral-400 text-xs">Gateway</Label>
-            <Select value={gatewayFilter} onValueChange={setGatewayFilter}>
-              <SelectTrigger className="w-36 bg-neutral-900 border-neutral-800 text-white">
-                <SelectValue placeholder="Gateway" />
-              </SelectTrigger>
-              <SelectContent className="bg-neutral-900 border-neutral-800">
-                <SelectItem value="ALL">All</SelectItem>
-                <SelectItem value="PAYSTACK">Paystack</SelectItem>
-                <SelectItem value="FLUTTERWAVE">Flutterwave</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-neutral-900 border-neutral-800">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-white">Total Revenue (NGN)</CardTitle>
-            <DollarSign className="w-5 h-5 text-[#fd7e14]" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-white">
-              ₦{totals.total.toLocaleString()}
+    <div className="space-y-8">
+      <CsPageHeader
+        title={invoicesOnly ? 'The receipts' : 'The ledger'}
+        chip={invoicesOnly ? 'Invoices' : 'Payments'}
+        slug={
+          invoicesOnly
+            ? 'Every PPV payment on record'
+            : 'Revenue and transaction performance · real transactions only'
+        }
+        actions={
+          <div className="flex items-end gap-3">
+            <div>
+              <CsSlug className="mb-1">Status</CsSlug>
+              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={selectStyle}>
+                <option value="ALL">All</option>
+                <option value="SUCCESS">Success</option>
+                <option value="PENDING">Pending</option>
+                <option value="FAILED">Failed</option>
+              </select>
             </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-neutral-900 border-neutral-800">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-white">Successful Transactions</CardTitle>
-            <CreditCard className="w-5 h-5 text-[#fd7e14]" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-white">{totals.successCount}</div>
-          </CardContent>
-        </Card>
-        <Card className="bg-neutral-900 border-neutral-800">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-white">Failed</CardTitle>
-            <AlertCircle className="w-5 h-5 text-red-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-white">{totals.failedCount}</div>
-          </CardContent>
-        </Card>
+            <div>
+              <CsSlug className="mb-1">Gateway</CsSlug>
+              <select value={gatewayFilter} onChange={(e) => setGatewayFilter(e.target.value)} style={selectStyle}>
+                <option value="ALL">All</option>
+                <option value="PAYSTACK">Paystack</option>
+                <option value="FLUTTERWAVE">Flutterwave</option>
+              </select>
+            </div>
+          </div>
+        }
+      />
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <CsStat label="Total revenue (NGN)" value={formatCurrency(totals.total)} />
+        <CsStat label="Successful transactions" value={String(totals.successCount)} />
+        <CsStat label="Failed" value={String(totals.failedCount)} />
       </div>
 
-      {/* Transactions */}
-      <Card className="bg-neutral-900 border-neutral-800">
-        <CardHeader>
-          <CardTitle className="text-white">Transactions</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <CsBox className="p-5">
+        <CsSlug>Transactions</CsSlug>
+        <div className="mt-4">
           {error ? (
-            <p className="text-red-400 text-sm">{error}</p>
+            <div className="cs-border p-4" style={{ borderColor: 'var(--cs-rust)' }}>
+              <p className="cs-mono text-xs font-bold uppercase" style={{ color: 'var(--cs-rust)' }}>
+                {error}
+              </p>
+            </div>
           ) : (
-            <DataTable
+            <CsTable
               columns={columns}
               rows={purchases}
               rowKey={(p) => String(p.id)}
               loading={loading}
-              emptyMessage="No transactions found."
+              emptySlug="No transactions yet"
+              emptyBody="Ticket payments land here the moment a purchase goes through."
             />
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </CsBox>
     </div>
   );
 }
-

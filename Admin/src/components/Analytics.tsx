@@ -1,249 +1,253 @@
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { TrendingUp, Users, Monitor, MapPin } from 'lucide-react';
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { useEffect, useMemo, useState } from "react";
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import { fetchPpvPurchases, type PpvPurchase } from "@/lib/paymentsClient";
+import { CsBox, CsEmpty, CsPageHeader, CsSlug, CsStat } from "./cs/kit";
 
-const stats = [
-  { title: 'Total Streams', value: '342.5K', icon: TrendingUp, change: '+28.4%' },
-  { title: 'Active Users', value: '24,583', icon: Users, change: '+12.5%' },
-  { title: 'Avg. Watch Time', value: '42m', icon: Monitor, change: '+8.2%' },
-  { title: 'Top Region', value: 'Lagos', icon: MapPin, change: '34.2%' },
-];
+type DailyStreamsPoint = { date: string; streams: number };
+type DailyRevenuePoint = { date: string; revenue: number };
 
-const streamsOverTime = [
-  { date: 'Week 1', streams: 45000 },
-  { date: 'Week 2', streams: 52000 },
-  { date: 'Week 3', streams: 49000 },
-  { date: 'Week 4', streams: 61000 },
-  { date: 'Week 5', streams: 58000 },
-  { date: 'Week 6', streams: 67000 },
-  { date: 'Week 7', streams: 72000 },
-];
+type SummaryResponse = {
+  stats?: { activeViewersNow?: number; streamsLast24h?: number };
+  dailyStreams?: DailyStreamsPoint[];
+  dailyRevenue?: DailyRevenuePoint[];
+};
 
-const deviceUsage = [
-  { device: 'Mobile', value: 45, color: '#fd7e14' },
-  { device: 'Desktop', value: 30, color: '#ff9940' },
-  { device: 'Tablet', value: 15, color: '#ffc080' },
-  { device: 'Smart TV', value: 10, color: '#ffd9b3' },
-];
+const formatNumber = (value: number) =>
+  new Intl.NumberFormat("en-NG", { maximumFractionDigits: 0 }).format(value);
 
-const stateData = [
-  { state: 'Lagos', viewers: 8420 },
-  { state: 'Abuja', viewers: 5230 },
-  { state: 'Port Harcourt', viewers: 4180 },
-  { state: 'Ibadan', viewers: 3560 },
-  { state: 'Kano', viewers: 2940 },
-  { state: 'Benin City', viewers: 2350 },
-];
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    maximumFractionDigits: 0,
+  }).format(value);
 
-const topContent = [
-  { title: 'The King\'s Legacy', views: 24580, engagement: 92 },
-  { title: 'Lagos Streets', views: 21340, engagement: 88 },
-  { title: 'Coming Home', views: 18920, engagement: 85 },
-  { title: 'City Lights', views: 16750, engagement: 82 },
-  { title: 'Desert Storm', views: 14230, engagement: 79 },
-];
+const authHeaders = () => {
+  const token =
+    typeof window !== "undefined"
+      ? window.localStorage.getItem("accessToken")
+      : null;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
 
-const viewerActivity = [
-  { hour: '00:00', views: 1200 },
-  { hour: '03:00', views: 800 },
-  { hour: '06:00', views: 2500 },
-  { hour: '09:00', views: 5200 },
-  { hour: '12:00', views: 6800 },
-  { hour: '15:00', views: 7500 },
-  { hour: '18:00', views: 9200 },
-  { hour: '21:00', views: 11500 },
-];
+const chartAxisTick = {
+  fontFamily: "var(--font-smono), monospace",
+  fontSize: 10,
+  fill: "#6e6a64",
+};
+
+const chartTooltipStyle = {
+  backgroundColor: "#ffffff",
+  border: "2px solid #161310",
+  borderRadius: 0,
+  fontFamily: "var(--font-smono), monospace",
+  fontSize: 11,
+};
 
 export function Analytics() {
+  const [dailyStreams, setDailyStreams] = useState<DailyStreamsPoint[]>([]);
+  const [dailyRevenue, setDailyRevenue] = useState<DailyRevenuePoint[]>([]);
+  const [purchases, setPurchases] = useState<PpvPurchase[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const token =
+          typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+        const [summaryRes, purchasesRes] = await Promise.allSettled([
+          fetch("/api/admin/dashboard/summary?days=30", {
+            headers: { ...authHeaders() },
+            cache: "no-store",
+          }).then(async (r) => {
+            if (!r.ok) throw new Error(`Summary failed (${r.status})`);
+            return (await r.json()) as SummaryResponse;
+          }),
+          fetchPpvPurchases(token),
+        ]);
+
+        if (summaryRes.status === "fulfilled") {
+          setDailyStreams(summaryRes.value.dailyStreams ?? []);
+          setDailyRevenue(summaryRes.value.dailyRevenue ?? []);
+        } else {
+          setError("Could not load streaming history.");
+        }
+        if (purchasesRes.status === "fulfilled") {
+          setPurchases(purchasesRes.value.items ?? []);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    void load();
+  }, []);
+
+  const totals = useMemo(() => {
+    const streams = dailyStreams.reduce((sum, p) => sum + (p.streams ?? 0), 0);
+    const revenue = dailyRevenue.reduce((sum, p) => sum + (p.revenue ?? 0), 0);
+    const best = dailyStreams.reduce(
+      (best, p) => (p.streams > (best?.streams ?? -1) ? p : best),
+      null as DailyStreamsPoint | null,
+    );
+    const success = purchases.filter((p) => p.status === "SUCCESS");
+    return {
+      streams,
+      revenue,
+      bestDay: best && best.streams > 0 ? best.date : null,
+      ticketsSold: success.length,
+    };
+  }, [dailyStreams, dailyRevenue, purchases]);
+
+  const topTitles = useMemo(() => {
+    const byTitle = new Map<string, { name: string; purchases: number; revenue: number }>();
+    for (const p of purchases) {
+      if (p.status !== "SUCCESS") continue;
+      const key = p.titleId ?? p.title?.id ?? "unknown";
+      const entry = byTitle.get(key) ?? {
+        name: p.title?.name ?? "Unknown title",
+        purchases: 0,
+        revenue: 0,
+      };
+      entry.purchases += 1;
+      entry.revenue += p.amountNaira ?? 0;
+      byTitle.set(key, entry);
+    }
+    return Array.from(byTitle.values()).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+  }, [purchases]);
+
+  const maxTitleRevenue = topTitles[0]?.revenue ?? 0;
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl text-white">Analytics</h1>
-        <p className="text-neutral-400 mt-1">Platform performance and user insights</p>
+    <div className="space-y-8">
+      <CsPageHeader
+        title="The numbers"
+        chip="Last 30 days"
+        slug="Analytics · measured, not projected"
+      />
+
+      {error && <CsEmpty slug="Partial report" body={error} />}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        {loading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-28"
+              style={{ background: "var(--cs-panel)", border: "1.5px solid var(--cs-line)" }}
+            />
+          ))
+        ) : (
+          <>
+            <CsStat label="Streams · 30 days" value={formatNumber(totals.streams)} />
+            <CsStat label="PPV revenue · 30 days" value={formatCurrency(totals.revenue)} />
+            <CsStat label="Tickets sold · all time" value={formatNumber(totals.ticketsSold)} />
+            <CsStat
+              label="Busiest day"
+              value={totals.bestDay ?? "—"}
+              hint={totals.bestDay ? undefined : "No streams recorded yet"}
+            />
+          </>
+        )}
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => {
-          const Icon = stat.icon;
-          return (
-            <Card key={index} className="bg-neutral-900 border-neutral-800 hover:border-[#fd7e14]/50 transition-all">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm text-neutral-400">{stat.title}</CardTitle>
-                <Icon className="w-4 h-4 text-[#fd7e14]" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl text-white">{stat.value}</div>
-                <p className="text-xs text-green-500 mt-1">{stat.change} from last month</p>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      {/* Charts Row 1 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Streams Over Time */}
-        <Card className="bg-neutral-900 border-neutral-800">
-          <CardHeader>
-            <CardTitle className="text-white">Streams Over Time</CardTitle>
-            <p className="text-sm text-neutral-400">Weekly streaming trends</p>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={streamsOverTime}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#404040" />
-                <XAxis dataKey="date" stroke="#a3a3a3" />
-                <YAxis stroke="#a3a3a3" />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#171717', border: '1px solid #404040', borderRadius: '8px' }}
-                  labelStyle={{ color: '#a3a3a3' }}
+        <CsBox className="p-5">
+          <CsSlug>Reel A · Streams per day · 30 days</CsSlug>
+          <div className="mt-4">
+            <ResponsiveContainer width="100%" height={280}>
+              <LineChart data={dailyStreams}>
+                <CartesianGrid strokeDasharray="4 4" stroke="#e3e0da" />
+                <XAxis dataKey="date" tick={chartAxisTick} stroke="#161310" minTickGap={24} />
+                <YAxis tick={chartAxisTick} stroke="#161310" allowDecimals={false} />
+                <Tooltip contentStyle={chartTooltipStyle} labelStyle={{ color: "#6e6a64" }} />
+                <Line
+                  type="monotone"
+                  dataKey="streams"
+                  stroke="#d1490f"
+                  strokeWidth={2.5}
+                  dot={false}
                 />
-                <Line type="monotone" dataKey="streams" stroke="#fd7e14" strokeWidth={3} dot={{ fill: '#fd7e14', r: 5 }} />
               </LineChart>
             </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          </div>
+        </CsBox>
 
-        {/* Device Usage */}
-        <Card className="bg-neutral-900 border-neutral-800">
-          <CardHeader>
-            <CardTitle className="text-white">Device Usage Analytics</CardTitle>
-            <p className="text-sm text-neutral-400">Platform distribution</p>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={deviceUsage}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ device, value }) => `${device} ${value}%`}
-                  outerRadius={100}
-                  fill="#8884d8"
-                  dataKey="value"
+        <CsBox className="p-5">
+          <CsSlug>Box office · Revenue per day (NGN) · 30 days</CsSlug>
+          <div className="mt-4">
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={dailyRevenue}>
+                <CartesianGrid strokeDasharray="4 4" stroke="#e3e0da" />
+                <XAxis dataKey="date" tick={chartAxisTick} stroke="#161310" minTickGap={24} />
+                <YAxis tick={chartAxisTick} stroke="#161310" allowDecimals={false} />
+                <Tooltip
+                  contentStyle={chartTooltipStyle}
+                  labelStyle={{ color: "#6e6a64" }}
+                  formatter={(value: number) => formatCurrency(value as number)}
+                />
+                <Bar dataKey="revenue" fill="#fd7e14" stroke="#161310" strokeWidth={1.5} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </CsBox>
+      </div>
+
+      <CsBox className="p-5">
+        <CsSlug>Top titles by PPV revenue · all time</CsSlug>
+        <div className="mt-4 space-y-4">
+          {loading ? (
+            <div className="h-20" style={{ background: "var(--cs-panel)" }} />
+          ) : topTitles.length === 0 ? (
+            <CsEmpty
+              slug="No sales recorded yet"
+              body="When tickets sell, the ranking shows up here with real purchase counts."
+            />
+          ) : (
+            topTitles.map((t, index) => (
+              <div key={t.name} className="flex items-center gap-4">
+                <div
+                  className="cs-display w-8 h-8 flex items-center justify-center text-lg"
+                  style={{ background: "var(--cs-ink)", color: "var(--cs-brand)" }}
                 >
-                  {deviceUsage.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#171717', border: '1px solid #404040', borderRadius: '8px' }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Charts Row 2 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Geography - Nigerian States */}
-        <Card className="bg-neutral-900 border-neutral-800">
-          <CardHeader>
-            <CardTitle className="text-white">Geography (Nigeria States)</CardTitle>
-            <p className="text-sm text-neutral-400">Viewers by state</p>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={stateData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#404040" />
-                <XAxis type="number" stroke="#a3a3a3" />
-                <YAxis type="category" dataKey="state" stroke="#a3a3a3" width={100} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#171717', border: '1px solid #404040', borderRadius: '8px' }}
-                  labelStyle={{ color: '#a3a3a3' }}
-                />
-                <Bar dataKey="viewers" fill="#fd7e14" radius={[0, 8, 8, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Viewer Activity Heatmap */}
-        <Card className="bg-neutral-900 border-neutral-800">
-          <CardHeader>
-            <CardTitle className="text-white">Viewer Activity Heatmap</CardTitle>
-            <p className="text-sm text-neutral-400">Peak viewing hours</p>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={viewerActivity}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#404040" />
-                <XAxis dataKey="hour" stroke="#a3a3a3" />
-                <YAxis stroke="#a3a3a3" />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#171717', border: '1px solid #404040', borderRadius: '8px' }}
-                  labelStyle={{ color: '#a3a3a3' }}
-                />
-                <Bar dataKey="views" fill="#fd7e14" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Content Popularity */}
-      <Card className="bg-neutral-900 border-neutral-800">
-        <CardHeader>
-          <CardTitle className="text-white">Content Popularity Ranking</CardTitle>
-          <p className="text-sm text-neutral-400">Top performing content</p>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {topContent.map((content, index) => (
-              <div key={index} className="flex items-center gap-4">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#fd7e14]/20 text-[#fd7e14]">
                   {index + 1}
                 </div>
                 <div className="flex-1">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-white">{content.title}</span>
-                    <span className="text-neutral-400">{content.views.toLocaleString()} views</span>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="cs-mono text-xs font-bold uppercase" style={{ color: "var(--cs-ink)" }}>
+                      {t.name}
+                    </span>
+                    <span className="cs-mono text-xs" style={{ color: "var(--cs-muted)" }}>
+                      {t.purchases} ticket{t.purchases === 1 ? "" : "s"} · {formatCurrency(t.revenue)}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 bg-neutral-800 rounded-full h-2 overflow-hidden">
-                      <div
-                        className="h-full bg-[#fd7e14] rounded-full transition-all"
-                        style={{ width: `${content.engagement}%` }}
-                      />
-                    </div>
-                    <span className="text-sm text-neutral-500 w-12">{content.engagement}%</span>
+                  <div className="h-2.5" style={{ border: "1.5px solid var(--cs-ink)" }}>
+                    <div
+                      className="h-full"
+                      style={{
+                        background: "var(--cs-brand)",
+                        width: `${maxTitleRevenue > 0 ? Math.max(4, (t.revenue / maxTitleRevenue) * 100) : 0}%`,
+                      }}
+                    />
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* PPV Performance */}
-      <Card className="bg-neutral-900 border-neutral-800">
-        <CardHeader>
-          <CardTitle className="text-white">PPV Performance</CardTitle>
-          <p className="text-sm text-neutral-400">Revenue and conversion metrics</p>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-4 bg-neutral-950 rounded-lg border border-neutral-800">
-              <p className="text-sm text-neutral-400 mb-1">Conversion Rate</p>
-              <p className="text-2xl text-white">8.4%</p>
-              <p className="text-xs text-green-500 mt-1">+2.1% from last month</p>
-            </div>
-            <div className="p-4 bg-neutral-950 rounded-lg border border-neutral-800">
-              <p className="text-sm text-neutral-400 mb-1">Avg. Revenue per User</p>
-              <p className="text-2xl text-white">₦1,850</p>
-              <p className="text-xs text-green-500 mt-1">+5.3% from last month</p>
-            </div>
-            <div className="p-4 bg-neutral-950 rounded-lg border border-neutral-800">
-              <p className="text-sm text-neutral-400 mb-1">Total PPV Revenue</p>
-              <p className="text-2xl text-white">₦8.4M</p>
-              <p className="text-xs text-green-500 mt-1">+18.7% from last month</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+            ))
+          )}
+        </div>
+      </CsBox>
     </div>
   );
 }

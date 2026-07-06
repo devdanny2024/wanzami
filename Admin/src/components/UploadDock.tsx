@@ -51,6 +51,11 @@ export function UploadDock({
     [active]
   );
 
+  // Nothing queued, nothing processing: stay out of the way entirely.
+  if (tasks.length === 0 && serverJobs.length === 0) {
+    return null;
+  }
+
   const statusLabel =
     tab === "queue"
       ? active.length

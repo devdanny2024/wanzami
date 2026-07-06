@@ -47,16 +47,28 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
     setCollapsed((prev) => ({ ...prev, [id]: !prev[id] }));
 
   return (
-    <div className="w-64 bg-neutral-900 border-r border-neutral-800 flex flex-col">
-      {/* Logo */}
-      <div className="p-6 border-b border-neutral-800">
+    <div
+      className="w-64 flex flex-col"
+      style={{ background: 'var(--cs-paper)', borderRight: '3px solid var(--cs-ink)' }}
+    >
+      {/* Wordmark */}
+      <div className="p-5" style={{ borderBottom: '3px solid var(--cs-ink)' }}>
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-[#fd7e14] flex items-center justify-center">
-            <span className="text-xl text-white">W</span>
+          <div
+            className="w-10 h-10 flex items-center justify-center"
+            style={{
+              background: 'var(--cs-brand)',
+              border: '2.5px solid var(--cs-ink)',
+              boxShadow: '3px 3px 0 var(--cs-ink)',
+            }}
+          >
+            <span className="cs-display text-xl" style={{ color: 'var(--cs-ink)' }}>W</span>
           </div>
           <div>
-            <h2 className="text-white">Wanzami</h2>
-            <p className="text-xs text-neutral-500">Admin Portal</p>
+            <h2 className="cs-mono font-bold text-sm" style={{ color: 'var(--cs-ink)', letterSpacing: '0.06em' }}>
+              WANZAMI TV
+            </h2>
+            <p className="cs-slug" style={{ fontSize: 9 }}>Production office</p>
           </div>
         </div>
       </div>
@@ -70,10 +82,11 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
             <div key={group.id}>
               <button
                 onClick={() => toggleGroup(group.id)}
-                className="w-full flex items-center justify-between px-3 mb-1 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 hover:text-neutral-300 transition-colors"
+                className="cs-mono w-full flex items-center justify-between px-3 mb-1 text-[10px] font-bold uppercase transition-colors"
+                style={{ color: hasActive ? 'var(--cs-ink)' : 'var(--cs-muted)', letterSpacing: '0.12em' }}
                 aria-expanded={!isCollapsed}
               >
-                <span className={hasActive ? 'text-neutral-300' : ''}>{group.label}</span>
+                <span>{group.label}</span>
                 <ChevronDown
                   className={`w-3.5 h-3.5 transition-transform ${isCollapsed ? '-rotate-90' : ''}`}
                 />
@@ -89,19 +102,23 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
                         key={item.id}
                         onClick={() => onNavigate(item.id)}
                         aria-current={isActive ? 'page' : undefined}
-                        className={`
-                          w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all
-                          ${isActive
-                            ? 'bg-[#fd7e14]/10 text-[#fd7e14] border-l-2 border-[#fd7e14] shadow-[0_0_20px_rgba(253,126,20,0.15)]'
-                            : 'text-neutral-400 hover:text-white hover:bg-neutral-800/50'
-                          }
-                        `}
+                        className={`cs-mono w-full flex items-center gap-3 px-3 py-2 text-xs font-bold uppercase transition-colors ${
+                          isActive ? '' : 'hover:bg-[var(--cs-panel)]'
+                        }`}
+                        style={
+                          isActive
+                            ? { background: 'var(--cs-ink)', color: 'var(--cs-brand)', letterSpacing: '0.07em' }
+                            : { color: 'var(--cs-ink)', letterSpacing: '0.07em' }
+                        }
                       >
-                        <Icon className="w-5 h-5 shrink-0" />
-                        <span className="flex-1 flex items-center justify-between text-sm">
+                        <Icon className="w-4 h-4 shrink-0" />
+                        <span className="flex-1 flex items-center justify-between text-left">
                           <span>{item.label}</span>
                           {item.id === 'support' && openCount > 0 && (
-                            <span className="ml-2 inline-flex items-center justify-center rounded-full bg-[#fd7e14] text-[10px] px-2 py-0.5 text-white">
+                            <span
+                              className="ml-2 inline-flex items-center justify-center px-1.5 py-0.5 text-[9px] font-bold"
+                              style={{ background: 'var(--cs-brand)', color: 'var(--cs-ink)', border: '1.5px solid var(--cs-ink)' }}
+                            >
                               {openCount}
                             </span>
                           )}
@@ -117,14 +134,17 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t border-neutral-800">
-        <div className="flex items-center gap-3 px-3 py-2">
-          <div className="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center">
-            <span className="text-sm text-neutral-400">A</span>
+      <div className="p-4" style={{ borderTop: '3px solid var(--cs-ink)' }}>
+        <div className="flex items-center gap-3 px-2 py-1">
+          <div
+            className="w-8 h-8 flex items-center justify-center"
+            style={{ background: 'var(--cs-ink)' }}
+          >
+            <span className="cs-display text-sm" style={{ color: 'var(--cs-brand)' }}>A</span>
           </div>
-          <div className="flex-1">
-            <p className="text-sm text-white">Admin User</p>
-            <p className="text-xs text-neutral-500">admin@wanzami.com</p>
+          <div className="flex-1 min-w-0">
+            <p className="cs-mono text-xs font-bold truncate" style={{ color: 'var(--cs-ink)' }}>Admin User</p>
+            <p className="cs-slug truncate" style={{ fontSize: 9 }}>admin@wanzami.com</p>
           </div>
         </div>
       </div>

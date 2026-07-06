@@ -1,20 +1,16 @@
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Users, Eye, CreditCard, DollarSign, Film, FileText } from "lucide-react";
 import {
   LineChart,
   Line,
   BarChart,
   Bar,
-  AreaChart,
-  Area,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { TelemetryPanel } from "./TelemetryPanel";
+import { CsBox, CsEmpty, CsPageHeader, CsSlug, CsStat } from "./cs/kit";
 
 type DashboardStats = {
   totalUsers: number;
@@ -29,13 +25,11 @@ type DashboardStats = {
 
 type DailyStreamsPoint = { date: string; streams: number };
 type DailyRevenuePoint = { date: string; revenue: number };
-type EngagementPoint = { hour: string; views: number };
 
 type DashboardResponse = {
   stats: DashboardStats;
   dailyStreams: DailyStreamsPoint[];
   dailyRevenue: DailyRevenuePoint[];
-  contentEngagement: EngagementPoint[];
 };
 
 const formatNumber = (value: number) =>
@@ -56,11 +50,24 @@ const authHeaders = () => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
+const chartAxisTick = {
+  fontFamily: "var(--font-smono), monospace",
+  fontSize: 10,
+  fill: "#6e6a64",
+};
+
+const chartTooltipStyle = {
+  backgroundColor: "#ffffff",
+  border: "2px solid #161310",
+  borderRadius: 0,
+  fontFamily: "var(--font-smono), monospace",
+  fontSize: 11,
+};
+
 export function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [dailyStreams, setDailyStreams] = useState<DailyStreamsPoint[]>([]);
   const [dailyRevenue, setDailyRevenue] = useState<DailyRevenuePoint[]>([]);
-  const [contentEngagement, setContentEngagement] = useState<EngagementPoint[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -81,9 +88,8 @@ export function Dashboard() {
         }
         const data = (await res.json()) as DashboardResponse;
         setStats(data.stats);
-        setDailyStreams(data.dailyStreams);
-        setDailyRevenue(data.dailyRevenue);
-        setContentEngagement(data.contentEngagement);
+        setDailyStreams(data.dailyStreams ?? []);
+        setDailyRevenue(data.dailyRevenue ?? []);
       } catch (err: any) {
         setError(err?.message ?? "Failed to load dashboard");
       } finally {
@@ -93,191 +99,98 @@ export function Dashboard() {
     void load();
   }, []);
 
+  const today = new Date().toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
   const cards =
     stats === null
       ? []
       : [
-          {
-            title: "Total Users",
-            value: formatNumber(stats.totalUsers),
-            icon: Users,
-          },
-          {
-            title: "New Users (7 days)",
-            value: formatNumber(stats.newUsersLast7Days),
-            icon: Users,
-          },
-          {
-            title: "Active Viewers Now",
-            value: formatNumber(stats.activeViewersNow),
-            icon: Eye,
-          },
-          {
-            title: "Streams (last 24h)",
-            value: formatNumber(stats.streamsLast24h),
-            icon: Eye,
-          },
-          {
-            title: "PPV Purchases Today",
-            value: formatNumber(stats.ppvPurchasesToday),
-            icon: CreditCard,
-          },
-          {
-            title: "PPV Revenue (7 days)",
-            value: formatCurrency(stats.ppvRevenueLast7DaysNaira),
-            icon: DollarSign,
-          },
-          {
-            title: "Movies & Series Count",
-            value: formatNumber(stats.moviesAndSeriesCount),
-            icon: Film,
-          },
+          { label: "Total users", value: formatNumber(stats.totalUsers) },
+          { label: "New users · 7 days", value: formatNumber(stats.newUsersLast7Days) },
+          { label: "Watching right now", value: formatNumber(stats.activeViewersNow) },
+          { label: "Streams · last 24h", value: formatNumber(stats.streamsLast24h) },
+          { label: "PPV tickets today", value: formatNumber(stats.ppvPurchasesToday) },
+          { label: "PPV revenue · 7 days", value: formatCurrency(stats.ppvRevenueLast7DaysNaira) },
+          { label: "PPV revenue · all time", value: formatCurrency(stats.totalPpvRevenueNaira) },
+          { label: "Titles on the slate", value: formatNumber(stats.moviesAndSeriesCount) },
         ];
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl text-white">Dashboard</h1>
-        <p className="text-neutral-400 mt-1">Platform overview and key metrics</p>
-      </div>
+      <CsPageHeader
+        title="The daily report"
+        chip={today}
+        slug="Production office · real numbers only"
+      />
 
       {error && (
-        <div className="text-sm text-red-400 bg-red-950/40 border border-red-800 rounded-lg px-4 py-2">
-          {error}
-        </div>
+        <CsEmpty
+          slug="Report unavailable"
+          body={`${error}. Refresh to try again.`}
+        />
       )}
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {loading && !stats && (
-          <Card className="bg-neutral-900 border-neutral-800">
-            <CardContent className="py-10 text-neutral-400 text-sm">
-              Loading dashboard metrics...
-            </CardContent>
-          </Card>
-        )}
-        {!loading &&
-          cards.map((stat, index) => {
-            const Icon = stat.icon;
-            return (
-              <Card
-                key={index}
-                className="bg-neutral-900 border-neutral-800 hover:border-[#fd7e14]/50 transition-all hover:shadow-lg hover:shadow-[#fd7e14]/10"
-              >
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm text-neutral-400">
-                    {stat.title}
-                  </CardTitle>
-                  <Icon className="w-4 h-4 text-[#fd7e14]" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl text-white">{stat.value}</div>
-                </CardContent>
-              </Card>
-            );
-          })}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        {loading && !stats
+          ? Array.from({ length: 8 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-28"
+                style={{ background: "var(--cs-panel)", border: "1.5px solid var(--cs-line)" }}
+              />
+            ))
+          : cards.map((stat) => (
+              <CsStat key={stat.label} label={stat.label} value={stat.value} />
+            ))}
       </div>
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Daily Streams */}
-        <Card className="bg-neutral-900 border-neutral-800">
-          <CardHeader>
-            <CardTitle className="text-white">Daily Streams</CardTitle>
-            <p className="text-sm text-neutral-400">Last 7 days streaming activity</p>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+        <CsBox className="p-5">
+          <CsSlug>Reel A · Daily streams · last 7 days</CsSlug>
+          <div className="mt-4">
+            <ResponsiveContainer width="100%" height={280}>
               <LineChart data={dailyStreams}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#404040" />
-                <XAxis dataKey="date" stroke="#a3a3a3" />
-                <YAxis stroke="#a3a3a3" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#171717",
-                    border: "1px solid #404040",
-                    borderRadius: "8px",
-                  }}
-                  labelStyle={{ color: "#a3a3a3" }}
-                />
+                <CartesianGrid strokeDasharray="4 4" stroke="#e3e0da" />
+                <XAxis dataKey="date" tick={chartAxisTick} stroke="#161310" />
+                <YAxis tick={chartAxisTick} stroke="#161310" allowDecimals={false} />
+                <Tooltip contentStyle={chartTooltipStyle} labelStyle={{ color: "#6e6a64" }} />
                 <Line
                   type="monotone"
                   dataKey="streams"
-                  stroke="#fd7e14"
-                  strokeWidth={2}
-                  dot={{ fill: "#fd7e14" }}
+                  stroke="#d1490f"
+                  strokeWidth={2.5}
+                  dot={{ fill: "#d1490f", r: 3 }}
                 />
               </LineChart>
             </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          </div>
+        </CsBox>
 
-        {/* Daily PPV Revenue */}
-        <Card className="bg-neutral-900 border-neutral-800">
-          <CardHeader>
-            <CardTitle className="text-white">Daily PPV Revenue (NGN)</CardTitle>
-            <p className="text-sm text-neutral-400">Last 7 days revenue</p>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+        <CsBox className="p-5">
+          <CsSlug>Box office · Daily PPV revenue (NGN)</CsSlug>
+          <div className="mt-4">
+            <ResponsiveContainer width="100%" height={280}>
               <BarChart data={dailyRevenue}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#404040" />
-                <XAxis dataKey="date" stroke="#a3a3a3" />
-                <YAxis stroke="#a3a3a3" />
+                <CartesianGrid strokeDasharray="4 4" stroke="#e3e0da" />
+                <XAxis dataKey="date" tick={chartAxisTick} stroke="#161310" />
+                <YAxis tick={chartAxisTick} stroke="#161310" allowDecimals={false} />
                 <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#171717",
-                    border: "1px solid #404040",
-                    borderRadius: "8px",
-                  }}
-                  labelStyle={{ color: "#a3a3a3" }}
+                  contentStyle={chartTooltipStyle}
+                  labelStyle={{ color: "#6e6a64" }}
                   formatter={(value: number) => formatCurrency(value as number)}
                 />
-                <Bar
-                  dataKey="revenue"
-                  fill="#fd7e14"
-                  radius={[8, 8, 0, 0]}
-                />
+                <Bar dataKey="revenue" fill="#fd7e14" stroke="#161310" strokeWidth={1.5} />
               </BarChart>
             </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          </div>
+        </CsBox>
       </div>
-
-      {/* Telemetry */}
-      <TelemetryPanel />
-
-      {/* Content Engagement */}
-      <Card className="bg-neutral-900 border-neutral-800">
-        <CardHeader>
-          <CardTitle className="text-white">Content Engagement</CardTitle>
-          <p className="text-sm text-neutral-400">Hourly viewing patterns</p>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={contentEngagement}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#404040" />
-              <XAxis dataKey="hour" stroke="#a3a3a3" />
-              <YAxis stroke="#a3a3a3" />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "#171717",
-                  border: "1px solid #404040",
-                  borderRadius: "8px",
-                }}
-                labelStyle={{ color: "#a3a3a3" }}
-              />
-              <Area
-                type="monotone"
-                dataKey="views"
-                stroke="#fd7e14"
-                fill="#fd7e14"
-                fillOpacity={0.2}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
     </div>
   );
 }
