@@ -1,8 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { Badge } from "./ui/badge";
-import { Button } from "./ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 import {
@@ -12,18 +8,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
-import { Textarea } from "./ui/textarea";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "./ui/alert-dialog";
 import { toast } from "sonner";
+import { CsBox, CsButton, CsPageHeader, CsSlug, CsTag } from "./cs/kit";
 
 type ReplayStatus = "NONE" | "PENDING_INFRA" | "PROCESSING" | "READY" | "FAILED";
 
@@ -93,17 +79,17 @@ declare global {
 }
 
 
-const liveStateBadge = (event: LiveEvent) => {
+const liveStateBadge = (event: LiveEvent): { label: string; tone: "good" | "bad" | "pending" | "neutral" } => {
   if (event.status === "LIVE") {
-    return { label: "Live", className: "bg-emerald-500/20 text-emerald-300" };
+    return { label: "Live", tone: "good" };
   }
   if (event.status === "ENDED") {
-    return { label: "Ended", className: "bg-neutral-600/30 text-neutral-300" };
+    return { label: "Ended", tone: "neutral" };
   }
   if (event.isPublished) {
-    return { label: "Published", className: "bg-blue-500/20 text-blue-300" };
+    return { label: "Published", tone: "good" };
   }
-  return { label: "Draft", className: "bg-amber-500/20 text-amber-300" };
+  return { label: "Draft", tone: "pending" };
 };
 
 const replayStatuses: ReplayStatus[] = ["NONE", "PENDING_INFRA", "PROCESSING", "READY", "FAILED"];
@@ -118,18 +104,18 @@ const pickPlayablePlaybackUrl = (event?: LiveEvent | null): string => {
   return fallbackSourceUrl ?? "";
 };
 
-const replayBadge = (status?: ReplayStatus) => {
+const replayBadge = (status?: ReplayStatus): "good" | "bad" | "pending" | "neutral" => {
   switch (status) {
     case "READY":
-      return "bg-emerald-500/20 text-emerald-300";
+      return "good";
     case "PROCESSING":
-      return "bg-amber-500/20 text-amber-300";
+      return "pending";
     case "PENDING_INFRA":
-      return "bg-orange-500/20 text-orange-300";
+      return "pending";
     case "FAILED":
-      return "bg-red-500/20 text-red-300";
+      return "bad";
     default:
-      return "bg-neutral-700 text-neutral-200";
+      return "neutral";
   }
 };
 
@@ -254,10 +240,14 @@ function LivePlaybackPlayer({ src, title }: { src: string; title: string }) {
   }, [src]);
 
   return (
-    <div className="overflow-hidden rounded-lg border border-neutral-800 bg-black aspect-video">
+    <div
+      className="overflow-hidden cs-border"
+      style={{ background: "#000", aspectRatio: "16 / 9" }}
+    >
       <video
         ref={videoRef}
-        className="h-full w-full object-contain"
+        className="h-full w-full"
+        style={{ objectFit: "contain" }}
         controls
         playsInline
         preload="metadata"
@@ -269,6 +259,37 @@ function LivePlaybackPlayer({ src, title }: { src: string; title: string }) {
     </div>
   );
 }
+
+const fieldStyle: React.CSSProperties = {
+  border: "2px solid var(--cs-ink)",
+  background: "var(--cs-paper)",
+  color: "var(--cs-ink)",
+  fontFamily: "var(--font-smono), monospace",
+  fontSize: 12,
+  padding: "9px 12px",
+  width: "100%",
+};
+
+const selectStyle: React.CSSProperties = {
+  border: "2px solid var(--cs-ink)",
+  background: "var(--cs-paper)",
+  color: "var(--cs-ink)",
+  fontFamily: "var(--font-smono), monospace",
+  fontSize: 11,
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: "0.07em",
+  padding: "8px 10px",
+};
+
+const labelSlugStyle: React.CSSProperties = {
+  fontFamily: "var(--font-smono), monospace",
+  fontSize: 10,
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: "0.09em",
+  color: "var(--cs-muted)",
+};
 
 export function CreatorHub() {
   const [events, setEvents] = useState<LiveEvent[]>([]);
@@ -1005,223 +1026,218 @@ export function CreatorHub() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl text-white">Creator Hub</h1>
-          <p className="text-neutral-400 mt-1">Create, schedule, go-live, and end live streams</p>
+    <div className="space-y-8">
+      <CsPageHeader
+        title="Creator Hub"
+        chip={loading ? "···" : `${events.length} events`}
+        slug="Create, schedule, go-live, and end live streams"
+        actions={
+          <CsButton variant="outline" onClick={loadEvents}>
+            Refresh
+          </CsButton>
+        }
+      />
+
+      {error && (
+        <div className="cs-border p-4" style={{ borderColor: "var(--cs-rust)" }}>
+          <p className="cs-mono text-xs font-bold uppercase" style={{ color: "var(--cs-rust)" }}>
+            {error}
+          </p>
         </div>
-        <Button onClick={loadEvents} className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
-          Refresh
-        </Button>
-      </div>
+      )}
 
-      {error && <div className="text-sm text-red-400">{error}</div>}
-
-      <Card className="bg-neutral-900 border-neutral-800">
-        <CardHeader>
-          <CardTitle className="text-white">Create / Schedule Live Event</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Input
+      <CsBox className="p-5">
+        <CsSlug>Create / schedule live event</CsSlug>
+        <div className="mt-4 space-y-3">
+          <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Live event title"
-            className="bg-neutral-950 border-neutral-800 text-white"
+            style={fieldStyle}
           />
-          <Textarea
+          <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Description"
-            className="bg-neutral-950 border-neutral-800 text-white"
+            style={fieldStyle}
             rows={3}
           />
-          <Input
+          <input
             value={thumbnailUrl}
             onChange={(e) => setThumbnailUrl(e.target.value)}
             placeholder="Thumbnail URL (optional if file uploaded)"
-            className="bg-neutral-950 border-neutral-800 text-white"
+            style={fieldStyle}
           />
-          <Input
+          <input
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             placeholder="Category (e.g., Sports, News, Entertainment)"
-            className="bg-neutral-950 border-neutral-800 text-white"
+            style={fieldStyle}
           />
           <div className="space-y-1">
-            <label className="text-xs text-neutral-500">Or upload thumbnail file</label>
-            <Input
+            <label style={labelSlugStyle}>Or upload thumbnail file</label>
+            <input
               type="file"
               accept="image/*"
               onChange={(e) => setThumbnailFile(e.target.files?.[0] ?? null)}
-              className="bg-neutral-950 border-neutral-800 text-white"
+              style={fieldStyle}
             />
-            {thumbnailFile && <p className="text-xs text-neutral-400">Selected: {thumbnailFile.name}</p>}
+            {thumbnailFile && (
+              <p className="cs-mono text-xs" style={{ color: "var(--cs-muted)" }}>
+                Selected: {thumbnailFile.name}
+              </p>
+            )}
           </div>
           <div>
-            <label className="text-sm text-neutral-400">Scheduled start (optional)</label>
-            <Input
+            <label style={labelSlugStyle}>Scheduled start (optional)</label>
+            <input
               type="datetime-local"
               value={scheduledStartAt}
               onChange={(e) => setScheduledStartAt(e.target.value)}
-              className="bg-neutral-950 border-neutral-800 text-white mt-1"
+              style={{ ...fieldStyle, marginTop: 4 }}
             />
           </div>
-          <Button
-            onClick={handleCreate}
-            disabled={saving || !title.trim()}
-            className="bg-[#fd7e14] hover:bg-[#ff9940] text-white"
-          >
+          <CsButton variant="rust" onClick={handleCreate} disabled={saving || !title.trim()}>
             {saving ? "Creating..." : "Create Event"}
-          </Button>
-        </CardContent>
-      </Card>
+          </CsButton>
+        </div>
+      </CsBox>
 
-      <Card className="bg-neutral-900 border-neutral-800">
-        <CardHeader>
-          <CardTitle className="text-white">Live Events</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <CsBox className="p-5">
+        <CsSlug>Live events</CsSlug>
+        <div className="mt-4">
           {loading ? (
-            <p className="text-sm text-neutral-400">Loading...</p>
+            <p className="cs-mono text-xs" style={{ color: "var(--cs-muted)" }}>Loading...</p>
           ) : events.length === 0 ? (
-            <p className="text-sm text-neutral-400">No live events yet.</p>
+            <p className="cs-mono text-xs" style={{ color: "var(--cs-muted)" }}>No live events yet.</p>
           ) : (
             <div className="space-y-4">
               {events.map((event) => {
                 const ingestUrl = event.ingestEndpoint ? `rtmps://${event.ingestEndpoint}:443/app/` : "";
                 const stateBadge = liveStateBadge(event);
                 return (
-                  <div key={event.id} className="border border-neutral-800 rounded-xl p-4 bg-neutral-950 space-y-3">
+                  <div key={event.id} className="cs-border p-4 space-y-3" style={{ background: "var(--cs-panel)" }}>
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <p className="text-white font-semibold">{event.title}</p>
-                        <p className="text-xs text-neutral-500">
+                        <p className="cs-display" style={{ fontSize: 22, color: "var(--cs-ink)" }}>{event.title}</p>
+                        <p className="cs-mono text-xs" style={{ color: "var(--cs-muted)" }}>
                           Created {event.createdAt ? new Date(event.createdAt).toLocaleString() : "Unknown"}
                         </p>
                         {event.scheduledStartAt && (
-                          <p className="text-xs text-blue-300 mt-1">
+                          <p className="cs-mono mt-1" style={{ fontSize: 11, color: "var(--cs-ink)" }}>
                             Scheduled: {new Date(event.scheduledStartAt).toLocaleString()}
                           </p>
                         )}
                         {event.startedAt && (
-                          <p className="text-xs text-emerald-300 mt-1">
+                          <p className="cs-mono mt-1" style={{ fontSize: 11, color: "var(--cs-ink)" }}>
                             Started: {new Date(event.startedAt).toLocaleString()}
                           </p>
                         )}
                         {event.endedAt && (
-                          <p className="text-xs text-neutral-400 mt-1">
+                          <p className="cs-mono mt-1" style={{ fontSize: 11, color: "var(--cs-muted)" }}>
                             Ended: {new Date(event.endedAt).toLocaleString()}
                           </p>
                         )}
                       </div>
                       <div className="flex flex-col items-end gap-2">
-                        <Badge className={stateBadge.className}>{stateBadge.label}</Badge>
-                        <Badge className={replayBadge(event.replay?.status)}>
-                          Replay: {event.replay?.status ?? "NONE"}
-                        </Badge>
+                        <CsTag label={stateBadge.label} tone={stateBadge.tone} />
+                        <CsTag label={`Replay: ${event.replay?.status ?? "NONE"}`} tone={replayBadge(event.replay?.status)} />
                       </div>
                     </div>
 
-                    {event.description && <p className="text-sm text-neutral-300">{event.description}</p>}
+                    {event.description && <p className="text-sm" style={{ color: "var(--cs-ink)" }}>{event.description}</p>}
 
-                    <div className="grid gap-2 text-xs text-neutral-400">
+                    <div className="grid gap-2 text-xs" style={{ color: "var(--cs-muted)" }}>
                       {/* RTMPS details moved into Advanced */}
                       {/* Stream key hidden from default simple flow */}
                       <div className="flex items-center gap-2">
-                        <span className="text-neutral-500">Playback URL:</span>
-                        <span className="text-white/80 break-all">{event.playbackUrl || "Not available"}</span>
+                        <span style={{ color: "var(--cs-muted)" }}>Playback URL:</span>
+                        <span className="truncate" style={{ color: "var(--cs-ink)" }}>{event.playbackUrl || "Not available"}</span>
                         {event.playbackUrl && (
-                          <button onClick={() => copyText(event.playbackUrl)} className="text-[#fd7e14]">Copy</button>
+                          <button onClick={() => copyText(event.playbackUrl)} className="cs-mono font-bold uppercase" style={{ color: "var(--cs-rust)", fontSize: 10 }}>Copy</button>
                         )}
                       </div>
 
                       {event.status === "LIVE" && pickPlayablePlaybackUrl(event) ? (
                         <div className="mt-2">
-                          <p className="text-xs text-neutral-500 mb-2">Live Preview (Admin)</p>
+                          <p className="mb-2" style={labelSlugStyle}>Live Preview (Admin)</p>
                           <LivePlaybackPlayer src={pickPlayablePlaybackUrl(event)} title={event.title} />
                         </div>
                       ) : null}
                       <div className="flex items-center gap-2">
-                        <span className="text-neutral-500">Replay URL:</span>
-                        <span className="text-white/80 break-all">{event.replay?.playbackUrl || "Not available"}</span>
+                        <span style={{ color: "var(--cs-muted)" }}>Replay URL:</span>
+                        <span className="truncate" style={{ color: "var(--cs-ink)" }}>{event.replay?.playbackUrl || "Not available"}</span>
                         {event.replay?.playbackUrl && (
-                          <button onClick={() => copyText(event.replay?.playbackUrl)} className="text-[#fd7e14]">Copy</button>
+                          <button onClick={() => copyText(event.replay?.playbackUrl)} className="cs-mono font-bold uppercase" style={{ color: "var(--cs-rust)", fontSize: 10 }}>Copy</button>
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-neutral-500">Current Viewers:</span>
-                        <span className="text-white/80">{event.viewerCount ?? 0}</span>
+                        <span style={{ color: "var(--cs-muted)" }}>Current Viewers:</span>
+                        <span style={{ color: "var(--cs-ink)" }}>{event.viewerCount ?? 0}</span>
                       </div>
-                      {event.replay?.note && <p className="text-xs text-orange-300">{event.replay.note}</p>}
+                      {event.replay?.note && <p className="text-xs" style={{ color: "var(--cs-rust)" }}>{event.replay.note}</p>}
                     </div>
 
-                    <div className="border border-neutral-800 rounded-lg p-3 space-y-3 bg-neutral-900/40">
-                      <p className="text-xs uppercase tracking-wide text-neutral-400">Viewer Controls</p>
+                    <div className="cs-border-thin p-3 space-y-3" style={{ background: "var(--cs-paper)" }}>
+                      <p style={labelSlugStyle}>Viewer Controls</p>
                       <div className="flex flex-wrap items-end gap-2">
                         <div className="space-y-1">
-                          <label className="text-xs text-neutral-500">Manual viewer count</label>
-                          <Input
+                          <label style={labelSlugStyle}>Manual viewer count</label>
+                          <input
                             type="number"
                             min={0}
                             value={viewerDrafts[event.id]?.viewerCount ?? String(event.viewerCount ?? 0)}
                             onChange={(e) => updateViewerDraft(event.id, e.target.value)}
                             disabled={event.status !== "LIVE"}
-                            className="w-48 bg-neutral-950 border-neutral-800 text-white disabled:opacity-60"
+                            style={{ ...fieldStyle, width: 192 }}
+                            className="disabled:opacity-50"
                           />
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          <Button
-                            size="sm"
+                          <CsButton
                             variant="outline"
                             onClick={() => bumpViewerDraft(event, -10)}
                             disabled={event.status !== "LIVE"}
-                            className="border-neutral-700 text-neutral-200 hover:bg-neutral-800"
                           >
                             -10
-                          </Button>
-                          <Button
-                            size="sm"
+                          </CsButton>
+                          <CsButton
                             variant="outline"
                             onClick={() => bumpViewerDraft(event, 10)}
                             disabled={event.status !== "LIVE"}
-                            className="border-neutral-700 text-neutral-200 hover:bg-neutral-800"
                           >
                             +10
-                          </Button>
-                          <Button
-                            size="sm"
+                          </CsButton>
+                          <CsButton
                             variant="outline"
                             onClick={() => bumpViewerDraft(event, 100)}
                             disabled={event.status !== "LIVE"}
-                            className="border-neutral-700 text-neutral-200 hover:bg-neutral-800"
                           >
                             +100
-                          </Button>
+                          </CsButton>
                         </div>
-                        <Button
-                          size="sm"
+                        <CsButton
+                          variant="ink"
                           onClick={() => saveViewerCount(event)}
                           disabled={viewerSavingId === event.id || event.status !== "LIVE"}
-                          className="bg-neutral-800 hover:bg-neutral-700 text-white"
                         >
                           {viewerSavingId === event.id ? "Saving viewers..." : "Save Viewers"}
-                        </Button>
+                        </CsButton>
                       </div>
                       {event.status !== "LIVE" && (
-                        <p className="text-xs text-neutral-500">Viewer count can only be edited while this event is live.</p>
+                        <p className="cs-mono text-xs" style={{ color: "var(--cs-muted)" }}>Viewer count can only be edited while this event is live.</p>
                       )}
                     </div>
 
-                    <div className="border border-neutral-800 rounded-lg p-3 space-y-3 bg-neutral-900/40">
-                      <p className="text-xs uppercase tracking-wide text-neutral-400">Replay Controls</p>
+                    <div className="cs-border-thin p-3 space-y-3" style={{ background: "var(--cs-paper)" }}>
+                      <p style={labelSlugStyle}>Replay Controls</p>
                       <div className="grid gap-3 md:grid-cols-3">
                         <div className="space-y-1">
-                          <label className="text-xs text-neutral-500">Status</label>
+                          <label style={labelSlugStyle}>Status</label>
                           <select
                             value={(replayDrafts[event.id]?.status ?? event.replay?.status ?? "NONE") as ReplayStatus}
                             onChange={(e) => updateReplayDraft(event.id, { status: e.target.value as ReplayStatus })}
-                            className="w-full rounded-md border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-white"
+                            style={{ ...selectStyle, width: "100%" }}
                           >
                             {replayStatuses.map((status) => (
                               <option key={status} value={status}>
@@ -1231,116 +1247,111 @@ export function CreatorHub() {
                           </select>
                         </div>
                         <div className="space-y-1 md:col-span-2">
-                          <label className="text-xs text-neutral-500">Replay playback URL</label>
-                          <Input
+                          <label style={labelSlugStyle}>Replay playback URL</label>
+                          <input
                             value={replayDrafts[event.id]?.playbackUrl ?? event.replay?.playbackUrl ?? ""}
                             onChange={(e) => updateReplayDraft(event.id, { playbackUrl: e.target.value })}
                             placeholder="https://...m3u8"
-                            className="bg-neutral-950 border-neutral-800 text-white"
+                            style={fieldStyle}
                           />
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-xs text-neutral-500">Replay note</label>
-                        <Textarea
+                        <label style={labelSlugStyle}>Replay note</label>
+                        <textarea
                           rows={2}
                           value={replayDrafts[event.id]?.note ?? event.replay?.note ?? ""}
                           onChange={(e) => updateReplayDraft(event.id, { note: e.target.value })}
                           placeholder="Internal note about replay state"
-                          className="bg-neutral-950 border-neutral-800 text-white"
+                          style={fieldStyle}
                         />
                       </div>
-                      <Button
-                        size="sm"
+                      <CsButton
+                        variant="ink"
                         onClick={() => saveReplay(event)}
                         disabled={replaySavingId === event.id}
-                        className="bg-neutral-800 hover:bg-neutral-700 text-white"
                       >
                         {replaySavingId === event.id ? "Saving replay..." : "Save Replay"}
-                      </Button>
+                      </CsButton>
                     </div>
 
-                    <details className="border border-neutral-800 rounded-lg p-3 space-y-3 bg-neutral-900/40">
-                      <summary className="text-xs uppercase tracking-wide text-neutral-300 cursor-pointer">Advanced</summary>
+                    <details className="cs-border-thin p-3 space-y-3" style={{ background: "var(--cs-paper)" }}>
+                      <summary className="cs-mono cursor-pointer font-bold uppercase" style={{ fontSize: 11, letterSpacing: "0.09em", color: "var(--cs-ink)" }}>Advanced</summary>
                       <div className="mt-3 space-y-3">
-                        <div className="grid gap-2 text-xs text-neutral-400">
+                        <div className="grid gap-2 text-xs" style={{ color: "var(--cs-muted)" }}>
                           <div className="flex items-center gap-2">
-                            <span className="text-neutral-500">RTMPS URL:</span>
-                            <span className="text-white/80 break-all">{ingestUrl || "Not available"}</span>
-                            {ingestUrl && <button onClick={() => copyText(ingestUrl)} className="text-[#fd7e14]">Copy</button>}
+                            <span style={{ color: "var(--cs-muted)" }}>RTMPS URL:</span>
+                            <span className="truncate" style={{ color: "var(--cs-ink)" }}>{ingestUrl || "Not available"}</span>
+                            {ingestUrl && <button onClick={() => copyText(ingestUrl)} className="cs-mono font-bold uppercase" style={{ color: "var(--cs-rust)", fontSize: 10 }}>Copy</button>}
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="text-neutral-500">Stream Key:</span>
-                            <span className="text-white/80 break-all">{event.streamKey || "Hidden"}</span>
+                            <span style={{ color: "var(--cs-muted)" }}>Stream Key:</span>
+                            <span className="truncate" style={{ color: "var(--cs-ink)" }}>{event.streamKey || "Hidden"}</span>
                             {event.streamKey && (
-                              <button onClick={() => copyText(event.streamKey)} className="text-[#fd7e14]">Copy</button>
+                              <button onClick={() => copyText(event.streamKey)} className="cs-mono font-bold uppercase" style={{ color: "var(--cs-rust)", fontSize: 10 }}>Copy</button>
                             )}
                           </div>
                         </div>
-                        <p className="text-xs uppercase tracking-wide text-neutral-400">Source Deck</p>
+                        <p style={labelSlugStyle}>Source Deck</p>
                       <div className="grid gap-2 md:grid-cols-4">
-                        <Input
+                        <input
                           value={sourceDrafts[event.id]?.label ?? ""}
                           onChange={(e) => updateSourceDraft(event.id, { label: e.target.value })}
                           placeholder="Source label"
-                          className="bg-neutral-950 border-neutral-800 text-white"
+                          style={fieldStyle}
                         />
                         <select
                           value={sourceDrafts[event.id]?.type ?? "CAMERA"}
                           onChange={(e) => updateSourceDraft(event.id, { type: e.target.value as LiveSource["type"] })}
-                          className="rounded-md border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-white"
+                          style={selectStyle}
                         >
                           <option value="CAMERA">Camera</option>
                           <option value="SCREEN">Screen</option>
                           <option value="RTMP">RTMP</option>
                           <option value="CONTROL_DECK">Control Deck</option>
                         </select>
-                        <Input
+                        <input
                           value={sourceDrafts[event.id]?.playbackUrl ?? ""}
                           onChange={(e) => updateSourceDraft(event.id, { playbackUrl: e.target.value })}
                           placeholder="Playback URL (optional)"
-                          className="bg-neutral-950 border-neutral-800 text-white"
+                          style={fieldStyle}
                         />
-                        <Button
-                          size="sm"
+                        <CsButton
+                          variant="ink"
                           onClick={() => addSource(event)}
                           disabled={sourceBusyId === event.id}
-                          className="bg-neutral-800 hover:bg-neutral-700 text-white"
                         >
                           Add Source
-                        </Button>
+                        </CsButton>
                       </div>
 
                       <div className="space-y-2">
                         {(event.sources ?? []).length === 0 ? (
-                          <p className="text-xs text-neutral-500">No sources configured. Legacy single-stream playback fallback remains active.</p>
+                          <p className="cs-mono text-xs" style={{ color: "var(--cs-muted)" }}>No sources configured. Legacy single-stream playback fallback remains active.</p>
                         ) : (
                           (event.sources ?? []).map((source) => (
-                            <div key={source.id} className="flex items-center justify-between rounded-md border border-neutral-800 bg-neutral-950 px-3 py-2">
+                            <div key={source.id} className="flex items-center justify-between cs-border-thin px-3 py-2" style={{ background: "var(--cs-panel)" }}>
                               <div>
-                                <p className="text-sm text-white">
-                                  {source.label} <span className="text-xs text-neutral-500">({source.type})</span>
+                                <p className="text-sm" style={{ color: "var(--cs-ink)" }}>
+                                  {source.label} <span className="text-xs" style={{ color: "var(--cs-muted)" }}>({source.type})</span>
                                 </p>
-                                <p className="text-xs text-neutral-400">
+                                <p className="cs-mono text-xs" style={{ color: "var(--cs-muted)" }}>
                                   {source.isActiveOutput ? "ACTIVE OUTPUT" : source.status}
                                 </p>
                               </div>
                               <div className="flex items-center gap-2">
                                 {event.status === "LIVE" && !source.isActiveOutput && (
-                                  <Button size="sm" variant="outline" className="border-neutral-700 text-neutral-200" onClick={() => switchSourceLive(event.id, source.id)}>
+                                  <CsButton variant="outline" onClick={() => switchSourceLive(event.id, source.id)}>
                                     Take Live
-                                  </Button>
+                                  </CsButton>
                                 )}
-                                <Button
-                                  size="sm"
+                                <CsButton
                                   variant="outline"
-                                  className="border-neutral-700 text-neutral-200"
                                   onClick={() => deleteSource(event.id, source.id)}
                                   disabled={event.status === "LIVE" && source.isActiveOutput}
-                                  title={event.status === "LIVE" && source.isActiveOutput ? "Switch to another source or end stream before removing the active output." : "Remove source"}
                                 >
                                   Remove
-                                </Button>
+                                </CsButton>
                               </div>
                             </div>
                           ))
@@ -1351,97 +1362,92 @@ export function CreatorHub() {
 
                     <div className="mt-2 flex flex-wrap gap-2">
                       {event.status === "SCHEDULED" && (
-                        <Button
-                          size="sm"
+                        <CsButton
+                          variant="rust"
                           onClick={() => void openCameraGoLive(event)}
                           disabled={cameraBusy}
-                          className="bg-[#fd7e14] hover:bg-[#ff9940] text-white disabled:opacity-60"
-                          title="Start browser camera flow"
                         >
                           Go Live with Camera
-                        </Button>
+                        </CsButton>
                       )}
                       {event.status !== "ENDED" && (
-                        <Button
-                          size="sm"
+                        <CsButton
+                          variant="ink"
                           onClick={() => updateStatus(event.id, "end")}
-                          className="bg-neutral-800 hover:bg-neutral-700 text-white"
                         >
                           End Live
-                        </Button>
+                        </CsButton>
                       )}
-                      <Button
-                        size="sm"
+                      <CsButton
                         variant="outline"
                         onClick={() => togglePublish(event)}
-                        className="border-neutral-700 text-neutral-200 hover:bg-neutral-800"
                       >
                         {event.isPublished ? "Unpublish" : "Publish"}
-                      </Button>
-                      <Button
-                        size="sm"
+                      </CsButton>
+                      <CsButton
                         variant="outline"
                         onClick={() => setDeleteTargetEvent(event)}
                         disabled={deletingEventId === event.id || event.status === "LIVE"}
-                        className="border-red-900/80 text-red-300 hover:bg-red-950/40"
-                        title={event.status === "LIVE" ? "End this live event before deleting it." : "Delete this event"}
                       >
                         {deletingEventId === event.id ? "Deleting..." : "Delete Event"}
-                      </Button>
+                      </CsButton>
                     </div>
                   </div>
                 );
               })}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </CsBox>
 
-      <AlertDialog open={Boolean(deleteTargetEvent)} onOpenChange={(open) => !open && setDeleteTargetEvent(null)}>
-        <AlertDialogContent className="bg-neutral-950 border-neutral-800 text-white">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete live event?</AlertDialogTitle>
-            <AlertDialogDescription className="text-neutral-300">
+      {deleteTargetEvent && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-6"
+          style={{ background: "rgba(22, 19, 16, 0.55)" }}
+          onClick={() => setDeleteTargetEvent(null)}
+        >
+          <div
+            className="cs-border cs-shadow w-full max-w-sm p-6"
+            style={{ background: "var(--cs-paper)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CsSlug>Delete live event?</CsSlug>
+            <p className="mt-2 text-sm" style={{ color: "var(--cs-ink)" }}>
               This action is irreversible. Deleting this live event will permanently remove its metadata, source deck, and replay settings.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          {deleteTargetEvent && (
-            <div className="rounded-md border border-red-900/60 bg-red-950/30 p-3 text-sm text-red-200">
-              You are about to delete <span className="font-semibold">{deleteTargetEvent.title}</span>.
-              This cannot be undone.
+            </p>
+            <div className="cs-border-thin mt-4 p-3" style={{ borderColor: "var(--cs-rust)", background: "var(--cs-panel)" }}>
+              <p className="text-sm" style={{ color: "var(--cs-rust)" }}>
+                You are about to delete <span className="font-bold">{deleteTargetEvent.title}</span>.
+                This cannot be undone.
+              </p>
             </div>
-          )}
-          <AlertDialogFooter>
-            <AlertDialogCancel className="border-neutral-700 bg-transparent text-neutral-200 hover:bg-neutral-900">
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-red-600 text-white hover:bg-red-500"
-              disabled={!deleteTargetEvent || deletingEventId === deleteTargetEvent?.id}
-              onClick={(e) => {
-                e.preventDefault();
-                if (deleteTargetEvent) {
-                  void deleteEvent(deleteTargetEvent);
-                }
-              }}
-            >
-              {deleteTargetEvent && deletingEventId === deleteTargetEvent.id ? "Deleting..." : "Delete permanently"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            <div className="flex justify-end gap-2 mt-5">
+              <CsButton variant="outline" onClick={() => setDeleteTargetEvent(null)}>
+                Cancel
+              </CsButton>
+              <CsButton
+                variant="rust"
+                disabled={deletingEventId === deleteTargetEvent.id}
+                onClick={() => void deleteEvent(deleteTargetEvent)}
+              >
+                {deletingEventId === deleteTargetEvent.id ? "Deleting..." : "Delete permanently"}
+              </CsButton>
+            </div>
+          </div>
+        </div>
+      )}
 
       {cameraGoLiveEvent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-4xl rounded-xl border border-neutral-800 bg-neutral-950 p-4 md:p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(22, 19, 16, 0.55)" }}>
+          <div className="cs-border cs-shadow w-full max-w-4xl p-4 md:p-6" style={{ background: "var(--cs-paper)" }}>
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-white text-xl font-semibold">Create stream</h3>
-                <p className="text-sm text-neutral-400">Set up your camera, then choose visibility & scheduling.</p>
+                <CsSlug>Camera wizard</CsSlug>
+                <h3 className="cs-display mt-1" style={{ fontSize: 28, color: "var(--cs-ink)" }}>Create stream</h3>
+                <p className="cs-mono text-xs" style={{ color: "var(--cs-muted)" }}>Set up your camera, then choose visibility & scheduling.</p>
               </div>
-              <Button
+              <CsButton
                 variant="outline"
-                className="border-neutral-700 bg-transparent text-neutral-200 hover:bg-neutral-900"
                 onClick={() => {
                   cleanupBrowserLive();
                   setCameraGoLiveEvent(null);
@@ -1449,10 +1455,10 @@ export function CreatorHub() {
                 disabled={cameraBusy}
               >
                 Close
-              </Button>
+              </CsButton>
             </div>
 
-            <div className="mt-5 rounded-lg border border-neutral-800 bg-neutral-900/20 p-4">
+            <div className="mt-5 cs-border-thin p-4" style={{ background: "var(--cs-panel)" }}>
               <div className="flex items-center justify-between gap-3">
                 {(
                   [
@@ -1467,21 +1473,22 @@ export function CreatorHub() {
                     <div key={s.id} className="flex-1">
                       <div className="flex items-center gap-2">
                         <div
-                          className={
-                            "h-6 w-6 rounded-full flex items-center justify-center text-xs border " +
-                            (done
-                              ? "bg-blue-500/20 border-blue-400 text-blue-200"
-                              : active
-                                ? "bg-white/10 border-white/40 text-white"
-                                : "bg-neutral-950 border-neutral-700 text-neutral-400")
-                          }
+                          className="flex items-center justify-center text-xs"
+                          style={{
+                            height: 24,
+                            width: 24,
+                            borderRadius: "50%",
+                            border: "1.5px solid var(--cs-ink)",
+                            background: done ? "var(--cs-ink)" : active ? "var(--cs-brand)" : "var(--cs-paper)",
+                            color: done || active ? "#fff" : "var(--cs-muted)",
+                          }}
                         >
                           {done ? "✓" : idx + 1}
                         </div>
-                        <p className={active ? "text-sm text-white" : "text-sm text-neutral-400"}>{s.label}</p>
+                        <p className="cs-mono text-xs font-bold uppercase" style={{ color: active ? "var(--cs-ink)" : "var(--cs-muted)" }}>{s.label}</p>
                       </div>
                       {idx < arr.length - 1 ? (
-                        <div className="mt-3 h-px w-full bg-neutral-800" />
+                        <div className="mt-3" style={{ height: 1, width: "100%", background: "var(--cs-line)" }} />
                       ) : null}
                     </div>
                   );
@@ -1490,33 +1497,31 @@ export function CreatorHub() {
 
               <div className="mt-5 grid gap-4 md:grid-cols-5">
                 <div className="md:col-span-3">
-                  <div className="overflow-hidden rounded-lg border border-neutral-800 bg-black aspect-video">
-                    <video ref={previewRef} className="h-full w-full object-cover" playsInline autoPlay muted />
+                  <div className="overflow-hidden cs-border" style={{ background: "#000", aspectRatio: "16 / 9" }}>
+                    <video ref={previewRef} className="h-full w-full" style={{ objectFit: "cover" }} playsInline autoPlay muted />
                   </div>
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-xs text-neutral-500">Event: <span className="text-neutral-200">{cameraGoLiveEvent.title}</span></p>
-                    <Button
-                      size="sm"
+                    <p className="cs-mono text-xs" style={{ color: "var(--cs-muted)" }}>Event: <span style={{ color: "var(--cs-ink)" }}>{cameraGoLiveEvent.title}</span></p>
+                    <CsButton
                       variant="outline"
-                      className="border-neutral-700 text-neutral-200"
                       onClick={toggleCameraMute}
                       disabled={cameraBusy || !browserLiveRef.current?.stream}
                     >
                       {cameraMuted ? "Unmute" : "Mute"}
-                    </Button>
+                    </CsButton>
                   </div>
                 </div>
 
                 <div className="md:col-span-2">
                   {cameraWizardStep === 0 ? (
                     <div className="space-y-4">
-                      <div className="rounded-md border border-neutral-800 bg-neutral-950 p-4">
-                        <p className="text-sm text-white font-medium">Camera & microphone</p>
-                        <p className="text-xs text-neutral-500 mt-1">Choose the devices to use for this stream.</p>
+                      <div className="cs-border-thin p-4" style={{ background: "var(--cs-paper)" }}>
+                        <p className="text-sm font-bold" style={{ color: "var(--cs-ink)" }}>Camera & microphone</p>
+                        <p className="cs-mono text-xs mt-1" style={{ color: "var(--cs-muted)" }}>Choose the devices to use for this stream.</p>
 
                         <div className="mt-4 space-y-3">
                           <div className="space-y-1">
-                            <Label className="text-xs text-neutral-400">Camera</Label>
+                            <Label className="text-xs" style={{ color: "var(--cs-muted)" }}>Camera</Label>
                             <Select
                               value={selectedVideoDeviceId}
                               onValueChange={(v) => {
@@ -1524,10 +1529,10 @@ export function CreatorHub() {
                                 void startPreviewStream({ videoDeviceId: v });
                               }}
                             >
-                              <SelectTrigger className="bg-neutral-950 border-neutral-800 text-white">
+                              <SelectTrigger style={{ ...fieldStyle, height: "auto" }}>
                                 <SelectValue placeholder="Select camera" />
                               </SelectTrigger>
-                              <SelectContent className="bg-neutral-950 border-neutral-800 text-white">
+                              <SelectContent style={{ background: "var(--cs-paper)", color: "var(--cs-ink)", border: "2px solid var(--cs-ink)" }}>
                                 {videoDevices.length ? (
                                   videoDevices.map((d, idx) => (
                                     <SelectItem key={d.deviceId} value={d.deviceId}>
@@ -1544,7 +1549,7 @@ export function CreatorHub() {
                           </div>
 
                           <div className="space-y-1">
-                            <Label className="text-xs text-neutral-400">Microphone</Label>
+                            <Label className="text-xs" style={{ color: "var(--cs-muted)" }}>Microphone</Label>
                             <Select
                               value={selectedAudioDeviceId}
                               onValueChange={(v) => {
@@ -1552,10 +1557,10 @@ export function CreatorHub() {
                                 void startPreviewStream({ audioDeviceId: v });
                               }}
                             >
-                              <SelectTrigger className="bg-neutral-950 border-neutral-800 text-white">
+                              <SelectTrigger style={{ ...fieldStyle, height: "auto" }}>
                                 <SelectValue placeholder="Select microphone" />
                               </SelectTrigger>
-                              <SelectContent className="bg-neutral-950 border-neutral-800 text-white">
+                              <SelectContent style={{ background: "var(--cs-paper)", color: "var(--cs-ink)", border: "2px solid var(--cs-ink)" }}>
                                 {audioDevices.length ? (
                                   audioDevices.map((d, idx) => (
                                     <SelectItem key={d.deviceId} value={d.deviceId}>
@@ -1573,9 +1578,9 @@ export function CreatorHub() {
                         </div>
                       </div>
 
-                      <div className="rounded-md border border-neutral-800 bg-neutral-950 p-4">
-                        <p className="text-sm text-white font-medium">Tips</p>
-                        <ul className="mt-2 space-y-1 text-xs text-neutral-400 list-disc pl-4">
+                      <div className="cs-border-thin p-4" style={{ background: "var(--cs-paper)" }}>
+                        <p className="text-sm font-bold" style={{ color: "var(--cs-ink)" }}>Tips</p>
+                        <ul className="mt-2 space-y-1 text-xs list-disc pl-4" style={{ color: "var(--cs-muted)" }}>
                           <li>Make sure your camera isn’t in use by another app.</li>
                           <li>Use headphones to avoid feedback.</li>
                         </ul>
@@ -1583,20 +1588,20 @@ export function CreatorHub() {
                     </div>
                   ) : cameraWizardStep === 1 ? (
                     <div className="space-y-4">
-                      <div className="rounded-md border border-neutral-800 bg-neutral-950 p-4">
-                        <p className="text-sm text-white font-medium">Customization</p>
-                        <p className="text-xs text-neutral-500 mt-1">More customization options will be added here.</p>
-                        <div className="mt-4 rounded-md border border-neutral-800 bg-neutral-900/30 p-3">
-                          <p className="text-xs text-neutral-400">Current title</p>
-                          <p className="text-sm text-neutral-200 mt-1">{cameraGoLiveEvent.title}</p>
+                      <div className="cs-border-thin p-4" style={{ background: "var(--cs-paper)" }}>
+                        <p className="text-sm font-bold" style={{ color: "var(--cs-ink)" }}>Customization</p>
+                        <p className="cs-mono text-xs mt-1" style={{ color: "var(--cs-muted)" }}>More customization options will be added here.</p>
+                        <div className="mt-4 cs-border-thin p-3" style={{ background: "var(--cs-panel)" }}>
+                          <p style={labelSlugStyle}>Current title</p>
+                          <p className="text-sm mt-1" style={{ color: "var(--cs-ink)" }}>{cameraGoLiveEvent.title}</p>
                         </div>
                       </div>
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      <div className="rounded-md border border-neutral-800 bg-neutral-950 p-4">
-                        <p className="text-sm text-white font-medium">Privacy</p>
-                        <p className="text-xs text-neutral-500 mt-1">Make your stream public, unlisted, or private.</p>
+                      <div className="cs-border-thin p-4" style={{ background: "var(--cs-paper)" }}>
+                        <p className="text-sm font-bold" style={{ color: "var(--cs-ink)" }}>Privacy</p>
+                        <p className="cs-mono text-xs mt-1" style={{ color: "var(--cs-muted)" }}>Make your stream public, unlisted, or private.</p>
 
                         <RadioGroup
                           value={privacy}
@@ -1624,70 +1629,68 @@ export function CreatorHub() {
                           ).map((opt) => (
                             <label
                               key={opt.value}
-                              className={
-                                "flex items-start gap-3 rounded-md border p-3 cursor-pointer " +
-                                (privacy === opt.value ? "border-white/30 bg-white/5" : "border-neutral-800 bg-neutral-950")
-                              }
+                              className="flex items-start gap-3 p-3 cursor-pointer"
+                              style={{
+                                border: privacy === opt.value ? "2px solid var(--cs-ink)" : "1.5px solid var(--cs-line)",
+                                background: privacy === opt.value ? "var(--cs-panel)" : "var(--cs-paper)",
+                              }}
                             >
                               <RadioGroupItem value={opt.value} className="mt-1" />
                               <div>
-                                <p className="text-sm text-white">{opt.label}</p>
-                                <p className="text-xs text-neutral-400 mt-0.5">{opt.desc}</p>
+                                <p className="text-sm" style={{ color: "var(--cs-ink)" }}>{opt.label}</p>
+                                <p className="text-xs mt-0.5" style={{ color: "var(--cs-muted)" }}>{opt.desc}</p>
                               </div>
                             </label>
                           ))}
                         </RadioGroup>
                       </div>
 
-                      <div className="rounded-md border border-neutral-800 bg-neutral-950 p-4">
+                      <div className="cs-border-thin p-4" style={{ background: "var(--cs-paper)" }}>
                         <div className="flex items-center justify-between gap-3">
                           <div>
-                            <p className="text-sm text-white font-medium">Schedule</p>
-                            <p className="text-xs text-neutral-500 mt-1">Select the date and time you want to go live.</p>
+                            <p className="text-sm font-bold" style={{ color: "var(--cs-ink)" }}>Schedule</p>
+                            <p className="cs-mono text-xs mt-1" style={{ color: "var(--cs-muted)" }}>Select the date and time you want to go live.</p>
                           </div>
-                          <Button
-                            size="sm"
+                          <CsButton
                             variant="outline"
-                            className="border-neutral-700 text-neutral-200"
                             onClick={() => setScheduleEnabled((p) => !p)}
                           >
                             {scheduleEnabled ? "Disable" : "Enable"}
-                          </Button>
+                          </CsButton>
                         </div>
 
-                        <div className={"mt-4 grid grid-cols-2 gap-2 " + (scheduleEnabled ? "opacity-100" : "opacity-50 pointer-events-none")}>
+                        <div className="mt-4 grid grid-cols-2 gap-2" style={scheduleEnabled ? undefined : { opacity: 0.5, pointerEvents: "none" }}>
                           <div className="space-y-1">
-                            <Label className="text-xs text-neutral-400">Date</Label>
-                            <Input
+                            <Label className="text-xs" style={{ color: "var(--cs-muted)" }}>Date</Label>
+                            <input
                               type="date"
                               value={scheduleDate}
                               onChange={(e) => setScheduleDate(e.target.value)}
-                              className="bg-neutral-950 border-neutral-800 text-white"
+                              style={fieldStyle}
                             />
                           </div>
                           <div className="space-y-1">
-                            <Label className="text-xs text-neutral-400">Time</Label>
-                            <Input
+                            <Label className="text-xs" style={{ color: "var(--cs-muted)" }}>Time</Label>
+                            <input
                               type="time"
                               value={scheduleTime}
                               onChange={(e) => setScheduleTime(e.target.value)}
-                              className="bg-neutral-950 border-neutral-800 text-white"
+                              style={fieldStyle}
                             />
                           </div>
                         </div>
                         {scheduleEnabled && (!scheduleDate || !scheduleTime) ? (
-                          <p className="text-xs text-amber-300 mt-2">Pick both a date and time to schedule.</p>
+                          <p className="cs-mono text-xs mt-2" style={{ color: "var(--cs-rust)" }}>Pick both a date and time to schedule.</p>
                         ) : null}
                       </div>
                     </div>
                   )}
 
-                  {cameraError && <p className="text-sm text-red-400">{cameraError}</p>}
+                  {cameraError && <p className="cs-mono text-xs" style={{ color: "var(--cs-rust)" }}>{cameraError}</p>}
 
                   <div className="mt-4 flex items-center justify-between gap-2">
-                    <Button
+                    <CsButton
                       variant="outline"
-                      className="border-neutral-700 text-neutral-200"
                       onClick={() =>
                         setCameraWizardStep((s) => {
                           if (s === 0) return 0;
@@ -1698,12 +1701,11 @@ export function CreatorHub() {
                       disabled={cameraBusy || cameraWizardStep === 0}
                     >
                       Back
-                    </Button>
+                    </CsButton>
 
                     <div className="flex items-center gap-2">
-                      <Button
+                      <CsButton
                         variant="outline"
-                        className="border-neutral-700 text-neutral-200"
                         onClick={() => {
                           cleanupBrowserLive();
                           setCameraGoLiveEvent(null);
@@ -1711,11 +1713,11 @@ export function CreatorHub() {
                         disabled={cameraBusy}
                       >
                         Cancel
-                      </Button>
+                      </CsButton>
 
                       {cameraWizardStep < 2 ? (
-                        <Button
-                          className="bg-[#fd7e14] hover:bg-[#ff9940] text-white"
+                        <CsButton
+                          variant="rust"
                           onClick={() =>
                             setCameraWizardStep((s) => {
                               if (s === 0) return 1;
@@ -1726,10 +1728,10 @@ export function CreatorHub() {
                           disabled={cameraBusy}
                         >
                           Next
-                        </Button>
+                        </CsButton>
                       ) : (
-                        <Button
-                          className="bg-[#fd7e14] hover:bg-[#ff9940] text-white"
+                        <CsButton
+                          variant="rust"
                           onClick={() => {
                             if (scheduleEnabled && (!scheduleDate || !scheduleTime)) {
                               toast.error("Please select both a schedule date and time.");
@@ -1761,16 +1763,16 @@ export function CreatorHub() {
                           disabled={cameraBusy}
                         >
                           {cameraBusy ? "Saving..." : scheduleEnabled ? "Done" : "Done"}
-                        </Button>
+                        </CsButton>
                       )}
 
-                      <Button
-                        className="bg-neutral-800 hover:bg-neutral-700 text-white"
+                      <CsButton
+                        variant="ink"
                         onClick={() => void stopCameraBroadcast()}
                         disabled={cameraBusy}
                       >
                         Stop
-                      </Button>
+                      </CsButton>
                     </div>
                   </div>
                 </div>

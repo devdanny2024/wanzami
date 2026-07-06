@@ -1,21 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
-import { Textarea } from "./ui/textarea";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
-import { Plus, Edit, Search, Upload, Layers, Trash2 } from "lucide-react";
+import { Plus, Edit, Search, Upload, Layers, Trash2, Eye } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { AddEditSeriesForm } from "./AddEditSeriesForm";
 import { useUploadQueue } from "@/context/UploadQueueProvider";
 import { authFetch } from "@/lib/authClient";
 import { MovieTitle } from "./MoviesManagement"; // reuse shape for series titles
-import { Eye } from "lucide-react";
-import { StatusBadge } from "./StatusBadge";
 import { titleStatus } from "../lib/status";
 import { toast } from "sonner";
+import { CsBox, CsButton, CsPageHeader, CsSlug, CsTag, type CsColumn } from "./cs/kit";
 
 type SeriesTitle = MovieTitle & {
   episodeCount?: number;
@@ -33,6 +25,25 @@ type Episode = {
   previewVttUrl?: string | null;
   pendingReview?: boolean;
   seasonId?: string | number | null;
+};
+
+const fieldStyle: React.CSSProperties = {
+  border: "2px solid var(--cs-ink)",
+  background: "var(--cs-paper)",
+  color: "var(--cs-ink)",
+  fontFamily: "var(--font-smono), monospace",
+  fontSize: 12,
+  padding: "9px 12px",
+  width: "100%",
+};
+
+const statusTagProps = (m: MovieTitle): { label: string; tone: "good" | "bad" | "pending" | "neutral" } => {
+  const s = titleStatus(m);
+  if (s.tone === "live") return { label: s.label, tone: "good" };
+  if (s.tone === "leaving") return { label: s.label, tone: "bad" };
+  if (s.tone === "pending") return { label: s.label, tone: "pending" };
+  if (s.tone === "coming") return { label: s.label, tone: "pending" };
+  return { label: s.label, tone: "neutral" };
 };
 
 export function SeriesManagement() {
@@ -145,69 +156,70 @@ export function SeriesManagement() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-neutral-400 uppercase tracking-wide">Series</p>
-            <h1 className="text-3xl text-white font-semibold">
+            <CsSlug className="mb-1">Series</CsSlug>
+            <h1 className="cs-display" style={{ fontSize: 34, color: "var(--cs-ink)" }}>
               {currentSeries.id ? "Edit series" : "Add new series"}
             </h1>
-            <p className="text-neutral-400 mt-1">
+            <p className="cs-mono text-xs mt-1" style={{ color: "var(--cs-muted)" }}>
               Fill out the details and upload art/renditions. This replaces the modal flow.
             </p>
           </div>
-          <Button
+          <CsButton
             variant="outline"
             onClick={() => {
               setView("list");
               setEditingSeries(null);
             }}
-            className="border-neutral-700 text-neutral-200 hover:bg-neutral-800"
           >
             Back to list
-          </Button>
+          </CsButton>
         </div>
 
-        <Card className="bg-neutral-900 border-neutral-800">
-          <CardHeader>
-            <CardTitle className="text-white">
-              {currentSeries.id ? `Edit ${currentSeries.name || "series"}` : "Create a series"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <AddEditSeriesForm
-              token={token ?? undefined}
-              series={currentSeries}
-              onClose={() => {
-                setView("list");
-                setEditingSeries(null);
-              }}
-              onSaved={handleSeriesSaved}
-              onQueueUpload={(id, file, rendition) => startUpload("SERIES", id, file, rendition)}
-            />
-          </CardContent>
-        </Card>
+        <CsBox className="p-5">
+          <h2 className="cs-display mb-4" style={{ fontSize: 24, color: "var(--cs-ink)" }}>
+            {currentSeries.id ? `Edit ${currentSeries.name || "series"}` : "Create a series"}
+          </h2>
+          <AddEditSeriesForm
+            token={token ?? undefined}
+            series={currentSeries}
+            onClose={() => {
+              setView("list");
+              setEditingSeries(null);
+            }}
+            onSaved={handleSeriesSaved}
+            onQueueUpload={(id, file, rendition) => startUpload("SERIES", id, file, rendition)}
+          />
+        </CsBox>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-semibold text-white">Series</h1>
-          <p className="text-sm text-neutral-400 mt-0.5">Manage episodic content with bulk or weekly uploads</p>
-        </div>
-        <Button onClick={openAddSeries} className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
-          <Plus className="w-4 h-4 mr-2" />
-          Add series
-        </Button>
-      </div>
+    <div className="space-y-8">
+      <CsPageHeader
+        title="The serials"
+        chip={`${seriesStatusCounts.all} series`}
+        slug="Episodic content · seasons and episodes"
+        actions={
+          <CsButton variant="rust" onClick={openAddSeries}>
+            <span className="inline-flex items-center gap-2">
+              <Plus className="w-4 h-4" />
+              Add series
+            </span>
+          </CsButton>
+        }
+      />
 
       <div className="relative max-w-md">
-        <Search className="w-4 h-4 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2" />
-        <Input
+        <Search
+          className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2"
+          style={{ color: "var(--cs-muted)" }}
+        />
+        <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search series…"
-          className="pl-9 bg-neutral-950 border-neutral-800 text-white"
+          placeholder="SEARCH SERIES…"
+          style={{ ...fieldStyle, paddingLeft: 38 }}
         />
       </div>
 
@@ -218,155 +230,171 @@ export function SeriesManagement() {
           ["coming", "Coming soon"],
           ["pending", "Pending"],
           ["archived", "Archived"],
-        ] as const).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setStatusFilter(key)}
-            className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
-              statusFilter === key
-                ? "bg-[#fd7e14]/15 border-[#fd7e14] text-[#fd7e14]"
-                : "bg-neutral-950 border-neutral-800 text-neutral-300 hover:border-neutral-600"
-            }`}
-          >
-            {label} <span className="opacity-60">{seriesStatusCounts[key]}</span>
-          </button>
-        ))}
+        ] as const).map(([key, label]) => {
+          const active = statusFilter === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setStatusFilter(key)}
+              className="cs-mono text-xs font-bold uppercase transition-colors"
+              style={{
+                padding: "7px 14px",
+                border: "1.5px solid var(--cs-ink)",
+                background: active ? "var(--cs-ink)" : "var(--cs-paper)",
+                color: active ? "#fff" : "var(--cs-ink)",
+                letterSpacing: "0.06em",
+              }}
+            >
+              {label} <span style={{ opacity: 0.65 }}>{seriesStatusCounts[key]}</span>
+            </button>
+          );
+        })}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filtered.map((item) => (
-          <Card key={item.id} className="bg-neutral-900 border-neutral-800 overflow-hidden">
-            <div className="relative">
-              <ImageWithFallback
-                src={item.thumbnailUrl || item.posterUrl || ""}
-                alt={item.name}
-                className="w-full h-48 object-cover"
-              />
-              {(() => {
-                const s = titleStatus(item);
-                return s.tone !== "live" ? (
-                  <div className="absolute top-2 left-2">
-                    <StatusBadge tone={s.tone} label={s.label} />
-                  </div>
-                ) : null;
-              })()}
-            </div>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-white flex items-center justify-between">
-                <span className="truncate">{item.name}</span>
-                <div className="flex gap-2">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="text-neutral-300 hover:text-white"
-                    onClick={() => {
-                      setEditingSeries(item);
-                      setView("addEdit");
-                    }}
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="text-neutral-300 hover:text-white"
-                    onClick={() => setEpisodesTarget(item)}
-                    title="Manage episodes"
-                  >
-                    <Eye className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="text-red-300 hover:text-red-500"
-                    title="Delete series"
-                    onClick={async () => {
-                      if (!confirm(`Delete series "${item.name}" and all its episodes?`)) return;
-                      try {
-                        await deleteSeries(item.id);
-                        await loadSeries();
-                        toast.success("Series deleted");
-                      } catch (err: any) {
-                        toast.error(err?.message || "Delete failed");
-                      }
-                    }}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+      {filtered.length === 0 ? (
+        <CsBox className="p-5">
+          <CsSlug>Nothing filed here yet</CsSlug>
+          <p className="mt-2 text-sm" style={{ color: "var(--cs-ink)" }}>
+            No series match your filters.
+          </p>
+        </CsBox>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filtered.map((item) => {
+            const status = statusTagProps(item);
+            return (
+              <CsBox key={item.id} shadow className="overflow-hidden">
+                <div className="relative" style={{ aspectRatio: "16 / 9", background: "var(--cs-panel)" }}>
+                  <ImageWithFallback
+                    src={item.thumbnailUrl || item.posterUrl || ""}
+                    alt={item.name}
+                    className="w-full h-full object-cover"
+                  />
+                  {status.tone !== "good" && (
+                    <div className="absolute top-2 left-2">
+                      <CsTag label={status.label} tone={status.tone} />
+                    </div>
+                  )}
                 </div>
-              </CardTitle>
-              <p className="text-sm text-neutral-500 line-clamp-2">{item.description}</p>
-            </CardHeader>
-            <CardContent className="pt-0 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm text-neutral-400">
-                <Layers className="w-4 h-4" />
-                <span>{item.episodeCount ?? 0} episodes</span>
-              </div>
-              <div className="flex flex-wrap items-center gap-2 justify-end">
-                <Button
-                  size="sm"
-                  className="bg-[#fd7e14] hover:bg-[#ff9940] text-white"
-                  onClick={() => setEpisodesTarget(item)}
-                >
-                  Add Episodes
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-neutral-700 text-neutral-200 hover:text-white"
-                  onClick={async () => {
-                    try {
-                      await publishSeries(item.id);
-                      await loadSeries();
-                      toast.success("Series published");
-                    } catch (err: any) {
-                      toast.error(err?.message || "Publish failed");
-                    }
-                  }}
-                >
-                  Publish
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-neutral-700 text-neutral-200 hover:text-white"
-                  onClick={async () => {
-                    try {
-                      await updateArchive(item.id, !item.archived);
-                      await loadSeries();
-                      toast.success(item.archived ? "Series unarchived" : "Series archived");
-                    } catch (err: any) {
-                      toast.error(err?.message || "Update failed");
-                    }
-                  }}
-                >
-                  {item.archived ? "Unarchive" : "Archive"}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  className="bg-red-900/70 hover:bg-red-800 text-red-100"
-                  onClick={async () => {
-                    if (!confirm("Delete this series?")) return;
-                    try {
-                      await deleteSeries(item.id);
-                      await loadSeries();
-                      toast.success("Series deleted");
-                    } catch (err: any) {
-                      toast.error(err?.message || "Delete failed");
-                    }
-                  }}
-                >
-                  Delete
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                <div className="p-3 pb-2" style={{ borderTop: "1.5px solid var(--cs-line)" }}>
+                  <div className="flex items-center justify-between gap-2">
+                    <span
+                      className="cs-mono text-xs font-bold uppercase truncate"
+                      style={{ color: "var(--cs-ink)" }}
+                    >
+                      {item.name}
+                    </span>
+                    <div className="flex gap-1 shrink-0">
+                      <button
+                        onClick={() => {
+                          setEditingSeries(item);
+                          setView("addEdit");
+                        }}
+                        title="Edit"
+                        className="transition-colors hover:bg-[var(--cs-panel)]"
+                        style={{ border: "1.5px solid var(--cs-line)", color: "var(--cs-ink)", padding: 6 }}
+                      >
+                        <Edit className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => setEpisodesTarget(item)}
+                        title="Manage episodes"
+                        className="transition-colors hover:bg-[var(--cs-panel)]"
+                        style={{ border: "1.5px solid var(--cs-line)", color: "var(--cs-ink)", padding: 6 }}
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (!confirm(`Delete series "${item.name}" and all its episodes?`)) return;
+                          try {
+                            await deleteSeries(item.id);
+                            await loadSeries();
+                            toast.success("Series deleted");
+                          } catch (err: any) {
+                            toast.error(err?.message || "Delete failed");
+                          }
+                        }}
+                        title="Delete series"
+                        style={{ border: "1.5px solid var(--cs-rust)", color: "var(--cs-rust)", padding: 6 }}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                  <p className="cs-mono text-xs mt-1 line-clamp-2" style={{ color: "var(--cs-muted)" }}>
+                    {item.description}
+                  </p>
+                </div>
+                <div className="px-3 pb-3 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 cs-mono text-xs" style={{ color: "var(--cs-muted)" }}>
+                    <Layers className="w-3.5 h-3.5" />
+                    <span>{item.episodeCount ?? 0} episodes</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5 justify-end">
+                    <button
+                      onClick={() => setEpisodesTarget(item)}
+                      className="cs-mono text-[10px] font-bold uppercase px-2 py-1.5"
+                      style={{ background: "var(--cs-ink)", color: "#fff", letterSpacing: "0.05em" }}
+                    >
+                      Add episodes
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await publishSeries(item.id);
+                          await loadSeries();
+                          toast.success("Series published");
+                        } catch (err: any) {
+                          toast.error(err?.message || "Publish failed");
+                        }
+                      }}
+                      className="cs-mono text-[10px] font-bold uppercase px-2 py-1.5 transition-colors hover:bg-[var(--cs-panel)]"
+                      style={{ border: "1.5px solid var(--cs-ink)", color: "var(--cs-ink)" }}
+                    >
+                      Publish
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await updateArchive(item.id, !item.archived);
+                          await loadSeries();
+                          toast.success(item.archived ? "Series unarchived" : "Series archived");
+                        } catch (err: any) {
+                          toast.error(err?.message || "Update failed");
+                        }
+                      }}
+                      className="cs-mono text-[10px] font-bold uppercase px-2 py-1.5 transition-colors hover:bg-[var(--cs-panel)]"
+                      style={{ border: "1.5px solid var(--cs-ink)", color: "var(--cs-ink)" }}
+                    >
+                      {item.archived ? "Unarchive" : "Archive"}
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!confirm("Delete this series?")) return;
+                        try {
+                          await deleteSeries(item.id);
+                          await loadSeries();
+                          toast.success("Series deleted");
+                        } catch (err: any) {
+                          toast.error(err?.message || "Delete failed");
+                        }
+                      }}
+                      className="cs-mono text-[10px] font-bold uppercase px-2 py-1.5"
+                      style={{ border: "1.5px solid var(--cs-rust)", color: "var(--cs-rust)" }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </CsBox>
+            );
+          })}
+        </div>
+      )}
 
-      <AddEpisodesDialog
+      <AddEpisodesPanel
         open={!!episodesTarget}
         onOpenChange={(open) => !open && setEpisodesTarget(null)}
         series={episodesTarget}
@@ -376,7 +404,7 @@ export function SeriesManagement() {
   );
 }
 
-function AddEpisodesDialog({
+function AddEpisodesPanel({
   open,
   onOpenChange,
   series,
@@ -422,6 +450,7 @@ function AddEpisodesDialog({
     }[]
   >([]);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<"weekly" | "bulk">("weekly");
 
   useEffect(() => {
     if (series) {
@@ -727,118 +756,148 @@ function AddEpisodesDialog({
     return (data.publicUrl as string) || (data.key as string);
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-neutral-900 border-neutral-800 text-white max-w-5xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-white">Add Episodes {series ? `for ${series.name}` : ""}</DialogTitle>
-          <DialogDescription className="text-xs text-neutral-400">
-            Attach new episode videos, then fill in season, episode and title details.
-          </DialogDescription>
-        </DialogHeader>
+  if (!open) return null;
 
-        <div className="mb-4">
-          <h3 className="text-sm font-semibold text-neutral-200 mb-2">Existing episodes</h3>
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-6"
+      style={{ background: "rgba(22, 19, 16, 0.55)" }}
+      onClick={() => onOpenChange(false)}
+    >
+      <div
+        className="cs-border cs-shadow w-full max-w-4xl p-6"
+        style={{ background: "var(--cs-paper)", maxHeight: "90vh", overflowY: "auto" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between pb-4" style={{ borderBottom: "2.5px solid var(--cs-ink)" }}>
+          <div>
+            <CsSlug>Episodes</CsSlug>
+            <h3 className="cs-display mt-1" style={{ fontSize: 28, color: "var(--cs-ink)" }}>
+              Add Episodes {series ? `for ${series.name}` : ""}
+            </h3>
+            <p className="cs-mono text-xs mt-1" style={{ color: "var(--cs-muted)" }}>
+              Attach new episode videos, then fill in season, episode and title details.
+            </p>
+          </div>
+          <button
+            onClick={() => onOpenChange(false)}
+            className="cs-mono text-xs font-bold px-2 py-1"
+            style={{ border: "2px solid var(--cs-ink)" }}
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="mb-4 mt-4">
+          <CsSlug className="mb-2">Existing episodes</CsSlug>
           {loadingEpisodes ? (
-            <p className="text-neutral-400 text-sm">Loading...</p>
+            <p className="cs-mono text-xs" style={{ color: "var(--cs-muted)" }}>
+              Loading...
+            </p>
           ) : episodes.length === 0 ? (
-            <p className="text-neutral-500 text-sm">No episodes yet.</p>
+            <p className="cs-mono text-xs" style={{ color: "var(--cs-muted)" }}>
+              No episodes yet.
+            </p>
           ) : (
-            <div className="space-y-3 max-h-64 overflow-auto pr-1">
+            <div className="space-y-3" style={{ maxHeight: 260, overflowY: "auto", paddingRight: 4 }}>
               {Array.from(new Set(episodes.map((e) => e.seasonNumber))).sort((a, b) => a - b).map((season) => {
                 const seasonEps = episodes
                   .filter((e) => e.seasonNumber === season)
                   .sort((a, b) => (a.episodeNumber || 0) - (b.episodeNumber || 0));
                 const seasonMeta = seasons.find((s) => Number(s.seasonNumber) === Number(season));
                 return (
-                  <div key={season} className="border border-neutral-800 rounded-lg p-3 bg-neutral-950/50">
+                  <div key={season} className="p-3" style={{ border: "1.5px solid var(--cs-line)", background: "var(--cs-panel)" }}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-neutral-200 font-semibold">Season {season}</span>
+                        <span className="cs-mono text-xs font-bold uppercase" style={{ color: "var(--cs-ink)" }}>
+                          Season {season}
+                        </span>
                         {seasonMeta?.status && (
-                          <span className="text-xs text-neutral-500">Status: {seasonMeta.status}</span>
+                          <span className="cs-mono text-[10px]" style={{ color: "var(--cs-muted)" }}>
+                            Status: {seasonMeta.status}
+                          </span>
                         )}
-                        {loadingSeasons && <span className="text-xs text-neutral-500">…</span>}
+                        {loadingSeasons && (
+                          <span className="cs-mono text-[10px]" style={{ color: "var(--cs-muted)" }}>
+                            …
+                          </span>
+                        )}
                       </div>
-                      <div className="flex items-center gap-2 text-xs">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-neutral-700 text-neutral-200 hover:text-white hover:border-neutral-500"
+                      <div className="flex items-center gap-1.5">
+                        <button
                           onClick={() => handleSeasonStatus(seasonMeta?.id, "PUBLISHED")}
                           disabled={!seasonMeta?.id || seasonUpdatingId === seasonMeta?.id}
+                          className="cs-mono text-[10px] font-bold uppercase px-2 py-1 transition-colors hover:bg-[var(--cs-panel)] disabled:opacity-50"
+                          style={{ border: "1.5px solid var(--cs-ink)", color: "var(--cs-ink)", background: "var(--cs-paper)" }}
                         >
                           {seasonUpdatingId === seasonMeta?.id ? "…" : "Publish"}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-neutral-700 text-neutral-200 hover:text-white hover:border-neutral-500"
+                        </button>
+                        <button
                           onClick={() => handleSeasonStatus(seasonMeta?.id, "ARCHIVED")}
                           disabled={!seasonMeta?.id || seasonUpdatingId === seasonMeta?.id}
+                          className="cs-mono text-[10px] font-bold uppercase px-2 py-1 transition-colors hover:bg-[var(--cs-panel)] disabled:opacity-50"
+                          style={{ border: "1.5px solid var(--cs-ink)", color: "var(--cs-ink)", background: "var(--cs-paper)" }}
                         >
                           Archive
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          className="bg-red-900/70 hover:bg-red-800 text-red-100"
+                        </button>
+                        <button
                           onClick={() => handleDeleteSeason(seasonMeta?.id)}
                           disabled={!seasonMeta?.id || seasonUpdatingId === seasonMeta?.id}
+                          className="cs-mono text-[10px] font-bold uppercase px-2 py-1 disabled:opacity-50"
+                          style={{ border: "1.5px solid var(--cs-rust)", color: "var(--cs-rust)", background: "var(--cs-paper)" }}
                         >
                           Delete
-                        </Button>
+                        </button>
                       </div>
                     </div>
                     <div className="space-y-1">
                       {seasonEps.map((ep) => (
                         <div
                           key={`${season}-${ep.episodeNumber}`}
-                          className="flex items-center justify-between text-sm text-neutral-300 bg-neutral-900 rounded px-2 py-1"
+                          className="flex items-center justify-between text-xs px-2 py-1"
+                          style={{ background: "var(--cs-paper)", border: "1px solid var(--cs-line)" }}
                         >
-                          <div className="flex items-center gap-2">
-                            <span className="text-neutral-500">
+                          <div className="flex items-center gap-2 cs-mono">
+                            <span style={{ color: "var(--cs-muted)" }}>
                               S{ep.seasonNumber}E{ep.episodeNumber}
                             </span>
-                            <span className="font-medium">{ep.name}</span>
+                            <span className="font-bold" style={{ color: "var(--cs-ink)" }}>{ep.name}</span>
                           </div>
-                          <div className="flex items-center gap-2 text-xs text-neutral-500">
+                          <div className="flex items-center gap-2 cs-mono text-[10px]" style={{ color: "var(--cs-muted)" }}>
                             {ep.introStartSec != null && ep.introEndSec != null && (
                               <span>
                                 Intro {ep.introStartSec}s–{ep.introEndSec}s
                               </span>
                             )}
-                            {ep.previewVttUrl && <span className="text-[#fd7e14]">VTT</span>}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="border-neutral-700 text-neutral-200 hover:text-white hover:border-neutral-500 px-2"
+                            {ep.previewVttUrl && <span style={{ color: "var(--cs-brand)" }}>VTT</span>}
+                            <button
                               onClick={() => handlePublishEpisode(ep.id)}
                               disabled={publishingId === ep.id}
                               title="Publish"
+                              className="px-2 py-1 transition-colors hover:bg-[var(--cs-panel)] disabled:opacity-50"
+                              style={{ border: "1.5px solid var(--cs-ink)", color: "var(--cs-ink)" }}
                             >
                               {publishingId === ep.id ? "…" : "Publish"}
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="border-neutral-700 text-neutral-200 hover:text-white hover:border-neutral-500 px-2"
+                            </button>
+                            <button
                               onClick={() => handleArchiveEpisodeToggle(ep.id, true)}
                               disabled={archivingId === ep.id}
                               title="Archive"
+                              className="px-2 py-1 transition-colors hover:bg-[var(--cs-panel)] disabled:opacity-50"
+                              style={{ border: "1.5px solid var(--cs-ink)", color: "var(--cs-ink)" }}
                             >
                               {archivingId === ep.id ? "…" : "Archive"}
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="icon"
-                              className="bg-red-900/70 hover:bg-red-800 text-red-100"
+                            </button>
+                            <button
                               onClick={() => handleDeleteEpisode(ep.id)}
                               disabled={deletingId === ep.id}
                               title="Delete episode"
+                              className="p-1.5 disabled:opacity-50"
+                              style={{ border: "1.5px solid var(--cs-rust)", color: "var(--cs-rust)" }}
                             >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </div>
                       ))}
@@ -850,64 +909,75 @@ function AddEpisodesDialog({
           )}
         </div>
 
-        <Tabs defaultValue="weekly" className="mt-2">
-          <TabsList className="bg-neutral-800 border-neutral-700">
-            <TabsTrigger value="weekly" className="data-[state=active]:bg-[#fd7e14] data-[state=active]:text-white">
-              Weekly
-            </TabsTrigger>
-            <TabsTrigger value="bulk" className="data-[state=active]:bg-[#fd7e14] data-[state=active]:text-white">
-              Bulk
-            </TabsTrigger>
-          </TabsList>
+        <div className="flex gap-2 mt-2 mb-4">
+          {(["weekly", "bulk"] as const).map((tab) => {
+            const active = activeTab === tab;
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className="cs-mono text-xs font-bold uppercase px-3 py-1.5"
+                style={{
+                  border: "1.5px solid var(--cs-ink)",
+                  background: active ? "var(--cs-ink)" : "var(--cs-paper)",
+                  color: active ? "#fff" : "var(--cs-ink)",
+                }}
+              >
+                {tab === "weekly" ? "Weekly" : "Bulk"}
+              </button>
+            );
+          })}
+        </div>
 
-          <TabsContent value="weekly" className="space-y-4 mt-4">
+        {activeTab === "weekly" && (
+          <div className="space-y-4 mt-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-neutral-300">Season</Label>
-                <Input
+                <CsSlug className="mb-1">Season</CsSlug>
+                <input
                   type="number"
                   min={1}
                   value={weeklyEp.seasonNumber}
                   onChange={(e) => setWeeklyEp((prev) => ({ ...prev, seasonNumber: Number(e.target.value) }))}
-                  className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+                  style={fieldStyle}
                 />
               </div>
               <div>
-                <Label className="text-neutral-300">Episode Number</Label>
-                <Input
+                <CsSlug className="mb-1">Episode Number</CsSlug>
+                <input
                   type="number"
                   min={1}
                   value={weeklyEp.episodeNumber}
                   onChange={(e) => setWeeklyEp((prev) => ({ ...prev, episodeNumber: Number(e.target.value) }))}
-                  className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+                  style={fieldStyle}
                 />
               </div>
             </div>
 
             <div>
-              <Label className="text-neutral-300">Episode Name</Label>
-              <Input
+              <CsSlug className="mb-1">Episode Name</CsSlug>
+              <input
                 value={weeklyEp.name}
                 onChange={(e) => setWeeklyEp((prev) => ({ ...prev, name: e.target.value }))}
-                className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+                style={fieldStyle}
                 placeholder="Episode title"
               />
             </div>
 
             <div>
-              <Label className="text-neutral-300">Synopsis</Label>
-              <Textarea
+              <CsSlug className="mb-1">Synopsis</CsSlug>
+              <textarea
                 value={weeklyEp.synopsis}
                 onChange={(e) => setWeeklyEp((prev) => ({ ...prev, synopsis: e.target.value }))}
-                className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+                style={{ ...fieldStyle, resize: "vertical" }}
                 placeholder="Short summary"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-neutral-300">Intro start (s)</Label>
-                <Input
+                <CsSlug className="mb-1">Intro start (s)</CsSlug>
+                <input
                   type="number"
                   min={0}
                   value={weeklyEp.introStartSec ?? ""}
@@ -917,13 +987,13 @@ function AddEpisodesDialog({
                       introStartSec: e.target.value === "" ? undefined : Number(e.target.value),
                     }))
                   }
-                  className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+                  style={fieldStyle}
                   placeholder="e.g. 10"
                 />
               </div>
               <div>
-                <Label className="text-neutral-300">Intro end (s)</Label>
-                <Input
+                <CsSlug className="mb-1">Intro end (s)</CsSlug>
+                <input
                   type="number"
                   min={0}
                   value={weeklyEp.introEndSec ?? ""}
@@ -933,7 +1003,7 @@ function AddEpisodesDialog({
                       introEndSec: e.target.value === "" ? undefined : Number(e.target.value),
                     }))
                   }
-                  className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+                  style={fieldStyle}
                   placeholder="e.g. 55"
                 />
               </div>
@@ -941,8 +1011,10 @@ function AddEpisodesDialog({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-neutral-300">Episode videos by quality (optional)</Label>
-                <p className="text-xs text-neutral-500 mb-2">Attach renditions; each queues with its quality tag.</p>
+                <CsSlug className="mb-1">Episode videos by quality (optional)</CsSlug>
+                <p className="cs-mono text-[10px] mb-2" style={{ color: "var(--cs-muted)" }}>
+                  Attach renditions; each queues with its quality tag.
+                </p>
                 <div className="grid grid-cols-1 gap-2">
                   <QualityInput label="4K / 2160p" id="weekly-ep-4k" file={weeklyVideo4k} onChange={setWeeklyVideo4k} />
                   <QualityInput label="1080p" id="weekly-ep-1080" file={weeklyVideo1080} onChange={setWeeklyVideo1080} />
@@ -951,8 +1023,11 @@ function AddEpisodesDialog({
                 </div>
               </div>
               <div>
-                <Label className="text-neutral-300">Preview VTT (optional)</Label>
-                <div className="border border-dashed border-neutral-700 rounded-lg p-4 text-center cursor-pointer bg-neutral-950/50">
+                <CsSlug className="mb-1">Preview VTT (optional)</CsSlug>
+                <div
+                  className="text-center cursor-pointer p-4"
+                  style={{ border: "1.5px dashed var(--cs-line)", background: "var(--cs-panel)" }}
+                >
                   <input
                     type="file"
                     accept=".vtt,text/vtt"
@@ -960,42 +1035,42 @@ function AddEpisodesDialog({
                     id="weekly-episode-vtt"
                     onChange={(e) => setWeeklyVtt(e.target.files?.[0] ?? null)}
                   />
-                  <label htmlFor="weekly-episode-vtt" className="block text-neutral-400">
+                  <label htmlFor="weekly-episode-vtt" className="block cs-mono text-xs" style={{ color: "var(--cs-muted)" }}>
                     {weeklyVtt ? `Selected: ${weeklyVtt.name}` : "Upload WebVTT with sprite cues"}
                   </label>
                 </div>
               </div>
             </div>
 
-            {error && <p className="text-red-400 text-sm">{error}</p>}
+            {error && (
+              <p className="cs-mono text-xs" style={{ color: "var(--cs-rust)" }}>
+                {error}
+              </p>
+            )}
 
-            <div className="flex justify-end gap-3 border-t border-neutral-800 pt-4">
-              <Button
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                className="border-neutral-700 text-neutral-300 hover:bg-neutral-800"
-              >
+            <div className="flex justify-end gap-3 pt-4" style={{ borderTop: "1.5px solid var(--cs-line)" }}>
+              <CsButton variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
-              </Button>
-              <Button
-                disabled={weeklySaving}
-                onClick={handleWeeklySave}
-                className="bg-[#fd7e14] hover:bg-[#ff9940] text-white"
-              >
+              </CsButton>
+              <CsButton variant="rust" disabled={weeklySaving} onClick={handleWeeklySave}>
                 {weeklySaving ? "Saving..." : "Save Episode"}
-              </Button>
+              </CsButton>
             </div>
-          </TabsContent>
+          </div>
+        )}
 
-          <TabsContent value="bulk" className="space-y-4 mt-4">
+        {activeTab === "bulk" && (
+          <div className="space-y-4 mt-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-neutral-300 text-sm">Attach episode videos to create multiple episodes.</p>
-                <p className="text-neutral-500 text-xs mt-1">
+                <p className="cs-mono text-xs" style={{ color: "var(--cs-ink)" }}>
+                  Attach episode videos to create multiple episodes.
+                </p>
+                <p className="cs-mono text-[10px] mt-1" style={{ color: "var(--cs-muted)" }}>
                   For each file, fill in Season, Episode, Title and Synopsis. Drag rows to fix ordering.
                 </p>
               </div>
-              <div className="border border-dashed border-neutral-700 rounded-lg p-3 bg-neutral-950/50">
+              <div className="p-3" style={{ border: "1.5px dashed var(--cs-line)", background: "var(--cs-panel)" }}>
                 <input
                   type="file"
                   accept="video/*"
@@ -1031,26 +1106,29 @@ function AddEpisodesDialog({
                     setBulkRows(next);
                   }}
                 />
-                <label htmlFor="bulk-episode-videos" className="flex items-center gap-2 text-neutral-300 cursor-pointer">
+                <label htmlFor="bulk-episode-videos" className="flex items-center gap-2 cs-mono text-xs cursor-pointer" style={{ color: "var(--cs-ink)" }}>
                   <Upload className="w-4 h-4" />
                   Attach episode videos (ordered)
                 </label>
                 {bulkRows.length > 0 && (
-                  <p className="text-xs text-[#fd7e14] mt-1">{bulkRows.length} file(s) selected</p>
+                  <p className="cs-mono text-[10px] mt-1" style={{ color: "var(--cs-brand)" }}>
+                    {bulkRows.length} file(s) selected
+                  </p>
                 )}
               </div>
             </div>
 
             {bulkRows.length > 0 && (
-              <div className="space-y-2 border border-neutral-800 rounded-lg p-3 bg-neutral-950/70">
-                <p className="text-xs text-neutral-300 mb-1">
+              <div className="space-y-2 p-3" style={{ border: "1.5px solid var(--cs-line)", background: "var(--cs-panel)" }}>
+                <p className="cs-mono text-[10px] mb-1" style={{ color: "var(--cs-ink)" }}>
                   Attached episodes (order here controls episode creation and video mapping):
                 </p>
-                <div className="space-y-2 max-h-56 overflow-auto pr-1">
+                <div className="space-y-2" style={{ maxHeight: 224, overflowY: "auto", paddingRight: 4 }}>
                   {bulkRows.map((row, index) => (
                     <div
                       key={row.id}
-                      className="flex items-start gap-3 text-xs bg-neutral-900/70 border border-neutral-800 rounded-md p-2"
+                      className="flex items-start gap-3 text-xs p-2"
+                      style={{ background: "var(--cs-paper)", border: "1px solid var(--cs-line)" }}
                       draggable
                       onDragStart={() => setDragIndex(index)}
                       onDragOver={(e) => e.preventDefault()}
@@ -1068,8 +1146,10 @@ function AddEpisodesDialog({
                     >
                       <div className="flex flex-col gap-1 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-neutral-500 w-4 text-right">{index + 1}.</span>
-                          <Input
+                          <span className="cs-mono" style={{ color: "var(--cs-muted)", width: 16, textAlign: "right" }}>
+                            {index + 1}.
+                          </span>
+                          <input
                             type="number"
                             min={1}
                             value={row.seasonNumber}
@@ -1079,10 +1159,10 @@ function AddEpisodesDialog({
                                 prev.map((r, i) => (i === index ? { ...r, seasonNumber: value } : r)),
                               );
                             }}
-                            className="w-16 bg-neutral-950 border-neutral-800 text-white"
+                            style={{ ...fieldStyle, width: 64, padding: "6px 8px" }}
                             placeholder="Season"
                           />
-                          <Input
+                          <input
                             type="number"
                             min={1}
                             value={row.episodeNumber}
@@ -1092,10 +1172,10 @@ function AddEpisodesDialog({
                                 prev.map((r, i) => (i === index ? { ...r, episodeNumber: value } : r)),
                               );
                             }}
-                            className="w-16 bg-neutral-950 border-neutral-800 text-white"
+                            style={{ ...fieldStyle, width: 64, padding: "6px 8px" }}
                             placeholder="Ep"
                           />
-                          <Input
+                          <input
                             value={row.name}
                             onChange={(e) => {
                               const value = e.target.value;
@@ -1103,11 +1183,11 @@ function AddEpisodesDialog({
                                 prev.map((r, i) => (i === index ? { ...r, name: value } : r)),
                               );
                             }}
-                            className="flex-1 bg-neutral-950 border-neutral-800 text-white"
+                            style={{ ...fieldStyle, flex: 1, padding: "6px 8px" }}
                             placeholder="Episode name"
                           />
                         </div>
-                        <Input
+                        <input
                           value={row.synopsis}
                           onChange={(e) => {
                             const value = e.target.value;
@@ -1115,19 +1195,16 @@ function AddEpisodesDialog({
                               prev.map((r, i) => (i === index ? { ...r, synopsis: value } : r)),
                             );
                           }}
-                          className="bg-neutral-950 border-neutral-800 text-white"
+                          style={{ ...fieldStyle, padding: "6px 8px" }}
                           placeholder="Synopsis (optional)"
                         />
                       </div>
-                      <div className="flex flex-col items-end gap-2 w-40">
-                        <div className="text-[11px] text-neutral-400 truncate max-w-full">
+                      <div className="flex flex-col items-end gap-2" style={{ width: 160 }}>
+                        <div className="cs-mono text-[10px] truncate max-w-full" style={{ color: "var(--cs-muted)" }}>
                           {row.file ? row.file.name : "No video attached"}
                         </div>
                         <div className="flex gap-1">
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            className="border-neutral-700 text-neutral-300 hover:text-white"
+                          <button
                             disabled={index === 0}
                             onClick={() =>
                               setBulkRows((prev) => {
@@ -1139,13 +1216,12 @@ function AddEpisodesDialog({
                               })
                             }
                             title="Move up"
+                            className="px-2 py-1 disabled:opacity-40"
+                            style={{ border: "1.5px solid var(--cs-ink)", color: "var(--cs-ink)" }}
                           >
                             ↑
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            className="border-neutral-700 text-neutral-300 hover:text-white"
+                          </button>
+                          <button
                             disabled={index === bulkRows.length - 1}
                             onClick={() =>
                               setBulkRows((prev) => {
@@ -1157,9 +1233,11 @@ function AddEpisodesDialog({
                               })
                             }
                             title="Move down"
+                            className="px-2 py-1 disabled:opacity-40"
+                            style={{ border: "1.5px solid var(--cs-ink)", color: "var(--cs-ink)" }}
                           >
                             ↓
-                          </Button>
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -1168,28 +1246,24 @@ function AddEpisodesDialog({
               </div>
             )}
 
-            {error && <p className="text-red-400 text-sm">{error}</p>}
+            {error && (
+              <p className="cs-mono text-xs" style={{ color: "var(--cs-rust)" }}>
+                {error}
+              </p>
+            )}
 
-            <div className="flex justify-end gap-3 border-t border-neutral-800 pt-4">
-              <Button
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                className="border-neutral-700 text-neutral-300 hover:bg-neutral-800"
-              >
+            <div className="flex justify-end gap-3 pt-4" style={{ borderTop: "1.5px solid var(--cs-line)" }}>
+              <CsButton variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
-              </Button>
-              <Button
-                disabled={savingBulk}
-                onClick={handleBulkSave}
-                className="bg-[#fd7e14] hover:bg-[#ff9940] text-white"
-              >
+              </CsButton>
+              <CsButton variant="rust" disabled={savingBulk} onClick={handleBulkSave}>
                 {savingBulk ? "Saving..." : "Create Episodes"}
-              </Button>
+              </CsButton>
             </div>
-          </TabsContent>
-        </Tabs>
-      </DialogContent>
-    </Dialog>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -1205,7 +1279,7 @@ function QualityInput({
   onChange: (file: File | null) => void;
 }) {
   return (
-    <div className="border border-dashed border-neutral-700 rounded-lg p-3 text-center cursor-pointer bg-neutral-950/50">
+    <div className="text-center cursor-pointer p-3" style={{ border: "1.5px dashed var(--cs-line)", background: "var(--cs-panel)" }}>
       <input
         type="file"
         accept="video/*"
@@ -1213,10 +1287,9 @@ function QualityInput({
         id={id}
         onChange={(e) => onChange(e.target.files?.[0] ?? null)}
       />
-      <label htmlFor={id} className="block text-neutral-400">
+      <label htmlFor={id} className="block cs-mono text-xs" style={{ color: "var(--cs-muted)" }}>
         {file ? `Selected: ${file.name}` : `Upload ${label}`}
       </label>
     </div>
   );
 }
-

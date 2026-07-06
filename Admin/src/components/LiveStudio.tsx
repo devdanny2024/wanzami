@@ -1,10 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Button } from "./ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Badge } from "./ui/badge";
-import { Input } from "./ui/input";
-import { Textarea } from "./ui/textarea";
+import { CsBox, CsButton, CsEmpty, CsPageHeader, CsSlug, CsTag, type CsColumn, CsTable } from "./cs/kit";
+
+const fieldStyle: React.CSSProperties = {
+  border: "2px solid var(--cs-ink)",
+  background: "var(--cs-paper)",
+  color: "var(--cs-ink)",
+  fontFamily: "var(--font-smono), monospace",
+  fontSize: 12,
+  padding: "9px 12px",
+  width: "100%",
+};
+
+const selectStyle: React.CSSProperties = {
+  ...fieldStyle,
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: "0.07em",
+};
 
 type ReplayStatus = "NONE" | "PENDING_INFRA" | "PROCESSING" | "READY" | "FAILED";
 
@@ -119,12 +132,12 @@ async function adminApiFetch(path: string, init?: RequestInit) {
   }
 }
 
-const liveStateBadge = (event?: LiveEvent | null) => {
-  if (!event) return { label: "", className: "bg-neutral-700 text-neutral-200" };
-  if (event.status === "LIVE") return { label: "Live", className: "bg-emerald-500/20 text-emerald-300" };
-  if (event.status === "ENDED") return { label: "Ended", className: "bg-neutral-600/30 text-neutral-300" };
-  if (event.isPublished) return { label: "Published", className: "bg-blue-500/20 text-blue-300" };
-  return { label: "Draft", className: "bg-amber-500/20 text-amber-300" };
+const liveStateBadge = (event?: LiveEvent | null): { label: string; tone: "good" | "bad" | "pending" | "neutral" } => {
+  if (!event) return { label: "", tone: "neutral" };
+  if (event.status === "LIVE") return { label: "Live", tone: "good" };
+  if (event.status === "ENDED") return { label: "Ended", tone: "neutral" };
+  if (event.isPublished) return { label: "Published", tone: "pending" };
+  return { label: "Draft", tone: "pending" };
 };
 
 const pickPlayablePlaybackUrl = (event?: LiveEvent | null, sourceId?: string | null): string => {
@@ -237,10 +250,14 @@ function HlsPlayer({ src, title }: { src: string; title: string }) {
   }, [src]);
 
   return (
-    <div className="overflow-hidden rounded-lg border border-neutral-800 bg-black aspect-video relative">
+    <div
+      className="relative"
+      style={{ overflow: "hidden", background: "#000", aspectRatio: "16 / 9", border: "2.5px solid var(--cs-ink)" }}
+    >
       <video
         ref={videoRef}
-        className="h-full w-full object-contain"
+        className="h-full w-full"
+        style={{ objectFit: "contain" }}
         controls
         playsInline
         preload="metadata"
@@ -250,9 +267,9 @@ function HlsPlayer({ src, title }: { src: string; title: string }) {
         aria-label={title}
       />
       {playerError ? (
-        <div className="absolute inset-0 bg-black/70 text-red-200 text-xs p-3">
-          <p className="font-semibold">Preview error</p>
-          <p className="mt-1 break-words">{playerError}</p>
+        <div className="absolute inset-0 p-3" style={{ background: "rgba(0,0,0,0.7)" }}>
+          <p className="cs-mono font-bold uppercase" style={{ fontSize: 11, color: "#fff" }}>Preview error</p>
+          <p className="cs-mono mt-1" style={{ fontSize: 11, color: "#f2b8b8", wordBreak: "break-word" }}>{playerError}</p>
         </div>
       ) : null}
     </div>
@@ -268,25 +285,37 @@ function LiveStudioShell({
   onSection: (s: "stream" | "webcam" | "manage") => void;
   children: React.ReactNode;
 }) {
-  const itemClass = (id: typeof section) =>
-    `w-full text-left px-3 py-2 rounded-md text-sm ${
-      section === id ? "bg-[#fd7e14]/10 text-[#fd7e14] border border-[#fd7e14]/30" : "text-neutral-300 hover:bg-neutral-900"
-    }`;
+  const tabs: { id: "stream" | "webcam" | "manage"; label: string }[] = [
+    { id: "stream", label: "Stream" },
+    { id: "webcam", label: "Webcam" },
+    { id: "manage", label: "Manage" },
+  ];
 
   return (
-    <div className="flex gap-6">
-      <aside className="w-56 shrink-0">
-        <div className="mb-3">
-          <p className="text-white font-semibold">Live Studio</p>
-          <p className="text-xs text-neutral-500">Stream • Webcam • Manage</p>
-        </div>
-        <div className="space-y-2">
-          <button className={itemClass("stream")} onClick={() => onSection("stream")}>Stream</button>
-          <button className={itemClass("webcam")} onClick={() => onSection("webcam")}>Webcam</button>
-          <button className={itemClass("manage")} onClick={() => onSection("manage")}>Manage</button>
-        </div>
-      </aside>
-      <div className="flex-1 min-w-0">{children}</div>
+    <div className="space-y-6">
+      <div className="cs-border inline-flex" style={{ background: "var(--cs-paper)" }}>
+        {tabs.map((tab, idx) => {
+          const active = section === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => onSection(tab.id)}
+              className="cs-mono font-bold uppercase transition-colors"
+              style={{
+                fontSize: 12,
+                letterSpacing: "0.07em",
+                padding: "10px 20px",
+                background: active ? "var(--cs-ink)" : "var(--cs-paper)",
+                color: active ? "#fff" : "var(--cs-ink)",
+                borderLeft: idx === 0 ? "none" : "2.5px solid var(--cs-ink)",
+              }}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+      <div>{children}</div>
     </div>
   );
 }
@@ -655,53 +684,117 @@ export function LiveStudio() {
     return `${window.location.origin.replace("admin", "").replace(/\/$/, "")}/live/${event.id}`;
   };
 
+  const manageColumns: CsColumn<LiveEvent>[] = [
+    {
+      key: "title",
+      header: "Event",
+      cell: (event) => (
+        <div>
+          <p className="cs-mono text-xs font-bold uppercase" style={{ color: "var(--cs-ink)" }}>{event.title}</p>
+          {event.description ? (
+            <p className="text-xs mt-1" style={{ color: "var(--cs-muted)" }}>{event.description}</p>
+          ) : null}
+          <p className="cs-mono mt-1" style={{ fontSize: 10, color: "var(--cs-muted)" }}>ID: {event.id}</p>
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      cell: (event) => {
+        const badge = liveStateBadge(event);
+        return <CsTag tone={badge.tone} label={badge.label} />;
+      },
+    },
+    {
+      key: "actions",
+      header: "Actions",
+      align: "right",
+      cell: (event) => (
+        <div className="flex flex-wrap gap-2 justify-end">
+          <CsButton variant="outline" onClick={() => copyText(shareLink(event))}>
+            Share link
+          </CsButton>
+          <CsButton
+            variant="outline"
+            onClick={() => {
+              setSelectedEventId(event.id);
+              setSection("stream");
+            }}
+          >
+            Open
+          </CsButton>
+          <CsButton
+            variant="rust"
+            disabled={event.status === "LIVE"}
+            onClick={async () => {
+              if (!confirm(`Delete "${event.title}" forever?`)) return;
+              const res = await adminApiFetch(`/api/admin/live/events/${event.id}`, { method: "DELETE" });
+              if (res.ok) {
+                toast.success("Deleted");
+                await loadEvents();
+              } else {
+                toast.error((res.data as any)?.message || "Delete failed");
+              }
+            }}
+          >
+            Delete
+          </CsButton>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <LiveStudioShell section={section} onSection={setSection}>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl text-white font-semibold">{section === "stream" ? "Stream" : section === "webcam" ? "Webcam" : "Manage"}</h1>
-          <p className="text-sm text-neutral-500 mt-1">Live Studio controls</p>
-        </div>
-        <Button onClick={loadEvents} className="bg-[#fd7e14] hover:bg-[#ff9940] text-white" disabled={loading}>
-          {loading ? "Refreshing..." : "Refresh"}
-        </Button>
-      </div>
+      <CsPageHeader
+        title={section === "stream" ? "The broadcast" : section === "webcam" ? "The webcam" : "The roster"}
+        chip={section === "stream" ? "Stream" : section === "webcam" ? "Webcam" : "Manage"}
+        slug="Live Studio · ingest, preview, and moderation controls"
+        actions={
+          <CsButton variant="rust" onClick={loadEvents} disabled={loading}>
+            {loading ? "Refreshing…" : "Refresh"}
+          </CsButton>
+        }
+      />
 
-      {error ? <div className="text-sm text-red-400 mb-4">{error}</div> : null}
+      {error ? (
+        <div className="cs-border p-4 mt-6" style={{ borderColor: "var(--cs-rust)" }}>
+          <p className="cs-mono text-xs font-bold uppercase" style={{ color: "var(--cs-rust)" }}>{error}</p>
+        </div>
+      ) : null}
 
       {section !== "manage" ? (
-        <div className="grid gap-4 md:grid-cols-3 mb-6">
+        <div className="grid gap-4 md:grid-cols-3 mt-6">
           <div className="md:col-span-2">
-            <Card className="bg-neutral-900 border-neutral-800">
-              <CardHeader>
-                <CardTitle className="text-white">Preview</CardTitle>
-              </CardHeader>
-              <CardContent>
+            <CsBox className="p-5">
+              <CsSlug>Preview</CsSlug>
+              <div className="mt-4">
                 {section === "webcam" ? (
-                  <div className="aspect-video rounded-lg border border-neutral-800 bg-black/40 overflow-hidden">
-                    <video ref={webcamPreviewRef} className="h-full w-full object-contain" playsInline muted autoPlay />
+                  <div
+                    className="relative"
+                    style={{ overflow: "hidden", background: "#000", aspectRatio: "16 / 9", border: "2.5px solid var(--cs-ink)" }}
+                  >
+                    <video ref={webcamPreviewRef} className="h-full w-full" style={{ objectFit: "contain" }} playsInline muted autoPlay />
                   </div>
                 ) : previewUrl ? (
                   <HlsPlayer src={previewUrl} title={selectedEvent?.title || "Preview"} />
                 ) : (
-                  <div className="aspect-video rounded-lg border border-neutral-800 bg-black/40 flex items-center justify-center text-neutral-400">
-                    No preview available
-                  </div>
+                  <CsEmpty slug="No preview available" body="Select an event with an active source, or start ingest to see a live preview here." />
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </CsBox>
           </div>
 
           <div>
-            <Card className="bg-neutral-900 border-neutral-800">
-              <CardHeader>
-                <CardTitle className="text-white">Controls</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
+            <CsBox className="p-5">
+              <CsSlug>Controls</CsSlug>
+              <div className="space-y-3 mt-4">
                 <div className="space-y-1">
-                  <label className="text-xs text-neutral-500">Event</label>
+                  <CsSlug>Event</CsSlug>
                   <select
-                    className="w-full rounded-md border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-white"
+                    style={selectStyle}
+                    className="w-full"
                     value={selectedEventId}
                     onChange={(e) => setSelectedEventId(e.target.value)}
                   >
@@ -719,21 +812,26 @@ export function LiveStudio() {
                 {selectedEvent ? (
                   <>
                     <div className="flex items-center justify-between">
-                      <Badge className={liveStateBadge(selectedEvent).className}>{liveStateBadge(selectedEvent).label}</Badge>
-                      <Button variant="outline" className="border-neutral-700 text-neutral-200" onClick={() => copyText(shareLink(selectedEvent))}>
+                      <CsTag tone={liveStateBadge(selectedEvent).tone} label={liveStateBadge(selectedEvent).label} />
+                      <CsButton variant="outline" onClick={() => copyText(shareLink(selectedEvent))}>
                         Copy Share Link
-                      </Button>
+                      </CsButton>
                     </div>
 
                     <div className="space-y-1">
                       <div className="flex items-center justify-between">
-                        <label className="text-xs text-neutral-500">Preview source</label>
-                        <button className="text-[11px] text-[#fd7e14]" onClick={() => void loadSourcesForEvent(selectedEvent.id)}>
+                        <CsSlug>Preview source</CsSlug>
+                        <button
+                          className="cs-mono font-bold uppercase"
+                          style={{ fontSize: 10, color: "var(--cs-rust)", letterSpacing: "0.07em" }}
+                          onClick={() => void loadSourcesForEvent(selectedEvent.id)}
+                        >
                           Refresh sources
                         </button>
                       </div>
                       <select
-                        className="w-full rounded-md border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-white"
+                        style={selectStyle}
+                        className="w-full"
                         value={selectedSourceId}
                         onChange={(e) => setSelectedSourceId(e.target.value)}
                       >
@@ -744,12 +842,14 @@ export function LiveStudio() {
                           </option>
                         ))}
                       </select>
-                      <p className="text-[11px] text-neutral-500">GO LIVE uses selected source when set. If none is selected, Live Studio starts ingest mode and waits for OBS/encoder input.</p>
+                      <p className="cs-mono mt-1" style={{ fontSize: 10, color: "var(--cs-muted)" }}>
+                        GO LIVE uses selected source when set. If none is selected, Live Studio starts ingest mode and waits for OBS/encoder input.
+                      </p>
                       {selectedSourceId ? (() => {
                         const s = (selectedEvent.sources ?? []).find((x) => x.id === selectedSourceId);
                         if (!s) return null;
                         return (
-                          <p className="text-[11px] text-neutral-500">
+                          <p className="cs-mono" style={{ fontSize: 10, color: "var(--cs-muted)" }}>
                             Health: {s.status}
                             {s.health?.lastHeartbeatAt ? ` • last heartbeat ${new Date(s.health.lastHeartbeatAt).toLocaleTimeString()}` : " • no heartbeat yet"}
                           </p>
@@ -759,17 +859,16 @@ export function LiveStudio() {
 
                     <div className="flex gap-2">
                       {selectedEvent.status !== "LIVE" ? (
-                        <Button className="bg-[#fd7e14] hover:bg-[#ff9940] text-white" onClick={goLive}>
+                        <CsButton variant="rust" onClick={goLive}>
                           GO LIVE
-                        </Button>
+                        </CsButton>
                       ) : (
-                        <Button className="bg-neutral-800 hover:bg-neutral-700 text-white" onClick={endLive}>
+                        <CsButton variant="ink" onClick={endLive}>
                           END LIVE
-                        </Button>
+                        </CsButton>
                       )}
-                      <Button
+                      <CsButton
                         variant="outline"
-                        className="border-neutral-700 text-neutral-200"
                         onClick={async () => {
                           const target = !Boolean(selectedEvent.isPublished);
                           const res = await adminApiFetch(`/api/admin/live/events/${selectedEvent.id}/publish`, {
@@ -785,64 +884,72 @@ export function LiveStudio() {
                         }}
                       >
                         {selectedEvent.isPublished ? "Unpublish" : "Publish"}
-                      </Button>
+                      </CsButton>
                     </div>
 
                     {section === "stream" ? (
-                      <div className="pt-2 border-t border-neutral-800 space-y-2 text-xs text-neutral-300">
-                        <p className="text-xs uppercase tracking-wide text-neutral-400">Stream settings</p>
+                      <div className="pt-3 mt-1 space-y-2" style={{ borderTop: "1.5px solid var(--cs-line)" }}>
+                        <CsSlug>Stream settings</CsSlug>
                         <div>
-                          <span className="text-neutral-500">RTMPS URL:</span>
+                          <p className="cs-mono" style={{ fontSize: 10, color: "var(--cs-muted)" }}>RTMPS URL:</p>
                           <div className="flex items-center gap-2 mt-1">
-                            <span className="text-white/80 break-all flex-1">
+                            <span className="cs-mono flex-1" style={{ fontSize: 11, color: "var(--cs-ink)", wordBreak: "break-all" }}>
                               {formatIngestUrl(selectedEvent.ingestEndpoint) || "Not available"}
                             </span>
                             {selectedEvent.ingestEndpoint ? (
-                              <button className="text-[#fd7e14]" onClick={() => copyText(formatIngestUrl(selectedEvent.ingestEndpoint))}>
+                              <button
+                                className="cs-mono font-bold uppercase"
+                                style={{ fontSize: 10, color: "var(--cs-rust)" }}
+                                onClick={() => copyText(formatIngestUrl(selectedEvent.ingestEndpoint))}
+                              >
                                 Copy
                               </button>
                             ) : null}
                           </div>
                         </div>
                         <div>
-                          <span className="text-neutral-500">Stream key:</span>
+                          <p className="cs-mono" style={{ fontSize: 10, color: "var(--cs-muted)" }}>Stream key:</p>
                           <div className="flex items-center gap-2 mt-1">
-                            <span className="text-white/80 break-all flex-1">{selectedEvent.streamKey || "Hidden"}</span>
+                            <span className="cs-mono flex-1" style={{ fontSize: 11, color: "var(--cs-ink)", wordBreak: "break-all" }}>
+                              {selectedEvent.streamKey || "Hidden"}
+                            </span>
                             {selectedEvent.streamKey ? (
-                              <button className="text-[#fd7e14]" onClick={() => copyText(selectedEvent.streamKey || "")}>
+                              <button
+                                className="cs-mono font-bold uppercase"
+                                style={{ fontSize: 10, color: "var(--cs-rust)" }}
+                                onClick={() => copyText(selectedEvent.streamKey || "")}
+                              >
                                 Copy
                               </button>
                             ) : null}
                           </div>
                         </div>
-                        <div className="rounded border border-neutral-800 bg-neutral-950 p-2 text-[11px] space-y-1">
-                          <p className="text-neutral-400">Operator checks (OBS/Encoder):</p>
-                          <p className="text-neutral-500">• Use RTMPS URL + stream key exactly as shown (no extra spaces).</p>
-                          <p className="text-neutral-500">• Start encoder output first, then click GO LIVE in Studio.</p>
-                          <p className="text-neutral-500">• If preview stays empty, refresh sources and verify encoder is connected.</p>
+                        <div className="p-2 space-y-1" style={{ border: "1.5px solid var(--cs-line)", background: "var(--cs-panel)" }}>
+                          <p className="cs-mono font-bold uppercase" style={{ fontSize: 10, color: "var(--cs-ink)" }}>Operator checks (OBS/Encoder):</p>
+                          <p className="cs-mono" style={{ fontSize: 10, color: "var(--cs-muted)" }}>• Use RTMPS URL + stream key exactly as shown (no extra spaces).</p>
+                          <p className="cs-mono" style={{ fontSize: 10, color: "var(--cs-muted)" }}>• Start encoder output first, then click GO LIVE in Studio.</p>
+                          <p className="cs-mono" style={{ fontSize: 10, color: "var(--cs-muted)" }}>• If preview stays empty, refresh sources and verify encoder is connected.</p>
                         </div>
                       </div>
                     ) : null}
 
                     {section === "webcam" ? (
-                      <div className="pt-2 border-t border-neutral-800 space-y-2 text-xs text-neutral-300">
-                        <p className="text-xs uppercase tracking-wide text-neutral-400">Webcam checks</p>
-                        <p className="text-neutral-400">1) Start preview and confirm camera + mic meters are active.</p>
-                        <p className="text-neutral-400">2) Ensure event has ingest URL and stream key before broadcasting.</p>
+                      <div className="pt-3 mt-1 space-y-2" style={{ borderTop: "1.5px solid var(--cs-line)" }}>
+                        <CsSlug>Webcam checks</CsSlug>
+                        <p className="cs-mono" style={{ fontSize: 10, color: "var(--cs-muted)" }}>1) Start preview and confirm camera + mic meters are active.</p>
+                        <p className="cs-mono" style={{ fontSize: 10, color: "var(--cs-muted)" }}>2) Ensure event has ingest URL and stream key before broadcasting.</p>
                         <div className="flex flex-wrap gap-2">
-                          <Button size="sm" className="bg-[#fd7e14] hover:bg-[#ff9940] text-white" onClick={startWebcamSession} disabled={cameraBusy}>
+                          <CsButton variant="rust" onClick={startWebcamSession} disabled={cameraBusy}>
                             {cameraBusy ? "Starting..." : "Start Webcam Preview"}
-                          </Button>
-                          <Button size="sm" variant="outline" className="border-neutral-700 text-neutral-200" onClick={startWebcamLive} disabled={cameraBusy || !browserLiveRef.current?.stream || selectedEvent.status === "LIVE"}>
+                          </CsButton>
+                          <CsButton variant="outline" onClick={startWebcamLive} disabled={cameraBusy || !browserLiveRef.current?.stream || selectedEvent.status === "LIVE"}>
                             Go LIVE (Webcam)
-                          </Button>
-                          <Button size="sm" variant="outline" className="border-neutral-700 text-neutral-200" onClick={stopWebcamLive} disabled={cameraBusy || !browserLiveRef.current?.stream}>
+                          </CsButton>
+                          <CsButton variant="outline" onClick={stopWebcamLive} disabled={cameraBusy || !browserLiveRef.current?.stream}>
                             Stop Webcam
-                          </Button>
-                          <Button
-                            size="sm"
+                          </CsButton>
+                          <CsButton
                             variant="outline"
-                            className="border-neutral-700 text-neutral-200"
                             onClick={() => {
                               const stream = browserLiveRef.current?.stream;
                               if (!stream) return;
@@ -855,11 +962,11 @@ export function LiveStudio() {
                             disabled={!browserLiveRef.current?.stream}
                           >
                             {cameraMuted ? "Unmute Mic" : "Mute Mic"}
-                          </Button>
+                          </CsButton>
                         </div>
                         <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                           <select
-                            className="rounded-md border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-white"
+                            style={selectStyle}
                             value={selectedVideoDeviceId}
                             onChange={(e) => {
                               setSelectedVideoDeviceId(e.target.value);
@@ -874,7 +981,7 @@ export function LiveStudio() {
                             ))}
                           </select>
                           <select
-                            className="rounded-md border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-white"
+                            style={selectStyle}
                             value={selectedAudioDeviceId}
                             onChange={(e) => {
                               setSelectedAudioDeviceId(e.target.value);
@@ -889,181 +996,128 @@ export function LiveStudio() {
                             ))}
                           </select>
                         </div>
-                        {cameraError ? <p className="text-red-400">{cameraError}</p> : null}
+                        {cameraError ? (
+                          <p className="cs-mono font-bold" style={{ fontSize: 10, color: "var(--cs-rust)" }}>{cameraError}</p>
+                        ) : null}
                       </div>
                     ) : null}
                   </>
                 ) : (
-                  <p className="text-sm text-neutral-400">Select an event to control.</p>
+                  <p className="cs-mono" style={{ fontSize: 12, color: "var(--cs-muted)" }}>Select an event to control.</p>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </CsBox>
           </div>
         </div>
       ) : null}
 
       {selectedEvent ? (
-        <Card className="bg-neutral-900 border-neutral-800 mb-6">
-          <CardHeader>
-            <CardTitle className="text-white">Chat moderation</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs text-neutral-400">Recent messages for selected event</p>
-              <Button variant="outline" className="border-neutral-700 text-neutral-200" onClick={loadChatMessages} disabled={chatBusy}>
-                {chatBusy ? "Refreshing..." : "Refresh chat"}
-              </Button>
-            </div>
-            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-              {chatMessages.length === 0 ? <p className="text-sm text-neutral-400">No messages yet.</p> : null}
-              {chatMessages.map((m) => (
-                <div key={m.id} className="rounded border border-neutral-800 bg-neutral-950 p-2">
-                  <p className="text-xs text-neutral-400">
-                    <span className="text-white font-medium">{m.userName}</span> ({m.userRole || "USER"})
-                  </p>
-                  <p className="text-sm text-neutral-200 mt-1 break-words">{m.message}</p>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    <Button
-                      variant="outline"
-                      className="border-neutral-700 text-neutral-200 h-8"
-                      onClick={async () => {
-                        const res = await adminApiFetch(`/api/admin/live/events/${selectedEvent.id}/chat/${m.id}`, {
-                          method: "PATCH",
-                          body: JSON.stringify({ isHidden: !m.isHidden }),
-                        });
-                        if (res.ok) {
-                          toast.success(!m.isHidden ? "Message hidden" : "Message restored");
-                          await loadChatMessages();
-                        } else {
-                          toast.error((res.data as any)?.message || "Failed");
-                        }
-                      }}
-                    >
-                      {m.isHidden ? "Unhide" : "Hide"}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="border-neutral-700 text-neutral-200 h-8"
-                      onClick={async () => {
-                        const res = await adminApiFetch(`/api/admin/live/events/${selectedEvent.id}/chat/${m.id}`, {
-                          method: "PATCH",
-                          body: JSON.stringify({ isPinned: !m.isPinned }),
-                        });
-                        if (res.ok) {
-                          toast.success(!m.isPinned ? "Pinned" : "Unpinned");
-                          await loadChatMessages();
-                        } else {
-                          toast.error((res.data as any)?.message || "Failed");
-                        }
-                      }}
-                    >
-                      {m.isPinned ? "Unpin" : "Pin"}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="border-amber-900/80 text-amber-300 h-8"
-                      onClick={async () => {
-                        const res = await adminApiFetch(`/api/admin/live/events/${selectedEvent.id}/chat/mute`, {
-                          method: "POST",
-                          body: JSON.stringify({ userId: m.userId, mutedMinutes: 30, reason: "Moderator action" }),
-                        });
-                        if (res.ok) {
-                          toast.success(`Muted ${m.userName} for 30 mins`);
-                        } else {
-                          toast.error((res.data as any)?.message || "Failed");
-                        }
-                      }}
-                    >
-                      Mute 30m
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="border-red-900/80 text-red-300 h-8"
-                      onClick={async () => {
-                        const res = await adminApiFetch(`/api/admin/live/events/${selectedEvent.id}/chat/${m.id}`, {
-                          method: "DELETE",
-                        });
-                        if (res.ok) {
-                          toast.success("Message removed");
-                          await loadChatMessages();
-                        } else {
-                          toast.error((res.data as any)?.message || "Failed");
-                        }
-                      }}
-                    >
-                      Delete
-                    </Button>
-                  </div>
+        <CsBox className="p-5 mt-6">
+          <div className="flex items-center justify-between">
+            <CsSlug>Chat moderation</CsSlug>
+            <CsButton variant="outline" onClick={loadChatMessages} disabled={chatBusy}>
+              {chatBusy ? "Refreshing..." : "Refresh chat"}
+            </CsButton>
+          </div>
+          <p className="cs-mono mt-2" style={{ fontSize: 10, color: "var(--cs-muted)" }}>Recent messages for selected event</p>
+          <div className="space-y-2 mt-3" style={{ maxHeight: 256, overflowY: "auto" }}>
+            {chatMessages.length === 0 ? (
+              <p className="cs-mono" style={{ fontSize: 12, color: "var(--cs-muted)" }}>No messages yet.</p>
+            ) : null}
+            {chatMessages.map((m) => (
+              <div key={m.id} className="p-2" style={{ border: "1.5px solid var(--cs-line)", background: "var(--cs-panel)" }}>
+                <p className="cs-mono" style={{ fontSize: 10, color: "var(--cs-muted)" }}>
+                  <span className="font-bold" style={{ color: "var(--cs-ink)" }}>{m.userName}</span> ({m.userRole || "USER"})
+                </p>
+                <p className="text-sm mt-1" style={{ color: "var(--cs-ink)", wordBreak: "break-word" }}>{m.message}</p>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <CsButton
+                    variant="outline"
+                    onClick={async () => {
+                      const res = await adminApiFetch(`/api/admin/live/events/${selectedEvent.id}/chat/${m.id}`, {
+                        method: "PATCH",
+                        body: JSON.stringify({ isHidden: !m.isHidden }),
+                      });
+                      if (res.ok) {
+                        toast.success(!m.isHidden ? "Message hidden" : "Message restored");
+                        await loadChatMessages();
+                      } else {
+                        toast.error((res.data as any)?.message || "Failed");
+                      }
+                    }}
+                  >
+                    {m.isHidden ? "Unhide" : "Hide"}
+                  </CsButton>
+                  <CsButton
+                    variant="outline"
+                    onClick={async () => {
+                      const res = await adminApiFetch(`/api/admin/live/events/${selectedEvent.id}/chat/${m.id}`, {
+                        method: "PATCH",
+                        body: JSON.stringify({ isPinned: !m.isPinned }),
+                      });
+                      if (res.ok) {
+                        toast.success(!m.isPinned ? "Pinned" : "Unpinned");
+                        await loadChatMessages();
+                      } else {
+                        toast.error((res.data as any)?.message || "Failed");
+                      }
+                    }}
+                  >
+                    {m.isPinned ? "Unpin" : "Pin"}
+                  </CsButton>
+                  <button
+                    className="cs-mono font-bold uppercase"
+                    style={{ fontSize: 10, letterSpacing: "0.07em", padding: "10px 18px", border: "2.5px solid var(--cs-rust)", color: "var(--cs-rust)", background: "var(--cs-paper)" }}
+                    onClick={async () => {
+                      const res = await adminApiFetch(`/api/admin/live/events/${selectedEvent.id}/chat/mute`, {
+                        method: "POST",
+                        body: JSON.stringify({ userId: m.userId, mutedMinutes: 30, reason: "Moderator action" }),
+                      });
+                      if (res.ok) {
+                        toast.success(`Muted ${m.userName} for 30 mins`);
+                      } else {
+                        toast.error((res.data as any)?.message || "Failed");
+                      }
+                    }}
+                  >
+                    Mute 30m
+                  </button>
+                  <CsButton
+                    variant="rust"
+                    onClick={async () => {
+                      const res = await adminApiFetch(`/api/admin/live/events/${selectedEvent.id}/chat/${m.id}`, {
+                        method: "DELETE",
+                      });
+                      if (res.ok) {
+                        toast.success("Message removed");
+                        await loadChatMessages();
+                      } else {
+                        toast.error((res.data as any)?.message || "Failed");
+                      }
+                    }}
+                  >
+                    Delete
+                  </CsButton>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+              </div>
+            ))}
+          </div>
+        </CsBox>
       ) : null}
 
       {section === "manage" ? (
-        <Card className="bg-neutral-900 border-neutral-800">
-          <CardHeader>
-            <CardTitle className="text-white">Live events</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {events.length === 0 ? (
-              <p className="text-sm text-neutral-400">No events.</p>
-            ) : (
-              <div className="space-y-3">
-                {events.map((event) => {
-                  const badge = liveStateBadge(event);
-                  return (
-                    <div key={event.id} className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border border-neutral-800 rounded-lg bg-neutral-950 p-4">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-white font-semibold truncate">{event.title}</p>
-                          <Badge className={badge.className}>{badge.label}</Badge>
-                        </div>
-                        {event.description ? <p className="text-sm text-neutral-400 mt-1 line-clamp-2">{event.description}</p> : null}
-                        <p className="text-xs text-neutral-500 mt-2">ID: {event.id}</p>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2">
-                        <Button variant="outline" className="border-neutral-700 text-neutral-200" onClick={() => copyText(shareLink(event))}>
-                          Share link
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="border-neutral-700 text-neutral-200"
-                          onClick={() => {
-                            setSelectedEventId(event.id);
-                            setSection("stream");
-                          }}
-                        >
-                          Open
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="border-red-900/80 text-red-300 hover:bg-red-950/40"
-                          disabled={event.status === "LIVE"}
-                          title={event.status === "LIVE" ? "End the live first" : "Delete forever"}
-                          onClick={async () => {
-                            if (!confirm(`Delete "${event.title}" forever?`)) return;
-                            const res = await adminApiFetch(`/api/admin/live/events/${event.id}`, { method: "DELETE" });
-                            if (res.ok) {
-                              toast.success("Deleted");
-                              await loadEvents();
-                            } else {
-                              toast.error((res.data as any)?.message || "Delete failed");
-                            }
-                          }}
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <CsBox className="p-5">
+          <CsSlug>Live events</CsSlug>
+          <div className="mt-4">
+            <CsTable
+              columns={manageColumns}
+              rows={events}
+              rowKey={(event) => event.id}
+              emptySlug="No events"
+              emptyBody="Create a live event below to get started."
+            />
+          </div>
+        </CsBox>
       ) : null}
 
       {/* Quick create event (simple) */}
@@ -1101,18 +1155,29 @@ function CreateLiveEventCard({ onCreated }: { onCreated: () => void }) {
   };
 
   return (
-    <Card className="bg-neutral-900 border-neutral-800 mt-6">
-      <CardHeader>
-        <CardTitle className="text-white">Create live event</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {error ? <p className="text-sm text-red-400">{error}</p> : null}
-        <Input value={title} onChange={(e) => setTitle(e.target.value)} className="bg-neutral-950 border-neutral-800 text-white" placeholder="Title" />
-        <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="bg-neutral-950 border-neutral-800 text-white" placeholder="Description" rows={3} />
-        <Button onClick={create} disabled={saving || !title.trim()} className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
+    <CsBox className="p-5 mt-6">
+      <CsSlug>Create live event</CsSlug>
+      <div className="space-y-3 mt-4">
+        {error ? (
+          <p className="cs-mono font-bold" style={{ fontSize: 11, color: "var(--cs-rust)" }}>{error}</p>
+        ) : null}
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          style={fieldStyle}
+          placeholder="Title"
+        />
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          style={fieldStyle}
+          placeholder="Description"
+          rows={3}
+        />
+        <CsButton variant="rust" onClick={create} disabled={saving || !title.trim()}>
           {saving ? "Creating..." : "Create"}
-        </Button>
-      </CardContent>
-    </Card>
+        </CsButton>
+      </div>
+    </CsBox>
   );
 }

@@ -1,15 +1,8 @@
 import { useEffect, useState } from "react";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
-import { Textarea } from "./ui/textarea";
-import { Switch } from "./ui/switch";
 import { MovieTitle } from "./MoviesManagement"; // reuse shape
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { useUploadQueue } from "@/context/UploadQueueProvider";
-import { FormSection } from "./FormSection";
 import { FileDrop } from "./FileDrop";
-import { FileText, Tag, Image as ImageIcon, Wallet } from "lucide-react";
+import { CsButton, CsSlug } from "./cs/kit";
 
 const GENRE_OPTIONS = [
   "Action",
@@ -25,6 +18,27 @@ const GENRE_OPTIONS = [
   "Crime",
   "Family",
 ];
+
+const fieldStyle: React.CSSProperties = {
+  border: "2px solid var(--cs-ink)",
+  background: "var(--cs-paper)",
+  color: "var(--cs-ink)",
+  fontFamily: "var(--font-smono), monospace",
+  fontSize: 12,
+  padding: "9px 12px",
+  width: "100%",
+};
+
+function SeriesFormSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="cs-border p-4 sm:p-5" style={{ background: "var(--cs-paper)" }}>
+      <h3 className="cs-display mb-4" style={{ fontSize: 20, color: "var(--cs-ink)" }}>
+        {title}
+      </h3>
+      <div className="space-y-4">{children}</div>
+    </section>
+  );
+}
 
 export function AddEditSeriesForm({
   token,
@@ -179,67 +193,67 @@ export function AddEditSeriesForm({
 
   return (
     <div className="space-y-5">
-      <FormSection title="Basics" icon={FileText}>
+      <SeriesFormSection title="Basics">
         <div>
-          <Label className="text-neutral-300">Title</Label>
-          <Input
+          <CsSlug className="mb-1">Title</CsSlug>
+          <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+            style={fieldStyle}
             placeholder="Enter series title"
           />
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label className="text-neutral-300">Year started</Label>
-            <Input
+            <CsSlug className="mb-1">Year started</CsSlug>
+            <input
               type="number"
               value={releaseYear}
               onChange={(e) => setReleaseYear(e.target.value)}
-              className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+              style={fieldStyle}
               placeholder="e.g. 2020"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label className="text-neutral-300">Intro start (s)</Label>
-              <Input
+              <CsSlug className="mb-1">Intro start (s)</CsSlug>
+              <input
                 type="number"
                 min={0}
                 value={introStart}
                 onChange={(e) => setIntroStart(e.target.value === "" ? "" : Number(e.target.value))}
-                className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+                style={fieldStyle}
                 placeholder="e.g. 12"
               />
             </div>
             <div>
-              <Label className="text-neutral-300">Intro end (s)</Label>
-              <Input
+              <CsSlug className="mb-1">Intro end (s)</CsSlug>
+              <input
                 type="number"
                 min={0}
                 value={introEnd}
                 onChange={(e) => setIntroEnd(e.target.value === "" ? "" : Number(e.target.value))}
-                className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+                style={fieldStyle}
                 placeholder="e.g. 58"
               />
             </div>
           </div>
         </div>
         <div>
-          <Label className="text-neutral-300">Description</Label>
-          <Textarea
+          <CsSlug className="mb-1">Description</CsSlug>
+          <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+            style={{ ...fieldStyle, resize: "vertical" }}
             rows={4}
             placeholder="Enter series description"
           />
         </div>
-      </FormSection>
+      </SeriesFormSection>
 
-      <FormSection title="Classification" icon={Tag}>
+      <SeriesFormSection title="Classification">
         <div>
-          <Label className="text-neutral-300">Genres</Label>
+          <CsSlug className="mb-1">Genres</CsSlug>
           <div className="mt-1 flex flex-wrap gap-2">
             {GENRE_OPTIONS.map((g) => {
               const active = genres.includes(g);
@@ -250,11 +264,13 @@ export function AddEditSeriesForm({
                   onClick={() =>
                     setGenres((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]))
                   }
-                  className={`px-3 py-1 rounded-full text-sm border ${
-                    active
-                      ? "bg-[#fd7e14]/20 border-[#fd7e14] text-[#fd7e14]"
-                      : "bg-neutral-900 border-neutral-700 text-neutral-300 hover:border-neutral-500"
-                  }`}
+                  className="cs-mono text-xs font-bold uppercase"
+                  style={{
+                    padding: "5px 12px",
+                    border: "1.5px solid var(--cs-ink)",
+                    background: active ? "var(--cs-ink)" : "var(--cs-paper)",
+                    color: active ? "#fff" : "var(--cs-ink)",
+                  }}
                 >
                   {g}
                 </button>
@@ -264,38 +280,29 @@ export function AddEditSeriesForm({
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <Label className="text-neutral-300">Language</Label>
-            <Select value={language} onValueChange={setLanguage}>
-              <SelectTrigger className="mt-1 bg-neutral-950 border-neutral-800 text-white w-full min-w-0">
-                <SelectValue placeholder="Select language" />
-              </SelectTrigger>
-              <SelectContent className="bg-neutral-900 border-neutral-800">
-                {["en", "fr", "es", "pt", "ha", "yo", "ig"].map((lang) => (
-                  <SelectItem key={lang} value={lang}>
-                    {lang.toUpperCase()}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <CsSlug className="mb-1">Language</CsSlug>
+            <select value={language} onChange={(e) => setLanguage(e.target.value)} style={fieldStyle}>
+              {["en", "fr", "es", "pt", "ha", "yo", "ig"].map((lang) => (
+                <option key={lang} value={lang}>
+                  {lang.toUpperCase()}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
-            <Label className="text-neutral-300">Maturity Rating</Label>
-            <Select value={maturityRating} onValueChange={setMaturityRating}>
-              <SelectTrigger className="mt-1 bg-neutral-950 border-neutral-800 text-white w-full min-w-0">
-                <SelectValue placeholder="Select rating" />
-              </SelectTrigger>
-              <SelectContent className="bg-neutral-900 border-neutral-800">
-                {["G", "PG", "PG-13", "TV-Y", "TV-G", "TV-PG", "TV-14", "18+"].map((rate) => (
-                  <SelectItem key={rate} value={rate}>
-                    {rate}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <CsSlug className="mb-1">Maturity Rating</CsSlug>
+            <select value={maturityRating} onChange={(e) => setMaturityRating(e.target.value)} style={fieldStyle}>
+              <option value="">Select rating</option>
+              {["G", "PG", "PG-13", "TV-Y", "TV-G", "TV-PG", "TV-14", "18+"].map((rate) => (
+                <option key={rate} value={rate}>
+                  {rate}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
         <div>
-          <Label className="text-neutral-300">Country Availability</Label>
+          <CsSlug className="mb-1">Country Availability</CsSlug>
           <div className="mt-1 flex flex-wrap gap-2">
             {["NG", "US", "UK", "CA", "ZA", "GH", "KE", "DE", "FR", "IN"].map((code) => {
               const active = countryAvailability.includes(code);
@@ -308,11 +315,13 @@ export function AddEditSeriesForm({
                       prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
                     )
                   }
-                  className={`px-3 py-1 rounded-full text-sm border ${
-                    active
-                      ? "bg-[#fd7e14]/20 border-[#fd7e14] text-[#fd7e14]"
-                      : "bg-neutral-900 border-neutral-700 text-neutral-300 hover:border-neutral-500"
-                  }`}
+                  className="cs-mono text-xs font-bold uppercase"
+                  style={{
+                    padding: "5px 12px",
+                    border: "1.5px solid var(--cs-ink)",
+                    background: active ? "var(--cs-ink)" : "var(--cs-paper)",
+                    color: active ? "#fff" : "var(--cs-ink)",
+                  }}
                 >
                   {code}
                 </button>
@@ -321,7 +330,7 @@ export function AddEditSeriesForm({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Label className="text-neutral-300">Wanzami Original</Label>
+          <CsSlug>Wanzami Original</CsSlug>
           <input
             type="checkbox"
             checked={isOriginal}
@@ -329,9 +338,9 @@ export function AddEditSeriesForm({
             className="h-4 w-4"
           />
         </div>
-      </FormSection>
+      </SeriesFormSection>
 
-      <FormSection title="Artwork and media" icon={ImageIcon}>
+      <SeriesFormSection title="Artwork and media">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FileDrop
             id="series-poster-upload"
@@ -368,61 +377,64 @@ export function AddEditSeriesForm({
             onSelect={setShortTrailerFile}
           />
           <div className="mt-2">
-            <Label className="text-neutral-300">Or link</Label>
-            <Input
+            <CsSlug className="mb-1">Or link</CsSlug>
+            <input
               value={shortTrailerUrlText}
               onChange={(e) => setShortTrailerUrlText(e.target.value)}
-              className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+              style={fieldStyle}
               placeholder="https://cdn.../short-trailer.mp4"
             />
           </div>
         </div>
-      </FormSection>
-      <FormSection title="Monetization (PPV)" icon={Wallet}>
+      </SeriesFormSection>
+      <SeriesFormSection title="Monetization (PPV)">
         <div className="flex items-center gap-2">
-          <Switch
+          <input
+            type="checkbox"
             checked={ppvEnabled}
-            onCheckedChange={setPpvEnabled}
-            className="data-[state=checked]:bg-[#fd7e14]"
+            onChange={(e) => setPpvEnabled(e.target.checked)}
+            className="h-4 w-4"
           />
-          <Label className="text-neutral-300">Enable PPV (Buy, 30-day access)</Label>
+          <CsSlug>Enable PPV (Buy, 30-day access)</CsSlug>
         </div>
         {ppvEnabled && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <Label className="text-neutral-300">PPV Price</Label>
-              <Input
+              <CsSlug className="mb-1">PPV Price</CsSlug>
+              <input
                 type="number"
                 value={ppvPrice}
                 onChange={(e) => setPpvPrice(e.target.value)}
-                className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+                style={fieldStyle}
                 placeholder="1500"
               />
             </div>
             <div>
-              <Label className="text-neutral-300">Currency</Label>
-              <Select value={ppvCurrency} onValueChange={setPpvCurrency}>
-                <SelectTrigger className="mt-1 bg-neutral-950 border-neutral-800 text-white">
-                  <SelectValue placeholder="Currency" />
-                </SelectTrigger>
-                <SelectContent className="bg-neutral-900 border-neutral-800">
-                  <SelectItem value="NGN">NGN</SelectItem>
-                  <SelectItem value="USD">USD</SelectItem>
-                </SelectContent>
-              </Select>
+              <CsSlug className="mb-1">Currency</CsSlug>
+              <select value={ppvCurrency} onChange={(e) => setPpvCurrency(e.target.value)} style={fieldStyle}>
+                <option value="NGN">NGN</option>
+                <option value="USD">USD</option>
+              </select>
             </div>
           </div>
         )}
-      </FormSection>
+      </SeriesFormSection>
 
-      {error && <p className="text-red-400 text-sm">{error}</p>}
-      <div className="sticky bottom-0 flex justify-end gap-3 border-t border-neutral-800 bg-neutral-950/80 backdrop-blur-sm py-3 -mx-1 px-1">
-        <Button variant="outline" onClick={onClose} className="border-neutral-700 text-neutral-300 hover:bg-neutral-800">
+      {error && (
+        <p className="cs-mono text-xs" style={{ color: "var(--cs-rust)" }}>
+          {error}
+        </p>
+      )}
+      <div
+        className="sticky bottom-0 flex justify-end gap-3 py-3 -mx-1 px-1"
+        style={{ borderTop: "2.5px solid var(--cs-ink)", background: "var(--cs-paper)" }}
+      >
+        <CsButton variant="outline" onClick={onClose}>
           Cancel
-        </Button>
-        <Button disabled={saving} onClick={handleSave} className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
+        </CsButton>
+        <CsButton variant="rust" disabled={saving} onClick={handleSave}>
           {saving ? "Saving..." : "Save Series"}
-        </Button>
+        </CsButton>
       </div>
     </div>
   );

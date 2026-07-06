@@ -1,22 +1,12 @@
-﻿import { useCallback, useEffect, useMemo, useState } from "react";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
-import { Textarea } from "./ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { Switch } from "./ui/switch";
-import { Tabs, TabsContent } from "./ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
-import { Badge } from "./ui/badge";
-import { StatusBadge } from "./StatusBadge";
-import { titleStatus } from "../lib/status";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { FileDrop } from "./FileDrop";
-import { Plus, Edit, Trash2, Search, Eye, MoreVertical, Rocket, ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { Plus, Edit, Trash2, Search, Eye, Rocket, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { useUploadQueue } from "@/context/UploadQueueProvider";
 import { toast } from "sonner";
 import { authFetch } from "@/lib/authClient";
+import { titleStatus } from "../lib/status";
+import { CsBox, CsButton, CsPageHeader, CsSlug, CsTag, type CsColumn } from "./cs/kit";
 
 export type MovieTitle = {
   id: string;
@@ -46,6 +36,25 @@ export type MovieTitle = {
   availableFrom?: string | null;
   leavingAt?: string | null;
   genres?: string[];
+};
+
+const fieldStyle: React.CSSProperties = {
+  border: "2px solid var(--cs-ink)",
+  background: "var(--cs-paper)",
+  color: "var(--cs-ink)",
+  fontFamily: "var(--font-smono), monospace",
+  fontSize: 12,
+  padding: "9px 12px",
+  width: "100%",
+};
+
+const statusTagProps = (m: MovieTitle): { label: string; tone: "good" | "bad" | "pending" | "neutral" } => {
+  const s = titleStatus(m);
+  if (s.tone === "live") return { label: s.label, tone: "good" };
+  if (s.tone === "leaving") return { label: s.label, tone: "bad" };
+  if (s.tone === "pending") return { label: s.label, tone: "pending" };
+  if (s.tone === "coming") return { label: s.label, tone: "pending" };
+  return { label: s.label, tone: "neutral" };
 };
 
 export function MoviesManagement() {
@@ -143,16 +152,20 @@ export function MoviesManagement() {
       <div className="space-y-5 pb-4 max-w-4xl">
         <button
           onClick={closeEditor}
-          className="flex items-center gap-1.5 text-sm text-neutral-400 hover:text-white"
+          className="cs-mono flex items-center gap-1.5 text-xs font-bold uppercase"
+          style={{ color: "var(--cs-muted)" }}
         >
           <ChevronLeft className="w-4 h-4" />
           Back to movies
         </button>
         <div>
-          <h1 className="text-2xl font-semibold text-white">
+          <CsSlug className="mb-1">{editingMovie ? "Editing" : "New entry"}</CsSlug>
+          <h1 className="cs-display" style={{ fontSize: 34, color: "var(--cs-ink)" }}>
             {editingMovie ? `Edit ${editingMovie.name}` : "New movie"}
           </h1>
-          <p className="text-sm text-neutral-400 mt-0.5">Work through the steps, then save.</p>
+          <p className="cs-mono text-xs mt-1" style={{ color: "var(--cs-muted)" }}>
+            Work through the steps, then save.
+          </p>
         </div>
         <AddEditMovieForm
           token={token ?? undefined}
@@ -169,34 +182,38 @@ export function MoviesManagement() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-semibold text-white">Movies</h1>
-          <p className="text-sm text-neutral-400 mt-0.5">Manage all movie content on the platform</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            className="bg-[#fd7e14] hover:bg-[#ff9940] text-white"
+    <div className="space-y-8">
+      <CsPageHeader
+        title="The reels"
+        chip={`${statusCounts.all} movies`}
+        slug="Movie catalogue · features on the platform"
+        actions={
+          <CsButton
+            variant="rust"
             onClick={() => {
               setEditingMovie(null);
               setIsAddDialogOpen(true);
             }}
           >
-            <Plus className="w-4 h-4 mr-2" />
-            Add movie
-          </Button>
-        </div>
-      </div>
+            <span className="inline-flex items-center gap-2">
+              <Plus className="w-4 h-4" />
+              Add movie
+            </span>
+          </CsButton>
+        }
+      />
 
       <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
-        <Input
+        <Search
+          className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
+          style={{ color: "var(--cs-muted)" }}
+        />
+        <input
           type="search"
-          placeholder="Search movies…"
+          placeholder="SEARCH MOVIES…"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10 bg-neutral-950 border-neutral-800 text-white"
+          style={{ ...fieldStyle, paddingLeft: 38 }}
         />
       </div>
 
@@ -207,75 +224,118 @@ export function MoviesManagement() {
           ["coming", "Coming soon"],
           ["pending", "Pending"],
           ["archived", "Archived"],
-        ] as const).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setStatusFilter(key)}
-            className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
-              statusFilter === key
-                ? "bg-[#fd7e14]/15 border-[#fd7e14] text-[#fd7e14]"
-                : "bg-neutral-950 border-neutral-800 text-neutral-300 hover:border-neutral-600"
-            }`}
-          >
-            {label} <span className="opacity-60">{statusCounts[key]}</span>
-          </button>
-        ))}
+        ] as const).map(([key, label]) => {
+          const active = statusFilter === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setStatusFilter(key)}
+              className="cs-mono text-xs font-bold uppercase transition-colors"
+              style={{
+                padding: "7px 14px",
+                border: "1.5px solid var(--cs-ink)",
+                background: active ? "var(--cs-ink)" : "var(--cs-paper)",
+                color: active ? "#fff" : "var(--cs-ink)",
+                letterSpacing: "0.06em",
+              }}
+            >
+              {label} <span style={{ opacity: 0.65 }}>{statusCounts[key]}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Preview Dialog */}
-      <Dialog open={!!previewMovie} onOpenChange={(open) => !open && setPreviewMovie(null)}>
-        <DialogContent className="bg-neutral-900 border-neutral-800 text-white max-w-4xl">
-          <DialogHeader>
-            <DialogTitle className="text-white">
-              Preview {previewMovie?.name ?? ""}
-            </DialogTitle>
-          </DialogHeader>
-          {previewLoading && <p className="text-neutral-400 text-sm">Loading preview...</p>}
-          {previewError && <p className="text-red-400 text-sm">{previewError}</p>}
-          {!previewLoading && !previewError && (
-            <div className="space-y-4">
-              <div className="bg-neutral-950 border border-neutral-800 rounded-lg p-3">
-                <p className="text-sm text-neutral-300 mb-2">Renditions</p>
-                {previewAssets && previewAssets.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {previewAssets.map((a) => (
-                      <Badge
-                        key={`${a.rendition}-${a.url ?? ""}`}
-                        className={
-                          a.status === "READY"
-                            ? "bg-emerald-500/20 text-emerald-300"
-                            : "bg-amber-500/20 text-amber-300"
-                        }
-                      >
-                        {a.rendition} {a.status ? `(${a.status})` : ""}
-                      </Badge>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-neutral-500">No ready renditions yet (still processing or not uploaded).</p>
-                )}
+      {/* Preview overlay */}
+      {previewMovie && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-6"
+          style={{ background: "rgba(22, 19, 16, 0.55)" }}
+          onClick={() => setPreviewMovie(null)}
+        >
+          <div
+            className="cs-border cs-shadow w-full max-w-3xl p-6"
+            style={{ background: "var(--cs-paper)", maxHeight: "85vh", overflowY: "auto" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between pb-4" style={{ borderBottom: "2.5px solid var(--cs-ink)" }}>
+              <div>
+                <CsSlug>Preview</CsSlug>
+                <h3 className="cs-display mt-1" style={{ fontSize: 28, color: "var(--cs-ink)" }}>
+                  {previewMovie?.name ?? ""}
+                </h3>
               </div>
-              {previewAssets && previewAssets.some((a) => a.url) ? (
-                <video
-                  className="w-full rounded-lg border border-neutral-800"
-                  controls
-                  src={previewAssets.find((a) => a.url)?.url}
-                />
-              ) : (
-                <p className="text-sm text-neutral-400">No playable source available yet.</p>
+              <button
+                onClick={() => setPreviewMovie(null)}
+                className="cs-mono text-xs font-bold px-2 py-1"
+                style={{ border: "2px solid var(--cs-ink)" }}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mt-4">
+              {previewLoading && (
+                <p className="cs-mono text-xs" style={{ color: "var(--cs-muted)" }}>
+                  Loading preview...
+                </p>
+              )}
+              {previewError && (
+                <p className="cs-mono text-xs" style={{ color: "var(--cs-rust)" }}>
+                  {previewError}
+                </p>
+              )}
+              {!previewLoading && !previewError && (
+                <div className="space-y-4">
+                  <div className="p-3" style={{ border: "1.5px solid var(--cs-line)", background: "var(--cs-panel)" }}>
+                    <CsSlug className="mb-2">Renditions</CsSlug>
+                    {previewAssets && previewAssets.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {previewAssets.map((a) => (
+                          <CsTag
+                            key={`${a.rendition}-${a.url ?? ""}`}
+                            label={`${a.rendition}${a.status ? ` (${a.status})` : ""}`}
+                            tone={a.status === "READY" ? "good" : "pending"}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="cs-mono text-xs" style={{ color: "var(--cs-muted)" }}>
+                        No ready renditions yet (still processing or not uploaded).
+                      </p>
+                    )}
+                  </div>
+                  {previewAssets && previewAssets.some((a) => a.url) ? (
+                    <video
+                      className="w-full"
+                      style={{ border: "1.5px solid var(--cs-line)" }}
+                      controls
+                      src={previewAssets.find((a) => a.url)?.url}
+                    />
+                  ) : (
+                    <p className="cs-mono text-xs" style={{ color: "var(--cs-muted)" }}>
+                      No playable source available yet.
+                    </p>
+                  )}
+                </div>
               )}
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
+          </div>
+        </div>
+      )}
 
       {filteredMovies.length === 0 ? (
-        <p className="text-neutral-500 text-sm py-10 text-center">No movies match your filters.</p>
+        <CsBox className="p-5">
+          <CsSlug>Nothing filed here yet</CsSlug>
+          <p className="mt-2 text-sm" style={{ color: "var(--cs-ink)" }}>
+            No movies match your filters.
+          </p>
+        </CsBox>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredMovies.map((movie) => {
-            const status = titleStatus(movie);
+            const status = statusTagProps(movie);
             const publishing = tasks.some(
               (t) =>
                 t.kind === "MOVIE" &&
@@ -311,69 +371,77 @@ export function MoviesManagement() {
               setIsAddDialogOpen(true);
             };
             return (
-              <div key={movie.id} className="rounded-xl overflow-hidden border border-neutral-800 bg-neutral-900 group">
-                <div className="relative aspect-video bg-neutral-950">
+              <CsBox key={movie.id} shadow className="overflow-hidden">
+                <div className="relative" style={{ aspectRatio: "16 / 9", background: "var(--cs-panel)" }}>
                   <ImageWithFallback
                     src={movie.thumbnailUrl || movie.posterUrl || ""}
                     alt={movie.name}
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute top-2 left-2">
-                    <StatusBadge tone={status.tone} label={status.label} />
+                    <CsTag label={status.label} tone={status.tone} />
                   </div>
-                  <div className="absolute inset-x-0 bottom-0 p-2.5 bg-gradient-to-t from-black/85 via-black/30 to-transparent">
-                    <p className="text-white text-sm font-medium line-clamp-1">{movie.name}</p>
+                  <div
+                    className="absolute inset-x-0 bottom-0 p-2.5"
+                    style={{ background: "linear-gradient(to top, rgba(22,19,16,0.85), rgba(22,19,16,0.2), transparent)" }}
+                  >
+                    <p className="cs-mono text-xs font-bold uppercase truncate" style={{ color: "#fff", letterSpacing: "0.04em" }}>
+                      {movie.name}
+                    </p>
                   </div>
                 </div>
-                <div className="flex items-center justify-between gap-2 px-3 py-2.5 border-t border-white/5">
+                <div
+                  className="flex items-center justify-between gap-2 px-3 py-2.5"
+                  style={{ borderTop: "1.5px solid var(--cs-line)" }}
+                >
                   <div className="flex items-center gap-2 min-w-0">
-                    <Button size="sm" className="h-8 bg-[#fd7e14]/15 text-[#fd7e14] hover:bg-[#fd7e14]/25" onClick={edit}>
-                      <Edit className="w-4 h-4 mr-1" />
+                    <button
+                      onClick={edit}
+                      className="cs-mono text-[10px] font-bold uppercase px-2 py-1 inline-flex items-center gap-1 transition-colors hover:bg-[var(--cs-panel)]"
+                      style={{ border: "1.5px solid var(--cs-ink)", color: "var(--cs-ink)", letterSpacing: "0.06em" }}
+                    >
+                      <Edit className="w-3.5 h-3.5" />
                       Edit
-                    </Button>
+                    </button>
                     {movie.pendingReview && !publishing && (
-                      <Button size="sm" className="h-8 bg-emerald-600/90 hover:bg-emerald-500 text-white" onClick={publish}>
-                        <Rocket className="w-4 h-4 mr-1" />
+                      <button
+                        onClick={publish}
+                        className="cs-mono text-[10px] font-bold uppercase px-2 py-1 inline-flex items-center gap-1"
+                        style={{ background: "var(--cs-ink)", color: "#fff", letterSpacing: "0.06em" }}
+                      >
+                        <Rocket className="w-3.5 h-3.5" />
                         Publish
-                      </Button>
+                      </button>
                     )}
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 rounded-lg border border-neutral-800 bg-neutral-950 text-neutral-300 hover:text-white hover:border-neutral-600"
-                      title="Preview"
+                    <button
                       onClick={() => openPreview(movie)}
+                      title="Preview"
+                      className="transition-colors hover:bg-[var(--cs-panel)]"
+                      style={{ border: "1.5px solid var(--cs-line)", color: "var(--cs-ink)", padding: 6 }}
                     >
                       <Eye className="w-4 h-4" />
-                    </Button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 rounded-lg border border-neutral-800 bg-neutral-950 text-neutral-300 hover:text-white hover:border-neutral-600"
-                          aria-label="More actions"
-                        >
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="bg-neutral-900 border-neutral-800 text-neutral-200">
-                        <DropdownMenuItem onClick={edit}>Edit</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => openPreview(movie)}>Preview</DropdownMenuItem>
-                        {!publishing && <DropdownMenuItem onClick={publish}>Publish</DropdownMenuItem>}
-                        <DropdownMenuItem onClick={toggleArchive}>
-                          {movie.archived ? "Unarchive" : "Archive"}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-400 focus:text-red-300" onClick={remove}>
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    </button>
+                    <button
+                      onClick={toggleArchive}
+                      title={movie.archived ? "Unarchive" : "Archive"}
+                      className="cs-mono text-[10px] font-bold uppercase px-2 py-1.5 transition-colors hover:bg-[var(--cs-panel)]"
+                      style={{ border: "1.5px solid var(--cs-line)", color: "var(--cs-ink)" }}
+                    >
+                      {movie.archived ? "Unarchive" : "Archive"}
+                    </button>
+                    <button
+                      onClick={remove}
+                      title="Delete"
+                      className="transition-colors"
+                      style={{ border: "1.5px solid var(--cs-rust)", color: "var(--cs-rust)", padding: 6 }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-              </div>
+              </CsBox>
             );
           })}
         </div>
@@ -636,408 +704,420 @@ function AddEditMovieForm({
           <div key={s.value} className="flex items-center flex-1 last:flex-none">
             <button type="button" onClick={() => setStep(i)} className="flex items-center gap-2 shrink-0">
               <span
-                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium border ${
-                  i < step
-                    ? "bg-emerald-500 border-emerald-500 text-emerald-950"
-                    : i === step
-                    ? "bg-[#fd7e14] border-[#fd7e14] text-black"
-                    : "bg-neutral-900 border-neutral-700 text-neutral-400"
-                }`}
+                className="cs-mono flex items-center justify-center text-xs font-bold"
+                style={{
+                  width: 28,
+                  height: 28,
+                  border: "1.5px solid var(--cs-ink)",
+                  background: i < step ? "var(--cs-ink)" : i === step ? "var(--cs-rust)" : "var(--cs-paper)",
+                  color: i < step || i === step ? "#fff" : "var(--cs-muted)",
+                  borderColor: i === step ? "var(--cs-rust)" : "var(--cs-ink)",
+                }}
               >
                 {i < step ? <Check className="w-4 h-4" /> : i + 1}
               </span>
-              <span className={`text-xs hidden sm:inline ${i === step ? "text-white" : "text-neutral-500"}`}>
+              <span
+                className="cs-mono text-xs hidden sm:inline font-bold uppercase"
+                style={{ color: i === step ? "var(--cs-ink)" : "var(--cs-muted)" }}
+              >
                 {s.label}
               </span>
             </button>
             {i < steps.length - 1 && (
-              <span className={`flex-1 h-px mx-3 ${i < step ? "bg-[#fd7e14]" : "bg-neutral-800"}`} />
+              <span
+                className="flex-1 mx-3"
+                style={{ height: 1.5, background: i < step ? "var(--cs-rust)" : "var(--cs-line)" }}
+              />
             )}
           </div>
         ))}
       </div>
 
-      <Tabs value={steps[step].value} className="w-full">
-      <TabsContent value="basic" className="space-y-4 mt-4">
-        <div>
-          <Label className="text-neutral-300">Title</Label>
-          <Input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="mt-1 bg-neutral-950 border-neutral-800 text-white"
-            placeholder="Enter movie title"
-          />
-        </div>
-
-        <div>
-          <Label className="text-neutral-300">Description</Label>
-          <Textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="mt-1 bg-neutral-950 border-neutral-800 text-white"
-            rows={4}
-            placeholder="Enter movie description"
-          />
-        </div>
-
-        <div className="pt-2">
-          <h3 className="text-white font-semibold mb-2">Metadata</h3>
-          <div className="grid grid-cols-2 gap-4 mb-3">
-            <div>
-              <Label className="text-neutral-300">Genres (comma separated)</Label>
-              <Input
-                value={genres.join(",")}
-                onChange={(e) => setGenres(e.target.value.split(",").map((g) => g.trim()).filter(Boolean))}
-                className="mt-1 bg-neutral-950 border-neutral-800 text-white"
-                placeholder="Action, Drama, Comedy"
-              />
-            </div>
-        <div>
-          <Label className="text-neutral-300">Language</Label>
-          <Select value={language} onValueChange={setLanguage}>
-            <SelectTrigger className="mt-1 bg-neutral-950 border-neutral-800 text-white">
-              <SelectValue placeholder="Select language" />
-            </SelectTrigger>
-            <SelectContent className="bg-neutral-900 border-neutral-800">
-              {["en", "fr", "es", "pt", "ha", "yo", "ig"].map((lang) => (
-                <SelectItem key={lang} value={lang}>
-                  {lang.toUpperCase()}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 mb-3">
-            <div>
-              <Label className="text-neutral-300">Runtime (minutes)</Label>
-              <Input
-                type="number"
-                value={runtimeMinutes}
-                onChange={(e) => setRuntimeMinutes(e.target.value)}
-                className="mt-1 bg-neutral-950 border-neutral-800 text-white"
-                placeholder="120"
-              />
-            </div>
-        <div>
-          <Label className="text-neutral-300">Maturity Rating</Label>
-          <Select value={maturityRating} onValueChange={setMaturityRating}>
-            <SelectTrigger className="mt-1 bg-neutral-950 border-neutral-800 text-white">
-              <SelectValue placeholder="Select rating" />
-            </SelectTrigger>
-            <SelectContent className="bg-neutral-900 border-neutral-800">
-              {["G", "PG", "PG-13", "TV-Y", "TV-G", "TV-PG", "TV-14", "18+"].map((rate) => (
-                <SelectItem key={rate} value={rate}>
-                  {rate}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-          </div>
-
-          <div className="mb-3">
-            <Label className="text-neutral-300">Release Date</Label>
-            <Input
-              type="date"
-              value={releaseDate}
-              onChange={(e) => setReleaseDate(e.target.value)}
-              className="mt-1 bg-neutral-950 border-neutral-800 text-white w-full sm:max-w-xs"
+      {steps[step].value === "basic" && (
+        <div className="space-y-4 mt-4">
+          <div>
+            <CsSlug className="mb-1">Title</CsSlug>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              style={fieldStyle}
+              placeholder="Enter movie title"
             />
           </div>
-          <div className="mb-3">
-            <Label className="text-neutral-300">Country Availability</Label>
-            <div className="mt-1 flex flex-wrap gap-2">
-              {["NG", "US", "UK", "CA", "ZA", "GH", "KE", "DE", "FR", "IN"].map((code) => {
-                const active = countryAvailability.includes(code);
-                return (
-                  <button
-                    type="button"
-                    key={code}
-                    onClick={() =>
-                      setCountryAvailability((prev) =>
-                        prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
-                      )
-                    }
-                    className={`px-3 py-1 rounded-full text-sm border ${
-                      active
-                        ? "bg-[#fd7e14]/20 border-[#fd7e14] text-[#fd7e14]"
-                        : "bg-neutral-900 border-neutral-700 text-neutral-300 hover:border-neutral-500"
-                    }`}
-                  >
-                    {code}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
 
-          <div className="flex items-center gap-2">
-            <Switch
-              checked={isOriginal}
-              onCheckedChange={setIsOriginal}
-              className="data-[state=checked]:bg-[#fd7e14]"
+          <div>
+            <CsSlug className="mb-1">Description</CsSlug>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              style={{ ...fieldStyle, resize: "vertical" }}
+              rows={4}
+              placeholder="Enter movie description"
             />
-            <Label className="text-neutral-300">Wanzami Original</Label>
           </div>
 
-          <div className="mt-4">
-            <Label className="text-neutral-300">Availability</Label>
-            <div className="mt-1 flex flex-wrap gap-2">
-              {([
-                { key: "LIVE", label: "Live" },
-                { key: "COMING_SOON", label: "Coming Soon" },
-                { key: "LEAVING_SOON", label: "Leaving Soon" },
-              ] as const).map((opt) => {
-                const active = availability === opt.key;
-                return (
-                  <button
-                    type="button"
-                    key={opt.key}
-                    onClick={() => setAvailability(opt.key)}
-                    className={`px-3 py-1 rounded-full text-sm border ${
-                      active
-                        ? "bg-[#fd7e14]/20 border-[#fd7e14] text-[#fd7e14]"
-                        : "bg-neutral-900 border-neutral-700 text-neutral-300 hover:border-neutral-500"
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                );
-              })}
+          <div className="pt-2">
+            <h3 className="cs-display" style={{ fontSize: 20, color: "var(--cs-ink)" }}>
+              Metadata
+            </h3>
+            <div className="grid grid-cols-2 gap-4 mb-3 mt-2">
+              <div>
+                <CsSlug className="mb-1">Genres (comma separated)</CsSlug>
+                <input
+                  value={genres.join(",")}
+                  onChange={(e) => setGenres(e.target.value.split(",").map((g) => g.trim()).filter(Boolean))}
+                  style={fieldStyle}
+                  placeholder="Action, Drama, Comedy"
+                />
+              </div>
+              <div>
+                <CsSlug className="mb-1">Language</CsSlug>
+                <select value={language} onChange={(e) => setLanguage(e.target.value)} style={fieldStyle}>
+                  {["en", "fr", "es", "pt", "ha", "yo", "ig"].map((lang) => (
+                    <option key={lang} value={lang}>
+                      {lang.toUpperCase()}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-            {availability === "COMING_SOON" && (
-              <div className="mt-3">
-                <Label className="text-neutral-300">Available from</Label>
-                <Input
-                  type="datetime-local"
-                  value={availableFrom}
-                  onChange={(e) => setAvailableFrom(e.target.value)}
-                  className="mt-1 bg-neutral-950 border-neutral-800 text-white"
+
+            <div className="grid grid-cols-2 gap-4 mb-3">
+              <div>
+                <CsSlug className="mb-1">Runtime (minutes)</CsSlug>
+                <input
+                  type="number"
+                  value={runtimeMinutes}
+                  onChange={(e) => setRuntimeMinutes(e.target.value)}
+                  style={fieldStyle}
+                  placeholder="120"
                 />
-                <p className="mt-1 text-xs text-neutral-500">
-                  Shows a “Coming Soon” badge and stays unplayable until this date, then auto-flips to Live.
-                </p>
               </div>
-            )}
-            {availability === "LEAVING_SOON" && (
-              <div className="mt-3">
-                <Label className="text-neutral-300">Leaving on</Label>
-                <Input
-                  type="datetime-local"
-                  value={leavingAt}
-                  onChange={(e) => setLeavingAt(e.target.value)}
-                  className="mt-1 bg-neutral-950 border-neutral-800 text-white"
-                />
-                <p className="mt-1 text-xs text-neutral-500">
-                  Shows a “Leaving Soon” badge; the title is auto-archived after this date.
-                </p>
+              <div>
+                <CsSlug className="mb-1">Maturity Rating</CsSlug>
+                <select value={maturityRating} onChange={(e) => setMaturityRating(e.target.value)} style={fieldStyle}>
+                  <option value="">Select rating</option>
+                  {["G", "PG", "PG-13", "TV-Y", "TV-G", "TV-PG", "TV-14", "18+"].map((rate) => (
+                    <option key={rate} value={rate}>
+                      {rate}
+                    </option>
+                  ))}
+                </select>
               </div>
-            )}
-          </div>
-        </div>
+            </div>
 
-        <div className="border-t border-neutral-800 pt-4 mt-4">
-          <h3 className="text-white mb-4">PPV Settings</h3>
+            <div className="mb-3">
+              <CsSlug className="mb-1">Release Date</CsSlug>
+              <input
+                type="date"
+                value={releaseDate}
+                onChange={(e) => setReleaseDate(e.target.value)}
+                style={{ ...fieldStyle, maxWidth: 240 }}
+              />
+            </div>
+            <div className="mb-3">
+              <CsSlug className="mb-1">Country Availability</CsSlug>
+              <div className="mt-1 flex flex-wrap gap-2">
+                {["NG", "US", "UK", "CA", "ZA", "GH", "KE", "DE", "FR", "IN"].map((code) => {
+                  const active = countryAvailability.includes(code);
+                  return (
+                    <button
+                      type="button"
+                      key={code}
+                      onClick={() =>
+                        setCountryAvailability((prev) =>
+                          prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
+                        )
+                      }
+                      className="cs-mono text-xs font-bold uppercase"
+                      style={{
+                        padding: "5px 12px",
+                        border: "1.5px solid var(--cs-ink)",
+                        background: active ? "var(--cs-ink)" : "var(--cs-paper)",
+                        color: active ? "#fff" : "var(--cs-ink)",
+                      }}
+                    >
+                      {code}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-          <div className="flex items-center justify-between mb-4">
-            <Label className="text-neutral-300">Enable PPV</Label>
-            <Switch checked={ppvEnabled} onCheckedChange={setPpvEnabled} className="data-[state=checked]:bg-[#fd7e14]" />
-          </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={isOriginal}
+                onChange={(e) => setIsOriginal(e.target.checked)}
+                className="h-4 w-4"
+              />
+              <CsSlug>Wanzami Original</CsSlug>
+            </div>
 
-          {ppvEnabled && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-neutral-300">PPV Price (NGN)</Label>
-                  <Input
-                    type="number"
-                    value={ppvPrice}
-                    onChange={(e) => setPpvPrice(e.target.value)}
-                    className="mt-1 bg-neutral-950 border-neutral-800 text-white"
-                    placeholder="1500"
+            <div className="mt-4">
+              <CsSlug className="mb-1">Availability</CsSlug>
+              <div className="mt-1 flex flex-wrap gap-2">
+                {([
+                  { key: "LIVE", label: "Live" },
+                  { key: "COMING_SOON", label: "Coming Soon" },
+                  { key: "LEAVING_SOON", label: "Leaving Soon" },
+                ] as const).map((opt) => {
+                  const active = availability === opt.key;
+                  return (
+                    <button
+                      type="button"
+                      key={opt.key}
+                      onClick={() => setAvailability(opt.key)}
+                      className="cs-mono text-xs font-bold uppercase"
+                      style={{
+                        padding: "5px 12px",
+                        border: "1.5px solid var(--cs-ink)",
+                        background: active ? "var(--cs-ink)" : "var(--cs-paper)",
+                        color: active ? "#fff" : "var(--cs-ink)",
+                      }}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {availability === "COMING_SOON" && (
+                <div className="mt-3">
+                  <CsSlug className="mb-1">Available from</CsSlug>
+                  <input
+                    type="datetime-local"
+                    value={availableFrom}
+                    onChange={(e) => setAvailableFrom(e.target.value)}
+                    style={fieldStyle}
                   />
+                  <p className="cs-mono mt-1 text-xs" style={{ color: "var(--cs-muted)" }}>
+                    Shows a "Coming Soon" badge and stays unplayable until this date, then auto-flips to Live.
+                  </p>
                 </div>
-                <div>
-                  <Label className="text-neutral-300">Currency</Label>
-                  <Select value={ppvCurrency} onValueChange={setPpvCurrency}>
-                    <SelectTrigger className="mt-1 bg-neutral-950 border-neutral-800 text-white">
-                      <SelectValue placeholder="Select currency" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-neutral-900 border-neutral-800">
-                      <SelectItem value="NGN">NGN</SelectItem>
-                      <SelectItem value="USD">USD</SelectItem>
-                    </SelectContent>
-                  </Select>
+              )}
+              {availability === "LEAVING_SOON" && (
+                <div className="mt-3">
+                  <CsSlug className="mb-1">Leaving on</CsSlug>
+                  <input
+                    type="datetime-local"
+                    value={leavingAt}
+                    onChange={(e) => setLeavingAt(e.target.value)}
+                    style={fieldStyle}
+                  />
+                  <p className="cs-mono mt-1 text-xs" style={{ color: "var(--cs-muted)" }}>
+                    Shows a "Leaving Soon" badge; the title is auto-archived after this date.
+                  </p>
                 </div>
-              </div>
-              <p className="text-xs text-neutral-500">
-                Buy-only PPV. Access duration uses the backend default (e.g., 30 days).
-              </p>
+              )}
             </div>
-          )}
-        </div>
-      </TabsContent>
+          </div>
 
-      <TabsContent value="media" className="space-y-4 mt-4">
-        <FileDrop
-          id="movie-video-upload"
-          label="Video file"
-          accept="video/*"
-          file={videoFile}
-          hint="MP4, MOV, AVI · up to 5GB · queues after save"
-          onSelect={setVideoFile}
-        />
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <FileDrop
-            id="movie-poster-upload"
-            label="Poster (2:3)"
-            accept="image/*"
-            file={posterFile}
-            currentUrl={movie?.posterUrl}
-            hint="JPG/PNG · 1080×1920"
-            onSelect={setPosterFile}
-          />
-          <FileDrop
-            id="movie-thumb-upload"
-            label="Thumbnail (16:9)"
-            accept="image/*"
-            file={thumbFile}
-            currentUrl={movie?.thumbnailUrl}
-            hint="JPG/PNG · 1920×1080"
-            onSelect={setThumbFile}
-          />
+          <div className="pt-4 mt-4" style={{ borderTop: "1.5px solid var(--cs-line)" }}>
+            <h3 className="cs-display mb-4" style={{ fontSize: 20, color: "var(--cs-ink)" }}>
+              PPV Settings
+            </h3>
+
+            <div className="flex items-center justify-between mb-4">
+              <CsSlug>Enable PPV</CsSlug>
+              <input
+                type="checkbox"
+                checked={ppvEnabled}
+                onChange={(e) => setPpvEnabled(e.target.checked)}
+                className="h-4 w-4"
+              />
+            </div>
+
+            {ppvEnabled && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <CsSlug className="mb-1">PPV Price (NGN)</CsSlug>
+                    <input
+                      type="number"
+                      value={ppvPrice}
+                      onChange={(e) => setPpvPrice(e.target.value)}
+                      style={fieldStyle}
+                      placeholder="1500"
+                    />
+                  </div>
+                  <div>
+                    <CsSlug className="mb-1">Currency</CsSlug>
+                    <select value={ppvCurrency} onChange={(e) => setPpvCurrency(e.target.value)} style={fieldStyle}>
+                      <option value="NGN">NGN</option>
+                      <option value="USD">USD</option>
+                    </select>
+                  </div>
+                </div>
+                <p className="cs-mono text-xs" style={{ color: "var(--cs-muted)" }}>
+                  Buy-only PPV. Access duration uses the backend default (e.g., 30 days).
+                </p>
+              </div>
+            )}
+          </div>
         </div>
-        <div>
+      )}
+
+      {steps[step].value === "media" && (
+        <div className="space-y-4 mt-4">
           <FileDrop
-            id="movie-short-trailer-upload"
-            label="Short trailer (hero background)"
+            id="movie-video-upload"
+            label="Video file"
             accept="video/*"
-            file={shortTrailerFile}
-            currentUrl={shortTrailerUrlText || (movie as any)?.shortTrailerUrl}
-            hint="MP4 or HLS"
-            onSelect={setShortTrailerFile}
+            file={videoFile}
+            hint="MP4, MOV, AVI · up to 5GB · queues after save"
+            onSelect={setVideoFile}
           />
-          <div className="mt-2">
-            <Label className="text-neutral-300">Or link</Label>
-            <Input
-              value={shortTrailerUrlText}
-              onChange={(e) => setShortTrailerUrlText(e.target.value)}
-              className="mt-1 bg-neutral-950 border-neutral-800 text-white"
-              placeholder="https://cdn.../short-trailer.mp4"
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FileDrop
+              id="movie-poster-upload"
+              label="Poster (2:3)"
+              accept="image/*"
+              file={posterFile}
+              currentUrl={movie?.posterUrl}
+              hint="JPG/PNG · 1080×1920"
+              onSelect={setPosterFile}
+            />
+            <FileDrop
+              id="movie-thumb-upload"
+              label="Thumbnail (16:9)"
+              accept="image/*"
+              file={thumbFile}
+              currentUrl={movie?.thumbnailUrl}
+              hint="JPG/PNG · 1920×1080"
+              onSelect={setThumbFile}
+            />
+          </div>
+          <div>
+            <FileDrop
+              id="movie-short-trailer-upload"
+              label="Short trailer (hero background)"
+              accept="video/*"
+              file={shortTrailerFile}
+              currentUrl={shortTrailerUrlText || (movie as any)?.shortTrailerUrl}
+              hint="MP4 or HLS"
+              onSelect={setShortTrailerFile}
+            />
+            <div className="mt-2">
+              <CsSlug className="mb-1">Or link</CsSlug>
+              <input
+                value={shortTrailerUrlText}
+                onChange={(e) => setShortTrailerUrlText(e.target.value)}
+                style={fieldStyle}
+                placeholder="https://cdn.../short-trailer.mp4"
+              />
+            </div>
+          </div>
+          <div>
+            <FileDrop
+              id="movie-trailer-upload"
+              label="Trailer"
+              accept="video/*"
+              file={trailerFile}
+              currentUrl={trailerUrlText || movie?.trailerUrl}
+              hint="MP4 preferred"
+              onSelect={setTrailerFile}
+            />
+            <div className="mt-2">
+              <CsSlug className="mb-1">Or link</CsSlug>
+              <input
+                value={trailerUrlText}
+                onChange={(e) => setTrailerUrlText(e.target.value)}
+                style={fieldStyle}
+                placeholder="https://youtube.com/..."
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {steps[step].value === "metadata" && (
+        <div className="space-y-4 mt-4">
+          <div>
+            <CsSlug className="mb-1">Meta Title</CsSlug>
+            <input
+              value={metaTitle}
+              onChange={(e) => setMetaTitle(e.target.value)}
+              style={fieldStyle}
+              placeholder="SEO title"
+            />
+          </div>
+
+          <div>
+            <CsSlug className="mb-1">Meta Description</CsSlug>
+            <textarea
+              value={metaDescription}
+              onChange={(e) => setMetaDescription(e.target.value)}
+              style={{ ...fieldStyle, resize: "vertical" }}
+              rows={3}
+              placeholder="SEO description"
+            />
+          </div>
+
+          <div>
+            <CsSlug className="mb-1">Keywords (comma separated)</CsSlug>
+            <input
+              value={metaKeywords}
+              onChange={(e) => setMetaKeywords(e.target.value)}
+              style={fieldStyle}
+              placeholder="keyword1, keyword2, keyword3"
             />
           </div>
         </div>
-        <div>
-          <FileDrop
-            id="movie-trailer-upload"
-            label="Trailer"
-            accept="video/*"
-            file={trailerFile}
-            currentUrl={trailerUrlText || movie?.trailerUrl}
-            hint="MP4 preferred"
-            onSelect={setTrailerFile}
-          />
-          <div className="mt-2">
-            <Label className="text-neutral-300">Or link</Label>
-            <Input
-              value={trailerUrlText}
-              onChange={(e) => setTrailerUrlText(e.target.value)}
-              className="mt-1 bg-neutral-950 border-neutral-800 text-white"
-              placeholder="https://youtube.com/..."
+      )}
+
+      {steps[step].value === "restrictions" && (
+        <div className="space-y-4 mt-4">
+          <div>
+            <CsSlug className="mb-1">Age Rating</CsSlug>
+            <select value={rating} onChange={(e) => setRating(e.target.value)} style={fieldStyle}>
+              <option value="">Select rating</option>
+              <option value="g">General (G)</option>
+              <option value="pg">Parental Guidance (PG)</option>
+              <option value="pg13">PG-13</option>
+              <option value="18">18+</option>
+            </select>
+          </div>
+
+          <div>
+            <CsSlug className="mb-1">Content Warnings</CsSlug>
+            <textarea
+              value={contentWarnings}
+              onChange={(e) => setContentWarnings(e.target.value)}
+              style={{ ...fieldStyle, resize: "vertical" }}
+              rows={3}
+              placeholder="List any content warnings"
             />
           </div>
         </div>
-      </TabsContent>
+      )}
 
-      <TabsContent value="metadata" className="space-y-4 mt-4">
-        <div>
-          <Label className="text-neutral-300">Meta Title</Label>
-          <Input
-            value={metaTitle}
-            onChange={(e) => setMetaTitle(e.target.value)}
-            className="mt-1 bg-neutral-950 border-neutral-800 text-white"
-            placeholder="SEO title"
-          />
-        </div>
+      {error && (
+        <p className="cs-mono text-xs" style={{ color: "var(--cs-rust)" }}>
+          {error}
+        </p>
+      )}
 
-        <div>
-          <Label className="text-neutral-300">Meta Description</Label>
-          <Textarea
-            value={metaDescription}
-            onChange={(e) => setMetaDescription(e.target.value)}
-            className="mt-1 bg-neutral-950 border-neutral-800 text-white"
-            rows={3}
-            placeholder="SEO description"
-          />
-        </div>
-
-        <div>
-          <Label className="text-neutral-300">Keywords (comma separated)</Label>
-          <Input
-            value={metaKeywords}
-            onChange={(e) => setMetaKeywords(e.target.value)}
-            className="mt-1 bg-neutral-950 border-neutral-800 text-white"
-            placeholder="keyword1, keyword2, keyword3"
-          />
-        </div>
-      </TabsContent>
-
-      <TabsContent value="restrictions" className="space-y-4 mt-4">
-        <div>
-          <Label className="text-neutral-300">Age Rating</Label>
-          <Select value={rating} onValueChange={setRating}>
-            <SelectTrigger className="mt-1 bg-neutral-950 border-neutral-800 text-white">
-              <SelectValue placeholder="Select rating" />
-            </SelectTrigger>
-            <SelectContent className="bg-neutral-900 border-neutral-800">
-              <SelectItem value="g">General (G)</SelectItem>
-              <SelectItem value="pg">Parental Guidance (PG)</SelectItem>
-              <SelectItem value="pg13">PG-13</SelectItem>
-              <SelectItem value="18">18+</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div>
-          <Label className="text-neutral-300">Content Warnings</Label>
-          <Textarea
-            value={contentWarnings}
-            onChange={(e) => setContentWarnings(e.target.value)}
-            className="mt-1 bg-neutral-950 border-neutral-800 text-white"
-            rows={3}
-            placeholder="List any content warnings"
-          />
-        </div>
-      </TabsContent>
-
-      </Tabs>
-
-      {error && <p className="text-red-400 text-sm">{error}</p>}
-
-      <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-neutral-800 bg-neutral-950/85 backdrop-blur-sm py-3">
-        <Button
-          variant="ghost"
-          disabled={step === 0}
-          onClick={() => setStep((s) => Math.max(0, s - 1))}
-          className="text-neutral-300 hover:text-white disabled:opacity-40"
-        >
-          <ChevronLeft className="w-4 h-4 mr-1" />
-          Back
-        </Button>
+      <div
+        className="sticky bottom-0 flex items-center justify-between gap-3 py-3"
+        style={{ borderTop: "2.5px solid var(--cs-ink)", background: "var(--cs-paper)" }}
+      >
+        <CsButton variant="outline" disabled={step === 0} onClick={() => setStep((s) => Math.max(0, s - 1))}>
+          <span className="inline-flex items-center gap-1">
+            <ChevronLeft className="w-4 h-4" />
+            Back
+          </span>
+        </CsButton>
         {isLast ? (
-          <Button disabled={saving} onClick={handleSave} className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
+          <CsButton variant="rust" disabled={saving} onClick={handleSave}>
             {saving ? "Saving…" : "Save movie"}
-          </Button>
+          </CsButton>
         ) : (
-          <Button
-            onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}
-            className="bg-[#fd7e14] hover:bg-[#ff9940] text-white"
-          >
-            Next
-            <ChevronRight className="w-4 h-4 ml-1" />
-          </Button>
+          <CsButton variant="ink" onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}>
+            <span className="inline-flex items-center gap-1">
+              Next
+              <ChevronRight className="w-4 h-4" />
+            </span>
+          </CsButton>
         )}
       </div>
     </div>

@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Button } from "./ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
-import { Badge } from "./ui/badge";
 import { authFetch } from "@/lib/authClient";
+import { CsBox, CsButton, CsEmpty, CsPageHeader, CsSlug, CsTag } from "./cs/kit";
 
 type UploadJob = {
   id: string;
@@ -43,22 +40,32 @@ const statusLabel = (status: UploadJob["status"]) => {
   }
 };
 
-const statusBadge = (status: UploadJob["status"]) => {
+const statusTone = (status: UploadJob["status"]): "good" | "bad" | "pending" | "neutral" => {
   switch (status) {
     case "UPLOADING":
-      return "bg-blue-500/20 text-blue-300";
+      return "neutral";
     case "PROCESSING":
-      return "bg-amber-500/20 text-amber-300";
+      return "pending";
     case "COMPLETED":
-      return "bg-emerald-500/20 text-emerald-300";
+      return "good";
     case "FAILED":
-      return "bg-red-500/20 text-red-300";
+      return "bad";
     default:
-      return "bg-neutral-700 text-neutral-200";
+      return "neutral";
   }
 };
 
 const isOngoing = (status: UploadJob["status"]) => status === "UPLOADING" || status === "PROCESSING";
+
+type TabKey = "ongoing" | "completed" | "failed" | "all";
+
+const tabStyle = (active: boolean): React.CSSProperties => ({
+  border: "2px solid var(--cs-ink)",
+  background: active ? "var(--cs-ink)" : "var(--cs-paper)",
+  color: active ? "#fff" : "var(--cs-ink)",
+  padding: "8px 14px",
+  fontSize: 11,
+});
 
 export function ProcessManagement() {
   const [jobs, setJobs] = useState<UploadJob[]>([]);
@@ -66,6 +73,7 @@ export function ProcessManagement() {
   const [error, setError] = useState<string | null>(null);
    const [backfillRunning, setBackfillRunning] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<TabKey>("ongoing");
 
   const fetchJobs = async () => {
     try {
@@ -145,7 +153,7 @@ export function ProcessManagement() {
 
   const renderList = (items: UploadJob[]) => {
     if (items.length === 0) {
-      return <p className="text-sm text-neutral-500">No processes found.</p>;
+      return <CsEmpty slug="Nothing here" body="No processes found." />;
     }
     return (
       <div className="space-y-3">
@@ -163,94 +171,95 @@ export function ProcessManagement() {
           const canRetry = job.status === "FAILED" || job.status === "PROCESSING";
           const actionLabel = job.status === "FAILED" ? "Retry" : "Restart";
           return (
-            <Card key={job.id} className="bg-neutral-950 border-neutral-800">
-              <CardContent className="p-4 space-y-2">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-white text-sm">Job #{job.id}</p>
-                    <p className="text-xs text-neutral-500">
-                      {job.createdAt ? new Date(job.createdAt).toLocaleString() : "Unknown time"}
-                    </p>
-                  </div>
-                  <Badge className={statusBadge(job.status)}>{statusLabel(job.status)}</Badge>
+            <CsBox key={job.id} shadow={false} className="p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="cs-mono text-sm font-bold" style={{ color: 'var(--cs-ink)' }}>Job #{job.id}</p>
+                  <p className="cs-mono mt-1" style={{ fontSize: 10, color: 'var(--cs-muted)' }}>
+                    {job.createdAt ? new Date(job.createdAt).toLocaleString() : "Unknown time"}
+                  </p>
                 </div>
-                <div className="text-xs text-neutral-400">
-                  {job.status === "PROCESSING" ? "Transcoding" : `${formatBytes(uploaded)} / ${formatBytes(total)}`}
-                  {typeof percent === "number" ? ` - ${percent}%` : ""}
+                <CsTag label={statusLabel(job.status)} tone={statusTone(job.status)} />
+              </div>
+              <div className="cs-mono mt-2" style={{ fontSize: 11, color: 'var(--cs-muted)' }}>
+                {job.status === "PROCESSING" ? "Transcoding" : `${formatBytes(uploaded)} / ${formatBytes(total)}`}
+                {typeof percent === "number" ? ` - ${percent}%` : ""}
+              </div>
+              {job.error && (
+                <p className="cs-mono mt-1" style={{ fontSize: 11, color: 'var(--cs-rust)' }}>Error: {job.error}</p>
+              )}
+              {canRetry && (
+                <div className="flex justify-end mt-3">
+                  <CsButton variant="rust" disabled={actionId === job.id} onClick={() => handleRetry(job)}>
+                    {actionId === job.id ? "Requeuing…" : actionLabel}
+                  </CsButton>
                 </div>
-                {job.error && <p className="text-xs text-red-400">Error: {job.error}</p>}
-                {canRetry && (
-                  <div className="flex justify-end">
-                    <Button
-                      size="sm"
-                      className="bg-[#fd7e14] hover:bg-[#ff9940] text-white"
-                      disabled={actionId === job.id}
-                      onClick={() => handleRetry(job)}
-                    >
-                      {actionId === job.id ? "Requeuing..." : actionLabel}
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+              )}
+            </CsBox>
           );
         })}
       </div>
     );
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl text-white">Processes</h1>
-          <p className="text-neutral-400 mt-1">Transcode processes</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button
-            onClick={handleBackfill}
-            className="bg-neutral-800 hover:bg-neutral-700 text-white border border-neutral-600"
-            disabled={backfillRunning}
-          >
-            {backfillRunning ? "Starting…" : "Backfill old titles"}
-          </Button>
-          <Button onClick={fetchJobs} className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
-            Refresh
-          </Button>
-        </div>
-      </div>
+  const tabs: { key: TabKey; label: string; items: UploadJob[] }[] = [
+    { key: "ongoing", label: `Ongoing (${ongoing.length})`, items: ongoing },
+    { key: "completed", label: `Completed (${completed.length})`, items: completed },
+    { key: "failed", label: `Failed (${failed.length})`, items: failed },
+    { key: "all", label: `All (${processesOnly.length})`, items: processesOnly },
+  ];
+  const activeItems = tabs.find((t) => t.key === activeTab)?.items ?? [];
 
-      <Card className="bg-neutral-900 border-neutral-800">
-        <CardHeader>
-          <CardTitle className="text-white">Status</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading && <p className="text-sm text-neutral-400">Loading...</p>}
-          {error && <p className="text-sm text-red-400">{error}</p>}
-          {!loading && !error && (
-            <Tabs defaultValue="ongoing">
-              <TabsList className="bg-neutral-800 border-neutral-700">
-                <TabsTrigger value="ongoing" className="data-[state=active]:bg-[#fd7e14] data-[state=active]:text-white">
-                  Ongoing ({ongoing.length})
-                </TabsTrigger>
-                <TabsTrigger value="completed" className="data-[state=active]:bg-[#fd7e14] data-[state=active]:text-white">
-                  Completed ({completed.length})
-                </TabsTrigger>
-                <TabsTrigger value="failed" className="data-[state=active]:bg-[#fd7e14] data-[state=active]:text-white">
-                  Failed ({failed.length})
-                </TabsTrigger>
-                <TabsTrigger value="all" className="data-[state=active]:bg-[#fd7e14] data-[state=active]:text-white">
-                  All ({processesOnly.length})
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="ongoing" className="mt-4">{renderList(ongoing)}</TabsContent>
-              <TabsContent value="completed" className="mt-4">{renderList(completed)}</TabsContent>
-              <TabsContent value="failed" className="mt-4">{renderList(failed)}</TabsContent>
-              <TabsContent value="all" className="mt-4">{renderList(processesOnly)}</TabsContent>
-            </Tabs>
+  return (
+    <div className="space-y-8">
+      <CsPageHeader
+        title="The cutting room"
+        chip={`${processesOnly.length} processes`}
+        slug="Transcode processes · encoding pipeline"
+        actions={
+          <div className="flex items-center gap-3">
+            <CsButton variant="outline" onClick={handleBackfill} disabled={backfillRunning}>
+              {backfillRunning ? "Starting…" : "Backfill old titles"}
+            </CsButton>
+            <CsButton variant="ink" onClick={fetchJobs}>
+              Refresh
+            </CsButton>
+          </div>
+        }
+      />
+
+      <CsBox className="p-5">
+        <CsSlug>Status</CsSlug>
+        <div className="mt-4">
+          {loading && (
+            <p className="cs-mono text-xs" style={{ color: 'var(--cs-muted)' }}>Loading…</p>
           )}
-        </CardContent>
-      </Card>
+          {error && (
+            <div className="cs-border p-4 mb-4" style={{ borderColor: 'var(--cs-rust)' }}>
+              <p className="cs-mono text-xs font-bold uppercase" style={{ color: 'var(--cs-rust)' }}>
+                {error}
+              </p>
+            </div>
+          )}
+          {!loading && !error && (
+            <>
+              <div className="flex flex-wrap gap-2 mb-4">
+                {tabs.map((t) => (
+                  <button
+                    key={t.key}
+                    onClick={() => setActiveTab(t.key)}
+                    className="cs-mono font-bold uppercase"
+                    style={tabStyle(activeTab === t.key)}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+              {renderList(activeItems)}
+            </>
+          )}
+        </div>
+      </CsBox>
     </div>
   );
 }

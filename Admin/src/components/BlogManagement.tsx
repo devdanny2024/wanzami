@@ -1,14 +1,7 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Textarea } from './ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
-import { Badge } from './ui/badge';
 import { Plus, Edit, Trash2, Eye, Search } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { CsBox, CsButton, CsPageHeader, CsSlug, CsTable, CsTag, type CsColumn } from './cs/kit';
 
 const mockBlogPosts = [
   {
@@ -43,112 +36,179 @@ const mockBlogPosts = [
   },
 ];
 
+type BlogPost = (typeof mockBlogPosts)[number];
+
+const fieldStyle: React.CSSProperties = {
+  border: '2px solid var(--cs-ink)',
+  background: 'var(--cs-paper)',
+  color: 'var(--cs-ink)',
+  fontFamily: 'var(--font-smono), monospace',
+  fontSize: 12,
+  padding: '9px 12px',
+  width: '100%',
+};
+
 export function BlogManagement() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl text-white">Blog Management</h1>
-          <p className="text-neutral-400 mt-1">Manage blog content and articles</p>
+  const columns: CsColumn<BlogPost>[] = [
+    {
+      key: 'cover',
+      header: 'Cover',
+      cell: (post) => (
+        <ImageWithFallback
+          src={post.coverImage}
+          alt={post.title}
+          className="w-24 h-16 object-cover"
+        />
+      ),
+    },
+    {
+      key: 'title',
+      header: 'Title',
+      cell: (post) => (
+        <span className="cs-mono text-xs font-bold uppercase" style={{ color: 'var(--cs-ink)' }}>
+          {post.title}
+        </span>
+      ),
+    },
+    {
+      key: 'category',
+      header: 'Category',
+      cell: (post) => <CsTag label={post.category} tone="neutral" />,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      cell: (post) => <CsTag label={post.status} tone={post.status === 'Published' ? 'good' : 'pending'} />,
+    },
+    {
+      key: 'author',
+      header: 'Author',
+      cell: (post) => <span className="cs-mono text-xs">{post.author}</span>,
+    },
+    {
+      key: 'views',
+      header: 'Views',
+      align: 'right',
+      cell: (post) => (
+        <span className="inline-flex items-center gap-1 cs-mono text-xs">
+          <Eye className="w-3.5 h-3.5" />
+          {post.views.toLocaleString()}
+        </span>
+      ),
+    },
+    {
+      key: 'date',
+      header: 'Date',
+      cell: (post) => (
+        <span className="cs-mono text-xs" style={{ color: 'var(--cs-muted)' }}>
+          {post.publishedDate || 'Not published'}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      cell: () => (
+        <div className="flex gap-2">
+          <button
+            className="p-1.5 transition-colors hover:bg-[var(--cs-panel)]"
+            style={{ border: '2px solid var(--cs-ink)', color: 'var(--cs-ink)' }}
+            aria-label="Edit post"
+          >
+            <Edit className="w-3.5 h-3.5" />
+          </button>
+          <button
+            className="p-1.5 transition-colors hover:bg-[var(--cs-panel)]"
+            style={{ border: '2px solid var(--cs-rust)', color: 'var(--cs-rust)' }}
+            aria-label="Delete post"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
-              <Plus className="w-4 h-4 mr-2" />
-              New Post
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="bg-neutral-900 border-neutral-800 text-white max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-white">Create Blog Post</DialogTitle>
-            </DialogHeader>
-            <BlogEditor onClose={() => setIsAddDialogOpen(false)} />
-          </DialogContent>
-        </Dialog>
-      </div>
+      ),
+    },
+  ];
+
+  return (
+    <div className="space-y-8">
+      <CsPageHeader
+        title="The press room"
+        chip={`${mockBlogPosts.length} posts`}
+        slug="Blog management · articles and announcements"
+        actions={
+          <CsButton variant="rust" onClick={() => setIsAddDialogOpen(true)}>
+            <span className="inline-flex items-center gap-2">
+              <Plus className="w-3.5 h-3.5" />
+              New post
+            </span>
+          </CsButton>
+        }
+      />
 
       {/* Search */}
-      <Card className="bg-neutral-900 border-neutral-800">
-        <CardContent className="pt-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
-            <Input
-              type="search"
-              placeholder="Search blog posts..."
-              className="pl-10 bg-neutral-950 border-neutral-800 text-white"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <CsBox className="p-5">
+        <div className="relative">
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
+            style={{ color: 'var(--cs-muted)' }}
+          />
+          <input
+            type="search"
+            placeholder="SEARCH BLOG POSTS…"
+            style={{ ...fieldStyle, paddingLeft: 38 }}
+          />
+        </div>
+      </CsBox>
 
       {/* Blog Posts List */}
-      <Card className="bg-neutral-900 border-neutral-800">
-        <CardHeader>
-          <CardTitle className="text-white">All Blog Posts</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-neutral-800">
-                  <th className="text-left py-3 px-4 text-neutral-400">Cover</th>
-                  <th className="text-left py-3 px-4 text-neutral-400">Title</th>
-                  <th className="text-left py-3 px-4 text-neutral-400">Category</th>
-                  <th className="text-left py-3 px-4 text-neutral-400">Status</th>
-                  <th className="text-left py-3 px-4 text-neutral-400">Author</th>
-                  <th className="text-left py-3 px-4 text-neutral-400">Views</th>
-                  <th className="text-left py-3 px-4 text-neutral-400">Date</th>
-                  <th className="text-left py-3 px-4 text-neutral-400">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {mockBlogPosts.map((post) => (
-                  <tr key={post.id} className="border-b border-neutral-800 hover:bg-neutral-800/50 transition-colors">
-                    <td className="py-3 px-4">
-                      <ImageWithFallback
-                        src={post.coverImage}
-                        alt={post.title}
-                        className="w-24 h-16 object-cover rounded-lg"
-                      />
-                    </td>
-                    <td className="py-3 px-4 text-white max-w-xs truncate">{post.title}</td>
-                    <td className="py-3 px-4">
-                      <Badge variant="secondary" className="bg-neutral-800 text-neutral-300">
-                        {post.category}
-                      </Badge>
-                    </td>
-                    <td className="py-3 px-4">
-                      <Badge variant={post.status === 'Published' ? 'default' : 'secondary'} className={post.status === 'Published' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}>
-                        {post.status}
-                      </Badge>
-                    </td>
-                    <td className="py-3 px-4 text-neutral-300">{post.author}</td>
-                    <td className="py-3 px-4 text-neutral-300">
-                      <div className="flex items-center gap-1">
-                        <Eye className="w-4 h-4" />
-                        {post.views.toLocaleString()}
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-neutral-300">{post.publishedDate || 'Not published'}</td>
-                    <td className="py-3 px-4">
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="ghost" className="text-[#fd7e14] hover:text-[#ff9940] hover:bg-[#fd7e14]/10">
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-300 hover:bg-red-500/10">
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <CsBox className="p-5">
+        <CsSlug>All blog posts</CsSlug>
+        <div className="mt-4">
+          <CsTable
+            columns={columns}
+            rows={mockBlogPosts}
+            rowKey={(post) => String(post.id)}
+            emptySlug="Nothing published yet"
+            emptyBody="No blog posts to show."
+          />
+        </div>
+      </CsBox>
+
+      {isAddDialogOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-6"
+          style={{ background: 'rgba(22, 19, 16, 0.55)' }}
+          onClick={() => setIsAddDialogOpen(false)}
+        >
+          <div
+            className="cs-border cs-shadow w-full max-w-4xl p-6 overflow-y-auto"
+            style={{ background: 'var(--cs-paper)', maxHeight: '90vh' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between pb-4" style={{ borderBottom: '2.5px solid var(--cs-ink)' }}>
+              <div>
+                <CsSlug>New entry</CsSlug>
+                <h3 className="cs-display mt-1" style={{ fontSize: 30, color: 'var(--cs-ink)' }}>
+                  Create blog post
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsAddDialogOpen(false)}
+                className="cs-mono text-xs font-bold px-2 py-1"
+                style={{ border: '2px solid var(--cs-ink)' }}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="mt-4">
+              <BlogEditor onClose={() => setIsAddDialogOpen(false)} />
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      )}
     </div>
   );
 }
@@ -159,90 +219,82 @@ function BlogEditor({ onClose }: { onClose: () => void }) {
   return (
     <div className="space-y-4">
       <div>
-        <Label className="text-neutral-300">Cover Image</Label>
-        <div className="mt-1 border-2 border-dashed border-neutral-800 rounded-lg p-8 text-center bg-neutral-950">
-          <p className="text-neutral-400">Drop cover image here or click to browse</p>
-          <p className="text-xs text-neutral-500 mt-1">Recommended: 1920x1080</p>
+        <CsSlug className="mb-1">Cover image</CsSlug>
+        <div className="p-10 text-center" style={{ border: '2px dashed var(--cs-line)', background: 'var(--cs-panel)' }}>
+          <p className="text-sm" style={{ color: 'var(--cs-ink)' }}>Drop cover image here or click to browse</p>
+          <p className="cs-mono mt-1" style={{ fontSize: 10, color: 'var(--cs-muted)' }}>Recommended: 1920x1080</p>
         </div>
       </div>
 
       <div>
-        <Label className="text-neutral-300">Title</Label>
-        <Input className="mt-1 bg-neutral-950 border-neutral-800 text-white" placeholder="Enter post title" />
+        <CsSlug className="mb-1">Title</CsSlug>
+        <input style={fieldStyle} placeholder="Enter post title" />
       </div>
 
       <div>
-        <Label className="text-neutral-300">Category</Label>
-        <Select>
-          <SelectTrigger className="mt-1 bg-neutral-950 border-neutral-800 text-white">
-            <SelectValue placeholder="Select category" />
-          </SelectTrigger>
-          <SelectContent className="bg-neutral-900 border-neutral-800">
-            <SelectItem value="news">Industry News</SelectItem>
-            <SelectItem value="recommendations">Recommendations</SelectItem>
-            <SelectItem value="bts">Behind the Scenes</SelectItem>
-            <SelectItem value="interviews">Interviews</SelectItem>
-            <SelectItem value="reviews">Reviews</SelectItem>
-          </SelectContent>
-        </Select>
+        <CsSlug className="mb-1">Category</CsSlug>
+        <select style={{ ...fieldStyle, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em' }} defaultValue="">
+          <option value="" disabled>
+            Select category
+          </option>
+          <option value="news">Industry News</option>
+          <option value="recommendations">Recommendations</option>
+          <option value="bts">Behind the Scenes</option>
+          <option value="interviews">Interviews</option>
+          <option value="reviews">Reviews</option>
+        </select>
       </div>
 
       <div>
-        <div className="flex items-center justify-between mb-1">
-          <Label className="text-neutral-300">Article Content</Label>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => setPreviewMode(!previewMode)}
-            className="border-neutral-700 text-neutral-300"
-          >
+        <div className="flex items-center justify-between mb-1.5">
+          <CsSlug>Article content</CsSlug>
+          <CsButton variant="outline" onClick={() => setPreviewMode(!previewMode)}>
             {previewMode ? 'Edit' : 'Preview'}
-          </Button>
+          </CsButton>
         </div>
         {previewMode ? (
-          <div className="min-h-[300px] p-4 bg-neutral-950 border border-neutral-800 rounded-lg text-neutral-300">
-            <p>Preview mode - article content will appear here</p>
+          <div className="p-4" style={{ minHeight: 300, border: '2px solid var(--cs-ink)', background: 'var(--cs-panel)', color: 'var(--cs-ink)' }}>
+            <p className="text-sm">Preview mode - article content will appear here</p>
           </div>
         ) : (
-          <Textarea
-            className="mt-1 bg-neutral-950 border-neutral-800 text-white min-h-[300px]"
+          <textarea
+            style={{ ...fieldStyle, minHeight: 300, resize: 'vertical' }}
             placeholder="Write your article content here..."
           />
         )}
       </div>
 
-      <div className="border-t border-neutral-800 pt-4">
-        <h3 className="text-white mb-3">SEO Settings</h3>
-        
+      <div className="pt-4" style={{ borderTop: '1.5px solid var(--cs-line)' }}>
+        <h3 className="cs-display mb-3" style={{ fontSize: 20, color: 'var(--cs-ink)' }}>SEO settings</h3>
+
         <div className="space-y-3">
           <div>
-            <Label className="text-neutral-300">Meta Title</Label>
-            <Input className="mt-1 bg-neutral-950 border-neutral-800 text-white" placeholder="SEO title" />
+            <CsSlug className="mb-1">Meta title</CsSlug>
+            <input style={fieldStyle} placeholder="SEO title" />
           </div>
 
           <div>
-            <Label className="text-neutral-300">Meta Description</Label>
-            <Textarea className="mt-1 bg-neutral-950 border-neutral-800 text-white" rows={2} placeholder="SEO description" />
+            <CsSlug className="mb-1">Meta description</CsSlug>
+            <textarea style={{ ...fieldStyle, resize: 'vertical' }} rows={2} placeholder="SEO description" />
           </div>
 
           <div>
-            <Label className="text-neutral-300">Keywords (comma separated)</Label>
-            <Input className="mt-1 bg-neutral-950 border-neutral-800 text-white" placeholder="keyword1, keyword2, keyword3" />
+            <CsSlug className="mb-1">Keywords (comma separated)</CsSlug>
+            <input style={fieldStyle} placeholder="keyword1, keyword2, keyword3" />
           </div>
         </div>
       </div>
 
-      <div className="flex justify-end gap-3 pt-4 border-t border-neutral-800">
-        <Button variant="outline" onClick={onClose} className="border-neutral-700 text-neutral-300 hover:bg-neutral-800">
+      <div className="flex justify-end gap-3 pt-4" style={{ borderTop: '1.5px solid var(--cs-line)' }}>
+        <CsButton variant="outline" onClick={onClose}>
           Cancel
-        </Button>
-        <Button variant="outline" className="border-neutral-700 text-neutral-300 hover:bg-neutral-800">
-          Save Draft
-        </Button>
-        <Button onClick={onClose} className="bg-[#fd7e14] hover:bg-[#ff9940] text-white">
+        </CsButton>
+        <CsButton variant="outline" onClick={onClose}>
+          Save draft
+        </CsButton>
+        <CsButton variant="rust" onClick={onClose}>
           Publish
-        </Button>
+        </CsButton>
       </div>
     </div>
   );

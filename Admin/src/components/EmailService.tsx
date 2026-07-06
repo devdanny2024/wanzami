@@ -1,10 +1,4 @@
 import { useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Textarea } from "./ui/textarea";
-import { Badge } from "./ui/badge";
-import { Progress } from "./ui/progress";
 import {
   FileText,
   Inbox,
@@ -17,6 +11,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
+import { CsBox, CsButton, CsPageHeader, CsSlug, CsStat, CsTag } from "./cs/kit";
 
 type Recipient = {
   email: string;
@@ -158,6 +153,16 @@ const FILMMAKER_TEMPLATE_BODY = `<!DOCTYPE html>
   </table>
 </body>
 </html>`;
+
+const fieldStyle: React.CSSProperties = {
+  border: '2px solid var(--cs-ink)',
+  background: 'var(--cs-paper)',
+  color: 'var(--cs-ink)',
+  fontFamily: 'var(--font-smono), monospace',
+  fontSize: 12,
+  padding: '9px 12px',
+  width: '100%',
+};
 
 export function EmailService() {
   const [recipients, setRecipients] = useState<Recipient[]>([]);
@@ -482,88 +487,44 @@ export function EmailService() {
   }, [templateBody, sampleRecipient]);
 
   return (
-    <div className="space-y-6 email-service-root">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl text-white">Email Service</h1>
-        <p className="text-neutral-400">
-          Upload a recipient list (CSV/XLSX), craft a template, send tests, and launch campaigns with confidence.
-        </p>
-      </div>
+    <div className="space-y-8 email-service-root">
+      <CsPageHeader
+        title="The wire room"
+        chip={readyToSend ? 'Ready' : 'Draft'}
+        slug="Email service · upload a list, craft a template, send tests, launch campaigns"
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-neutral-900 border-neutral-800">
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-neutral-400 text-xs">Audience ready</p>
-                <p className="text-2xl text-white font-semibold">{dedupedRecipients.length}</p>
-              </div>
-              <Users className="w-10 h-10 text-[#fd7e14]" />
-            </div>
-            <p className="text-xs text-neutral-500 mt-2">Unique addresses after deduplication.</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-neutral-900 border-neutral-800">
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-neutral-400 text-xs">Test list</p>
-                <p className="text-2xl text-white font-semibold">{validTestEmails.length}</p>
-              </div>
-              <TestTube className="w-10 h-10 text-emerald-400" />
-            </div>
-            <p className="text-xs text-neutral-500 mt-2">Addresses that will receive the next test.</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-neutral-900 border-neutral-800">
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-neutral-400 text-xs">Template</p>
-                <p className="text-2xl text-white font-semibold">
-                  {templateSubject.trim().length > 0 ? "Ready" : "Draft"}
-                </p>
-              </div>
-              <FileText className="w-10 h-10 text-sky-400" />
-            </div>
-            <p className="text-xs text-neutral-500 mt-2 truncate">{templateSubject || "Add a subject"}</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-neutral-900 border-neutral-800">
-          <CardContent className="pt-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-neutral-400 text-xs">Last actions</p>
-                <p className="text-sm text-white font-semibold">
-                  {lastSend || lastTest || "No sends yet"}
-                </p>
-              </div>
-              <MailCheck className="w-10 h-10 text-amber-300" />
-            </div>
-            {lastTest && <p className="text-[11px] text-neutral-500">Test: {lastTest}</p>}
-            {lastSend && <p className="text-[11px] text-neutral-500">Live: {lastSend}</p>}
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        <CsStat label="Audience ready" value={String(dedupedRecipients.length)} hint="Unique addresses after deduplication" />
+        <CsStat label="Test list" value={String(validTestEmails.length)} hint="Will receive the next test" />
+        <CsStat
+          label="Template"
+          value={templateSubject.trim().length > 0 ? "Ready" : "Draft"}
+          hint={templateSubject || "Add a subject"}
+        />
+        <CsStat label="Last actions" value={lastSend || lastTest ? "Logged" : "None yet"} hint={lastSend || lastTest || "No sends yet"} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="bg-neutral-900 border-neutral-800">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-white text-lg">Upload recipients</CardTitle>
-              <Badge className="bg-neutral-800 text-neutral-200 border border-neutral-700">
-                CSV, TXT, XLSX
-              </Badge>
-            </div>
-            <p className="text-neutral-400 text-sm">Upload a CSV or Excel file (name,email) or paste addresses below.</p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <label className="border border-dashed border-neutral-700 hover:border-[#fd7e14] transition-colors rounded-lg p-4 flex flex-col items-center gap-2 text-neutral-300 cursor-pointer">
-              <Upload className="w-6 h-6 text-[#fd7e14]" />
-              <p className="text-sm text-center">
+        <CsBox className="p-5">
+          <div className="flex items-center justify-between">
+            <CsSlug>Upload recipients</CsSlug>
+            <CsTag label="CSV, TXT, XLSX" tone="neutral" />
+          </div>
+          <p className="text-sm mt-2" style={{ color: 'var(--cs-muted)' }}>
+            Upload a CSV or Excel file (name,email) or paste addresses below.
+          </p>
+
+          <div className="mt-4 space-y-4">
+            <label
+              className="flex flex-col items-center gap-2 p-4 cursor-pointer"
+              style={{ border: '1.5px dashed var(--cs-ink)' }}
+            >
+              <Upload className="w-6 h-6" style={{ color: 'var(--cs-rust)' }} />
+              <p className="text-sm text-center" style={{ color: 'var(--cs-muted)' }}>
                 Drop a CSV/TXT/XLSX file here, or click to choose.
               </p>
-              <Input
+              <input
                 type="file"
                 accept=".csv,.txt,.xlsx,.xls"
                 className="hidden"
@@ -571,118 +532,114 @@ export function EmailService() {
               />
             </label>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <label className="text-sm text-neutral-300">Quick add emails</label>
-                  <Button
-                    size="sm"
-                    className="bg-[#fd7e14] hover:bg-[#ff9940] text-white flex items-center gap-2 border-none"
-                    onClick={() => void loadAllRegisteredUsers()}
-                    disabled={loadingAudience}
-                  >
-                    <Users className="w-4 h-4" />
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <CsSlug>Quick add emails</CsSlug>
+                <CsButton variant="rust" onClick={() => void loadAllRegisteredUsers()} disabled={loadingAudience}>
+                  <span className="inline-flex items-center gap-2">
+                    <Users className="w-3.5 h-3.5" />
                     {loadingAudience ? "Loading users..." : "Add all registered users"}
-                  </Button>
-                </div>
-              <Textarea
+                  </span>
+                </CsButton>
+              </div>
+              <textarea
                 value={manualList}
                 onChange={(e) => setManualList(e.target.value)}
                 placeholder="One email per line or comma separated"
-                className="bg-neutral-950 border-neutral-800 text-white"
+                style={{ ...fieldStyle, resize: 'vertical' }}
                 rows={4}
               />
               <div className="flex items-center justify-between">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-neutral-700 text-white"
-                  onClick={handleManualAdd}
-                >
-                  <Inbox className="w-4 h-4 mr-2" />
-                  Add emails
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="text-neutral-400 hover:text-white"
+                <CsButton variant="outline" onClick={handleManualAdd}>
+                  <span className="inline-flex items-center gap-2">
+                    <Inbox className="w-3.5 h-3.5" />
+                    Add emails
+                  </span>
+                </CsButton>
+                <button
                   onClick={clearAudience}
                   title="Clear audience"
+                  className="p-2"
+                  style={{ color: 'var(--cs-muted)' }}
                 >
                   <Trash2 className="w-4 h-4" />
-                </Button>
+                </button>
               </div>
             </div>
 
-            <div className="bg-neutral-950 border border-neutral-800 rounded-lg p-3 space-y-2">
+            <div className="p-3 space-y-2" style={{ border: '1.5px solid var(--cs-line)', background: 'var(--cs-panel)' }}>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-neutral-400">Last upload</span>
-                <span className="text-white">{uploadInfo.fileName ?? "—"}</span>
+                <span style={{ color: 'var(--cs-muted)' }}>Last upload</span>
+                <span style={{ color: 'var(--cs-ink)' }}>{uploadInfo.fileName ?? "—"}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-neutral-400">Imported</span>
-                <span className="text-white">{uploadInfo.imported}</span>
+                <span style={{ color: 'var(--cs-muted)' }}>Imported</span>
+                <span style={{ color: 'var(--cs-ink)' }}>{uploadInfo.imported}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-neutral-400">Skipped</span>
-                <span className="text-amber-400">{uploadInfo.invalid}</span>
+                <span style={{ color: 'var(--cs-muted)' }}>Skipped</span>
+                <span style={{ color: 'var(--cs-rust)' }}>{uploadInfo.invalid}</span>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </CsBox>
 
-        <Card className="bg-neutral-900 border-neutral-800 lg:col-span-2">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
+        <CsBox className="p-5 lg:col-span-2">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <div>
-                <CardTitle className="text-white text-lg">Template</CardTitle>
-                <p className="text-neutral-400 text-sm">Write the subject and body you want to send.</p>
+                <CsSlug>Template</CsSlug>
+                <p className="text-sm mt-1" style={{ color: 'var(--cs-muted)' }}>Write the subject and body you want to send.</p>
               </div>
-              <div className="flex gap-2">
-                <Badge className="bg-neutral-800 text-neutral-200 border border-neutral-700">{"{{name}}"}</Badge>
-                <Badge className="bg-neutral-800 text-neutral-200 border border-neutral-700">{"{{email}}"}</Badge>
-                <Button size="sm" variant="outline" className="border-neutral-700 text-white" onClick={loadFilmmakerTemplate}>
-                  <FileText className="w-4 h-4 mr-2" />
-                  Load filmmaker template
-                </Button>
+              <div className="flex gap-2 items-center flex-wrap">
+                <CsTag label="{{name}}" tone="neutral" />
+                <CsTag label="{{email}}" tone="neutral" />
+                <CsButton variant="outline" onClick={loadFilmmakerTemplate}>
+                  <span className="inline-flex items-center gap-2">
+                    <FileText className="w-3.5 h-3.5" />
+                    Load filmmaker template
+                  </span>
+                </CsButton>
               </div>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm text-neutral-300">Subject</label>
-              <Input
+
+            <div className="mt-4 space-y-2">
+              <CsSlug>Subject</CsSlug>
+              <input
                 value={templateSubject}
                 onChange={(e) => setTemplateSubject(e.target.value)}
-                className="bg-neutral-950 border-neutral-800 text-white"
+                style={fieldStyle}
                 placeholder="Subject"
               />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <div className="space-y-2">
-                <label className="text-sm text-neutral-300">Email body</label>
-                <Textarea
+                <CsSlug>Email body</CsSlug>
+                <textarea
                   value={templateBody}
                   onChange={(e) => setTemplateBody(e.target.value)}
-                  className="bg-neutral-950 border-neutral-800 text-white h-full"
+                  style={{ ...fieldStyle, resize: 'vertical' }}
                   rows={12}
                   placeholder="Paste your HTML or text email template here"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm text-neutral-300">Preview</label>
-                <div className="bg-neutral-950 border border-neutral-800 rounded-lg p-4 h-full flex flex-col gap-3">
-                  <div className="flex items-center gap-2 text-sm text-neutral-400">
-                    <span className="font-semibold text-white">To:</span>
+                <CsSlug>Preview</CsSlug>
+                <div className="p-4 flex flex-col gap-3" style={{ border: '1.5px solid var(--cs-line)', background: 'var(--cs-panel)' }}>
+                  <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--cs-muted)' }}>
+                    <span className="font-bold" style={{ color: 'var(--cs-ink)' }}>To:</span>
                     <span>{sampleRecipient.name ?? "Subscriber"} &lt;{sampleRecipient.email}&gt;</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-neutral-400">
-                    <span className="font-semibold text-white">Subject:</span>
+                  <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--cs-muted)' }}>
+                    <span className="font-bold" style={{ color: 'var(--cs-ink)' }}>Subject:</span>
                     <span>{templateSubject || "Subject goes here"}</span>
                   </div>
-                  <div className="bg-neutral-900 border border-neutral-800 rounded-md p-3 text-neutral-200 text-sm overflow-y-auto">
+                  <div
+                    className="overflow-y-auto text-sm"
+                    style={{ background: 'var(--cs-paper)', border: '1.5px solid var(--cs-line)', padding: 12, color: 'var(--cs-ink)' }}
+                  >
                     {isHtmlTemplate ? (
                       <div
-                        className="text-neutral-200 text-sm leading-relaxed [&_*]:max-w-full [&_*]:text-current"
+                        className="text-sm leading-relaxed [&_*]:max-w-full [&_*]:text-current"
                         dangerouslySetInnerHTML={{
                           __html: personalizedPreview || "Your template preview will appear here.",
                         }}
@@ -694,137 +651,134 @@ export function EmailService() {
                 </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
+        </CsBox>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="bg-neutral-900 border-neutral-800 lg:col-span-2">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-white text-lg">Audience preview</CardTitle>
-                <p className="text-neutral-400 text-sm">
-                  Showing the first {Math.min(dedupedRecipients.length, 8)} recipients.
-                </p>
-              </div>
-              <Badge className="bg-neutral-800 text-neutral-200 border border-neutral-700">
-                {dedupedRecipients.length} ready
-              </Badge>
+        <CsBox className="p-5 lg:col-span-2">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <CsSlug>Audience preview</CsSlug>
+              <p className="text-sm mt-1" style={{ color: 'var(--cs-muted)' }}>
+                Showing the first {Math.min(dedupedRecipients.length, 8)} recipients.
+              </p>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
+            <CsTag label={`${dedupedRecipients.length} ready`} tone="neutral" />
+          </div>
+          <div className="space-y-3 mt-4">
             {dedupedRecipients.length === 0 && (
-              <p className="text-neutral-500 text-sm">Upload a CSV/XLSX file or paste emails to see them here.</p>
+              <p className="text-sm" style={{ color: 'var(--cs-muted)' }}>Upload a CSV/XLSX file or paste emails to see them here.</p>
             )}
             {dedupedRecipients.slice(0, 8).map((recipient) => (
               <div
                 key={recipient.email}
-                className="flex items-center justify-between bg-neutral-950 border border-neutral-800 rounded-md px-3 py-2"
+                className="flex items-center justify-between px-3 py-2"
+                style={{ border: '1.5px solid var(--cs-line)' }}
               >
                 <div>
-                  <p className="text-white text-sm">{recipient.name || "Unnamed recipient"}</p>
-                  <p className="text-xs text-neutral-400">{recipient.email}</p>
+                  <p className="text-sm" style={{ color: 'var(--cs-ink)' }}>{recipient.name || "Unnamed recipient"}</p>
+                  <p className="text-xs mt-1" style={{ color: 'var(--cs-muted)' }}>{recipient.email}</p>
                 </div>
-                <Badge className="bg-neutral-800 text-neutral-200 border border-neutral-700">Ready</Badge>
+                <CsTag label="Ready" tone="good" />
               </div>
             ))}
             {dedupedRecipients.length > 8 && (
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs" style={{ color: 'var(--cs-muted)' }}>
                 +{dedupedRecipients.length - 8} more recipients not shown.
               </p>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </CsBox>
 
-        <Card className="bg-neutral-900 border-neutral-800">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-white text-lg">Send controls</CardTitle>
-              <Badge className={readyToSend ? "bg-emerald-500/20 text-emerald-300" : "bg-neutral-800 text-neutral-200 border border-neutral-700"}>
-                {readyToSend ? "Ready" : "Draft"}
-              </Badge>
-            </div>
-            <p className="text-neutral-400 text-sm">Send a test first, then launch to your audience.</p>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <CsBox className="p-5">
+          <div className="flex items-center justify-between">
+            <CsSlug>Send controls</CsSlug>
+            <CsTag label={readyToSend ? "Ready" : "Draft"} tone={readyToSend ? "good" : "neutral"} />
+          </div>
+          <p className="text-sm mt-2" style={{ color: 'var(--cs-muted)' }}>Send a test first, then launch to your audience.</p>
+
+          <div className="space-y-4 mt-4">
             <div className="space-y-2">
-              <label className="text-sm text-neutral-300">Test email addresses</label>
-              <Textarea
+              <CsSlug>Test email addresses</CsSlug>
+              <textarea
                 value={testEmailsInput}
                 onChange={(e) => setTestEmailsInput(e.target.value)}
-                className="bg-neutral-950 border-neutral-800 text-white"
+                style={{ ...fieldStyle, resize: 'vertical' }}
                 rows={4}
                 placeholder="qa@wanzami.com, product@wanzami.com"
               />
-              <p className="text-xs text-neutral-500">Separate by commas or new lines.</p>
+              <p className="text-xs" style={{ color: 'var(--cs-muted)' }}>Separate by commas or new lines.</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-sm text-neutral-300">Batch size</label>
-                <Input
+                <CsSlug>Batch size</CsSlug>
+                <input
                   type="number"
                   min={1}
                   value={batchSize}
                   onChange={(e) => setBatchSize(Number(e.target.value) || 1)}
-                  className="bg-neutral-950 border-neutral-800 text-white"
+                  style={fieldStyle}
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-sm text-neutral-300">Start index</label>
-                <Input
+                <CsSlug>Start index</CsSlug>
+                <input
                   type="number"
                   min={0}
                   value={startIndex}
                   onChange={(e) => setStartIndex(Math.max(0, Number(e.target.value) || 0))}
-                  className="bg-neutral-950 border-neutral-800 text-white"
+                  style={fieldStyle}
                 />
               </div>
             </div>
 
             <div className="flex items-center gap-3">
-              <Button
-                className="bg-neutral-800 text-white hover:bg-neutral-700"
-                onClick={sendTests}
-                disabled={sendingTest}
-              >
-                <TestTube className="w-4 h-4 mr-2" />
-                {sendingTest ? "Sending tests..." : "Send test emails"}
-              </Button>
-              <Button
-                className="bg-[#fd7e14] hover:bg-[#ff9940] text-white flex-1"
-                onClick={sendLive}
-                disabled={sendingLive || !readyToSend}
-              >
-                <Send className="w-4 h-4 mr-2" />
-                {sendingLive ? "Queueing..." : `Send to ${dedupedRecipients.length || 0} users`}
-              </Button>
+              <CsButton variant="outline" onClick={sendTests} disabled={sendingTest}>
+                <span className="inline-flex items-center gap-2">
+                  <TestTube className="w-3.5 h-3.5" />
+                  {sendingTest ? "Sending tests..." : "Send test emails"}
+                </span>
+              </CsButton>
+              <CsButton variant="rust" onClick={sendLive} disabled={sendingLive || !readyToSend} className="flex-1">
+                <span className="inline-flex items-center gap-2 justify-center">
+                  <Send className="w-3.5 h-3.5" />
+                  {sendingLive ? "Queueing..." : `Send to ${dedupedRecipients.length || 0} users`}
+                </span>
+              </CsButton>
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm text-neutral-400">
+              <div className="flex items-center justify-between text-sm" style={{ color: 'var(--cs-muted)' }}>
                 <span>Readiness</span>
                 <span>{readyToSend ? "Ready to send" : "Waiting on audience/template"}</span>
               </div>
-              <Progress value={readyToSend ? 100 : Math.min(60, dedupedRecipients.length ? 60 : 30)} />
-              {lastTest && <p className="text-xs text-neutral-500">Last test: {lastTest}</p>}
-              {lastSend && <p className="text-xs text-neutral-500">Last live send: {lastSend}</p>}
+              <div style={{ height: 8, background: 'var(--cs-panel)', border: '1.5px solid var(--cs-line)' }}>
+                <div
+                  style={{
+                    height: '100%',
+                    width: `${readyToSend ? 100 : Math.min(60, dedupedRecipients.length ? 60 : 30)}%`,
+                    background: 'var(--cs-rust)',
+                  }}
+                />
+              </div>
+              {lastTest && <p className="text-xs" style={{ color: 'var(--cs-muted)' }}>Last test: {lastTest}</p>}
+              {lastSend && <p className="text-xs" style={{ color: 'var(--cs-muted)' }}>Last live send: {lastSend}</p>}
             </div>
 
-            <div className="bg-neutral-950 border border-neutral-800 rounded-lg p-3 space-y-2">
-              <div className="flex items-center gap-2 text-sm text-neutral-300">
-                <MailCheck className="w-4 h-4 text-emerald-400" />
+            <div className="p-3 space-y-2" style={{ border: '1.5px solid var(--cs-line)', background: 'var(--cs-panel)' }}>
+              <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--cs-ink)' }}>
+                <MailCheck className="w-4 h-4" style={{ color: 'var(--cs-rust)' }} />
                 <p>Flow</p>
               </div>
-              <ol className="list-decimal list-inside text-xs text-neutral-400 space-y-1">
+              <ol className="list-decimal list-inside text-xs space-y-1" style={{ color: 'var(--cs-muted)' }}>
                 <li>Upload a CSV or Excel file (name,email) or paste addresses.</li>
                 <li>Write or paste your template. Use {"{{name}}"} and {"{{email}}"} placeholders.</li>
                 <li>Send a test to the QA list before launching to everyone.</li>
               </ol>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </CsBox>
       </div>
     </div>
   );
