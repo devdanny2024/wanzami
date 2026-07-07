@@ -1,6 +1,6 @@
 'use client';
 
-import { Play, Plus, Share2, ThumbsUp, X, Lock, Volume2, VolumeX } from 'lucide-react';
+import { Play, Plus, Share2, ThumbsUp, X, Lock, Volume2, VolumeX, Clock } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
@@ -8,6 +8,7 @@ import { MovieCard, MovieData } from './MovieCard';
 import { isInMyList, toggleMyList } from '@/lib/myList';
 import { fetchTitles, type Title } from '@/lib/contentClient';
 import { formatMoney } from '@/lib/currency';
+import { getAvailabilityBadge, isComingSoon } from '@/lib/availability';
 
 interface MovieDetailPageProps {
   movie: any;
@@ -273,7 +274,12 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
               transition={{ delay: 0.6 }}
               className="flex flex-wrap gap-3 pt-2"
             >
-              {ppvInfo?.userPpvBanned ? (
+              {isComingSoon(movie) ? (
+                <div className="flex items-center gap-2 bg-sky-500/20 border border-sky-400/50 text-sky-100 font-semibold px-6 md:px-8 py-3 md:py-4 rounded-xl min-h-[44px]">
+                  <Clock className="w-5 h-5 md:w-6 md:h-6" />
+                  <span className="text-sm md:text-base">{getAvailabilityBadge(movie)?.label ?? 'Coming Soon'}</span>
+                </div>
+              ) : ppvInfo?.userPpvBanned ? (
                 <div className="text-sm md:text-base text-red-300 bg-red-900/40 border border-red-500/40 px-4 py-3 rounded-xl">
                   Your account has been restricted from PPV access. Please contact support.
                 </div>
