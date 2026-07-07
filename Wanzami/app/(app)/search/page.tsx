@@ -48,6 +48,9 @@ export default function SearchRoute() {
               ppvCurrency: title.ppvCurrency ?? undefined,
               genre: primaryGenre,
               isOriginal: title.isOriginal ?? false,
+              availability: title.availability,
+              availableFrom: title.availableFrom,
+              leavingAt: title.leavingAt,
               assetVersions: title.assetVersions,
             } as MovieData;
           });

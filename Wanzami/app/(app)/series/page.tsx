@@ -64,6 +64,9 @@ export default function SeriesPage() {
               ppvCurrency: (title as any).ppvCurrency ?? undefined,
               genre: primaryGenre,
               isOriginal: title.isOriginal ?? false,
+              availability: title.availability,
+              availableFrom: title.availableFrom,
+              leavingAt: title.leavingAt,
               assetVersions: title.assetVersions,
               createdAt: title.createdAt,
             } as MovieData;

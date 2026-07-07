@@ -59,6 +59,9 @@ export default function MyListPage() {
               ppvCurrency: title.ppvCurrency ?? undefined,
               genre: primaryGenre,
               isOriginal: title.isOriginal ?? false,
+              availability: title.availability,
+              availableFrom: title.availableFrom,
+              leavingAt: title.leavingAt,
               assetVersions: title.assetVersions,
               createdAt: title.createdAt,
             } as MovieData;
