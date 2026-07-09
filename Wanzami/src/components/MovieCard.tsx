@@ -136,7 +136,7 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
       role="button"
       tabIndex={0}
       aria-label={movie.title}
-      className="relative group cursor-pointer flex-shrink-0 w-full rounded-xl overflow-hidden bg-graphite-2 hover:z-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+      className="relative group cursor-pointer flex-shrink-0 w-full overflow-hidden bg-cs-ink cs-border-thin transition-shadow hover:cs-shadow hover:z-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-cs-rust"
       onMouseEnter={handleEnter}
       onMouseLeave={handleLeave}
       onClick={() => onClick(movie)}
@@ -174,7 +174,7 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
         {/* Coming Soon / Leaving Soon badge */}
         {availabilityBadge && (
           <div
-            className={`absolute top-2 left-2 z-20 inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-bold uppercase tracking-wide shadow-lg ${
+            className={`absolute top-2 left-2 z-20 inline-flex items-center gap-1 border border-white/70 px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-wide shadow-lg ${
               availabilityBadge.kind === 'COMING_SOON' ? 'bg-sky-500/90 text-white' : 'bg-rose-500/90 text-white'
             }`}
           >
@@ -185,7 +185,7 @@ export function MovieCard({ movie, onClick }: MovieCardProps) {
 
         {/* Hover ring */}
         {isHovered && (
-          <div className="absolute inset-0 z-20 rounded-xl ring-2 ring-brand pointer-events-none" />
+          <div className="absolute inset-0 z-20 ring-2 ring-cs-rust pointer-events-none" />
         )}
 
         {/* Resting title scrim — always readable, hides on hover for the reveal */}

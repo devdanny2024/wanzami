@@ -113,13 +113,13 @@ export function HomePage({
   const hasCatalog = movies.length > 0;
 
   return (
-    <div className="min-h-screen bg-background home-root">
+    <div className="min-h-screen bg-cs-paper home-root">
       <Hero onPlayClick={onMovieClick} featured={featured} />
       <div className="relative z-10 pb-12 md:pb-16 home-content">
         {loading ? (
-          <div className="container-page text-ash">Loading catalog...</div>
+          <div className="container-page text-cs-muted">Loading catalog...</div>
         ) : error ? (
-          <div className="container-page text-destructive">Failed to load movies: {error}</div>
+          <div className="container-page text-cs-rust">Failed to load movies: {error}</div>
         ) : hasCatalog ? (
           <>
             {forYouItems.length > 0 && (
@@ -148,7 +148,7 @@ export function HomePage({
             {moviesOnly.length > 0 || top10Movies.length > 0 || trendingMovies.length > 0 ? (
               <>
                 <div className="container-page mt-8 md:mt-10 mb-1">
-                  <h2 className="font-heading text-foreground tracking-wide uppercase text-3xl md:text-4xl">Movies</h2>
+                  <h2 className="font-heading text-cs-ink tracking-wide uppercase text-3xl md:text-4xl">Movies</h2>
                 </div>
                 {top10Movies.length > 0 && (
                   <ContentRow title="Top 10 today" movies={top10Movies} onMovieClick={onMovieClick} ranked />
@@ -171,7 +171,7 @@ export function HomePage({
             {seriesOnly.length > 0 || top10Series.length > 0 || trendingSeries.length > 0 ? (
               <>
                 <div className="container-page mt-8 md:mt-10 mb-1">
-                  <h2 className="font-heading text-foreground tracking-wide uppercase text-3xl md:text-4xl">Series</h2>
+                  <h2 className="font-heading text-cs-ink tracking-wide uppercase text-3xl md:text-4xl">Series</h2>
                 </div>
                 {top10Series.length > 0 && (
                   <ContentRow title="Top 10 today" movies={top10Series} onMovieClick={onMovieClick} ranked />
@@ -209,7 +209,7 @@ export function HomePage({
         </div>
       )}
       {recsError && (
-        <div className="container-page text-destructive mt-4">Personalized rows unavailable: {recsError}</div>
+        <div className="container-page text-cs-rust mt-4">Personalized rows unavailable: {recsError}</div>
       )}
     </div>
   );

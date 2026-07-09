@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { Search, User, Menu, X, LogIn, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import wanzamiLogo from '../assets/logo.png';
 
 interface NavbarProps {
   currentPage: string;
@@ -47,26 +45,22 @@ export function Navbar({
     <motion.nav
       initial={{ y: -100 }}
       animate={{ y: 0 }}
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${isScrolled ? 'py-2' : 'py-4'}`}
+      className={`fixed top-0 left-0 right-0 z-50 bg-cs-paper border-b-[3px] border-cs-ink transition-shadow duration-300 ${
+        isScrolled ? 'cs-shadow-sm' : ''
+      }`}
     >
       <div className="container-page">
-        <div
-          className={`relative flex items-center justify-between gap-3 rounded-2xl px-4 md:px-6 py-3 transition-all duration-500 ${
-            isScrolled
-              ? 'bg-ink/95 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/50'
-              : 'bg-white/5 backdrop-blur-md border border-white/10'
-          }`}
-        >
-          {/* Logo */}
-          <button onClick={() => onNavigate('home')} className="flex items-center group shrink-0" aria-label="Wanzami home">
-            <Image
-              src={wanzamiLogo}
-              alt="Wanzami"
-              className="h-7 w-auto transition-transform duration-300 group-hover:scale-105"
-              width={120}
-              height={32}
-              priority
-            />
+        <div className="relative flex items-center justify-between gap-3 py-3">
+          {/* Wordmark — production office */}
+          <button
+            onClick={() => onNavigate('home')}
+            className="flex flex-col items-start leading-none shrink-0"
+            aria-label="Wanzami home"
+          >
+            <span className="font-heading text-2xl md:text-3xl tracking-wide text-cs-ink">WANZAMI</span>
+            <span className="hidden sm:block font-mono text-[9px] uppercase tracking-[0.2em] text-cs-muted -mt-0.5">
+              Production Office
+            </span>
           </button>
 
           {/* Desktop nav */}
@@ -78,15 +72,15 @@ export function Navbar({
                   key={item.page}
                   href={item.href}
                   onClick={() => onNavigate(item.page)}
-                  className={`relative px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-300 ${
-                    isActive ? 'text-paper' : 'text-ash hover:text-paper'
+                  className={`relative px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.09em] transition-colors ${
+                    isActive ? 'text-cs-ink' : 'text-cs-muted hover:text-cs-ink'
                   }`}
                 >
                   <span className="relative z-10">{item.label}</span>
                   {isActive && (
                     <motion.div
                       layoutId="activeNav"
-                      className="absolute inset-0 bg-white/10 border border-brand/50 rounded-lg"
+                      className="absolute left-3 right-3 bottom-1 h-[3px] bg-cs-rust"
                       transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
                     />
                   )}
@@ -100,15 +94,15 @@ export function Navbar({
             <button
               onClick={() => onNavigate('search')}
               aria-label="Search"
-              className="w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 border border-white/10 hover:border-brand/50 rounded-xl transition-all duration-300 group"
+              className="w-10 h-10 flex items-center justify-center bg-cs-paper cs-border-thin hover:bg-cs-panel transition-colors"
             >
-              <Search className="w-5 h-5 text-ash group-hover:text-brand transition-colors" />
+              <Search className="w-5 h-5 text-cs-ink" />
             </button>
 
             {!isAuthenticated ? (
               <a
                 href="/login"
-                className="inline-flex items-center gap-2 px-3 md:px-4 h-10 rounded-xl bg-brand hover:bg-brand-dark text-ink text-sm font-semibold transition-all"
+                className="inline-flex items-center gap-2 px-3 md:px-4 h-10 bg-cs-ink text-cs-paper font-mono text-xs font-bold uppercase tracking-[0.08em] transition-transform hover:-translate-y-0.5"
               >
                 <LogIn className="w-4 h-4" />
                 <span className="hidden sm:inline">Login</span>
@@ -117,9 +111,9 @@ export function Navbar({
               <a
                 href="/settings"
                 aria-label="Profile & settings"
-                className="hidden md:flex w-10 h-10 items-center justify-center bg-gradient-to-br from-brand to-brand-light hover:shadow-lg hover:shadow-brand/30 rounded-xl transition-all duration-300"
+                className="hidden md:flex w-10 h-10 items-center justify-center bg-brand cs-border-thin transition-transform hover:-translate-y-0.5"
               >
-                <User className="w-5 h-5 text-ink" />
+                <User className="w-5 h-5 text-cs-ink" />
               </a>
             )}
 
@@ -128,9 +122,9 @@ export function Navbar({
               onClick={() => setIsMobileMenuOpen((v) => !v)}
               aria-label="Toggle menu"
               aria-expanded={isMobileMenuOpen}
-              className="lg:hidden w-10 h-10 flex items-center justify-center bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all"
+              className="lg:hidden w-10 h-10 flex items-center justify-center bg-cs-paper cs-border-thin hover:bg-cs-panel transition-colors"
             >
-              {isMobileMenuOpen ? <X className="w-5 h-5 text-paper" /> : <Menu className="w-5 h-5 text-paper" />}
+              {isMobileMenuOpen ? <X className="w-5 h-5 text-cs-ink" /> : <Menu className="w-5 h-5 text-cs-ink" />}
             </button>
           </div>
         </div>
@@ -143,7 +137,7 @@ export function Navbar({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
-              className="lg:hidden mt-2 rounded-2xl bg-ink/98 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/50 overflow-hidden"
+              className="lg:hidden mb-3 bg-cs-paper cs-border cs-shadow overflow-hidden"
             >
               <div className="p-2">
                 {navItems.map((item) => {
@@ -156,8 +150,8 @@ export function Navbar({
                         onNavigate(item.page);
                         setIsMobileMenuOpen(false);
                       }}
-                      className={`w-full text-left font-heading text-2xl tracking-wide px-4 py-3 rounded-xl transition-colors ${
-                        isActive ? 'text-brand bg-white/5' : 'text-paper hover:bg-white/5'
+                      className={`w-full text-left font-heading text-2xl tracking-wide px-4 py-3 transition-colors ${
+                        isActive ? 'text-cs-rust bg-cs-panel' : 'text-cs-ink hover:bg-cs-panel'
                       }`}
                     >
                       {item.label}
@@ -166,18 +160,18 @@ export function Navbar({
                 })}
               </div>
 
-              <div className="p-3 border-t border-white/10 flex items-center gap-2">
+              <div className="p-3 border-t-[1.5px] border-cs-ink flex items-center gap-2">
                 <a
                   href="/settings"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex-1 inline-flex items-center justify-center gap-2 h-11 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-paper text-sm font-semibold transition-all"
+                  className="flex-1 inline-flex items-center justify-center gap-2 h-11 bg-cs-paper cs-border-thin text-cs-ink font-mono text-xs font-bold uppercase tracking-[0.08em] transition-colors hover:bg-cs-panel"
                 >
                   <Settings className="w-4 h-4" /> Settings
                 </a>
                 {isAuthenticated && onLogout ? (
                   <button
                     onClick={() => { setIsMobileMenuOpen(false); onLogout(); }}
-                    className="flex-1 inline-flex items-center justify-center h-11 rounded-xl bg-brand hover:bg-brand-dark text-ink text-sm font-semibold transition-all"
+                    className="flex-1 inline-flex items-center justify-center h-11 bg-cs-ink text-cs-paper font-mono text-xs font-bold uppercase tracking-[0.08em] transition-transform hover:-translate-y-0.5"
                   >
                     Sign Out
                   </button>
@@ -185,7 +179,7 @@ export function Navbar({
                   <a
                     href="/login"
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="flex-1 inline-flex items-center justify-center gap-2 h-11 rounded-xl bg-brand hover:bg-brand-dark text-ink text-sm font-semibold transition-all"
+                    className="flex-1 inline-flex items-center justify-center gap-2 h-11 bg-cs-ink text-cs-paper font-mono text-xs font-bold uppercase tracking-[0.08em] transition-transform hover:-translate-y-0.5"
                   >
                     <LogIn className="w-4 h-4" /> Login
                   </a>

@@ -19,6 +19,17 @@
   --color-paper: #f5f5f5;          /* pure white text */
   --color-ash: #a1a1a1;            /* soft gray — muted text */
 
+  /* ---- Call Sheet palette (paper browse surfaces) ----
+     The production-office look shared with mobile, admin and the creators page.
+     Warm paper + ink, not the cinematic black. Used on browse/detail/auth;
+     the video player stays on the dark palette above. */
+  --color-cs-paper: #f2ead9;       /* page background — warm paper */
+  --color-cs-panel: #f7f1e3;       /* raised panel / card */
+  --color-cs-ink: #161310;         /* borders, display type, primary ink */
+  --color-cs-rust: #d1490f;        /* accent / stamps */
+  --color-cs-muted: #6b5f4d;       /* muted brown-gray text */
+  --color-cs-line: #d9cfba;        /* hairline dividers on paper */
+
   /* Brand-align the default orange scale so existing orange utilities stay on-brand */
   --color-orange-50:  #fff4e9;
   --color-orange-100: #ffe3c7;
@@ -55,6 +66,8 @@
   /* ---- Typography ---- */
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-heading: var(--font-display), "Bebas Neue", Impact, "Arial Narrow", sans-serif;
+  /* Typewriter face for call-sheet slugs, stamps and tabular figures. */
+  --font-mono: var(--font-space-mono), ui-monospace, "Courier New", monospace;
 
   /* ---- Radius ---- */
   --radius: 0.625rem;
@@ -129,6 +142,28 @@
   /* Hide scrollbar */
   .scrollbar-hide::-webkit-scrollbar { display: none; }
   .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* ---- Call Sheet helpers ----
+     Ink borders + hard offset shadows are the signature. Kept as utilities so
+     the paper components don't repeat long arbitrary values everywhere. */
+  .cs-border      { border: 2.5px solid var(--color-cs-ink); }
+  .cs-border-thin { border: 1.5px solid var(--color-cs-ink); }
+  .cs-shadow      { box-shadow: 4px 4px 0 var(--color-cs-ink); }
+  .cs-shadow-sm   { box-shadow: 3px 3px 0 var(--color-cs-ink); }
+  .cs-shadow-lg   { box-shadow: 6px 6px 0 var(--color-cs-ink); }
+  .cs-slug {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.11em;
+    color: var(--color-cs-muted);
+  }
+  /* Paper page root — swaps the dark body base for warm paper on browse routes. */
+  .cs-paper-root {
+    background-color: var(--color-cs-paper);
+    color: var(--color-cs-ink);
+  }
 }
 
 /* Creators page poster marquee — translate half the duplicated track for a seamless loop */

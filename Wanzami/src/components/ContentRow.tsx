@@ -52,7 +52,8 @@ export function ContentRow({ title, movies, onMovieClick, maxVisible, ranked }: 
 
   return (
     <div className="group/row relative mb-8 md:mb-10">
-      <h2 className="container-page font-heading text-foreground mb-3 md:mb-4 tracking-wide uppercase text-xl md:text-2xl">
+      <h2 className="container-page flex items-center gap-2 font-heading text-cs-ink mb-3 md:mb-4 tracking-wide uppercase text-xl md:text-2xl">
+        <span className="inline-block h-3 w-3 bg-cs-rust" aria-hidden="true" />
         {title}
       </h2>
 
@@ -65,7 +66,7 @@ export function ContentRow({ title, movies, onMovieClick, maxVisible, ranked }: 
             exit={{ opacity: 0 }}
             onClick={() => handleScroll('left')}
             aria-label="Scroll left"
-            className="hidden md:flex absolute left-0 top-0 bottom-0 z-20 items-center justify-center w-12 lg:w-16 bg-gradient-to-r from-black via-black/80 to-transparent text-foreground opacity-0 group-hover/row:opacity-100 transition-opacity"
+            className="hidden md:flex absolute left-0 top-0 bottom-0 z-20 items-center justify-center w-12 lg:w-16 bg-gradient-to-r from-cs-paper via-cs-paper/80 to-transparent text-cs-ink opacity-0 group-hover/row:opacity-100 transition-opacity"
           >
             <ChevronLeft className="w-8 h-8" />
           </motion.button>
@@ -87,7 +88,7 @@ export function ContentRow({ title, movies, onMovieClick, maxVisible, ranked }: 
                 <span
                   aria-hidden="true"
                   className="font-heading leading-none text-transparent text-[64px] md:text-[88px] shrink-0 -mr-3 select-none"
-                  style={{ WebkitTextStroke: '2px rgba(255,255,255,0.28)' }}
+                  style={{ WebkitTextStroke: '2px rgba(22,19,16,0.22)' }}
                 >
                   {index + 1}
                 </span>
@@ -114,7 +115,7 @@ export function ContentRow({ title, movies, onMovieClick, maxVisible, ranked }: 
             exit={{ opacity: 0 }}
             onClick={() => handleScroll('right')}
             aria-label="Scroll right"
-            className="hidden md:flex absolute right-0 top-0 bottom-0 z-20 items-center justify-center w-12 lg:w-16 bg-gradient-to-l from-black via-black/80 to-transparent text-foreground opacity-0 group-hover/row:opacity-100 transition-opacity"
+            className="hidden md:flex absolute right-0 top-0 bottom-0 z-20 items-center justify-center w-12 lg:w-16 bg-gradient-to-l from-cs-paper via-cs-paper/80 to-transparent text-cs-ink opacity-0 group-hover/row:opacity-100 transition-opacity"
           >
             <ChevronRight className="w-8 h-8" />
           </motion.button>

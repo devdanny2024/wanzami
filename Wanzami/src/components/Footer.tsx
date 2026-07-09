@@ -27,7 +27,11 @@ export function Footer() {
   ];
 
   return (
-    <footer className="bg-ink border-t border-white/10 pt-14 pb-8">
+    <footer className="bg-cs-ink border-t-[3px] border-cs-ink pt-14 pb-8">
+      {/* End-credits strip */}
+      <p className="text-center font-mono text-[10px] uppercase tracking-[0.3em] text-cs-paper/50 mb-12">
+        End of call sheet — roll credits
+      </p>
       <div className="container-page">
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4 lg:gap-12 mb-12">
           {/* Brand block */}
@@ -36,7 +40,7 @@ export function Footer() {
             <p className="font-heading text-xl text-brand mt-5 leading-none tracking-wide">
               Stream the stories.<br />Feel the culture.
             </p>
-            <p className="text-ash text-sm mt-3 max-w-xs">
+            <p className="text-cs-paper/60 text-sm mt-3 max-w-xs">
               Premium African streaming — movies, series, live experiences and creators.
             </p>
           </div>
@@ -44,11 +48,11 @@ export function Footer() {
           {/* Link columns */}
           {Object.entries(footerLinks).map(([category, links]) => (
             <div key={category}>
-              <h3 className="font-heading text-lg text-paper tracking-wide mb-4">{category}</h3>
+              <h3 className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-brand mb-4">{category}</h3>
               <ul className="space-y-3">
                 {links.map((link) => (
                   <li key={link.label}>
-                    <a href={link.href} className="text-ash hover:text-paper text-sm transition-colors">
+                    <a href={link.href} className="text-cs-paper/70 hover:text-cs-paper text-sm transition-colors">
                       {link.label}
                     </a>
                   </li>
@@ -59,7 +63,7 @@ export function Footer() {
 
           {/* Connect */}
           <div>
-            <h3 className="font-heading text-lg text-paper tracking-wide mb-4">Connect</h3>
+            <h3 className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-brand mb-4">Connect</h3>
             <div className="flex flex-wrap gap-3">
               {socials.map(({ name, href, icon: Icon }) => (
                 <a
@@ -68,18 +72,18 @@ export function Footer() {
                   target="_blank"
                   rel="noreferrer"
                   aria-label={name}
-                  className="w-10 h-10 bg-graphite hover:bg-brand/20 border border-white/10 hover:border-brand rounded-lg flex items-center justify-center transition-all group"
+                  className="w-10 h-10 bg-transparent border-[1.5px] border-cs-paper/25 hover:border-brand hover:bg-brand/10 flex items-center justify-center transition-all group"
                 >
-                  <Icon className="w-[18px] h-[18px] text-ash group-hover:text-brand transition-colors" />
+                  <Icon className="w-[18px] h-[18px] text-cs-paper/70 group-hover:text-brand transition-colors" />
                 </a>
               ))}
             </div>
           </div>
         </div>
 
-        <div className="pt-8 border-t border-white/10 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <p className="text-ash/70 text-sm">© {new Date().getFullYear()} Wanzami. All rights reserved.</p>
-          <p className="text-ash/70 text-sm">
+        <div className="pt-8 border-t border-cs-paper/15 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-cs-paper/50">© {new Date().getFullYear()} Wanzami. All rights reserved.</p>
+          <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-cs-paper/50">
             Made with <span className="text-brand">♥</span> in Nigeria
           </p>
         </div>
