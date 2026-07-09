@@ -26,7 +26,7 @@ export default function BlogPostRoute({ params }: { params: { postId: string } }
   );
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-cs-paper">
       <BlogPostPage post={post} onBack={() => router.push("/blog")} />
     </div>
   );

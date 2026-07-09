@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 export default function BlogRoute() {
   const router = useRouter();
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-cs-paper">
       <BlogHomePage
         onPostClick={(post) => router.push(`/blog/post/${post.id ?? "post"}`)}
         onCategoryClick={(category) => router.push(`/blog/category/${encodeURIComponent(category)}`)}

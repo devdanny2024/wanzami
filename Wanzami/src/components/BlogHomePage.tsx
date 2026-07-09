@@ -145,7 +145,7 @@ const categories = [
 
 export function BlogHomePage({ onPostClick, onCategoryClick, onSearchClick }: BlogHomePageProps) {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-gray-950 to-black pt-20 sm:pt-24 pb-12">
+    <div className="min-h-screen bg-cs-paper pt-20 sm:pt-24 pb-12">
       {/* Header */}
       <div className="container-page mb-10 sm:mb-12">
         <motion.div
@@ -155,10 +155,10 @@ export function BlogHomePage({ onPostClick, onCategoryClick, onSearchClick }: Bl
         >
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5 sm:gap-6 mb-8">
             <div>
-              <h1 className="font-heading text-foreground text-4xl sm:text-5xl lg:text-6xl tracking-wide leading-none mb-3">
+              <h1 className="font-heading text-cs-ink text-4xl sm:text-5xl lg:text-6xl tracking-wide leading-none mb-3">
                 Wanzami <span className="text-brand">Stories</span>
               </h1>
-              <p className="text-muted-foreground text-base sm:text-lg max-w-xl">
+              <p className="text-cs-muted text-base sm:text-lg max-w-xl">
                 Insights, culture, and stories from the heart of African cinema
               </p>
             </div>
@@ -166,10 +166,10 @@ export function BlogHomePage({ onPostClick, onCategoryClick, onSearchClick }: Bl
             {/* Search */}
             <button
               onClick={onSearchClick}
-              className="flex items-center gap-3 bg-white/5 hover:bg-white/10 backdrop-blur-md border border-white/10 hover:border-brand text-foreground px-5 py-3 rounded-xl transition-all group w-full md:w-auto min-h-[44px]"
+              className="flex items-center gap-3 bg-cs-panel hover:bg-cs-panel backdrop-blur-md border border-cs-line hover:border-brand text-cs-ink px-5 py-3 rounded-xl transition-all group w-full md:w-auto min-h-[44px]"
             >
               <Search className="w-5 h-5 text-brand group-hover:scale-110 transition-transform shrink-0" />
-              <span className="text-muted-foreground">Search stories...</span>
+              <span className="text-cs-muted">Search stories...</span>
             </button>
           </div>
         </motion.div>
@@ -205,15 +205,15 @@ export function BlogHomePage({ onPostClick, onCategoryClick, onSearchClick }: Bl
                   transition={{ delay: 0.3 }}
                   className="inline-flex items-center gap-2 px-3 py-1.5 bg-brand rounded-full mb-3 sm:mb-4"
                 >
-                  <BookOpen className="w-4 h-4 text-white" />
-                  <span className="font-heading text-white text-sm tracking-widest">FEATURED STORY</span>
+                  <BookOpen className="w-4 h-4 text-cs-ink" />
+                  <span className="font-heading text-cs-ink text-sm tracking-widest">FEATURED STORY</span>
                 </motion.div>
 
                 <motion.h2
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 }}
-                  className="font-heading text-foreground text-2xl sm:text-4xl lg:text-6xl tracking-wide leading-none mb-3 sm:mb-4 group-hover:text-brand transition-colors"
+                  className="font-heading text-cs-paper text-2xl sm:text-4xl lg:text-6xl tracking-wide leading-none mb-3 sm:mb-4 group-hover:text-brand transition-colors"
                 >
                   {featuredPost.title}
                 </motion.h2>
@@ -222,7 +222,7 @@ export function BlogHomePage({ onPostClick, onCategoryClick, onSearchClick }: Bl
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.5 }}
-                  className="text-gray-300 text-base sm:text-lg md:text-xl mb-4 sm:mb-6 line-clamp-2 sm:line-clamp-none"
+                  className="text-cs-paper/80 text-base sm:text-lg md:text-xl mb-4 sm:mb-6 line-clamp-2 sm:line-clamp-none"
                 >
                   {featuredPost.subtitle}
                 </motion.p>
@@ -239,12 +239,12 @@ export function BlogHomePage({ onPostClick, onCategoryClick, onSearchClick }: Bl
                       alt={featuredPost.author.name}
                       className="w-8 h-8 rounded-full border-2 border-brand"
                     />
-                    <span className="text-foreground">{featuredPost.author.name}</span>
+                    <span className="text-cs-paper">{featuredPost.author.name}</span>
                   </div>
-                  <span className="text-gray-500">•</span>
-                  <span className="text-muted-foreground">{featuredPost.date}</span>
-                  <span className="text-gray-500">•</span>
-                  <div className="flex items-center gap-1 text-muted-foreground">
+                  <span className="text-cs-paper/70">•</span>
+                  <span className="text-cs-paper/70">{featuredPost.date}</span>
+                  <span className="text-cs-paper/70">•</span>
+                  <div className="flex items-center gap-1 text-cs-paper/70">
                     <Clock className="w-4 h-4" />
                     <span>{featuredPost.readTime}</span>
                   </div>
@@ -266,7 +266,7 @@ export function BlogHomePage({ onPostClick, onCategoryClick, onSearchClick }: Bl
           transition={{ delay: 0.2 }}
           className="mb-12 sm:mb-16"
         >
-          <h3 className="font-heading text-foreground text-xl sm:text-2xl tracking-wide mb-5 sm:mb-6">Explore Topics</h3>
+          <h3 className="font-heading text-cs-ink text-xl sm:text-2xl tracking-wide mb-5 sm:mb-6">Explore Topics</h3>
           <div className="flex flex-wrap gap-2.5 sm:gap-3">
             {categories.map((category, index) => (
               <motion.button
@@ -275,12 +275,12 @@ export function BlogHomePage({ onPostClick, onCategoryClick, onSearchClick }: Bl
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.3 + index * 0.05 }}
                 onClick={() => onCategoryClick(category.name)}
-                className="px-4 py-2 min-h-[40px] bg-white/5 hover:bg-white/10 border border-white/10 hover:border-brand rounded-full text-foreground transition-all group text-sm sm:text-base"
+                className="px-4 py-2 min-h-[40px] bg-cs-panel hover:bg-cs-panel border border-cs-line hover:border-brand rounded-full text-cs-ink transition-all group text-sm sm:text-base"
               >
                 <span className="group-hover:text-brand transition-colors">
                   {category.name}
                 </span>
-                <span className="text-gray-500 ml-2">({category.count})</span>
+                <span className="text-cs-muted ml-2">({category.count})</span>
               </motion.button>
             ))}
           </div>
@@ -294,7 +294,7 @@ export function BlogHomePage({ onPostClick, onCategoryClick, onSearchClick }: Bl
           className="mb-16"
         >
           <div className="flex items-center justify-between gap-4 mb-5 sm:mb-6">
-            <h3 className="font-heading text-foreground text-xl sm:text-2xl tracking-wide">Latest Stories</h3>
+            <h3 className="font-heading text-cs-ink text-xl sm:text-2xl tracking-wide">Latest Stories</h3>
             <button className="text-brand hover:text-brand-dark transition-colors flex items-center gap-2 text-sm sm:text-base shrink-0">
               View All
               <ArrowRight className="w-5 h-5" />
@@ -309,7 +309,7 @@ export function BlogHomePage({ onPostClick, onCategoryClick, onSearchClick }: Bl
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 + index * 0.1 }}
                 onClick={() => onPostClick(post)}
-                className="bg-card rounded-2xl overflow-hidden border border-white/10 hover:border-brand transition-all cursor-pointer group"
+                className="bg-cs-panel rounded-2xl overflow-hidden border border-cs-line hover:border-brand transition-all cursor-pointer group"
               >
                 <div className="relative h-52 sm:h-64 overflow-hidden">
                   <ImageWithFallback
@@ -321,17 +321,17 @@ export function BlogHomePage({ onPostClick, onCategoryClick, onSearchClick }: Bl
 
                   {/* Category badge */}
                   <div className="absolute top-4 left-4">
-                    <span className="px-3 py-1 bg-brand text-white text-xs rounded-full">
+                    <span className="px-3 py-1 bg-brand text-cs-ink text-xs rounded-full">
                       {post.category}
                     </span>
                   </div>
                 </div>
 
                 <div className="p-5 sm:p-6">
-                  <h4 className="font-heading text-foreground text-lg sm:text-xl tracking-wide leading-tight mb-3 group-hover:text-brand transition-colors line-clamp-2">
+                  <h4 className="font-heading text-cs-ink text-lg sm:text-xl tracking-wide leading-tight mb-3 group-hover:text-brand transition-colors line-clamp-2">
                     {post.title}
                   </h4>
-                  <p className="text-muted-foreground text-sm sm:text-base mb-4 line-clamp-2">
+                  <p className="text-cs-muted text-sm sm:text-base mb-4 line-clamp-2">
                     {post.excerpt}
                   </p>
 
@@ -342,9 +342,9 @@ export function BlogHomePage({ onPostClick, onCategoryClick, onSearchClick }: Bl
                         alt={post.author.name}
                         className="w-6 h-6 rounded-full shrink-0"
                       />
-                      <span className="text-muted-foreground text-sm truncate">{post.author.name}</span>
+                      <span className="text-cs-muted text-sm truncate">{post.author.name}</span>
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-gray-500 shrink-0">
+                    <div className="flex items-center gap-3 text-xs text-cs-muted shrink-0">
                       <span>{post.readTime}</span>
                     </div>
                   </div>
@@ -363,7 +363,7 @@ export function BlogHomePage({ onPostClick, onCategoryClick, onSearchClick }: Bl
         >
           <div className="flex items-center gap-2 mb-5 sm:mb-6">
             <TrendingUp className="w-6 h-6 text-brand" />
-            <h3 className="font-heading text-foreground text-xl sm:text-2xl tracking-wide">Trending This Week</h3>
+            <h3 className="font-heading text-cs-ink text-xl sm:text-2xl tracking-wide">Trending This Week</h3>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
@@ -374,7 +374,7 @@ export function BlogHomePage({ onPostClick, onCategoryClick, onSearchClick }: Bl
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.7 + index * 0.1 }}
                 onClick={() => onPostClick(post)}
-                className="flex gap-4 bg-card hover:bg-graphite-2 rounded-xl p-4 border border-white/10 hover:border-brand transition-all cursor-pointer group"
+                className="flex gap-4 bg-cs-panel hover:cs-shadow rounded-xl p-4 border border-cs-line hover:border-brand transition-all cursor-pointer group"
               >
                 <div className="relative w-24 h-24 sm:w-32 sm:h-32 flex-shrink-0 rounded-lg overflow-hidden">
                   <ImageWithFallback
@@ -389,12 +389,12 @@ export function BlogHomePage({ onPostClick, onCategoryClick, onSearchClick }: Bl
                     <span className="text-brand text-xs mb-2 block">
                       {post.category}
                     </span>
-                    <h4 className="font-heading text-foreground text-base sm:text-lg tracking-wide leading-tight mb-2 group-hover:text-brand transition-colors line-clamp-2">
+                    <h4 className="font-heading text-cs-ink text-base sm:text-lg tracking-wide leading-tight mb-2 group-hover:text-brand transition-colors line-clamp-2">
                       {post.title}
                     </h4>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-cs-muted">
                     <span>{post.readTime}</span>
                     <span>•</span>
                     <span>{post.views?.toLocaleString()} views</span>
@@ -412,8 +412,8 @@ export function BlogHomePage({ onPostClick, onCategoryClick, onSearchClick }: Bl
           transition={{ delay: 0.8 }}
           className="mb-16"
         >
-          <h3 className="font-heading text-foreground text-xl sm:text-2xl tracking-wide mb-5 sm:mb-6">Featured Writer</h3>
-          <div className="bg-gradient-to-br from-brand/20 to-gray-900/50 backdrop-blur-md rounded-2xl p-6 sm:p-8 border border-brand/30">
+          <h3 className="font-heading text-cs-ink text-xl sm:text-2xl tracking-wide mb-5 sm:mb-6">Featured Writer</h3>
+          <div className="bg-cs-panel cs-border rounded-2xl p-6 sm:p-8">
             <div className="flex flex-col md:flex-row gap-5 sm:gap-6 items-center md:items-start">
               <img
                 src="https://images.unsplash.com/photo-1713845784782-51b36d805391?w=150&h=150&fit=crop"
@@ -421,12 +421,12 @@ export function BlogHomePage({ onPostClick, onCategoryClick, onSearchClick }: Bl
                 className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-brand shrink-0"
               />
               <div className="flex-1 text-center md:text-left">
-                <h4 className="font-heading text-foreground text-xl sm:text-2xl tracking-wide mb-2">Amaka Okafor</h4>
+                <h4 className="font-heading text-cs-ink text-xl sm:text-2xl tracking-wide mb-2">Amaka Okafor</h4>
                 <p className="text-brand mb-3">Film Critic & Cultural Journalist</p>
-                <p className="text-gray-300 mb-4">
+                <p className="text-cs-muted mb-4">
                   Award-winning journalist covering African cinema, with over 10 years of experience documenting the evolution of Nollywood and its global impact.
                 </p>
-                <div className="flex items-center gap-4 justify-center md:justify-start text-sm text-muted-foreground">
+                <div className="flex items-center gap-4 justify-center md:justify-start text-sm text-cs-muted">
                   <span>42 Articles</span>
                   <span>•</span>
                   <span>250K+ Readers</span>
@@ -441,19 +441,19 @@ export function BlogHomePage({ onPostClick, onCategoryClick, onSearchClick }: Bl
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.9 }}
-          className="bg-gradient-to-r from-gray-900 via-brand/10 to-gray-900 backdrop-blur-md rounded-2xl p-6 sm:p-8 md:p-12 border border-white/10 text-center"
+          className="bg-cs-panel cs-border rounded-2xl p-6 sm:p-8 md:p-12 text-center"
         >
-          <h3 className="font-heading text-foreground text-2xl sm:text-3xl tracking-wide mb-3">Stay in the Loop</h3>
-          <p className="text-muted-foreground mb-6 max-w-xl mx-auto">
+          <h3 className="font-heading text-cs-ink text-2xl sm:text-3xl tracking-wide mb-3">Stay in the Loop</h3>
+          <p className="text-cs-muted mb-6 max-w-xl mx-auto">
             Get the latest stories, behind-the-scenes content, and exclusive interviews delivered to your inbox
           </p>
           <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
             <input
               type="email"
               placeholder="Enter your email"
-              className="flex-1 px-4 py-3 min-h-[44px] bg-white/5 border border-white/10 rounded-xl text-foreground placeholder-gray-500 focus:outline-none focus:border-brand transition-colors"
+              className="flex-1 px-4 py-3 min-h-[44px] bg-cs-paper cs-border-thin rounded-none text-cs-ink placeholder-cs-muted focus:outline-none focus:border-cs-rust transition-colors"
             />
-            <button className="px-6 py-3 min-h-[44px] bg-brand hover:bg-brand-dark text-white rounded-xl transition-colors font-semibold">
+            <button className="px-6 py-3 min-h-[44px] bg-cs-rust hover:-translate-y-0.5 text-cs-paper cs-shadow-sm transition-transform font-mono font-bold uppercase tracking-[0.07em] text-sm">
               Subscribe
             </button>
           </div>

@@ -56,14 +56,14 @@ const relatedPosts: BlogPost[] = [
 
 export function BlogPostPage({ post, onBack, onPostClick }: BlogPostPageProps) {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-gray-950 to-black">
+    <div className="min-h-screen bg-cs-paper">
       {/* Back Button */}
       <div className="fixed top-20 sm:top-24 left-4 md:left-12 z-40">
         <motion.button
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           onClick={onBack}
-          className="flex items-center gap-2 px-4 py-2 min-h-[40px] bg-black/80 hover:bg-black border border-white/10 hover:border-brand text-foreground rounded-full backdrop-blur-md transition-all group"
+          className="flex items-center gap-2 px-4 py-2 min-h-[40px] bg-cs-paper/90 hover:bg-cs-paper cs-border text-cs-ink rounded-full backdrop-blur-md transition-all group"
         >
           <ArrowLeft className="w-5 h-5 group-hover:text-brand transition-colors" />
           <span className="hidden md:inline">Back to Stories</span>
@@ -85,7 +85,7 @@ export function BlogPostPage({ post, onBack, onPostClick }: BlogPostPageProps) {
       </motion.div>
 
       {/* Article Content */}
-      <div className="relative -mt-24 sm:-mt-32 pb-16">
+      <div className="relative mt-8 sm:mt-10 pb-16">
         <div className="max-w-3xl mx-auto px-4 md:px-8">
           {/* Article Header */}
           <motion.div
@@ -96,19 +96,19 @@ export function BlogPostPage({ post, onBack, onPostClick }: BlogPostPageProps) {
           >
             {/* Category */}
             <div className="mb-4">
-              <span className="inline-block px-4 py-1.5 bg-brand text-white text-sm rounded-full">
+              <span className="inline-block px-4 py-1.5 bg-brand text-cs-ink text-sm rounded-full">
                 {post?.category}
               </span>
             </div>
 
             {/* Title */}
-            <h1 className="font-heading text-foreground text-3xl sm:text-5xl lg:text-6xl tracking-wide leading-none mb-5 sm:mb-6">
+            <h1 className="font-heading text-cs-ink text-3xl sm:text-5xl lg:text-6xl tracking-wide leading-none mb-5 sm:mb-6">
               {post?.title}
             </h1>
 
             {/* Subtitle */}
             {post?.subtitle && (
-              <p className="text-gray-300 text-lg sm:text-xl md:text-2xl mb-6 sm:mb-8">
+              <p className="text-cs-muted text-lg sm:text-xl md:text-2xl mb-6 sm:mb-8">
                 {post.subtitle}
               </p>
             )}
@@ -122,11 +122,11 @@ export function BlogPostPage({ post, onBack, onPostClick }: BlogPostPageProps) {
                   className="w-12 h-12 rounded-full border-2 border-brand"
                 />
                 <div>
-                  <div className="text-foreground">{post?.author.name}</div>
-                  <div className="text-gray-500 text-sm">Film Critic & Journalist</div>
+                  <div className="text-cs-ink">{post?.author.name}</div>
+                  <div className="text-cs-muted text-sm">Film Critic & Journalist</div>
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-muted-foreground text-sm">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-cs-muted text-sm">
                 <span>{post?.date}</span>
                 <span>•</span>
                 <div className="flex items-center gap-1">
@@ -143,19 +143,19 @@ export function BlogPostPage({ post, onBack, onPostClick }: BlogPostPageProps) {
             </div>
 
             {/* Social Share */}
-            <div className="flex items-center gap-3 pt-6 border-t border-white/10">
-              <span className="text-gray-400 text-sm">Share:</span>
-              <button className="w-10 h-10 bg-white/10 hover:bg-[#1DA1F2] border border-white/20 hover:border-[#1DA1F2] rounded-full flex items-center justify-center transition-all group">
-                <Twitter className="w-4 h-4 text-white" />
+            <div className="flex items-center gap-3 pt-6 border-t border-cs-line">
+              <span className="text-cs-muted text-sm">Share:</span>
+              <button className="w-10 h-10 bg-cs-panel hover:bg-[#1DA1F2] border border-cs-line hover:border-[#1DA1F2] rounded-full flex items-center justify-center transition-all group">
+                <Twitter className="w-4 h-4 text-cs-ink" />
               </button>
-              <button className="w-10 h-10 bg-white/10 hover:bg-[#1877F2] border border-white/20 hover:border-[#1877F2] rounded-full flex items-center justify-center transition-all group">
-                <Facebook className="w-4 h-4 text-white" />
+              <button className="w-10 h-10 bg-cs-panel hover:bg-[#1877F2] border border-cs-line hover:border-[#1877F2] rounded-full flex items-center justify-center transition-all group">
+                <Facebook className="w-4 h-4 text-cs-ink" />
               </button>
-              <button className="w-10 h-10 bg-white/10 hover:bg-[#fd7e14] border border-white/20 hover:border-[#fd7e14] rounded-full flex items-center justify-center transition-all group">
-                <Link2 className="w-4 h-4 text-white" />
+              <button className="w-10 h-10 bg-cs-panel hover:bg-[#fd7e14] border border-cs-line hover:border-[#fd7e14] rounded-full flex items-center justify-center transition-all group">
+                <Link2 className="w-4 h-4 text-cs-ink" />
               </button>
-              <button className="w-10 h-10 bg-white/10 hover:bg-[#fd7e14] border border-white/20 hover:border-[#fd7e14] rounded-full flex items-center justify-center transition-all group ml-auto">
-                <BookmarkPlus className="w-4 h-4 text-white" />
+              <button className="w-10 h-10 bg-cs-panel hover:bg-[#fd7e14] border border-cs-line hover:border-[#fd7e14] rounded-full flex items-center justify-center transition-all group ml-auto">
+                <BookmarkPlus className="w-4 h-4 text-cs-ink" />
               </button>
             </div>
           </motion.div>
@@ -168,29 +168,29 @@ export function BlogPostPage({ post, onBack, onPostClick }: BlogPostPageProps) {
             className="max-w-none"
           >
             {/* Main content - this would come from a CMS */}
-            <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 sm:p-8 md:p-12 border border-white/10 mb-8">
-              <p className="text-gray-200 text-lg leading-8 mb-6">
+            <div className="bg-cs-panel backdrop-blur-sm rounded-2xl p-6 sm:p-8 md:p-12 border border-cs-line mb-8">
+              <p className="text-cs-muted text-lg leading-8 mb-6">
                 Nigerian cinema has evolved from humble beginnings in the late 20th century to become one of the world's largest film industries by volume, rivaling both Hollywood and Bollywood. What started as a grassroots movement of filmmakers selling VHS tapes in local markets has transformed into a billion-dollar industry that captivates audiences across Africa and beyond.
               </p>
 
-              <p className="text-gray-200 text-lg leading-8 mb-6">
+              <p className="text-cs-muted text-lg leading-8 mb-6">
                 The journey of Nollywood is one of resilience, creativity, and cultural pride. In the face of limited resources and infrastructure, Nigerian filmmakers found innovative ways to tell their stories, creating a unique cinematic language that resonated with audiences hungry for authentic African narratives.
               </p>
 
               <blockquote className="my-10 sm:my-12 border-l-4 border-brand pl-5 sm:pl-6">
-                <p className="text-foreground text-xl sm:text-2xl italic leading-relaxed">
+                <p className="text-cs-ink text-xl sm:text-2xl italic leading-relaxed">
                   "Nollywood is not just an industry; it's a movement. It's about reclaiming our narratives and showing the world the depth and diversity of African stories."
                 </p>
                 <p className="text-brand mt-3 text-sm">— Kunle Afolayan, Award-winning Director</p>
               </blockquote>
 
-              <h2 className="font-heading text-foreground text-2xl sm:text-3xl tracking-wide mb-4 mt-10 sm:mt-12">The Digital Revolution</h2>
+              <h2 className="font-heading text-cs-ink text-2xl sm:text-3xl tracking-wide mb-4 mt-10 sm:mt-12">The Digital Revolution</h2>
 
-              <p className="text-gray-200 text-lg leading-8 mb-6">
+              <p className="text-cs-muted text-lg leading-8 mb-6">
                 The advent of digital technology marked a turning point for Nollywood. Filmmakers gained access to better equipment, editing software, and distribution channels. Streaming platforms like Wanzami have democratized access to Nigerian content, allowing stories from Lagos, Abuja, and beyond to reach global audiences instantly.
               </p>
 
-              <p className="text-gray-200 text-lg leading-8 mb-6">
+              <p className="text-cs-muted text-lg leading-8 mb-6">
                 This technological leap hasn't just improved production quality; it's transformed the entire ecosystem. Today's Nollywood productions feature world-class cinematography, sophisticated storytelling, and production values that rival international standards while maintaining the cultural authenticity that makes Nigerian cinema unique.
               </p>
 
@@ -201,28 +201,28 @@ export function BlogPostPage({ post, onBack, onPostClick }: BlogPostPageProps) {
                   alt="Nigerian film production"
                   className="w-full h-auto"
                 />
-                <figcaption className="text-gray-500 text-sm mt-3 text-center italic">
+                <figcaption className="text-cs-muted text-sm mt-3 text-center italic">
                   Modern Nollywood productions blend traditional storytelling with cutting-edge technology
                 </figcaption>
               </figure>
 
-              <h2 className="font-heading text-foreground text-2xl sm:text-3xl tracking-wide mb-4 mt-10 sm:mt-12">Cultural Impact and Global Recognition</h2>
+              <h2 className="font-heading text-cs-ink text-2xl sm:text-3xl tracking-wide mb-4 mt-10 sm:mt-12">Cultural Impact and Global Recognition</h2>
 
-              <p className="text-gray-200 text-lg leading-8 mb-6">
+              <p className="text-cs-muted text-lg leading-8 mb-6">
                 The impact of Nollywood extends far beyond entertainment. It has become a cultural ambassador, reshaping global perceptions of Africa and providing a counter-narrative to stereotypical portrayals. Nigerian films explore complex themes—from family dynamics and romance to political intrigue and social issues—with nuance and authenticity.
               </p>
 
-              <p className="text-gray-200 text-lg leading-8 mb-6">
+              <p className="text-cs-muted text-lg leading-8 mb-6">
                 International recognition has followed this cultural impact. Nigerian films and filmmakers are winning awards at prestigious festivals worldwide. Collaborations with international studios are becoming more common, yet the industry has maintained its distinct voice and perspective.
               </p>
 
-              <h2 className="font-heading text-foreground text-2xl sm:text-3xl tracking-wide mb-4 mt-10 sm:mt-12">The Future is Bright</h2>
+              <h2 className="font-heading text-cs-ink text-2xl sm:text-3xl tracking-wide mb-4 mt-10 sm:mt-12">The Future is Bright</h2>
 
-              <p className="text-gray-200 text-lg leading-8 mb-6">
+              <p className="text-cs-muted text-lg leading-8 mb-6">
                 As we look to the future, Nollywood's trajectory is undeniably upward. Investment in local production is increasing, film schools are nurturing new talent, and platforms like Wanzami are providing sustainable distribution models that ensure creators can build lasting careers.
               </p>
 
-              <p className="text-gray-200 text-lg leading-8">
+              <p className="text-cs-muted text-lg leading-8">
                 The stories that emerge from Nigeria—and the broader African continent—are no longer peripheral to global cinema. They are central, essential, and increasingly influential. This is not just the rise of an industry; it's the affirmation of a truth that has always existed: African stories matter, and the world is finally listening.
               </p>
             </div>
@@ -230,14 +230,14 @@ export function BlogPostPage({ post, onBack, onPostClick }: BlogPostPageProps) {
             {/* Tags */}
             <div className="flex flex-wrap gap-2 mb-10 sm:mb-12">
               {['#Nollywood', '#AfricanCinema', '#FilmIndustry', '#CulturalIdentity', '#Streaming'].map((tag) => (
-                <span key={tag} className="px-4 py-2 bg-white/5 border border-white/10 text-muted-foreground text-sm rounded-full">
+                <span key={tag} className="px-4 py-2 bg-cs-panel border border-cs-line text-cs-muted text-sm rounded-full">
                   {tag}
                 </span>
               ))}
             </div>
 
             {/* Author Bio */}
-            <div className="bg-gradient-to-br from-brand/20 to-gray-900/50 backdrop-blur-md rounded-2xl p-5 sm:p-6 border border-brand/30 mb-10 sm:mb-12">
+            <div className="bg-cs-panel cs-border rounded-2xl p-5 sm:p-6 mb-10 sm:mb-12">
               <div className="flex flex-col sm:flex-row gap-4 items-start">
                 <img
                   src={post?.author.avatar}
@@ -245,9 +245,9 @@ export function BlogPostPage({ post, onBack, onPostClick }: BlogPostPageProps) {
                   className="w-16 h-16 rounded-full border-2 border-brand shrink-0"
                 />
                 <div className="flex-1">
-                  <h3 className="font-heading text-foreground text-xl tracking-wide mb-1">{post?.author.name}</h3>
+                  <h3 className="font-heading text-cs-ink text-xl tracking-wide mb-1">{post?.author.name}</h3>
                   <p className="text-brand text-sm mb-2">Film Critic & Cultural Journalist</p>
-                  <p className="text-gray-300 text-sm mb-3 leading-relaxed">
+                  <p className="text-cs-muted text-sm mb-3 leading-relaxed">
                     Award-winning journalist covering African cinema, with over 10 years of experience documenting the evolution of Nollywood and its global impact.
                   </p>
                   <button className="text-brand hover:text-brand-dark text-sm transition-colors">
@@ -258,14 +258,14 @@ export function BlogPostPage({ post, onBack, onPostClick }: BlogPostPageProps) {
             </div>
 
             {/* Related Posts */}
-            <div className="border-t border-white/10 pt-10 sm:pt-12">
-              <h3 className="font-heading text-foreground text-2xl md:text-3xl tracking-wide mb-6 sm:mb-8">Continue Reading</h3>
+            <div className="border-t border-cs-line pt-10 sm:pt-12">
+              <h3 className="font-heading text-cs-ink text-2xl md:text-3xl tracking-wide mb-6 sm:mb-8">Continue Reading</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 sm:gap-6">
                 {relatedPosts.map((relatedPost) => (
                   <div
                     key={relatedPost.id}
                     onClick={() => onPostClick?.(relatedPost)}
-                    className="bg-card hover:bg-graphite-2 rounded-xl overflow-hidden border border-white/10 hover:border-brand transition-all cursor-pointer group"
+                    className="bg-cs-panel hover:bg-cs-ink rounded-xl overflow-hidden border border-cs-line hover:border-brand transition-all cursor-pointer group"
                   >
                     <div className="relative h-40 overflow-hidden">
                       <ImageWithFallback
@@ -274,16 +274,16 @@ export function BlogPostPage({ post, onBack, onPostClick }: BlogPostPageProps) {
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                       />
                       <div className="absolute top-2 left-2">
-                        <span className="px-2 py-1 bg-brand text-white text-xs rounded">
+                        <span className="px-2 py-1 bg-brand text-cs-ink text-xs rounded">
                           {relatedPost.category}
                         </span>
                       </div>
                     </div>
                     <div className="p-4">
-                      <h4 className="font-heading text-foreground tracking-wide leading-tight mb-2 group-hover:text-brand transition-colors line-clamp-2">
+                      <h4 className="font-heading text-cs-ink tracking-wide leading-tight mb-2 group-hover:text-brand transition-colors line-clamp-2">
                         {relatedPost.title}
                       </h4>
-                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <div className="flex items-center gap-2 text-xs text-cs-muted">
                         <span>{relatedPost.readTime}</span>
                       </div>
                     </div>
@@ -293,15 +293,15 @@ export function BlogPostPage({ post, onBack, onPostClick }: BlogPostPageProps) {
             </div>
 
             {/* Comments Section */}
-            <div className="border-t border-white/10 pt-10 sm:pt-12 mt-10 sm:mt-12">
-              <h3 className="font-heading text-foreground text-2xl tracking-wide mb-6">Join the Conversation</h3>
-              <div className="bg-white/5 backdrop-blur-sm rounded-xl p-5 sm:p-6 border border-white/10 mb-6">
+            <div className="border-t border-cs-line pt-10 sm:pt-12 mt-10 sm:mt-12">
+              <h3 className="font-heading text-cs-ink text-2xl tracking-wide mb-6">Join the Conversation</h3>
+              <div className="bg-cs-panel backdrop-blur-sm rounded-xl p-5 sm:p-6 border border-cs-line mb-6">
                 <textarea
                   placeholder="Share your thoughts..."
-                  className="w-full h-32 bg-white/5 border border-white/10 rounded-lg p-4 text-foreground placeholder-gray-500 focus:outline-none focus:border-brand transition-colors resize-none"
+                  className="w-full h-32 bg-cs-panel border border-cs-line rounded-lg p-4 text-cs-ink placeholder-gray-500 focus:outline-none focus:border-brand transition-colors resize-none"
                 />
                 <div className="flex justify-end mt-3">
-                  <button className="px-6 py-2 min-h-[40px] bg-brand hover:bg-brand-dark text-white rounded-lg transition-colors font-semibold">
+                  <button className="px-6 py-2 min-h-[40px] bg-brand hover:bg-brand-dark text-cs-ink rounded-lg transition-colors font-semibold">
                     Post Comment
                   </button>
                 </div>
@@ -309,34 +309,34 @@ export function BlogPostPage({ post, onBack, onPostClick }: BlogPostPageProps) {
 
               {/* Sample Comments */}
               <div className="space-y-4">
-                <div className="bg-white/5 backdrop-blur-sm rounded-xl p-5 sm:p-6 border border-white/10">
+                <div className="bg-cs-panel backdrop-blur-sm rounded-xl p-5 sm:p-6 border border-cs-line">
                   <div className="flex items-start gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center shrink-0">
-                      <User className="w-5 h-5 text-gray-400" />
+                    <div className="w-10 h-10 rounded-full bg-cs-ink flex items-center justify-center shrink-0">
+                      <User className="w-5 h-5 text-cs-muted" />
                     </div>
                     <div className="flex-1">
                       <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <span className="text-foreground">Chioma Eze</span>
-                        <span className="text-gray-500 text-sm">2 hours ago</span>
+                        <span className="text-cs-ink">Chioma Eze</span>
+                        <span className="text-cs-muted text-sm">2 hours ago</span>
                       </div>
-                      <p className="text-gray-300 text-sm leading-relaxed">
+                      <p className="text-cs-muted text-sm leading-relaxed">
                         Excellent article! As a Nigerian filmmaker, I've witnessed this evolution firsthand. The digital revolution has truly democratized our industry.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-white/5 backdrop-blur-sm rounded-xl p-5 sm:p-6 border border-white/10">
+                <div className="bg-cs-panel backdrop-blur-sm rounded-xl p-5 sm:p-6 border border-cs-line">
                   <div className="flex items-start gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center shrink-0">
-                      <User className="w-5 h-5 text-gray-400" />
+                    <div className="w-10 h-10 rounded-full bg-cs-ink flex items-center justify-center shrink-0">
+                      <User className="w-5 h-5 text-cs-muted" />
                     </div>
                     <div className="flex-1">
                       <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <span className="text-foreground">David Okonkwo</span>
-                        <span className="text-gray-500 text-sm">5 hours ago</span>
+                        <span className="text-cs-ink">David Okonkwo</span>
+                        <span className="text-cs-muted text-sm">5 hours ago</span>
                       </div>
-                      <p className="text-gray-300 text-sm leading-relaxed">
+                      <p className="text-cs-muted text-sm leading-relaxed">
                         I love how platforms like Wanzami are making our stories accessible globally. The future of African cinema is incredibly bright!
                       </p>
                     </div>

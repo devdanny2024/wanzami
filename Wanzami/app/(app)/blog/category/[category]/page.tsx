@@ -8,7 +8,7 @@ export default function BlogCategoryRoute({ params }: { params: { category: stri
   const decoded = decodeURIComponent(params.category);
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-cs-paper">
       <BlogCategoryPage
         category={decoded}
         onPostClick={(post) => router.push(`/blog/post/${post.id ?? "post"}`)}

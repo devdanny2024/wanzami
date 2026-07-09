@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 export default function BlogSearchRoute() {
   const router = useRouter();
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-cs-paper">
       <BlogSearchPage
         onPostClick={(post) => router.push(`/blog/post/${post.id ?? "post"}`)}
         onBack={() => router.push("/blog")}

@@ -47,11 +47,11 @@ export default function ContactPage() {
   return (
     <div className="min-h-[60vh] container-page py-10 sm:py-14 home-root">
       <div className="max-w-2xl mx-auto">
-        <div className="rounded-2xl sm:rounded-3xl bg-card border border-white/10 p-6 sm:p-8 md:p-10 shadow-2xl shadow-black/40">
+        <div className="bg-cs-panel cs-border cs-shadow-lg p-6 sm:p-8 md:p-10">
           <div>
-            <p className="font-heading text-brand tracking-widest text-sm mb-2">We're here to help</p>
-            <h1 className="font-heading text-foreground text-3xl sm:text-4xl tracking-wide leading-none">Contact Us</h1>
-            <p className="mt-3 text-sm sm:text-base text-muted-foreground leading-relaxed">
+            <p className="cs-slug mb-2">We're here to help</p>
+            <h1 className="font-heading text-cs-ink text-3xl sm:text-4xl tracking-wide leading-none uppercase">Contact Us</h1>
+            <p className="mt-3 text-sm sm:text-base text-cs-muted leading-relaxed">
               Have an issue with playback, billing, or your account? Send us a message and our team will get back to you.
             </p>
           </div>
@@ -69,42 +69,42 @@ export default function ContactPage() {
 
           <form onSubmit={handleSubmit} className="mt-6 sm:mt-8 space-y-5">
             <div className="space-y-1.5">
-              <label className="text-sm text-muted-foreground">Email</label>
+              <label className="block font-mono text-[11px] font-bold uppercase tracking-[0.08em] text-cs-ink">Email</label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-lg bg-white/5 border border-white/10 px-4 py-3 min-h-[44px] text-sm text-foreground outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
+                className="w-full bg-cs-paper cs-border-thin px-4 py-3 min-h-[44px] text-sm text-cs-ink outline-none focus:border-cs-rust focus:ring-1 focus:ring-cs-rust transition-colors"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm text-muted-foreground">Subject</label>
+              <label className="block font-mono text-[11px] font-bold uppercase tracking-[0.08em] text-cs-ink">Subject</label>
               <input
                 type="text"
                 required
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                className="w-full rounded-lg bg-white/5 border border-white/10 px-4 py-3 min-h-[44px] text-sm text-foreground outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
+                className="w-full bg-cs-paper cs-border-thin px-4 py-3 min-h-[44px] text-sm text-cs-ink outline-none focus:border-cs-rust focus:ring-1 focus:ring-cs-rust transition-colors"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-sm text-muted-foreground">Message</label>
+              <label className="block font-mono text-[11px] font-bold uppercase tracking-[0.08em] text-cs-ink">Message</label>
               <textarea
                 required
                 rows={5}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                className="w-full rounded-lg bg-white/5 border border-white/10 px-4 py-3 text-sm text-foreground outline-none focus:border-brand focus:ring-1 focus:ring-brand resize-y transition-colors"
+                className="w-full bg-cs-paper cs-border-thin px-4 py-3 text-sm text-cs-ink outline-none focus:border-cs-rust focus:ring-1 focus:ring-cs-rust resize-y transition-colors"
               />
             </div>
 
             <button
               type="submit"
               disabled={submitting}
-              className="inline-flex w-full sm:w-auto items-center justify-center rounded-lg bg-brand px-6 py-3 min-h-[44px] text-sm font-semibold text-white hover:bg-brand-light disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+              className="inline-flex w-full sm:w-auto items-center justify-center bg-cs-rust px-6 py-3 min-h-[44px] font-mono text-sm font-bold uppercase tracking-[0.07em] text-cs-paper cs-shadow-sm hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed transition-transform"
             >
               {submitting ? 'Sending…' : 'Send Message'}
             </button>
