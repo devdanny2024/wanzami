@@ -34,10 +34,10 @@ export function PPVMovieCard({ movie, onClick }: PPVMovieCardProps) {
       whileHover={{ scale: 1.05 }}
       transition={{ duration: 0.2 }}
     >
-      <div className="relative aspect-video rounded-xl overflow-hidden bg-graphite">
+      <div className="relative aspect-video overflow-hidden bg-cs-ink cs-border-thin transition-shadow group-hover:cs-shadow">
         {/* PPV Badge */}
         <div className="absolute top-3 left-3 z-10">
-          <div className="flex items-center gap-1 px-2 py-1 bg-brand text-primary-foreground text-xs font-semibold rounded-md backdrop-blur-sm">
+          <div className="flex items-center gap-1 px-2 py-1 bg-brand text-cs-ink font-mono text-[10px] font-bold uppercase tracking-wide border border-cs-ink">
             <Clock className="w-3 h-3" />
             <span>PPV</span>
           </div>
@@ -46,7 +46,7 @@ export function PPVMovieCard({ movie, onClick }: PPVMovieCardProps) {
         {/* Premiere Badge */}
         {movie.isPremiere && (
           <div className="absolute top-3 right-3 z-10">
-            <div className="px-2 py-1 bg-yellow-500 text-black text-xs rounded-md">
+            <div className="px-2 py-1 bg-yellow-500 text-black font-mono text-[10px] font-bold uppercase tracking-wide border border-cs-ink">
               PREMIERE
             </div>
           </div>
@@ -115,15 +115,15 @@ export function PPVMovieCard({ movie, onClick }: PPVMovieCardProps) {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="absolute inset-0 rounded-xl border-2 border-brand pointer-events-none"
+            className="absolute inset-0 border-2 border-cs-rust pointer-events-none"
           />
         )}
       </div>
 
       {/* Title and price below card for mobile */}
       <div className="md:hidden mt-2">
-        <div className="text-foreground text-sm font-medium line-clamp-1 mb-1">{movie.title}</div>
-        <div className="text-brand text-sm font-semibold">
+        <div className="text-cs-ink text-sm font-medium line-clamp-1 mb-1">{movie.title}</div>
+        <div className="text-cs-rust text-sm font-semibold">
           {movie.currency ? getCurrencySymbol(movie.currency) : '$'}
           {movie.price.toLocaleString()}
         </div>

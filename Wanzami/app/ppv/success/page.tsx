@@ -102,15 +102,15 @@ function SuccessContent() {
   }, [router, titleId, reference, trxref, transactionId]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex items-center justify-center px-6">
-      <div className="max-w-md w-full rounded-2xl border border-white/10 bg-card p-8 text-center space-y-4">
-        <div className="mx-auto h-12 w-12 rounded-full border-2 border-white/15 border-t-brand animate-spin" />
-        <h1 className="font-heading text-3xl uppercase tracking-wide">{message}</h1>
-        <p className="text-sm text-muted-foreground">{subMessage}</p>
+    <div className="min-h-screen bg-cs-paper text-cs-ink cs-paper-root flex items-center justify-center px-6">
+      <div className="max-w-md w-full cs-border cs-shadow bg-cs-panel p-8 text-center space-y-4">
+        <div className="mx-auto h-12 w-12 rounded-full border-2 border-cs-line border-t-cs-rust animate-spin" />
+        <h1 className="font-heading text-3xl uppercase tracking-wide text-cs-ink">{message}</h1>
+        <p className="text-sm text-cs-muted">{subMessage}</p>
         {(reference || trxref) && (
-          <div className="text-xs text-muted-foreground/70 break-all">Ref: {reference || trxref}</div>
+          <div className="text-xs text-cs-muted/80 break-all font-mono">Ref: {reference || trxref}</div>
         )}
-        <p className="text-xs text-muted-foreground/60">If nothing happens, you can close this page.</p>
+        <p className="text-xs text-cs-muted/70">If nothing happens, you can close this page.</p>
       </div>
     </div>
   );
@@ -120,7 +120,7 @@ export default function PpvSuccessPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-background text-foreground flex items-center justify-center px-6">Loading...</div>
+        <div className="min-h-screen bg-cs-paper text-cs-ink cs-paper-root flex items-center justify-center px-6 font-mono uppercase tracking-[0.08em]">Loading...</div>
       }
     >
       <SuccessContent />

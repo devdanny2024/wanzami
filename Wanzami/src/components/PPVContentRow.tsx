@@ -42,7 +42,8 @@ export function PPVContentRow({ title, movies, onMovieClick }: PPVContentRowProp
 
   return (
     <div className="group/row relative mb-8 md:mb-12">
-      <h2 className="font-heading uppercase text-foreground mb-4 px-4 md:px-12 lg:px-16 tracking-wide text-2xl md:text-3xl">
+      <h2 className="font-heading uppercase text-cs-ink mb-4 px-4 md:px-12 lg:px-16 tracking-wide text-2xl md:text-3xl flex items-center gap-2">
+        <span className="inline-block h-3 w-3 bg-cs-rust" aria-hidden="true" />
         {title}
       </h2>
 
@@ -54,7 +55,7 @@ export function PPVContentRow({ title, movies, onMovieClick }: PPVContentRowProp
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => handleScroll('left')}
-            className="hidden md:flex absolute left-0 top-0 bottom-0 z-10 items-center justify-center w-12 bg-black/80 hover:bg-black/90 text-white opacity-0 group-hover/row:opacity-100 transition-opacity"
+            className="hidden md:flex absolute left-0 top-0 bottom-0 z-10 items-center justify-center w-12 bg-gradient-to-r from-cs-paper via-cs-paper/80 to-transparent text-cs-ink opacity-0 group-hover/row:opacity-100 transition-opacity"
           >
             <ChevronLeft className="w-8 h-8" />
           </motion.button>
@@ -81,7 +82,7 @@ export function PPVContentRow({ title, movies, onMovieClick }: PPVContentRowProp
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => handleScroll('right')}
-            className="hidden md:flex absolute right-0 top-0 bottom-0 z-10 items-center justify-center w-12 bg-black/80 hover:bg-black/90 text-white opacity-0 group-hover/row:opacity-100 transition-opacity"
+            className="hidden md:flex absolute right-0 top-0 bottom-0 z-10 items-center justify-center w-12 bg-gradient-to-l from-cs-paper via-cs-paper/80 to-transparent text-cs-ink opacity-0 group-hover/row:opacity-100 transition-opacity"
           >
             <ChevronRight className="w-8 h-8" />
           </motion.button>
