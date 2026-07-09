@@ -21,21 +21,22 @@ const recentlyAdded: MovieData[] = [];
 
 export function Dashboard({ onMovieClick }: DashboardProps) {
   return (
-    <div className="min-h-screen bg-black pt-24 md:pt-32 pb-12">
+    <div className="min-h-screen bg-cs-paper pt-24 md:pt-32 pb-12">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="px-4 md:px-12 lg:px-16 mb-8 md:mb-12"
       >
-        <h1 className="font-heading text-white text-4xl md:text-5xl tracking-wide leading-none mb-2">My Wanzami</h1>
-        <p className="text-ash">Your personalized streaming experience</p>
+        <p className="cs-slug mb-2">Call sheet — your slate</p>
+        <h1 className="font-heading text-cs-ink text-4xl md:text-5xl tracking-wide leading-none mb-2 uppercase">My Wanzami</h1>
+        <p className="text-cs-muted">Your personalized streaming experience</p>
       </motion.div>
 
       {/* Continue Watching */}
       <div className="mb-8 md:mb-12">
         <div className="flex items-center justify-between px-4 md:px-12 lg:px-16 mb-4">
-          <h2 className="font-heading text-white text-2xl md:text-3xl tracking-wide flex items-center gap-2">
+          <h2 className="font-heading text-cs-ink text-2xl md:text-3xl tracking-wide flex items-center gap-2">
             <Clock className="w-6 h-6 text-brand" />
             Continue Watching
           </h2>
@@ -80,7 +81,7 @@ export function Dashboard({ onMovieClick }: DashboardProps) {
                   </div>
 
                   {/* Border glow on hover */}
-                  <div className="absolute inset-0 rounded-xl border-2 border-transparent group-hover:border-[#fd7e14] transition-colors" />
+                  <div className="absolute inset-0 border-2 border-transparent group-hover:border-cs-rust transition-colors" />
                 </div>
 
                 <h3 className="text-white mb-1">{item.title}</h3>
@@ -98,7 +99,7 @@ export function Dashboard({ onMovieClick }: DashboardProps) {
       {/* My List */}
       <div className="mb-8 md:mb-12">
         <div className="flex items-center justify-between px-4 md:px-12 lg:px-16 mb-4">
-          <h2 className="font-heading text-white text-2xl md:text-3xl tracking-wide flex items-center gap-2">
+          <h2 className="font-heading text-cs-ink text-2xl md:text-3xl tracking-wide flex items-center gap-2">
             <Star className="w-6 h-6 text-brand" />
             My List
           </h2>
@@ -115,7 +116,7 @@ export function Dashboard({ onMovieClick }: DashboardProps) {
                 whileHover={{ scale: 1.05 }}
                 className="group cursor-pointer relative"
               >
-                <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-900 mb-2">
+                <div className="relative aspect-video overflow-hidden bg-cs-ink cs-border-thin mb-2">
                   <ImageWithFallback
                     src={movie.image}
                     alt={movie.title}
@@ -136,15 +137,15 @@ export function Dashboard({ onMovieClick }: DashboardProps) {
                   </button>
 
                   {/* Border glow */}
-                  <div className="absolute inset-0 rounded-xl border-2 border-transparent group-hover:border-[#fd7e14] transition-colors" />
+                  <div className="absolute inset-0 border-2 border-transparent group-hover:border-cs-rust transition-colors" />
                 </div>
 
-                <h3 className="text-white text-sm mb-1 line-clamp-1">{movie.title}</h3>
+                <h3 className="text-cs-ink text-sm mb-1 line-clamp-1">{movie.title}</h3>
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="text-[#fd7e14] border border-[#fd7e14] px-1.5 py-0.5 rounded">
+                  <span className="text-cs-ink border border-cs-ink px-1.5 py-0.5 font-mono">
                     {movie.rating}
                   </span>
-                  <span className="text-gray-400">{movie.genre}</span>
+                  <span className="text-cs-muted">{movie.genre}</span>
                 </div>
               </motion.div>
             ))}
@@ -170,7 +171,7 @@ export function Dashboard({ onMovieClick }: DashboardProps) {
                 className="group cursor-pointer"
                 onClick={() => onMovieClick(movie)}
               >
-                <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-900 mb-2">
+                <div className="relative aspect-video overflow-hidden bg-cs-ink cs-border-thin mb-2">
                   <ImageWithFallback
                     src={movie.image}
                     alt={movie.title}
@@ -186,15 +187,15 @@ export function Dashboard({ onMovieClick }: DashboardProps) {
                   <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity" />
                   
                   {/* Border glow */}
-                  <div className="absolute inset-0 rounded-xl border-2 border-transparent group-hover:border-[#fd7e14] transition-colors" />
+                  <div className="absolute inset-0 border-2 border-transparent group-hover:border-cs-rust transition-colors" />
                 </div>
 
-                <h3 className="text-white text-sm mb-1 line-clamp-1">{movie.title}</h3>
+                <h3 className="text-cs-ink text-sm mb-1 line-clamp-1">{movie.title}</h3>
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="text-[#fd7e14] border border-[#fd7e14] px-1.5 py-0.5 rounded">
+                  <span className="text-cs-ink border border-cs-ink px-1.5 py-0.5 font-mono">
                     {movie.rating}
                   </span>
-                  <span className="text-gray-400">{movie.genre}</span>
+                  <span className="text-cs-muted">{movie.genre}</span>
                 </div>
               </motion.div>
             ))}
@@ -205,7 +206,7 @@ export function Dashboard({ onMovieClick }: DashboardProps) {
       {/* Purchased PPV Movies */}
       <div className="mb-8 md:mb-12">
         <div className="flex items-center justify-between px-4 md:px-12 lg:px-16 mb-4">
-          <h2 className="font-heading text-white text-2xl md:text-3xl tracking-wide flex items-center gap-2">
+          <h2 className="font-heading text-cs-ink text-2xl md:text-3xl tracking-wide flex items-center gap-2">
             <Star className="w-6 h-6 text-brand" />
             Purchased PPV Movies
           </h2>
@@ -222,7 +223,7 @@ export function Dashboard({ onMovieClick }: DashboardProps) {
                 whileHover={{ scale: 1.05 }}
                 className="group cursor-pointer relative"
               >
-                <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-900 mb-2">
+                <div className="relative aspect-video overflow-hidden bg-cs-ink cs-border-thin mb-2">
                   <ImageWithFallback
                     src={movie.image}
                     alt={movie.title}
@@ -243,15 +244,15 @@ export function Dashboard({ onMovieClick }: DashboardProps) {
                   </button>
 
                   {/* Border glow */}
-                  <div className="absolute inset-0 rounded-xl border-2 border-transparent group-hover:border-[#fd7e14] transition-colors" />
+                  <div className="absolute inset-0 border-2 border-transparent group-hover:border-cs-rust transition-colors" />
                 </div>
 
-                <h3 className="text-white text-sm mb-1 line-clamp-1">{movie.title}</h3>
+                <h3 className="text-cs-ink text-sm mb-1 line-clamp-1">{movie.title}</h3>
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="text-[#fd7e14] border border-[#fd7e14] px-1.5 py-0.5 rounded">
+                  <span className="text-cs-ink border border-cs-ink px-1.5 py-0.5 font-mono">
                     {movie.rating}
                   </span>
-                  <span className="text-gray-400">{movie.genre}</span>
+                  <span className="text-cs-muted">{movie.genre}</span>
                 </div>
 
                 {/* Expiry Info */}
@@ -270,7 +271,7 @@ export function Dashboard({ onMovieClick }: DashboardProps) {
       {/* Owned Movies */}
       <div className="mb-8 md:mb-12">
         <div className="flex items-center justify-between px-4 md:px-12 lg:px-16 mb-4">
-          <h2 className="font-heading text-white text-2xl md:text-3xl tracking-wide flex items-center gap-2">
+          <h2 className="font-heading text-cs-ink text-2xl md:text-3xl tracking-wide flex items-center gap-2">
             <Star className="w-6 h-6 text-brand" />
             Owned Movies
           </h2>
@@ -287,7 +288,7 @@ export function Dashboard({ onMovieClick }: DashboardProps) {
                 whileHover={{ scale: 1.05 }}
                 className="group cursor-pointer relative"
               >
-                <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-900 mb-2">
+                <div className="relative aspect-video overflow-hidden bg-cs-ink cs-border-thin mb-2">
                   <ImageWithFallback
                     src={movie.image}
                     alt={movie.title}
@@ -308,15 +309,15 @@ export function Dashboard({ onMovieClick }: DashboardProps) {
                   </button>
 
                   {/* Border glow */}
-                  <div className="absolute inset-0 rounded-xl border-2 border-transparent group-hover:border-[#fd7e14] transition-colors" />
+                  <div className="absolute inset-0 border-2 border-transparent group-hover:border-cs-rust transition-colors" />
                 </div>
 
-                <h3 className="text-white text-sm mb-1 line-clamp-1">{movie.title}</h3>
+                <h3 className="text-cs-ink text-sm mb-1 line-clamp-1">{movie.title}</h3>
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="text-[#fd7e14] border border-[#fd7e14] px-1.5 py-0.5 rounded">
+                  <span className="text-cs-ink border border-cs-ink px-1.5 py-0.5 font-mono">
                     {movie.rating}
                   </span>
-                  <span className="text-gray-400">{movie.genre}</span>
+                  <span className="text-cs-muted">{movie.genre}</span>
                 </div>
 
                 {/* Purchase Info */}

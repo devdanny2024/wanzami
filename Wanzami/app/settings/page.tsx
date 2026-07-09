@@ -184,10 +184,10 @@ export default function SettingsPage() {
 
   if (!hasAuth) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-ink text-foreground px-6 home-root">
+      <main className="min-h-screen flex items-center justify-center bg-cs-paper text-cs-ink cs-paper-root px-6 home-root">
         <div className="text-center space-y-3 max-w-xl">
-          <h1 className="font-heading text-4xl sm:text-5xl tracking-wide leading-none">Sign in to manage your account</h1>
-          <p className="text-ash">
+          <h1 className="font-heading text-4xl sm:text-5xl tracking-wide leading-none uppercase text-cs-ink">Sign in to manage your account</h1>
+          <p className="text-cs-muted">
             Profiles are available after you log in.
           </p>
         </div>
@@ -196,45 +196,45 @@ export default function SettingsPage() {
   }
 
     return (
-      <main className="min-h-screen bg-ink text-foreground pt-24 md:pt-28 pb-10 container-page home-root">
+      <main className="min-h-screen bg-cs-paper text-cs-ink cs-paper-root pt-24 md:pt-28 pb-10 container-page home-root">
         <div className="w-full max-w-5xl mx-auto space-y-8 md:space-y-10">
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.back()}
-              className="min-h-10 px-3 py-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-sm text-ash hover:text-foreground transition-colors"
+              className="min-h-10 px-3 py-2 cs-border-thin bg-cs-panel hover:bg-cs-paper font-mono text-xs font-bold uppercase tracking-[0.08em] text-cs-muted hover:text-cs-ink transition-colors"
             >
               Back
             </button>
-            <h1 className="font-heading text-4xl sm:text-5xl tracking-wide leading-none">Account Settings</h1>
+            <h1 className="font-heading text-4xl sm:text-5xl tracking-wide leading-none uppercase text-cs-ink">Account Settings</h1>
           </div>
-          <p className="text-ash">
+          <p className="text-cs-muted">
             Manage your Wanzami profiles. Billing and wallet will return with the next design update.
           </p>
         </div>
 
           {loading ? (
-            <div className="flex items-center justify-center gap-3 text-ash py-20">
+            <div className="flex items-center justify-center gap-3 text-cs-muted py-20">
             <Loader />
             <span>Loading your settings…</span>
           </div>
         ) : (
             <div className="space-y-8">
             {/* Profiles */}
-            <section className="bg-graphite border border-white/10 rounded-2xl p-5 sm:p-6 space-y-6">
+            <section className="bg-cs-panel cs-border cs-shadow p-5 sm:p-6 space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <h2 className="font-heading text-2xl sm:text-3xl tracking-wide">Profiles</h2>
-                  <p className="text-ash text-sm">
+                  <h2 className="font-heading text-2xl sm:text-3xl tracking-wide uppercase text-cs-ink">Profiles</h2>
+                  <p className="text-cs-muted text-sm">
                     Create and edit viewing profiles (Netflix-style, up to 4).
                   </p>
                 </div>
                 {profiles.length < 4 && (
                   <button
                     onClick={() => setShowProfileModal(true)}
-                    className="self-start sm:self-auto flex items-center gap-2 min-h-10 px-4 py-2 rounded-full bg-white/10 border border-white/10 hover:bg-white/15 text-sm transition-colors"
+                    className="self-start sm:self-auto flex items-center gap-2 min-h-10 px-4 py-2 cs-border-thin bg-cs-paper hover:bg-cs-panel font-mono text-xs font-bold uppercase tracking-[0.08em] transition-colors"
                   >
-                    <span className="w-6 h-6 rounded-full bg-brand/20 text-brand flex items-center justify-center">+</span>
+                    <span className="w-6 h-6 rounded-full cs-border-thin text-cs-rust flex items-center justify-center">+</span>
                     Add profile
                   </button>
                 )}
@@ -244,28 +244,28 @@ export default function SettingsPage() {
                 {profiles.map((p) => (
                   <div
                     key={p.id}
-                    className="border border-white/10 rounded-xl p-4 bg-ink-2 space-y-3"
+                    className="cs-border-thin p-4 bg-cs-paper space-y-3"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 md:w-14 md:h-14 rounded-full overflow-hidden border border-white/10">
+                      <div className="w-12 h-12 md:w-14 md:h-14 rounded-full overflow-hidden cs-border-thin">
                         {p.avatarUrl ? (
                           <img src={p.avatarUrl} alt={p.name} className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full bg-brand/20 flex items-center justify-center text-white text-xl font-semibold">
+                          <div className="w-full h-full bg-brand/20 flex items-center justify-center text-cs-ink text-xl font-semibold">
                             {p.name.slice(0, 1).toUpperCase()}
                           </div>
                         )}
                       </div>
                       <div className="flex-1">
-                        <div className="text-lg font-semibold">{p.name}</div>
+                        <div className="text-lg font-semibold text-cs-ink">{p.name}</div>
                         {p.kidMode ? (
-                          <div className="text-xs text-emerald-400 mt-1">Kids</div>
+                          <div className="text-xs text-emerald-600 mt-1 font-mono uppercase tracking-wide">Kids</div>
                         ) : (
-                          <div className="text-xs text-gray-500 mt-1">Standard</div>
+                          <div className="text-xs text-cs-muted mt-1 font-mono uppercase tracking-wide">Standard</div>
                         )}
                       </div>
                       <button
-                        className="text-sm text-red-400 hover:text-red-300"
+                        className="text-sm text-cs-rust hover:text-cs-ink font-mono uppercase tracking-wide"
                         onClick={() => deleteProfile(p.id)}
                         disabled={profiles.length <= 1}
                       >
@@ -278,11 +278,11 @@ export default function SettingsPage() {
               </section>
 
               {/* Profile preferences */}
-              <section className="border border-white/10 rounded-2xl bg-graphite p-5 md:p-6 space-y-4">
+              <section className="cs-border cs-shadow bg-cs-panel p-5 md:p-6 space-y-4">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                   <div>
-                    <h2 className="font-heading text-xl sm:text-2xl tracking-wide">Profile preferences</h2>
-                    <p className="text-ash text-sm">
+                    <h2 className="font-heading text-xl sm:text-2xl tracking-wide uppercase text-cs-ink">Profile preferences</h2>
+                    <p className="text-cs-muted text-sm">
                       Playback, data and notifications for your selected profile.
                     </p>
                   </div>
@@ -295,10 +295,10 @@ export default function SettingsPage() {
                             key={p.id}
                             type="button"
                             onClick={() => setActiveProfileFromProfile(p)}
-                            className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                            className={`px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-[0.06em] border-2 transition-colors ${
                               isActive
-                                ? "bg-brand border-brand text-black"
-                                : "bg-ink-2 border-white/15 text-foreground hover:border-white/40"
+                                ? "bg-cs-ink border-cs-ink text-cs-paper"
+                                : "bg-cs-paper border-cs-ink/30 text-cs-ink hover:border-cs-ink"
                             }`}
                           >
                             {p.name}
@@ -311,11 +311,11 @@ export default function SettingsPage() {
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <label className="text-sm text-gray-300">Language</label>
+                    <label className="block font-mono text-[11px] font-bold uppercase tracking-[0.08em] text-cs-ink">Language</label>
                     <select
                       value={language}
                       onChange={(e) => setLanguage(e.target.value)}
-                      className="w-full rounded-lg bg-ink-2 border border-white/10 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
+                      className="w-full bg-cs-paper cs-border-thin px-3 py-2.5 text-sm text-cs-ink focus:outline-none focus:border-cs-rust focus:ring-1 focus:ring-cs-rust transition-colors"
                     >
                       <option value="en">English</option>
                       <option value="fr">French</option>
@@ -325,33 +325,33 @@ export default function SettingsPage() {
 
                   <div className="flex items-center justify-between gap-3">
                     <div className="space-y-1">
-                      <p className="text-sm text-gray-300">Autoplay next episode</p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-sm text-cs-ink font-semibold">Autoplay next episode</p>
+                      <p className="text-xs text-cs-muted">
                         Continue watching automatically when an episode ends.
                       </p>
                     </div>
                     <button
                       type="button"
                       onClick={() => setAutoplay((v) => !v)}
-                      className={`w-12 h-7 rounded-full border transition-colors flex items-center px-1 ${
+                      className={`w-12 h-7 rounded-full border-2 transition-colors flex items-center px-1 ${
                         autoplay
-                          ? "bg-brand border-brand justify-end"
-                          : "bg-black/40 border-white/20 justify-start"
+                          ? "bg-brand border-cs-ink justify-end"
+                          : "bg-cs-panel border-cs-ink/40 justify-start"
                       }`}
                     >
-                      <span className="w-4 h-4 rounded-full bg-white" />
+                      <span className="w-4 h-4 rounded-full bg-cs-ink" />
                     </button>
                   </div>
                 </div>
 
                 {/* Playback & data */}
-                <div className="grid gap-4 md:grid-cols-2 pt-2 border-t border-white/5 mt-2">
+                <div className="grid gap-4 md:grid-cols-2 pt-2 border-t border-cs-line mt-2">
                   <div className="space-y-2">
-                    <label className="text-sm text-gray-300">Default quality</label>
+                    <label className="block font-mono text-[11px] font-bold uppercase tracking-[0.08em] text-cs-ink">Default quality</label>
                     <select
                       value={defaultQuality}
                       onChange={(e) => setDefaultQuality(e.target.value as any)}
-                      className="w-full rounded-lg bg-ink-2 border border-white/10 px-3 py-2.5 text-sm text-foreground focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
+                      className="w-full bg-cs-paper cs-border-thin px-3 py-2.5 text-sm text-cs-ink focus:outline-none focus:border-cs-rust focus:ring-1 focus:ring-cs-rust transition-colors"
                     >
                       <option value="auto">Auto</option>
                       <option value="hd">HD</option>
@@ -360,64 +360,64 @@ export default function SettingsPage() {
                   </div>
                   <div className="flex items-center justify-between gap-3">
                     <div className="space-y-1">
-                      <p className="text-sm text-gray-300">Data saver on mobile</p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-sm text-cs-ink font-semibold">Data saver on mobile</p>
+                      <p className="text-xs text-cs-muted">
                         Prefer lower resolutions when streaming on mobile data.
                       </p>
                     </div>
                     <button
                       type="button"
                       onClick={() => setDataSaver((v) => !v)}
-                      className={`w-12 h-7 rounded-full border transition-colors flex items-center px-1 ${
+                      className={`w-12 h-7 rounded-full border-2 transition-colors flex items-center px-1 ${
                         dataSaver
-                          ? "bg-brand border-brand justify-end"
-                          : "bg-black/40 border-white/20 justify-start"
+                          ? "bg-brand border-cs-ink justify-end"
+                          : "bg-cs-panel border-cs-ink/40 justify-start"
                       }`}
                     >
-                      <span className="w-4 h-4 rounded-full bg-white" />
+                      <span className="w-4 h-4 rounded-full bg-cs-ink" />
                     </button>
                   </div>
                 </div>
 
                 {/* Notifications */}
-                <div className="grid gap-4 md:grid-cols-2 pt-2 border-t border-white/5 mt-2">
+                <div className="grid gap-4 md:grid-cols-2 pt-2 border-t border-cs-line mt-2">
                   <div className="flex items-center justify-between gap-3">
                     <div className="space-y-1">
-                      <p className="text-sm text-gray-300">Email updates</p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-sm text-cs-ink font-semibold">Email updates</p>
+                      <p className="text-xs text-cs-muted">
                         Receive recommendations and account updates.
                       </p>
                     </div>
                     <button
                       type="button"
                       onClick={() => setEmailUpdates((v) => !v)}
-                      className={`w-12 h-7 rounded-full border transition-colors flex items-center px-1 ${
+                      className={`w-12 h-7 rounded-full border-2 transition-colors flex items-center px-1 ${
                         emailUpdates
-                          ? "bg-brand border-brand justify-end"
-                          : "bg-black/40 border-white/20 justify-start"
+                          ? "bg-brand border-cs-ink justify-end"
+                          : "bg-cs-panel border-cs-ink/40 justify-start"
                       }`}
                     >
-                      <span className="w-4 h-4 rounded-full bg-white" />
+                      <span className="w-4 h-4 rounded-full bg-cs-ink" />
                     </button>
                   </div>
 
                   <div className="flex items-center justify-between gap-3">
                     <div className="space-y-1">
-                      <p className="text-sm text-gray-300">Product news</p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-sm text-cs-ink font-semibold">Product news</p>
+                      <p className="text-xs text-cs-muted">
                         Hear about new features and releases.
                       </p>
                     </div>
                     <button
                       type="button"
                       onClick={() => setProductNews((v) => !v)}
-                      className={`w-12 h-7 rounded-full border transition-colors flex items-center px-1 ${
+                      className={`w-12 h-7 rounded-full border-2 transition-colors flex items-center px-1 ${
                         productNews
-                          ? "bg-brand border-brand justify-end"
-                          : "bg-black/40 border-white/20 justify-start"
+                          ? "bg-brand border-cs-ink justify-end"
+                          : "bg-cs-panel border-cs-ink/40 justify-start"
                       }`}
                     >
-                      <span className="w-4 h-4 rounded-full bg-white" />
+                      <span className="w-4 h-4 rounded-full bg-cs-ink" />
                     </button>
                   </div>
                 </div>
@@ -426,7 +426,7 @@ export default function SettingsPage() {
                   <button
                     type="button"
                     onClick={savePreferences}
-                    className="min-h-10 px-5 py-2.5 rounded-lg bg-brand hover:bg-brand-light text-black font-semibold text-sm transition-colors"
+                    className="min-h-10 px-5 py-2.5 bg-cs-rust text-cs-paper font-mono text-sm font-bold uppercase tracking-[0.07em] cs-shadow-sm transition-transform hover:-translate-y-0.5"
                   >
                     Save changes
                   </button>
@@ -438,15 +438,15 @@ export default function SettingsPage() {
       </div>
       {showProfileModal && (
         <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center px-4">
-          <div className="w-full max-w-lg md:max-w-2xl bg-graphite border border-white/10 rounded-2xl p-5 sm:p-6 text-foreground shadow-2xl max-h-[85vh] overflow-auto">
+          <div className="w-full max-w-lg md:max-w-2xl bg-cs-panel cs-border cs-shadow-lg p-5 sm:p-6 text-cs-ink max-h-[85vh] overflow-auto">
             <div className="flex items-center justify-between mb-5">
               <div>
-                <h3 className="font-heading text-2xl sm:text-3xl tracking-wide">Create profile</h3>
-                <p className="text-ash text-sm">Pick an avatar and name.</p>
+                <h3 className="font-heading text-2xl sm:text-3xl tracking-wide uppercase text-cs-ink">Create profile</h3>
+                <p className="text-cs-muted text-sm">Pick an avatar and name.</p>
               </div>
               <button
                 onClick={() => setShowProfileModal(false)}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/5 hover:bg-white/10 transition-colors"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full cs-border-thin bg-cs-paper hover:bg-cs-panel transition-colors"
                 aria-label="Close"
               >
                 ✕
@@ -458,10 +458,10 @@ export default function SettingsPage() {
                 <button
                   key={src}
                   onClick={() => setSelectedAvatar(src)}
-                  className={`rounded-2xl border-2 w-full aspect-square max-w-[88px] overflow-hidden transition-all ${
+                  className={`border-2 w-full aspect-square max-w-[88px] overflow-hidden transition-all ${
                     selectedAvatar === src
-                      ? "border-brand ring-2 ring-brand/40"
-                      : "border-white/10 hover:border-white/30"
+                      ? "border-cs-rust ring-2 ring-cs-rust/40"
+                      : "border-cs-ink/30 hover:border-cs-ink"
                   }`}
                 >
                   <img src={src} alt="Avatar option" className="w-full h-full object-cover" />
@@ -471,16 +471,16 @@ export default function SettingsPage() {
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm text-ash">Profile name</label>
+                <label className="block font-mono text-[11px] font-bold uppercase tracking-[0.08em] text-cs-ink">Profile name</label>
                 <input
-                  className="w-full rounded-lg bg-ink-2 border border-white/10 px-3 py-3 text-foreground text-sm focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
+                  className="w-full bg-cs-paper cs-border-thin px-3 py-3 text-cs-ink text-sm focus:outline-none focus:border-cs-rust focus:ring-1 focus:ring-cs-rust transition-colors"
                   placeholder="e.g. Peter"
                   value={profileName}
                   onChange={(e) => setProfileName(e.target.value)}
                 />
               </div>
 
-              <label className="flex items-center gap-2 text-sm text-ash">
+              <label className="flex items-center gap-2 text-sm text-cs-muted">
                 <input
                   type="checkbox"
                   checked={kidMode}
@@ -493,14 +493,14 @@ export default function SettingsPage() {
               <div className="flex items-center justify-end gap-3">
                 <button
                   onClick={() => setShowProfileModal(false)}
-                  className="min-h-10 px-4 py-2.5 rounded-lg border border-white/10 text-ash hover:text-foreground hover:bg-white/5 text-sm transition-colors"
+                  className="min-h-10 px-4 py-2.5 cs-border-thin text-cs-muted hover:text-cs-ink hover:bg-cs-paper font-mono text-xs font-bold uppercase tracking-[0.08em] transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={createProfile}
                   disabled={profiles.length >= 4}
-                  className="min-h-10 px-5 py-2.5 rounded-lg bg-brand hover:bg-brand-light text-black font-semibold disabled:opacity-60 text-sm transition-colors"
+                  className="min-h-10 px-5 py-2.5 bg-cs-rust text-cs-paper font-mono text-xs font-bold uppercase tracking-[0.08em] cs-shadow-sm disabled:opacity-60 transition-transform hover:-translate-y-0.5"
                 >
                   {profiles.length >= 4 ? "Profile limit reached" : "Add profile"}
                 </button>

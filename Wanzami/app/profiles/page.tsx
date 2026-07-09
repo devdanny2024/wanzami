@@ -15,7 +15,7 @@ export default function ProfilesPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-cs-paper text-cs-ink cs-paper-root">
       <ProfileChooser
         onSelected={() => {
           router.replace("/");

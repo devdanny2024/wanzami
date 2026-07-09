@@ -4,7 +4,7 @@ import { Dashboard } from "@/components/Dashboard";
 
 export default function DashboardRoute() {
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-cs-paper">
       <Dashboard onMovieClick={(movie) => {
         const targetId = movie?.backendId ?? movie?.id;
         if (targetId) {

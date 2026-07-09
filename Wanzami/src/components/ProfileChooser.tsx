@@ -168,13 +168,12 @@ export function ProfileChooser({ onSelected, onLogout }: ProfileChooserProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ink">
-      {/* Cinematic ambient background */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_80%_at_50%_-10%,rgba(253,126,20,0.16),transparent_55%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/80" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-cs-paper text-cs-ink">
+      {/* Paper vignette */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_80%_at_50%_-10%,rgba(253,126,20,0.10),transparent_55%)]" />
 
       <div
-        className="fixed top-0 left-0 right-0 h-1 bg-white/10 z-10"
+        className="fixed top-0 left-0 right-0 h-1 bg-cs-line z-10"
         style={{ opacity: barVisible ? 1 : 0, transition: "opacity 0.2s ease" }}
       >
         <div
@@ -185,16 +184,17 @@ export function ProfileChooser({ onSelected, onLogout }: ProfileChooserProps) {
 
       <div className="relative z-[1] w-full max-w-5xl container-page py-14 sm:py-16">
         <div className="text-center mb-10 sm:mb-14">
-          <h1 className="font-heading text-5xl sm:text-6xl md:text-7xl tracking-wide text-foreground leading-[0.95]">
+          <p className="cs-slug mb-3">Call sheet — cast &amp; crew</p>
+          <h1 className="font-heading text-5xl sm:text-6xl md:text-7xl tracking-wide text-cs-ink leading-[0.95] uppercase">
             Who&apos;s Watching?
           </h1>
-          <p className="text-ash mt-3 text-sm sm:text-base">
+          <p className="text-cs-muted mt-3 text-sm sm:text-base">
             Pick a profile to start streaming — or add a new one (max 4).
           </p>
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center gap-3 text-ash py-16">
+          <div className="flex items-center justify-center gap-3 text-cs-muted py-16">
             <Loader />
             <span>Loading profiles...</span>
           </div>
@@ -206,23 +206,23 @@ export function ProfileChooser({ onSelected, onLogout }: ProfileChooserProps) {
                 onClick={() => handleSelect(p)}
                 className="group flex flex-col items-center gap-3 w-full max-w-[160px] focus:outline-none"
               >
-                <div className="relative w-full aspect-square rounded-3xl overflow-hidden bg-graphite border border-white/10 shadow-[0_18px_40px_rgba(0,0,0,0.5)] transition-all duration-200 group-hover:-translate-y-1 group-hover:border-brand group-hover:ring-2 group-hover:ring-brand group-focus-visible:ring-2 group-focus-visible:ring-brand">
+                <div className="relative w-full aspect-square overflow-hidden bg-cs-panel cs-border-thin transition-all duration-200 group-hover:-translate-y-1 group-hover:cs-shadow group-hover:ring-2 group-hover:ring-cs-rust group-focus-visible:ring-2 group-focus-visible:ring-cs-rust">
                   {p.avatarUrl ? (
                     <img src={p.avatarUrl} alt={p.name} className="object-cover w-full h-full" />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-brand/30 to-brand/5 flex items-center justify-center">
-                      <span className="font-heading text-6xl sm:text-7xl text-foreground/90">
+                      <span className="font-heading text-6xl sm:text-7xl text-cs-ink/90">
                         {p.name.slice(0, 1).toUpperCase()}
                       </span>
                     </div>
                   )}
                   {p.kidMode && (
-                    <span className="absolute top-2 left-2 rounded-full bg-emerald-500/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-black">
+                    <span className="absolute top-2 left-2 bg-emerald-500/90 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wide text-white border border-white/70">
                       Kids
                     </span>
                   )}
                 </div>
-                <span className="text-sm sm:text-base font-medium text-ash transition-colors group-hover:text-foreground truncate max-w-full">
+                <span className="text-sm sm:text-base font-medium text-cs-muted transition-colors group-hover:text-cs-ink truncate max-w-full">
                   {p.name}
                 </span>
               </button>
@@ -233,12 +233,12 @@ export function ProfileChooser({ onSelected, onLogout }: ProfileChooserProps) {
                 onClick={() => setShowModal(true)}
                 className="group flex flex-col items-center gap-3 w-full max-w-[160px] focus:outline-none"
               >
-                <div className="relative w-full aspect-square rounded-3xl border border-dashed border-white/20 bg-white/[0.03] flex items-center justify-center transition-all duration-200 group-hover:-translate-y-1 group-hover:border-brand group-hover:bg-brand/5 group-focus-visible:ring-2 group-focus-visible:ring-brand">
-                  <span className="flex h-16 w-16 items-center justify-center rounded-full border border-white/15 bg-white/5 text-4xl font-light text-foreground transition-colors group-hover:border-brand group-hover:text-brand">
+                <div className="relative w-full aspect-square border-2 border-dashed border-cs-ink/40 bg-cs-panel flex items-center justify-center transition-all duration-200 group-hover:-translate-y-1 group-hover:border-cs-rust group-focus-visible:ring-2 group-focus-visible:ring-cs-rust">
+                  <span className="flex h-16 w-16 items-center justify-center rounded-full cs-border-thin bg-cs-paper text-4xl font-light text-cs-ink transition-colors group-hover:border-cs-rust group-hover:text-cs-rust">
                     +
                   </span>
                 </div>
-                <span className="text-sm sm:text-base font-medium text-ash transition-colors group-hover:text-foreground">
+                <span className="text-sm sm:text-base font-medium text-cs-muted transition-colors group-hover:text-cs-ink">
                   Add profile
                 </span>
               </button>
@@ -249,7 +249,7 @@ export function ProfileChooser({ onSelected, onLogout }: ProfileChooserProps) {
         <div className="flex items-center justify-center">
           <button
             onClick={onLogout}
-            className="min-h-10 px-5 py-2.5 text-sm rounded-lg border border-white/10 text-ash hover:text-foreground hover:bg-white/5 transition-colors"
+            className="min-h-10 px-5 py-2.5 font-mono text-xs font-bold uppercase tracking-[0.08em] cs-border-thin text-cs-muted hover:text-cs-ink hover:bg-cs-panel transition-colors"
           >
             Sign out
           </button>
@@ -268,16 +268,16 @@ export function ProfileChooser({ onSelected, onLogout }: ProfileChooserProps) {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-lg md:max-w-2xl bg-graphite border border-white/10 rounded-2xl p-5 sm:p-6 text-foreground shadow-2xl max-h-[85vh] overflow-auto"
+              className="w-full max-w-lg md:max-w-2xl bg-cs-panel cs-border cs-shadow-lg p-5 sm:p-6 text-cs-ink max-h-[85vh] overflow-auto"
             >
               <div className="flex items-center justify-between mb-5">
                 <div>
-                  <h3 className="font-heading text-2xl sm:text-3xl tracking-wide">Create profile</h3>
-                  <p className="text-ash text-sm">Pick an avatar and name.</p>
+                  <h3 className="font-heading text-2xl sm:text-3xl tracking-wide uppercase text-cs-ink">Create profile</h3>
+                  <p className="text-cs-muted text-sm">Pick an avatar and name.</p>
                 </div>
                 <button
                   onClick={() => setShowModal(false)}
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/5 hover:bg-white/10 transition-colors"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full cs-border-thin bg-cs-paper hover:bg-cs-panel transition-colors"
                   aria-label="Close"
                 >
                   ✕
@@ -290,10 +290,10 @@ export function ProfileChooser({ onSelected, onLogout }: ProfileChooserProps) {
                     <button
                       key={src}
                       onClick={() => setSelectedAvatar(src)}
-                      className={`rounded-2xl border-2 w-full aspect-square max-w-[88px] overflow-hidden transition-all ${
+                      className={`border-2 w-full aspect-square max-w-[88px] overflow-hidden transition-all ${
                         selectedAvatar === src
-                          ? "border-brand ring-2 ring-brand/40"
-                          : "border-white/10 hover:border-white/30"
+                          ? "border-cs-rust ring-2 ring-cs-rust/40"
+                          : "border-cs-ink/30 hover:border-cs-ink"
                       }`}
                     >
                       <img src={src} alt="Avatar option" className="w-full h-full object-cover" />
@@ -302,16 +302,16 @@ export function ProfileChooser({ onSelected, onLogout }: ProfileChooserProps) {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm text-ash">Profile name</label>
+                  <label className="block font-mono text-[11px] font-bold uppercase tracking-[0.08em] text-cs-ink">Profile name</label>
                   <input
-                    className="w-full rounded-lg bg-ink-2 border border-white/10 px-3 py-3 text-foreground text-sm focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors"
+                    className="w-full bg-cs-paper cs-border-thin px-3 py-3 text-cs-ink text-sm focus:outline-none focus:border-cs-rust focus:ring-1 focus:ring-cs-rust transition-colors"
                     placeholder="Profile name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                   />
                 </div>
 
-                <label className="flex items-center gap-2 text-sm text-ash">
+                <label className="flex items-center gap-2 text-sm text-cs-ink">
                   <input
                     type="checkbox"
                     checked={kidMode}
@@ -324,14 +324,14 @@ export function ProfileChooser({ onSelected, onLogout }: ProfileChooserProps) {
                 <div className="flex items-center justify-end gap-3 pt-2">
                   <button
                     onClick={() => setShowModal(false)}
-                    className="min-h-10 px-4 py-2.5 rounded-lg border border-white/10 text-ash hover:text-foreground hover:bg-white/5 text-sm transition-colors"
+                    className="min-h-10 px-4 py-2.5 cs-border-thin text-cs-muted hover:text-cs-ink hover:bg-cs-paper font-mono text-xs font-bold uppercase tracking-[0.08em] transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleCreate}
                     disabled={creating}
-                    className="min-h-10 px-5 py-2.5 rounded-lg bg-brand hover:bg-brand-light text-black font-semibold disabled:opacity-60 text-sm transition-colors"
+                    className="min-h-10 px-5 py-2.5 bg-cs-rust text-cs-paper font-mono text-xs font-bold uppercase tracking-[0.08em] cs-shadow-sm disabled:opacity-60 transition-transform hover:-translate-y-0.5"
                   >
                     {creating ? "Creating..." : "Add profile"}
                   </button>
