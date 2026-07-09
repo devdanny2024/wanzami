@@ -6,7 +6,6 @@ import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { TopLoader } from "@/components/TopLoader";
-import orangeLogo from "../../src/assets/logo.png";
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -96,24 +95,25 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center px-4 sm:px-6 py-10 sm:py-16 auth-root">
+    <div className="min-h-screen bg-cs-paper text-cs-ink cs-paper-root flex items-center justify-center px-4 sm:px-6 py-10 sm:py-16 auth-root">
       <TopLoader active={loading || googleLoading} />
       <div className="w-full max-w-md auth-card">
         <div className="flex flex-col items-center gap-3 mb-8 auth-header">
-          <Image src={orangeLogo} alt="Wanzami" width={96} height={96} priority className="h-20 w-20 sm:h-24 sm:w-24" />
+          <span className="font-heading text-5xl tracking-wide text-cs-ink leading-none">WANZAMI</span>
           <div className="text-center">
-            <h1 className="font-heading text-white text-4xl sm:text-5xl tracking-wide leading-none">Create Your Account</h1>
-            <p className="text-white/70 text-sm mt-1">Join Wanzami to start streaming.</p>
+            <p className="cs-slug mb-2">New crew — casting call</p>
+            <h1 className="font-heading text-cs-ink text-4xl sm:text-5xl tracking-wide leading-none uppercase">Create Your Account</h1>
+            <p className="text-cs-muted text-sm mt-1">Join Wanzami to start streaming.</p>
           </div>
         </div>
 
-        <div className="rounded-3xl bg-[#0d0d0f] border border-white/10 shadow-[0_30px_80px_rgba(0,0,0,0.55)] p-6 sm:p-8 auth-panel">
+        <div className="bg-cs-panel cs-border cs-shadow p-6 sm:p-8 auth-panel">
           <div className="space-y-3 mb-6">
             <button
               type="button"
               onClick={handleGoogle}
               disabled={googleLoading}
-              className="w-full bg-white text-black py-3 rounded-lg transition-colors flex items-center justify-center gap-3 hover:bg-white/90 disabled:opacity-70 disabled:cursor-not-allowed"
+              className="w-full bg-cs-paper cs-border-thin text-cs-ink py-3 font-mono text-xs font-bold uppercase tracking-[0.08em] transition-colors flex items-center justify-center gap-3 hover:bg-cs-paper/70 disabled:opacity-70 disabled:cursor-not-allowed"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden>
                 <path
@@ -139,54 +139,54 @@ export default function RegisterPage() {
 
           <div className="relative mb-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-white/15" />
+              <div className="w-full border-t border-cs-line" />
             </div>
             <div className="relative flex justify-center">
-              <span className="bg-[#0d0d0f] px-3 text-white/60 text-sm">
+              <span className="bg-cs-panel px-3 text-cs-muted font-mono text-[11px] uppercase tracking-[0.08em]">
                 Or sign up with email
               </span>
             </div>
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm text-white mb-2">Name</label>
+              <label className="block font-mono text-[11px] font-bold uppercase tracking-[0.08em] text-cs-ink mb-2">Name</label>
               <input
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full bg-[#16161a] border border-white/15 rounded-lg px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-[#fd7e14] focus:ring-1 focus:ring-[#fd7e14]"
+                className="w-full bg-cs-paper cs-border-thin px-4 py-3 text-cs-ink placeholder:text-cs-muted focus:outline-none focus:border-cs-rust focus:ring-1 focus:ring-cs-rust"
                 placeholder="Enter your name"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm text-white mb-2">Email</label>
+              <label className="block font-mono text-[11px] font-bold uppercase tracking-[0.08em] text-cs-ink mb-2">Email</label>
               <input
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full bg-[#16161a] border border-white/15 rounded-lg px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-[#fd7e14] focus:ring-1 focus:ring-[#fd7e14]"
+                className="w-full bg-cs-paper cs-border-thin px-4 py-3 text-cs-ink placeholder:text-cs-muted focus:outline-none focus:border-cs-rust focus:ring-1 focus:ring-cs-rust"
                 placeholder="Enter your email"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm text-white mb-2">Password</label>
+              <label className="block font-mono text-[11px] font-bold uppercase tracking-[0.08em] text-cs-ink mb-2">Password</label>
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full bg-[#16161a] border border-white/15 rounded-lg px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-[#fd7e14] focus:ring-1 focus:ring-[#fd7e14] pr-12"
+                  className="w-full bg-cs-paper cs-border-thin px-4 py-3 text-cs-ink placeholder:text-cs-muted focus:outline-none focus:border-cs-rust focus:ring-1 focus:ring-cs-rust pr-12"
                   placeholder="Create a password"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-cs-muted hover:text-cs-ink transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -194,40 +194,40 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="block text-sm text-white mb-2">Confirm Password</label>
+              <label className="block font-mono text-[11px] font-bold uppercase tracking-[0.08em] text-cs-ink mb-2">Confirm Password</label>
               <div className="relative">
                 <input
                   type={showConfirmPassword ? "text" : "password"}
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                  className="w-full bg-[#16161a] border border-white/15 rounded-lg px-4 py-3 text-white placeholder:text-white/40 focus:outline-none focus:border-[#fd7e14] focus:ring-1 focus:ring-[#fd7e14] pr-12"
+                  className="w-full bg-cs-paper cs-border-thin px-4 py-3 text-cs-ink placeholder:text-cs-muted focus:outline-none focus:border-cs-rust focus:ring-1 focus:ring-cs-rust pr-12"
                   placeholder="Confirm your password"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword((prev) => !prev)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-cs-muted hover:text-cs-ink transition-colors"
                 >
                   {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
             </div>
 
-            {error && <p className="text-red-400 text-sm">{error}</p>}
+            {error && <p className="text-cs-rust text-sm font-mono">{error}</p>}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-brand hover:bg-brand-light text-black font-semibold py-3 rounded-lg transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+              className="w-full bg-cs-rust text-cs-paper font-mono text-sm font-bold uppercase tracking-[0.07em] py-3 cs-shadow-sm transition-transform hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {loading ? "Creating account..." : "Create account"}
             </button>
           </form>
 
-          <p className="text-white/60 text-center mt-6">
+          <p className="text-cs-muted text-center mt-6 text-sm">
             Already have an account?{" "}
-            <Link href="/login" className="text-[#fd7e14] hover:text-[#e86f0f] transition-colors">
+            <Link href="/login" className="text-cs-rust hover:text-cs-ink transition-colors font-semibold">
               Sign in
             </Link>
           </p>

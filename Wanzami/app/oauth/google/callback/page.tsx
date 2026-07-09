@@ -78,23 +78,23 @@ function CallbackContent() {
   }, [code, state, router]);
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center px-6">
+    <div className="min-h-screen bg-cs-paper text-cs-ink cs-paper-root flex flex-col items-center justify-center px-6">
       <TopLoader active />
-      <div className="max-w-md w-full bg-white/5 border border-white/10 rounded-2xl p-8 text-center">
-        <h1 className="text-2xl font-semibold mb-3">Google Sign-In</h1>
-        <p className="text-gray-300 mb-6">{message}</p>
+      <div className="max-w-md w-full bg-cs-panel cs-border cs-shadow p-8 text-center">
+        <h1 className="font-heading text-3xl tracking-wide uppercase text-cs-ink mb-3">Google Sign-In</h1>
+        <p className="text-cs-muted mb-6">{message}</p>
         {status === "error" && (
           <div className="flex flex-col items-center gap-3">
             <a
               href="/login"
-              className="inline-flex items-center justify-center px-6 py-3 bg-[#fd7e14] text-white rounded-xl font-semibold hover:bg-[#e86f0f] transition-colors"
+              className="inline-flex items-center justify-center px-6 py-3 bg-cs-rust text-cs-paper font-mono text-sm font-bold uppercase tracking-[0.07em] cs-shadow-sm transition-transform hover:-translate-y-0.5"
             >
               Back to login
             </a>
             {errorCode === "ACCOUNT_NOT_FOUND_FOR_GOOGLE" && (
               <a
                 href="/register"
-                className="inline-flex items-center justify-center px-6 py-3 border border-white/40 text-white rounded-xl font-semibold hover:bg-white/10 transition-colors text-sm"
+                className="inline-flex items-center justify-center px-6 py-3 cs-border text-cs-ink font-mono text-xs font-bold uppercase tracking-[0.07em] hover:bg-cs-ink hover:text-cs-paper transition-colors"
               >
                 Go to sign up
               </a>
@@ -112,9 +112,9 @@ export default function GoogleCallbackPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center px-6">
+        <div className="min-h-screen bg-cs-paper text-cs-ink cs-paper-root flex flex-col items-center justify-center px-6">
           <TopLoader active />
-          <p className="mt-3 text-sm text-gray-300">Preparing Google sign-in...</p>
+          <p className="mt-3 font-mono text-xs uppercase tracking-[0.08em] text-cs-muted">Preparing Google sign-in...</p>
         </div>
       }
     >

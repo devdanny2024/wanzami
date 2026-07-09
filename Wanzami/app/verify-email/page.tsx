@@ -76,40 +76,40 @@ function VerifyEmailContent() {
   const renderIcon = () => {
     if (status === "success") {
       return (
-        <div className="bg-green-600/10 border border-green-600/30 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
-          <CheckCircle className="w-10 h-10 text-green-600" />
+        <div className="cs-border rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
+          <CheckCircle className="w-10 h-10 text-emerald-600" />
         </div>
       );
     }
     if (status === "error") {
       return (
-        <div className="bg-red-600/10 border border-red-600/30 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
-          <XCircle className="w-10 h-10 text-red-500" />
+        <div className="cs-border rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
+          <XCircle className="w-10 h-10 text-cs-rust" />
         </div>
       );
     }
     return (
-      <div className="bg-brand/10 border border-brand/30 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
-        <Mail className="w-10 h-10 text-brand" />
+      <div className="cs-border rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
+        <Mail className="w-10 h-10 text-cs-rust" />
       </div>
     );
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center px-4 sm:px-6 py-10 auth-root">
+    <div className="min-h-screen bg-cs-paper text-cs-ink cs-paper-root flex items-center justify-center px-4 sm:px-6 py-10 auth-root">
       <TopLoader active={status === "pending" || resendLoading} />
       <div className="max-w-md w-full text-center">
         {renderIcon()}
-        <h1 className="font-heading text-4xl sm:text-5xl tracking-wide leading-none mb-3">
+        <h1 className="font-heading text-4xl sm:text-5xl tracking-wide leading-none mb-3 uppercase text-cs-ink">
           {status === "success" ? "Email verified!" : status === "error" ? "Verification failed" : "Verify your email"}
         </h1>
-        <p className="text-white/70 mb-6">{message}</p>
+        <p className="text-cs-muted mb-6">{message}</p>
 
         {status !== "success" && email && (
-          <div className="bg-graphite border border-white/10 rounded-2xl p-6 mb-6 text-left">
-            <p className="text-white/80 mb-3">We sent a verification link to</p>
-            <p className="text-white font-semibold mb-4 break-all">{email}</p>
-            <ul className="text-white/60 space-y-2 list-disc list-inside">
+          <div className="bg-cs-panel cs-border cs-shadow-sm p-6 mb-6 text-left">
+            <p className="text-cs-ink mb-3">We sent a verification link to</p>
+            <p className="text-cs-ink font-semibold mb-4 break-all">{email}</p>
+            <ul className="text-cs-muted space-y-2 list-disc list-inside">
               <li>Check your spam or junk folder</li>
               <li>Make sure you entered the correct email</li>
               <li>The link expires in 24 hours</li>
@@ -120,7 +120,7 @@ function VerifyEmailContent() {
         {status === "success" ? (
           <button
             onClick={() => router.push("/login")}
-            className="w-full bg-brand hover:bg-brand-light text-black font-semibold py-3 rounded-lg transition-colors"
+            className="w-full bg-cs-rust text-cs-paper font-mono text-sm font-bold uppercase tracking-[0.07em] py-3 cs-shadow-sm transition-transform hover:-translate-y-0.5"
           >
             Continue to login
           </button>
@@ -129,17 +129,17 @@ function VerifyEmailContent() {
             <button
               onClick={handleResend}
               disabled={resendLoading || cooldown > 0}
-              className="w-full bg-brand hover:bg-brand-light text-black font-semibold py-3 rounded-lg transition-colors disabled:opacity-60"
+              className="w-full bg-cs-rust text-cs-paper font-mono text-sm font-bold uppercase tracking-[0.07em] py-3 cs-shadow-sm transition-transform hover:-translate-y-0.5 disabled:opacity-60"
             >
               {resendLoading ? "Resending..." : cooldown > 0 ? `Resend in ${cooldown}s` : "Resend verification email"}
             </button>
             <button
               onClick={() => router.push("/login")}
-              className="w-full bg-white/10 hover:bg-white/20 text-white py-3 rounded-lg border border-white/15 transition-colors"
+              className="w-full bg-cs-paper cs-border text-cs-ink font-mono text-sm font-bold uppercase tracking-[0.07em] py-3 transition-colors hover:bg-cs-ink hover:text-cs-paper"
             >
               Back to login
             </button>
-            {resendMsg && <p className="text-sm text-white/70">{resendMsg}</p>}
+            {resendMsg && <p className="text-sm text-cs-muted">{resendMsg}</p>}
           </div>
         )}
       </div>
@@ -151,7 +151,7 @@ export default function VerifyEmailPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-black text-white flex items-center justify-center auth-root">
+        <div className="min-h-screen bg-cs-paper text-cs-ink cs-paper-root flex items-center justify-center auth-root font-mono text-xs uppercase tracking-[0.08em]">
           Loading...
         </div>
       }

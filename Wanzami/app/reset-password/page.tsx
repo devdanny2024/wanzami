@@ -48,32 +48,32 @@ function ResetPasswordForm() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center px-4 sm:px-6 py-10 auth-root">
+    <div className="min-h-screen bg-cs-paper text-cs-ink cs-paper-root flex items-center justify-center px-4 sm:px-6 py-10 auth-root">
       <TopLoader active={loading} />
-      <div className="w-full max-w-md bg-graphite border border-white/10 rounded-2xl p-6 sm:p-8">
-        <h1 className="font-heading text-3xl sm:text-4xl tracking-wide leading-none mb-3">Reset Password</h1>
-        <p className="text-ash mb-6 break-words">Enter a new password for {email}.</p>
+      <div className="w-full max-w-md bg-cs-panel cs-border cs-shadow p-6 sm:p-8">
+        <h1 className="font-heading text-3xl sm:text-4xl tracking-wide leading-none mb-3 uppercase text-cs-ink">Reset Password</h1>
+        <p className="text-cs-muted mb-6 break-words">Enter a new password for {email}.</p>
         <form className="space-y-4" onSubmit={onSubmit}>
           <div className="space-y-2">
-            <label className="text-sm text-ash">New Password</label>
+            <label className="block font-mono text-[11px] font-bold uppercase tracking-[0.08em] text-cs-ink">New Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full rounded-lg border border-white/10 bg-ink-2 px-3 py-3 text-white placeholder:text-white/40 focus:border-brand focus:ring-1 focus:ring-brand focus:outline-none transition-colors"
+              className="w-full cs-border-thin bg-cs-paper px-3 py-3 text-cs-ink placeholder:text-cs-muted focus:border-cs-rust focus:ring-1 focus:ring-cs-rust focus:outline-none transition-colors"
               placeholder="Use upper, lower, number, symbol"
             />
           </div>
           <button
             type="submit"
             disabled={loading || !token || !email}
-            className="w-full bg-brand hover:bg-brand-light text-black font-semibold py-3 rounded-lg transition-colors disabled:opacity-60"
+            className="w-full bg-cs-rust text-cs-paper font-mono text-sm font-bold uppercase tracking-[0.07em] py-3 cs-shadow-sm transition-transform hover:-translate-y-0.5 disabled:opacity-60"
           >
             {loading ? "Updating..." : "Update password"}
           </button>
         </form>
-        {message && <p className="text-sm text-ash mt-4">{message}</p>}
+        {message && <p className="text-sm text-cs-muted mt-4">{message}</p>}
       </div>
     </div>
   );
@@ -83,8 +83,8 @@ export default function ResetPasswordPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-black text-white flex items-center justify-center px-4 auth-root">
-          <div className="text-gray-300">Loading reset form…</div>
+        <div className="min-h-screen bg-cs-paper text-cs-ink cs-paper-root flex items-center justify-center px-4 auth-root">
+          <div className="font-mono text-xs uppercase tracking-[0.08em] text-cs-muted">Loading reset form…</div>
         </div>
       }
     >

@@ -3,10 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Play, Download, Users, MonitorPlay, Tv, ChevronRight, Clock } from "lucide-react";
-import logo from "@/assets/logo.png";
 import { Footer } from "@/components/Footer";
 import { StartupSound } from "@/components/StartupSound";
-import { fetchTitles, resolveCdnImageUrl, type Title } from "@/lib/contentClient";
+import { fetchTitles, type Title } from "@/lib/contentClient";
 import { getAvailabilityBadge } from "@/lib/availability";
 
 const features = [
@@ -40,27 +39,27 @@ const ImageWithFallback = ({ src, alt, className }: { src: string; alt: string; 
   <img src={src} alt={alt} className={className} loading="lazy" />
 );
 
-const logoSrc = (logo as { src?: string }).src ?? (logo as unknown as string);
-
 function Header({ onLogin, onRegister }: { onLogin: () => void; onRegister: () => void }) {
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-black/70 backdrop-blur-md border-b border-white/10 splash-header">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between inner">
-        <div className="flex items-center gap-2 brand">
-          <img src={logoSrc} alt="Wanzami" className="w-9 h-9 sm:w-10 sm:h-10" />
-          <span className="font-heading text-foreground text-xl tracking-wide brand-name">Wanzami</span>
+    <header className="fixed top-0 left-0 right-0 z-50 bg-cs-paper border-b-[3px] border-cs-ink splash-header">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between inner">
+        <div className="flex flex-col items-start leading-none brand">
+          <span className="font-heading text-cs-ink text-2xl tracking-wide brand-name">WANZAMI</span>
+          <span className="hidden sm:block font-mono text-[9px] uppercase tracking-[0.2em] text-cs-muted -mt-0.5">
+            Production Office
+          </span>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-4 actions">
+        <div className="flex items-center gap-2 sm:gap-3 actions">
           <button
             onClick={onLogin}
-            className="text-foreground/80 hover:text-foreground transition-colors px-3 sm:px-4 py-2 min-h-[40px]"
+            className="font-mono text-xs font-bold uppercase tracking-[0.08em] text-cs-muted hover:text-cs-ink transition-colors px-3 py-2 min-h-[40px]"
           >
             Login
           </button>
           <button
             onClick={onRegister}
-            className="bg-brand hover:bg-brand-dark text-black px-4 sm:px-6 py-2 min-h-[40px] rounded-lg transition-colors font-semibold"
+            className="bg-cs-ink text-cs-paper px-4 sm:px-6 py-2 min-h-[40px] font-mono text-xs font-bold uppercase tracking-[0.08em] transition-transform hover:-translate-y-0.5"
           >
             Get started
           </button>
@@ -82,59 +81,64 @@ function Hero({
   const backdrop = featured?.thumbnailUrl || featured?.posterUrl || HERO_FALLBACK;
 
   return (
-    <div className="relative min-h-[88vh] flex items-center overflow-hidden splash-hero">
-      <div className="absolute inset-0 z-0 hero-bg">
-        <ImageWithFallback
-          src={backdrop}
-          alt={featured?.name ?? "Wanzami featured"}
-          className="w-full h-full object-cover scale-105"
-        />
-        {/* Cinematic left-to-right + bottom fade so text stays legible over any art */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-black/30" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(253,126,20,0.18),transparent_45%)]" />
+    <div className="splash-hero max-w-7xl mx-auto px-4 sm:px-6 pt-28 pb-12">
+      <div className="cs-slug mb-4 flex items-center gap-2">
+        <span>Call sheet № 001 — INT. Wanzami — always</span>
+        <span className="h-px flex-1 bg-cs-line" />
       </div>
-
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 pt-28 pb-16 hero-content">
-        <div className="max-w-2xl space-y-5 sm:space-y-6">
+      <div className="grid gap-8 lg:grid-cols-[1.05fr_1fr] lg:items-center hero-content">
+        <div className="space-y-5 sm:space-y-6">
           {featured && (
-            <div className="inline-flex items-center gap-2 rounded-full border border-brand/40 bg-brand/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-brand">
+            <span
+              className="inline-block bg-brand px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-cs-ink cs-shadow-sm"
+              style={{ transform: "rotate(-2deg)" }}
+            >
               {featured.isOriginal ? "Wanzami Original" : "Featured"} · Now streaming
-            </div>
+            </span>
           )}
-          <h1 className="font-heading text-foreground text-5xl sm:text-6xl md:text-7xl tracking-wide leading-[0.95]">
+          <h1 className="font-heading text-cs-ink text-5xl sm:text-6xl md:text-7xl tracking-wide leading-[0.9] uppercase">
             {featured?.name ?? "Watch what matters."}
           </h1>
-          <p className="text-foreground/90 text-base sm:text-lg">
-            Originals, series, films—everywhere you are.
-          </p>
-          <p className="text-foreground/70 max-w-xl text-sm sm:text-base">
-            Personalized recommendations, seamless playback, kid-friendly profiles, and smart downloads. Start your free
-            journey in under two minutes.
+          <p className="text-cs-ink/80 text-base sm:text-lg max-w-xl">
+            Originals, series, films—everywhere you are. Personalized picks, seamless playback, kid-friendly
+            profiles, and smart downloads. Start your free journey in under two minutes.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center cta-row">
             <button
               onClick={onStart}
-              className="bg-brand hover:bg-brand-dark text-black px-8 py-4 min-h-[44px] rounded-lg flex items-center justify-center gap-2 transition-colors shadow-lg shadow-brand/20 font-semibold"
+              className="bg-cs-rust text-cs-paper px-8 py-4 min-h-[52px] flex items-center justify-center gap-2 font-mono text-sm font-bold uppercase tracking-[0.07em] cs-shadow transition-transform hover:-translate-y-0.5 active:translate-y-px"
             >
               <Play className="w-5 h-5" fill="currentColor" />
               Start free
             </button>
             <button
               onClick={onSignIn}
-              className="bg-white/10 hover:bg-white/20 backdrop-blur-sm text-foreground px-8 py-4 min-h-[44px] rounded-lg border border-white/20 transition-colors"
+              className="bg-cs-paper text-cs-ink cs-border px-8 py-4 min-h-[52px] font-mono text-sm font-bold uppercase tracking-[0.07em] transition-colors hover:bg-cs-ink hover:text-cs-paper"
             >
               Sign in
             </button>
           </div>
 
-          <div className="flex flex-wrap gap-2 sm:gap-3 text-xs sm:text-sm text-foreground/80 tag-row">
-            <span className="px-3 py-2 rounded-full border border-white/15 bg-black/30">Offline ready</span>
-            <span className="px-3 py-2 rounded-full border border-white/15 bg-black/30">Profiles & kids mode</span>
-            <span className="px-3 py-2 rounded-full border border-white/15 bg-black/30">Multi-device resume</span>
-            <span className="px-3 py-2 rounded-full border border-white/15 bg-black/30">Pay-per-view & originals</span>
+          <div className="flex flex-wrap gap-2 sm:gap-3 tag-row">
+            {["Offline ready", "Profiles & kids mode", "Multi-device resume", "Pay-per-view & originals"].map((t) => (
+              <span key={t} className="px-3 py-2 font-mono text-[11px] uppercase tracking-[0.06em] text-cs-muted cs-border-thin">
+                {t}
+              </span>
+            ))}
           </div>
+        </div>
+
+        {/* Featured one-sheet */}
+        <div className="cs-border cs-shadow-lg bg-cs-ink overflow-hidden aspect-[16/11] relative">
+          <ImageWithFallback
+            src={backdrop}
+            alt={featured?.name ?? "Wanzami featured"}
+            className="w-full h-full object-cover"
+          />
+          <span className="absolute left-3 top-3 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-cs-paper bg-cs-ink/70 px-2 py-1">
+            Reel 01
+          </span>
         </div>
       </div>
     </div>
@@ -147,7 +151,7 @@ function PosterCard({ title, onClick }: { title: Title; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="group relative shrink-0 w-32 sm:w-40 md:w-44 snap-start overflow-hidden rounded-xl border border-white/10 bg-card transition-transform duration-200 hover:scale-[1.04] hover:border-brand/50 focus:outline-none focus:ring-2 focus:ring-brand"
+      className="group relative shrink-0 w-32 sm:w-40 md:w-44 snap-start overflow-hidden cs-border-thin bg-cs-ink transition-shadow duration-200 hover:cs-shadow focus:outline-none focus:ring-2 focus:ring-cs-rust"
     >
       <div className="aspect-[2/3] w-full overflow-hidden">
         <ImageWithFallback
@@ -158,7 +162,7 @@ function PosterCard({ title, onClick }: { title: Title; onClick: () => void }) {
       </div>
       {badge && (
         <div
-          className={`absolute top-2 left-2 z-10 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide shadow-lg backdrop-blur-sm ${
+          className={`absolute top-2 left-2 z-10 inline-flex items-center gap-1 border border-white/70 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wide shadow-lg ${
             badge.kind === "COMING_SOON" ? "bg-sky-500/90 text-white" : "bg-rose-500/90 text-white"
           }`}
         >
@@ -181,10 +185,13 @@ function PosterRail({ heading, items, onItemClick }: { heading: string; items: T
     <section className="splash-rail">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-heading text-xl sm:text-2xl tracking-wide text-foreground">{heading}</h2>
+          <h2 className="flex items-center gap-2 font-heading text-xl sm:text-2xl tracking-wide text-cs-ink uppercase">
+            <span className="inline-block h-3 w-3 bg-cs-rust" aria-hidden="true" />
+            {heading}
+          </h2>
           <button
             onClick={onItemClick}
-            className="flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-brand"
+            className="flex items-center gap-1 font-mono text-[11px] uppercase tracking-[0.08em] text-cs-muted transition-colors hover:text-cs-rust"
           >
             See all <ChevronRight className="h-4 w-4" />
           </button>
@@ -203,10 +210,10 @@ function RailSkeleton({ heading }: { heading: string }) {
   return (
     <section className="splash-rail">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <h2 className="mb-3 font-heading text-xl sm:text-2xl tracking-wide text-foreground/80">{heading}</h2>
+        <h2 className="mb-3 font-heading text-xl sm:text-2xl tracking-wide text-cs-ink/70 uppercase">{heading}</h2>
         <div className="flex gap-3 sm:gap-4 overflow-hidden">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="aspect-[2/3] w-32 sm:w-40 md:w-44 shrink-0 animate-pulse rounded-xl bg-card" />
+            <div key={i} className="aspect-[2/3] w-32 sm:w-40 md:w-44 shrink-0 animate-pulse cs-border-thin bg-cs-panel" />
           ))}
         </div>
       </div>
@@ -216,18 +223,19 @@ function RailSkeleton({ heading }: { heading: string }) {
 
 function Features() {
   return (
-    <div className="bg-black pt-12 sm:pt-16 pb-16 sm:pb-20 px-4 sm:px-6 splash-features">
+    <div className="border-y-[3px] border-cs-ink bg-cs-panel pt-12 sm:pt-16 pb-16 sm:pb-20 px-4 sm:px-6 splash-features">
       <div className="max-w-6xl mx-auto inner">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 grid">
+        <p className="cs-slug mb-8">Scene 02 — the kit</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 grid">
           {features.map((feature, index) => {
             const Icon = feature.icon;
             return (
-              <div key={index} className="text-center space-y-3 card">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-brand/10 mb-2 card-icon">
-                  <Icon className="w-8 h-8 text-brand" />
+              <div key={index} className="bg-cs-paper cs-border cs-shadow-sm p-5 space-y-3 card">
+                <div className="inline-flex items-center justify-center w-14 h-14 cs-border-thin card-icon">
+                  <Icon className="w-7 h-7 text-cs-rust" />
                 </div>
-                <h3 className="font-heading text-foreground text-lg tracking-wide card-title">{feature.title}</h3>
-                <p className="text-foreground/60 text-sm leading-relaxed card-text">{feature.description}</p>
+                <h3 className="font-heading text-cs-ink text-lg tracking-wide uppercase card-title">{feature.title}</h3>
+                <p className="text-cs-muted text-sm leading-relaxed card-text">{feature.description}</p>
               </div>
             );
           })}
@@ -239,17 +247,19 @@ function Features() {
 
 function FinalCta({ onStart }: { onStart: () => void }) {
   return (
-    <div className="px-4 sm:px-6 pb-20">
-      <div className="relative mx-auto max-w-5xl overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-brand/20 via-card to-black p-8 sm:p-12 text-center">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(253,126,20,0.25),transparent_60%)]" />
+    <div className="px-4 sm:px-6 py-20">
+      <div className="relative mx-auto max-w-5xl overflow-hidden cs-border cs-shadow-lg bg-cs-paper p-8 sm:p-12 text-center">
+        <p className="cs-slug mb-4">Cut to: you. Sign the slate.</p>
         <div className="relative space-y-5">
-          <h2 className="font-heading text-3xl sm:text-4xl tracking-wide text-foreground">Your next favorite is waiting.</h2>
-          <p className="mx-auto max-w-xl text-sm sm:text-base text-foreground/70">
+          <h2 className="font-heading text-4xl sm:text-5xl tracking-wide text-cs-ink uppercase">
+            Your next favorite is <span className="text-cs-rust">waiting.</span>
+          </h2>
+          <p className="mx-auto max-w-xl text-sm sm:text-base text-cs-muted">
             Join Wanzami and start streaming originals, series, and films in minutes. No commitment, cancel anytime.
           </p>
           <button
             onClick={onStart}
-            className="inline-flex items-center gap-2 rounded-lg bg-brand px-8 py-4 font-semibold text-black shadow-lg shadow-brand/20 transition-colors hover:bg-brand-dark"
+            className="inline-flex items-center gap-2 bg-cs-rust px-8 py-4 font-mono text-sm font-bold uppercase tracking-[0.07em] text-cs-paper cs-shadow transition-transform hover:-translate-y-0.5"
           >
             <Play className="h-5 w-5" fill="currentColor" />
             Start free
@@ -309,12 +319,12 @@ export default function SplashPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white relative overflow-hidden splash-root">
+    <div className="min-h-screen bg-cs-paper text-cs-ink cs-paper-root relative overflow-hidden splash-root">
       {navigating && (
         <div className="absolute inset-0 z-[70] flex items-start justify-center pointer-events-none">
-          <div className="mt-6 px-4 py-3 bg-black/75 border border-white/10 rounded-2xl shadow-lg flex items-center gap-3">
-            <div className="w-6 h-6 border-[3px] border-brand border-t-transparent rounded-full animate-spin" />
-            <p className="text-foreground/80 text-sm">Loading Wanzami…</p>
+          <div className="mt-6 px-4 py-3 bg-cs-paper cs-border cs-shadow flex items-center gap-3">
+            <div className="w-6 h-6 border-[3px] border-cs-rust border-t-transparent rounded-full animate-spin" />
+            <p className="font-mono text-xs uppercase tracking-[0.08em] text-cs-muted">Loading Wanzami…</p>
           </div>
         </div>
       )}
@@ -324,7 +334,7 @@ export default function SplashPage() {
       <main className="pb-10">
         <Hero featured={featured} onStart={goRegister} onSignIn={goLogin} />
 
-        <div className="relative z-10 -mt-10 space-y-10 sm:space-y-12">
+        <div className="relative z-10 space-y-10 sm:space-y-12">
           {loading ? (
             <>
               <RailSkeleton heading="Trending now" />
