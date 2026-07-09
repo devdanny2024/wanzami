@@ -27,12 +27,31 @@ const spaceMono = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Wanzami",
-  description: "Wanzami streaming platform",
+  metadataBase: new URL("https://wanzami.tv"),
+  title: "Wanzami — Stream the stories. Feel the culture.",
+  description:
+    "Premium African streaming. Originals, series, films — everywhere you are. Personalized picks, seamless playback, kid-friendly profiles.",
   icons: {
     icon: "/wanzami-logo.png",
     shortcut: "/wanzami-logo.png",
     apple: "/wanzami-logo.png",
+  },
+  openGraph: {
+    title: "Wanzami — Stream the stories. Feel the culture.",
+    description:
+      "Premium African streaming. Originals, series, films — everywhere you are.",
+    url: "https://wanzami.tv",
+    siteName: "Wanzami",
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Wanzami" }],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Wanzami — Stream the stories. Feel the culture.",
+    description:
+      "Premium African streaming. Originals, series, films — everywhere you are.",
+    images: ["/og-image.png"],
   },
 };
 
