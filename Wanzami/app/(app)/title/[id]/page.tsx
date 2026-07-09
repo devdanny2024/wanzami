@@ -57,6 +57,7 @@ const mapToDetailMovie = (title: Title | null, fallbackId: string) => {
     duration: durationLabel ?? '2h 00m',
     year: title.releaseYear ? String(title.releaseYear) : '2024',
     genre: title.genres?.[0] ?? 'Drama',
+    isOriginal: (title as any)?.isOriginal ?? false,
     description: title.description,
     maturityRating: title.maturityRating,
     episodes: title.episodes ?? [],

@@ -219,9 +219,11 @@ export function MovieDetailPage({ movie, onPlayClick, onBuyClick, ppvInfo }: Mov
           {/* Content */}
           <div className="absolute inset-0 flex items-end p-6 md:p-10">
             <div className="max-w-3xl space-y-4 md:space-y-6">
-              <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                <Sticker>Wanzami Original</Sticker>
-              </motion.div>
+              {movie?.isOriginal ? (
+                <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                  <Sticker>Wanzami Original</Sticker>
+                </motion.div>
+              ) : null}
 
               <motion.h1
                 initial={{ opacity: 0, y: 30 }}

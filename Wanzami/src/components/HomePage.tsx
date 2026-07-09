@@ -91,6 +91,7 @@ export function HomePage({
     year: m.year ? String(m.year) : "2024",
     genre: m.genre || "Movie",
     isPpv: (m as any)?.isPpv,
+    isOriginal: (m as any)?.isOriginal,
   }));
 
   const moviesOnly = sortedMovies.filter((m) => m.type === "MOVIE");

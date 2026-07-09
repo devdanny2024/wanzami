@@ -13,6 +13,7 @@ interface HeroContent {
   year: string;
   genre: string;
    isPpv?: boolean;
+   isOriginal?: boolean;
 }
 
 interface HeroProps {
@@ -78,12 +79,14 @@ export function Hero({ onPlayClick, onMoreInfoClick, featured }: HeroProps) {
             transition={{ duration: 0.5 }}
             className="space-y-5 order-2 lg:order-1"
           >
-            <span
-              className="inline-block bg-brand px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-cs-ink cs-shadow-sm"
-              style={{ transform: 'rotate(-2deg)' }}
-            >
-              Wanzami Original
-            </span>
+            {current.isOriginal ? (
+              <span
+                className="inline-block bg-brand px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-cs-ink cs-shadow-sm"
+                style={{ transform: 'rotate(-2deg)' }}
+              >
+                Wanzami Original
+              </span>
+            ) : null}
 
             <h1 className="font-heading uppercase tracking-wide leading-[0.85] text-cs-ink text-5xl sm:text-6xl md:text-7xl">
               {current.title}
