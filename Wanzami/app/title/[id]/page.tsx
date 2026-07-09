@@ -170,10 +170,10 @@ export default function TitlePage({ params }: { params: { id: string } }) {
 
   if (loading && !title) {
     return (
-      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+      <div className="min-h-screen bg-cs-paper text-cs-ink flex items-center justify-center">
         <div className="text-center space-y-3">
-          <div className="animate-spin h-10 w-10 border-2 border-white/20 border-t-brand rounded-full mx-auto" />
-          <p className="text-sm text-muted-foreground">Loading title...</p>
+          <div className="animate-spin h-10 w-10 border-2 border-cs-line border-t-cs-rust rounded-full mx-auto" />
+          <p className="font-mono text-xs uppercase tracking-[0.08em] text-cs-muted">Loading title...</p>
         </div>
       </div>
     );
@@ -181,11 +181,11 @@ export default function TitlePage({ params }: { params: { id: string } }) {
 
   if (!detailMovie) {
     return (
-      <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center px-6 text-center">
-        <p className="font-heading text-2xl uppercase tracking-wide mb-2">Oops, we couldn't load that title.</p>
-        {error ? <p className="text-sm text-muted-foreground mb-4">{error}</p> : null}
+      <div className="min-h-screen bg-cs-paper text-cs-ink flex flex-col items-center justify-center px-6 text-center">
+        <p className="font-heading text-2xl uppercase tracking-wide mb-2 text-cs-ink">Oops, we couldn't load that title.</p>
+        {error ? <p className="text-sm text-cs-muted mb-4">{error}</p> : null}
         <button
-          className="min-h-[40px] px-5 py-2.5 rounded-xl bg-brand hover:bg-brand-dark text-primary-foreground font-semibold transition-colors"
+          className="min-h-[40px] px-5 py-2.5 bg-cs-rust text-cs-paper font-mono text-sm font-bold uppercase tracking-[0.07em] cs-shadow-sm transition-transform hover:-translate-y-0.5"
           onClick={() => router.push('/')}
         >
           Go Home

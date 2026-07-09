@@ -177,7 +177,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
   };
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black overflow-y-auto">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-cs-paper overflow-y-auto">
       {/* Close button */}
       <button
         onClick={onClose}
@@ -376,12 +376,12 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
           {isSeries && seriesEpisodes.length > 0 && (
             <div className="mb-12 space-y-4 max-w-5xl">
               <div className="flex flex-wrap items-center gap-3 md:gap-4 px-1">
-                <h2 className="font-heading uppercase tracking-wide text-foreground text-2xl md:text-3xl">Episodes</h2>
+                <h2 className="font-heading uppercase tracking-wide text-cs-ink text-2xl md:text-3xl">Episodes</h2>
                 {seasonNumbers.length > 0 && (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Season</span>
+                    <span className="font-mono text-xs uppercase tracking-[0.08em] text-cs-muted">Season</span>
                     <select
-                      className="bg-graphite border border-white/10 text-foreground text-sm rounded-md px-3 py-2 min-h-[40px]"
+                      className="bg-cs-paper cs-border-thin text-cs-ink text-sm px-3 py-2 min-h-[40px]"
                       value={String(selectedSeason ?? seasonNumbers[0] ?? '')}
                       onChange={(e) => setSelectedSeason(Number(e.target.value))}
                     >
@@ -404,7 +404,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
                   return (
                     <motion.div
                       key={episode.id ?? idx}
-                      className="group rounded-xl border border-white/10 bg-card hover:border-brand/60 transition-all overflow-hidden"
+                      className="group cs-border-thin bg-cs-panel hover:cs-shadow transition-all overflow-hidden"
                       whileHover={{ scale: 1.005 }}
                     >
                       <div className="flex gap-3 p-4 md:p-5 max-w-5xl mx-auto items-start">
@@ -431,18 +431,18 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-4">
-                            <h3 className="text-foreground text-base md:text-lg font-semibold leading-tight">Episode {episode.episodeNumber ?? idx + 1}</h3>
-                            <div className="text-xs md:text-sm text-muted-foreground whitespace-nowrap">
+                            <h3 className="text-cs-ink text-base md:text-lg font-semibold leading-tight">Episode {episode.episodeNumber ?? idx + 1}</h3>
+                            <div className="text-xs md:text-sm text-cs-muted whitespace-nowrap">
                               {episode.runtimeMinutes ? `${episode.runtimeMinutes}m` : episode.duration || ''}
                             </div>
                           </div>
                           <div className="max-h-0 group-hover:max-h-40 transition-[max-height] duration-300 overflow-hidden">
-                            <p className="text-foreground/80 text-sm mt-3 leading-relaxed">{episode.synopsis ?? episode.description ?? 'Episode details coming soon.'}</p>
-                            <div className="flex flex-wrap items-center gap-3 text-xs md:text-sm text-muted-foreground mt-3">
-                              <span className="px-2 py-1 rounded-md bg-white/5 border border-white/10">Season {episode.seasonNumber ?? selectedSeason ?? '-'}</span>
-                              <span className="px-2 py-1 rounded-md bg-white/5 border border-white/10">Maturity: {movie.maturityRating ?? 'N/A'}</span>
+                            <p className="text-cs-ink/80 text-sm mt-3 leading-relaxed">{episode.synopsis ?? episode.description ?? 'Episode details coming soon.'}</p>
+                            <div className="flex flex-wrap items-center gap-3 text-xs md:text-sm text-cs-muted mt-3">
+                              <span className="px-2 py-1 cs-border-thin font-mono uppercase tracking-wide">Season {episode.seasonNumber ?? selectedSeason ?? '-'}</span>
+                              <span className="px-2 py-1 cs-border-thin font-mono uppercase tracking-wide">Maturity: {movie.maturityRating ?? 'N/A'}</span>
                               {episode.runtimeMinutes && (
-                                <span className="px-2 py-1 rounded-md bg-white/5 border border-white/10">{episode.runtimeMinutes} min</span>
+                                <span className="px-2 py-1 cs-border-thin font-mono uppercase tracking-wide">{episode.runtimeMinutes} min</span>
                               )}
                             </div>
                           </div>
@@ -458,7 +458,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
           {/* More Like This */}
           {relatedItems.length > 0 && (
             <div>
-              <h2 className="font-heading uppercase tracking-wide text-foreground mb-6 text-2xl md:text-3xl">More Like This</h2>
+              <h2 className="font-heading uppercase tracking-wide text-cs-ink mb-6 text-2xl md:text-3xl">More Like This</h2>
               <div className="flex gap-3 md:gap-4 overflow-x-auto scrollbar-hide px-1 max-w-6xl mx-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 {relatedItems.slice(0, 5).map((item, idx) => {
                   const itemId = (item as any).backendId || item.id || idx;
@@ -473,7 +473,7 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
                   return (
                     <motion.div
                       key={itemId}
-                      className="group cursor-pointer rounded-xl overflow-hidden border border-white/10 bg-card hover:border-brand/60 transition-all relative h-full flex flex-col"
+                      className="group cursor-pointer overflow-hidden cs-border-thin bg-cs-panel hover:cs-shadow transition-all relative h-full flex flex-col"
                       style={{ aspectRatio: '16 / 9', width: '220px', minWidth: '220px' }}
                       whileHover={{ scale: 1.01 }}
                       onClick={() => {
@@ -492,8 +492,8 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
                         </button>
                       </div>
                       <div className="p-3 space-y-1 flex-1">
-                        <p className="text-foreground font-semibold text-sm line-clamp-1">{title}</p>
-                        <p className="text-xs text-muted-foreground line-clamp-2">
+                        <p className="text-cs-ink font-semibold text-sm line-clamp-1">{title}</p>
+                        <p className="text-xs text-cs-muted line-clamp-2">
                           {genre} · {runtime ? `${Math.round(Number(runtime))}m` : '90m'}
                         </p>
                       </div>

@@ -86,7 +86,7 @@ export default function LivePage() {
   }, [events]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground pt-24 sm:pt-28 pb-12">
+    <div className="min-h-screen bg-cs-paper text-cs-ink pt-24 sm:pt-28 pb-12">
       <div className="container-page">
         <div className="mb-8">
           <div className="inline-flex items-center gap-2 mb-3">
@@ -94,18 +94,18 @@ export default function LivePage() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500/70" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
             </span>
-            <span className="text-xs uppercase tracking-[0.2em] text-red-400">Live</span>
+            <span className="font-mono text-xs uppercase tracking-[0.2em] text-cs-rust">Live</span>
           </div>
-          <h1 className="font-heading text-4xl sm:text-5xl uppercase tracking-wide text-foreground">Live</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Now streaming, upcoming events, and recent replays.</p>
+          <h1 className="font-heading text-4xl sm:text-5xl uppercase tracking-wide text-cs-ink">Live</h1>
+          <p className="mt-2 text-sm text-cs-muted">Now streaming, upcoming events, and recent replays.</p>
         </div>
 
-        {loading && <p className="text-muted-foreground">Loading live events...</p>}
-        {error && <p className="text-destructive">{error}</p>}
+        {loading && <p className="text-cs-muted">Loading live events...</p>}
+        {error && <p className="text-cs-rust">{error}</p>}
 
         {!loading && sorted.length === 0 && (
-          <div className="rounded-2xl border border-white/10 bg-card p-10 text-center">
-            <p className="text-muted-foreground">No live events yet.</p>
+          <div className="cs-border bg-cs-panel p-10 text-center">
+            <p className="text-cs-muted">No live events yet.</p>
           </div>
         )}
 
@@ -119,9 +119,9 @@ export default function LivePage() {
               <Link
                 key={event.id}
                 href={`/live/${event.id}`}
-                className="group flex flex-col rounded-2xl border border-white/10 bg-card hover:border-brand/40 hover:bg-graphite-2 p-3 sm:p-4 transition-colors"
+                className="group flex flex-col cs-border-thin bg-cs-panel hover:cs-shadow p-3 sm:p-4 transition-shadow"
               >
-                <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-graphite-2">
+                <div className="relative w-full aspect-video overflow-hidden bg-cs-ink cs-border-thin">
                   {event.thumbnailUrl ? (
                     <Image
                       src={event.thumbnailUrl}
@@ -131,39 +131,39 @@ export default function LivePage() {
                       unoptimized
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">No thumbnail</div>
+                    <div className="w-full h-full flex items-center justify-center font-mono text-xs text-cs-paper/50 uppercase tracking-wide">No thumbnail</div>
                   )}
                   <span
-                    className={`absolute top-2 left-2 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide px-2 py-1 rounded-full border backdrop-blur-sm ${
+                    className={`absolute top-2 left-2 inline-flex items-center gap-1 font-mono text-[10px] font-bold uppercase tracking-wide px-2 py-1 border border-white/70 ${
                       isLive
-                        ? "border-red-500/50 text-red-200 bg-red-500/20"
+                        ? "text-white bg-red-500/90"
                         : isScheduled
-                        ? "border-brand/50 text-brand bg-brand/15"
-                        : "border-white/20 text-muted-foreground bg-black/50"
+                        ? "text-cs-ink bg-brand"
+                        : "text-white bg-black/60"
                     }`}
                   >
-                    {isLive && <span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />}
+                    {isLive && <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />}
                     {isLive ? "Live" : isScheduled ? "Scheduled" : "Ended"}
                   </span>
                 </div>
 
-                <h3 className="mt-3 font-heading text-lg sm:text-xl uppercase tracking-wide text-foreground group-hover:text-brand transition-colors line-clamp-1">
+                <h3 className="mt-3 font-heading text-lg sm:text-xl uppercase tracking-wide text-cs-ink group-hover:text-cs-rust transition-colors line-clamp-1">
                   {event.title}
                 </h3>
 
-                {event.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{event.description}</p>}
+                {event.description && <p className="text-xs text-cs-muted mt-1 line-clamp-2">{event.description}</p>}
 
                 <div className="mt-3">
                   {isScheduled && (
-                    <p className="text-xs text-brand">{countdown ? `Starts in ${countdown}` : "Scheduled"}</p>
+                    <p className="font-mono text-xs text-cs-rust">{countdown ? `Starts in ${countdown}` : "Scheduled"}</p>
                   )}
 
                   {isLive && (
-                    <p className="text-xs text-red-300">● Live now{typeof event.viewerCount === "number" ? ` · ${event.viewerCount} watching` : ""}</p>
+                    <p className="font-mono text-xs text-cs-rust">● Live now{typeof event.viewerCount === "number" ? ` · ${event.viewerCount} watching` : ""}</p>
                   )}
 
                   {event.status === "ENDED" && (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-cs-muted">
                       Replay: {event.replay?.status === "READY" ? "available" : "processing / pending"}
                     </p>
                   )}

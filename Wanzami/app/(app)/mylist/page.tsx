@@ -96,23 +96,24 @@ export default function MyListPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background pt-28 md:pt-32 pb-12 container-page home-root">
+    <div className="min-h-screen bg-cs-paper pt-28 md:pt-32 pb-12 container-page home-root">
       <div className="flex items-end justify-between flex-wrap gap-4 mb-8">
         <div>
-          <h1 className="font-heading text-foreground text-5xl md:text-6xl tracking-wide uppercase">My List</h1>
-          <p className="text-ash mt-2">All titles you saved to watch later.</p>
+          <p className="cs-slug mb-2">Saved — watch later</p>
+          <h1 className="font-heading text-cs-ink text-5xl md:text-6xl tracking-wide uppercase">My List</h1>
+          <p className="text-cs-muted mt-2">All titles you saved to watch later.</p>
         </div>
         {items.length > 0 && (
-          <div className="text-sm text-ash">
+          <div className="font-mono text-xs uppercase tracking-[0.08em] text-cs-muted">
             {items.length} item{items.length === 1 ? "" : "s"}
           </div>
         )}
       </div>
 
-      {loading && <p className="text-ash">Loading your list...</p>}
-      {error && <p className="text-destructive">{error}</p>}
+      {loading && <p className="text-cs-muted">Loading your list...</p>}
+      {error && <p className="text-cs-rust">{error}</p>}
       {emptyState && (
-        <div className="text-ash">
+        <div className="text-cs-muted">
           You haven&apos;t added anything yet. Open a title and tap &quot;My List&quot; to save it here.
         </div>
       )}
@@ -126,11 +127,11 @@ export default function MyListPage() {
               whileHover={{ scale: 1.03 }}
               onClick={() => handleOpen(movie)}
             >
-              <div className="relative aspect-video rounded-xl overflow-hidden bg-graphite border border-white/10 group-hover:border-brand/60 transition-colors">
+              <div className="relative aspect-video overflow-hidden bg-cs-ink cs-border-thin transition-shadow group-hover:cs-shadow">
                 <ImageWithFallback src={movie.image} alt={movie.title} className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 <button
-                  className="absolute top-2 right-2 w-10 h-10 rounded-full bg-black/70 backdrop-blur border border-white/20 text-white opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center hover:bg-destructive"
+                  className="absolute top-2 right-2 w-10 h-10 rounded-full bg-black/70 backdrop-blur border border-white/20 text-white opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center hover:bg-cs-rust"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleRemove(movie.backendId ?? movie.id);
@@ -141,8 +142,8 @@ export default function MyListPage() {
                 </button>
               </div>
               <div className="mt-2">
-                <p className="text-foreground text-sm font-semibold line-clamp-1">{movie.title}</p>
-                <p className="text-xs text-ash line-clamp-1">
+                <p className="text-cs-ink text-sm font-semibold line-clamp-1">{movie.title}</p>
+                <p className="text-xs text-cs-muted line-clamp-1">
                   {movie.genre || movie.genres?.[0] || movie.type || "Title"}
                 </p>
               </div>

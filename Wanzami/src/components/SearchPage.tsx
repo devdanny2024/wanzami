@@ -84,7 +84,7 @@ export function SearchPage({ onMovieClick, movies, loading, error }: SearchPageP
     : allMovies;
 
   return (
-    <div className="min-h-screen bg-background container-page pb-16">
+    <div className="min-h-screen bg-cs-paper container-page pb-16">
       <div className="max-w-7xl mx-auto">
         {/* Search bar */}
         <motion.div
@@ -98,11 +98,11 @@ export function SearchPage({ onMovieClick, movies, loading, error }: SearchPageP
             }`}
           >
             <div
-              className={`flex items-center gap-3 sm:gap-4 bg-graphite/80 backdrop-blur-md rounded-2xl px-4 sm:px-6 py-3.5 sm:py-4 border-2 transition-all duration-300 ${
-                isFocused ? 'border-brand shadow-lg shadow-brand/20' : 'border-white/10'
+              className={`flex items-center gap-3 sm:gap-4 bg-cs-paper px-4 sm:px-6 py-3.5 sm:py-4 border-[2.5px] transition-all duration-300 ${
+                isFocused ? 'border-cs-rust cs-shadow' : 'border-cs-ink'
               }`}
             >
-              <Search className={`w-5 h-5 sm:w-6 sm:h-6 shrink-0 transition-colors ${isFocused ? 'text-brand' : 'text-ash'}`} />
+              <Search className={`w-5 h-5 sm:w-6 sm:h-6 shrink-0 transition-colors ${isFocused ? 'text-cs-rust' : 'text-cs-muted'}`} />
 
               <input
                 type="text"
@@ -111,36 +111,29 @@ export function SearchPage({ onMovieClick, movies, loading, error }: SearchPageP
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
-                className="flex-1 min-w-0 bg-transparent text-foreground placeholder-ash/70 outline-none text-base sm:text-lg"
+                className="flex-1 min-w-0 bg-transparent text-cs-ink placeholder-cs-muted outline-none text-base sm:text-lg"
               />
 
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
                   aria-label="Clear search"
-                  className="text-ash hover:text-foreground transition-colors shrink-0"
+                  className="text-cs-muted hover:text-cs-ink transition-colors shrink-0"
                 >
                   <X className="w-5 h-5" />
                 </button>
               )}
             </div>
 
-            {isFocused && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="absolute -inset-4 bg-brand/10 rounded-3xl blur-xl -z-10"
-              />
-            )}
           </div>
         </motion.div>
 
         {/* Results */}
         {loading && (
-          <div className="text-ash text-center mb-8">Loading catalog…</div>
+          <div className="text-cs-muted text-center mb-8 font-mono uppercase tracking-[0.08em] text-sm">Loading catalog…</div>
         )}
         {error && !loading && (
-          <div className="text-destructive text-center mb-8">Failed to load movies: {error}</div>
+          <div className="text-cs-rust text-center mb-8">Failed to load movies: {error}</div>
         )}
 
         <AnimatePresence mode="wait">
@@ -152,7 +145,7 @@ export function SearchPage({ onMovieClick, movies, loading, error }: SearchPageP
               exit={{ opacity: 0 }}
             >
               <div className="mb-6">
-                <p className="text-ash">
+                <p className="font-mono text-xs uppercase tracking-[0.08em] text-cs-muted">
                   {filteredMovies.length} {filteredMovies.length === 1 ? 'result' : 'results'} for "{searchQuery}"
                 </p>
               </div>
@@ -168,7 +161,7 @@ export function SearchPage({ onMovieClick, movies, loading, error }: SearchPageP
                       className="group cursor-pointer"
                       onClick={() => onMovieClick(movie)}
                     >
-                      <div className="relative aspect-video rounded-xl overflow-hidden bg-graphite mb-2">
+                      <div className="relative aspect-video overflow-hidden bg-cs-ink cs-border-thin mb-2">
                         <ImageWithFallback
                           src={movie.image}
                           alt={movie.title}
@@ -179,7 +172,7 @@ export function SearchPage({ onMovieClick, movies, loading, error }: SearchPageP
                         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
                         {/* Border glow */}
-                        <div className="absolute inset-0 rounded-xl border-2 border-transparent group-hover:border-brand transition-colors" />
+                        <div className="absolute inset-0 border-2 border-transparent group-hover:border-cs-rust transition-colors" />
 
                         {/* Play button */}
                         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -189,14 +182,14 @@ export function SearchPage({ onMovieClick, movies, loading, error }: SearchPageP
                         </div>
                       </div>
 
-                      <h3 className="text-foreground text-sm font-medium mb-1 line-clamp-1">{movie.title}</h3>
+                      <h3 className="text-cs-ink text-sm font-medium mb-1 line-clamp-1">{movie.title}</h3>
                       <div className="flex items-center gap-2 text-xs">
                         {movie.rating && (
-                          <span className="text-brand border border-brand px-1.5 py-0.5 rounded shrink-0">
+                          <span className="text-cs-ink border border-cs-ink px-1.5 py-0.5 font-mono shrink-0">
                             {movie.rating}
                           </span>
                         )}
-                        <span className="text-ash line-clamp-1">{movie.genre}</span>
+                        <span className="text-cs-muted line-clamp-1">{movie.genre}</span>
                       </div>
                     </motion.div>
                   ))}
@@ -208,8 +201,8 @@ export function SearchPage({ onMovieClick, movies, loading, error }: SearchPageP
                   className="text-center py-16"
                 >
                   <div className="text-6xl mb-4">🔍</div>
-                  <h3 className="font-heading text-foreground text-2xl tracking-wide uppercase mb-2">No results found</h3>
-                  <p className="text-ash">Try searching for something else</p>
+                  <h3 className="font-heading text-cs-ink text-2xl tracking-wide uppercase mb-2">No results found</h3>
+                  <p className="text-cs-muted">Try searching for something else</p>
                 </motion.div>
               )}
             </motion.div>
@@ -220,7 +213,7 @@ export function SearchPage({ onMovieClick, movies, loading, error }: SearchPageP
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <h2 className="font-heading text-foreground mb-6 tracking-wide uppercase text-2xl md:text-3xl">Browse All</h2>
+              <h2 className="font-heading text-cs-ink mb-6 tracking-wide uppercase text-2xl md:text-3xl">Browse All</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
                 {allMovies.map((movie, index) => (
                   <motion.div
@@ -232,24 +225,24 @@ export function SearchPage({ onMovieClick, movies, loading, error }: SearchPageP
                     className="group cursor-pointer"
                     onClick={() => onMovieClick(movie)}
                   >
-                    <div className="relative aspect-video rounded-xl overflow-hidden bg-graphite mb-2">
+                    <div className="relative aspect-video overflow-hidden bg-cs-ink cs-border-thin mb-2">
                       <ImageWithFallback
                         src={movie.image}
                         alt={movie.title}
                         className="w-full h-full object-cover"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <div className="absolute inset-0 rounded-xl border-2 border-transparent group-hover:border-brand transition-colors" />
+                      <div className="absolute inset-0 border-2 border-transparent group-hover:border-cs-rust transition-colors" />
                     </div>
 
-                    <h3 className="text-foreground text-sm font-medium mb-1 line-clamp-1">{movie.title}</h3>
+                    <h3 className="text-cs-ink text-sm font-medium mb-1 line-clamp-1">{movie.title}</h3>
                     <div className="flex items-center gap-2 text-xs">
                       {movie.rating && (
-                        <span className="text-brand border border-brand px-1.5 py-0.5 rounded shrink-0">
+                        <span className="text-cs-ink border border-cs-ink px-1.5 py-0.5 font-mono shrink-0">
                           {movie.rating}
                         </span>
                       )}
-                      <span className="text-ash line-clamp-1">{movie.genre}</span>
+                      <span className="text-cs-muted line-clamp-1">{movie.genre}</span>
                     </div>
                   </motion.div>
                 ))}
