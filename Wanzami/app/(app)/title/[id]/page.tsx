@@ -209,7 +209,6 @@ export default function TitlePage({ params }: { params: { id: string } }) {
           currency,
           userPpvBanned: ppvAccess?.userPpvBanned ?? false,
         }}
-        onClose={() => router.push('/')}
         onPlayClick={(movie) => {
           const targetId = movie?.backendId ?? movie?.id ?? id;
           const episodeId =

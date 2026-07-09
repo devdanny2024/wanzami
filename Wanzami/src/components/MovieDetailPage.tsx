@@ -9,10 +9,10 @@ import { isInMyList, toggleMyList } from '@/lib/myList';
 import { fetchTitles, type Title } from '@/lib/contentClient';
 import { formatMoney } from '@/lib/currency';
 import { getAvailabilityBadge, isComingSoon } from '@/lib/availability';
+import { CsButton, Sticker } from './cs/kit';
 
 interface MovieDetailPageProps {
   movie: any;
-  onClose: () => void;
   onPlayClick: (movie: any) => void;
   onBuyClick?: () => void;
   ppvInfo?: {
@@ -26,7 +26,7 @@ interface MovieDetailPageProps {
 
 type RelatedItem = Title | MovieData | any;
 
-export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvInfo }: MovieDetailPageProps) {
+export function MovieDetailPage({ movie, onPlayClick, onBuyClick, ppvInfo }: MovieDetailPageProps) {
   const isSeries = movie?.type === 'SERIES';
   const seriesEpisodes = Array.isArray(movie?.episodes) ? movie.episodes : [];
   const seriesSeasons = Array.isArray((movie as any)?.seasons) ? (movie as any).seasons : [];
@@ -176,175 +176,164 @@ export function MovieDetailPage({ movie, onClose, onPlayClick, onBuyClick, ppvIn
     setLiked(nextLiked);
   };
 
+  const hardBtn =
+    'inline-flex items-center justify-center gap-2 font-mono font-bold uppercase tracking-[0.07em] text-sm min-h-[44px] px-6 md:px-8 py-3 md:py-4 border-2 transition-transform hover:-translate-y-0.5 active:translate-y-px';
+  const hardIconBtn =
+    'flex items-center justify-center w-12 h-12 md:w-14 md:h-14 border-2 transition-transform hover:-translate-y-0.5 active:translate-y-px';
+
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-cs-paper overflow-y-auto">
-      {/* Close button */}
-      <button
-        onClick={onClose}
-        className="fixed top-4 right-4 z-50 w-10 h-10 bg-black/80 hover:bg-black rounded-full flex items-center justify-center text-white backdrop-blur-sm border border-white/20"
-      >
-        <X className="w-6 h-6" />
-      </button>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      {/* Hero banner — bordered box on paper, matching the homepage hero */}
+      <div className="container-page pt-6 md:pt-10">
+        <div className="relative cs-border cs-shadow bg-cs-ink overflow-hidden aspect-[16/9] md:aspect-[21/9]">
+          {movie.shortTrailerUrl || movie.trailerUrl ? (
+            <video
+              className="w-full h-full object-cover"
+              ref={heroVideoRef}
+              src={movie.shortTrailerUrl || movie.trailerUrl}
+              autoPlay
+              muted={heroMuted}
+              loop
+              playsInline
+              poster={movie.image}
+            />
+          ) : (
+            <ImageWithFallback src={movie.image} alt={movie.title} className="w-full h-full object-cover" />
+          )}
 
-      {/* Hero banner */}
-      <div className="relative h-[70vh] md:h-[85vh]">
-        {movie.shortTrailerUrl || movie.trailerUrl ? (
-          <video
-            className="w-full h-full object-cover"
-            ref={heroVideoRef}
-            src={movie.shortTrailerUrl || movie.trailerUrl}
-            autoPlay
-            muted={heroMuted}
-            loop
-            playsInline
-            poster={movie.image}
-          />
-        ) : (
-          <ImageWithFallback src={movie.image} alt={movie.title} className="w-full h-full object-cover" />
-        )}
+          {/* Gradients */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
 
-        {/* Gradients */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
-
-        {/* Hero mute toggle */}
-        {movie.shortTrailerUrl || movie.trailerUrl ? (
-          <button
-            onClick={() => setHeroMuted((m) => !m)}
-            className="absolute bottom-6 right-6 z-20 w-12 h-12 rounded-full bg-black/60 hover:bg-black/80 border border-white/20 flex items-center justify-center text-white transition"
-            aria-label={heroMuted ? 'Unmute trailer' : 'Mute trailer'}
-          >
-            {heroMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
-          </button>
-        ) : null}
-
-        {/* Content */}
-        <div className="absolute inset-0 flex items-end pb-12 md:pb-16">
-          <div className="container-page">
-          <div className="max-w-3xl space-y-4 md:space-y-6">
-            <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-              <div className="inline-block px-3 py-1 bg-brand/20 border border-brand rounded-md backdrop-blur-sm mb-4">
-                <span className="text-brand text-xs md:text-sm tracking-[0.2em] uppercase">Wanzami Original</span>
-              </div>
-            </motion.div>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="font-heading uppercase text-foreground text-5xl md:text-7xl lg:text-8xl tracking-wide leading-[0.9]"
+          {/* Hero mute toggle */}
+          {movie.shortTrailerUrl || movie.trailerUrl ? (
+            <button
+              onClick={() => setHeroMuted((m) => !m)}
+              className="absolute bottom-4 right-4 z-20 w-11 h-11 bg-cs-ink border-2 border-cs-paper flex items-center justify-center text-cs-paper transition hover:bg-cs-rust hover:border-cs-rust"
+              aria-label={heroMuted ? 'Unmute trailer' : 'Mute trailer'}
             >
-              {movie.title}
-            </motion.h1>
+              {heroMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+            </button>
+          ) : null}
 
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="flex items-center gap-3 md:gap-4 text-sm md:text-base flex-wrap"
-            >
-              <span className="text-brand border border-brand px-2 py-0.5 rounded text-xs">{movie.rating || '16+'}</span>
-              <span className="text-foreground/80">{movie.year || '2024'}</span>
-              <span className="text-muted-foreground">·</span>
-              <span className="text-foreground/80">{movie.duration || '2h 15m'}</span>
-              <span className="text-muted-foreground">·</span>
-              <span className="text-foreground/80">{movie.genre || 'Drama'}</span>
-              <div className="flex items-center gap-2">
-                {qualityBadges.map((badge) => (
-                  <span key={badge} className="text-[11px] uppercase tracking-wide text-foreground bg-white/10 border border-white/20 px-2 py-1 rounded-md">
-                    {badge}
-                  </span>
-                ))}
-              </div>
-            </motion.div>
+          {/* Content */}
+          <div className="absolute inset-0 flex items-end p-6 md:p-10">
+            <div className="max-w-3xl space-y-4 md:space-y-6">
+              <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                <Sticker>Wanzami Original</Sticker>
+              </motion.div>
 
-            <motion.p
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className="text-foreground/80 text-sm md:text-lg max-w-2xl"
-            >
-              {movie.description ||
-                'An epic tale of ambition, power, and the price of success in modern Nigeria. Experience the gripping story that captivated millions.'}
-            </motion.p>
+              <motion.h1
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="font-heading uppercase text-cs-paper text-4xl md:text-6xl lg:text-7xl tracking-wide leading-[0.9]"
+              >
+                {movie.title}
+              </motion.h1>
 
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-              className="flex flex-wrap gap-3 pt-2"
-            >
-              {isComingSoon(movie) ? (
-                <div className="flex items-center gap-2 bg-sky-500/20 border border-sky-400/50 text-sky-100 font-semibold px-6 md:px-8 py-3 md:py-4 rounded-xl min-h-[44px]">
-                  <Clock className="w-5 h-5 md:w-6 md:h-6" />
-                  <span className="text-sm md:text-base">{getAvailabilityBadge(movie)?.label ?? 'Coming Soon'}</span>
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="flex items-center gap-3 md:gap-4 text-sm flex-wrap font-mono"
+              >
+                <span className="text-brand border-2 border-brand px-2 py-0.5 text-xs font-bold uppercase">{movie.rating || '16+'}</span>
+                <span className="text-cs-paper/80">{movie.year || '2024'}</span>
+                <span className="text-cs-paper/40">·</span>
+                <span className="text-cs-paper/80">{movie.duration || '2h 15m'}</span>
+                <span className="text-cs-paper/40">·</span>
+                <span className="text-cs-paper/80">{movie.genre || 'Drama'}</span>
+                <div className="flex items-center gap-2">
+                  {qualityBadges.map((badge) => (
+                    <span key={badge} className="text-[10px] font-bold uppercase tracking-wide text-cs-paper border border-cs-paper/40 px-2 py-1">
+                      {badge}
+                    </span>
+                  ))}
                 </div>
-              ) : ppvInfo?.userPpvBanned ? (
-                <div className="text-sm md:text-base text-red-300 bg-red-900/40 border border-red-500/40 px-4 py-3 rounded-xl">
-                  Your account has been restricted from PPV access. Please contact support.
-                </div>
-              ) : ppvInfo?.isPpv && !ppvInfo?.hasAccess ? (
-                <button
-                  onClick={() => onBuyClick?.()}
-                  className="flex items-center gap-2 bg-brand hover:bg-brand-dark text-primary-foreground font-semibold px-6 md:px-8 py-3 md:py-4 rounded-xl transition-all duration-200 hover:scale-105 min-h-[44px]"
-                >
-                  <Play className="w-5 h-5 md:w-6 md:h-6 fill-current" />
-                  <span className="text-sm md:text-base">
+              </motion.div>
+
+              <motion.p
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="text-cs-paper/80 text-sm md:text-lg max-w-2xl"
+              >
+                {movie.description ||
+                  'An epic tale of ambition, power, and the price of success in modern Nigeria. Experience the gripping story that captivated millions.'}
+              </motion.p>
+
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+                className="flex flex-wrap gap-3 pt-2"
+              >
+                {isComingSoon(movie) ? (
+                  <div className={`${hardBtn} border-cs-paper text-cs-paper`}>
+                    <Clock className="w-5 h-5" />
+                    <span>{getAvailabilityBadge(movie)?.label ?? 'Coming Soon'}</span>
+                  </div>
+                ) : ppvInfo?.userPpvBanned ? (
+                  <div className="text-sm text-cs-paper border-2 border-cs-rust px-4 py-3 max-w-md font-mono">
+                    Your account has been restricted from PPV access. Please contact support.
+                  </div>
+                ) : ppvInfo?.isPpv && !ppvInfo?.hasAccess ? (
+                  <CsButton variant="rust" onClick={() => onBuyClick?.()}>
+                    <Play className="w-5 h-5 fill-current" />
                     Buy now {formatMoney(ppvInfo?.priceNaira ?? undefined, ppvInfo?.currency ?? undefined)}
-                  </span>
-                </button>
-              ) : (
+                  </CsButton>
+                ) : (
+                  <CsButton variant="rust" onClick={() => onPlayClick(movie)}>
+                    <Play className="w-5 h-5 fill-current" />
+                    Play
+                  </CsButton>
+                )}
+
+                {movie?.trailerUrl && (
+                  <button
+                    onClick={() => setShowTrailerModal(true)}
+                    className={`${hardBtn} border-cs-paper text-cs-paper hover:bg-cs-paper hover:text-cs-ink`}
+                  >
+                    <Play className="w-5 h-5" />
+                    Watch Trailer
+                  </button>
+                )}
+
                 <button
-                  onClick={() => onPlayClick(movie)}
-                  className="flex items-center gap-2 bg-brand hover:bg-brand-dark text-primary-foreground font-semibold px-6 md:px-8 py-3 md:py-4 rounded-xl transition-all duration-200 hover:scale-105 min-h-[44px]"
+                  onClick={() => {
+                    const targetId = movie?.backendId ?? movie?.id;
+                    const nextVal = toggleMyList(targetId);
+                    setInList(nextVal);
+                  }}
+                  className={`${hardBtn} ${
+                    inList ? 'bg-cs-rust border-cs-rust text-cs-paper' : 'border-cs-paper text-cs-paper hover:bg-cs-paper hover:text-cs-ink'
+                  }`}
                 >
-                  <Play className="w-5 h-5 md:w-6 md:h-6 fill-current" />
-                  <span className="text-sm md:text-base">Play</span>
+                  <Plus className="w-5 h-5" />
+                  {inList ? 'Added' : 'My List'}
                 </button>
-              )}
 
-              {movie?.trailerUrl && (
                 <button
-                  onClick={() => setShowTrailerModal(true)}
-                  className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-foreground px-6 md:px-7 py-3 md:py-4 rounded-xl backdrop-blur-md border border-white/20 transition-colors min-h-[44px]"
+                  onClick={handleLikeToggle}
+                  className={`${hardIconBtn} ${
+                    liked ? 'bg-cs-rust border-cs-rust text-cs-paper' : 'border-cs-paper text-cs-paper hover:bg-cs-paper hover:text-cs-ink'
+                  }`}
                 >
-                  <Play className="w-5 h-5 md:w-6 md:h-6" />
-                  <span className="text-sm md:text-base">Watch Trailer</span>
+                  <ThumbsUp className="w-5 h-5" />
                 </button>
+
+                <button
+                  onClick={handleShare}
+                  className={`${hardIconBtn} border-cs-paper text-cs-paper hover:bg-cs-paper hover:text-cs-ink`}
+                >
+                  <Share2 className="w-5 h-5" />
+                </button>
+              </motion.div>
+              {shareError && (
+                <p className="inline-block text-xs font-mono text-cs-paper bg-cs-rust px-2 py-1">{shareError}</p>
               )}
-
-              <button
-                onClick={() => {
-                  const targetId = movie?.backendId ?? movie?.id;
-                  const nextVal = toggleMyList(targetId);
-                  setInList(nextVal);
-                }}
-                className={`flex items-center gap-2 px-6 md:px-8 py-3 md:py-4 rounded-xl backdrop-blur-md border transition-colors min-h-[44px] ${
-                  inList ? 'bg-brand border-brand text-primary-foreground hover:bg-brand-dark' : 'bg-white/10 hover:bg-white/20 text-foreground border-white/20'
-                }`}
-              >
-                <Plus className="w-5 h-5 md:w-6 md:h-6" />
-                <span className="text-sm md:text-base">{inList ? 'Added' : 'My List'}</span>
-              </button>
-
-              <button
-                onClick={handleLikeToggle}
-                className={`flex items-center justify-center w-12 h-12 md:w-14 md:h-14 rounded-xl backdrop-blur-md border transition-colors ${
-                  liked ? 'bg-brand/20 border-brand text-foreground' : 'bg-white/10 hover:bg-white/20 text-foreground border-white/20'
-                }`}
-              >
-                <ThumbsUp className="w-5 h-5" />
-              </button>
-
-              <button
-                onClick={handleShare}
-                className="flex items-center justify-center w-12 h-12 md:w-14 md:h-14 bg-white/10 hover:bg-white/20 text-foreground rounded-xl backdrop-blur-md border border-white/20 transition-colors"
-              >
-                <Share2 className="w-5 h-5" />
-              </button>
-            </motion.div>
-            {shareError && <p className="text-xs text-red-300">{shareError}</p>}
-          </div>
+            </div>
           </div>
         </div>
       </div>

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Search, User, Menu, X, LogIn, Settings } from 'lucide-react';
+import { Search, User, Menu, X, LogIn, Settings, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface NavbarProps {
@@ -18,6 +18,8 @@ export function Navbar({
 }: NavbarProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -30,6 +32,18 @@ export function Navbar({
     document.body.style.overflow = isMobileMenuOpen ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
   }, [isMobileMenuOpen]);
+
+  // Close the desktop profile dropdown on outside click
+  useEffect(() => {
+    if (!isProfileMenuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [isProfileMenuOpen]);
 
   const navItems = [
     { label: 'Home', page: 'home', href: '/' },
@@ -108,13 +122,47 @@ export function Navbar({
                 <span className="hidden sm:inline">Login</span>
               </a>
             ) : (
-              <a
-                href="/settings"
-                aria-label="Profile & settings"
-                className="hidden md:flex w-10 h-10 items-center justify-center bg-brand cs-border-thin transition-transform hover:-translate-y-0.5"
-              >
-                <User className="w-5 h-5 text-cs-ink" />
-              </a>
+              <div className="relative hidden md:block" ref={profileMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsProfileMenuOpen((v) => !v)}
+                  aria-label="Profile menu"
+                  aria-expanded={isProfileMenuOpen}
+                  className="w-10 h-10 flex items-center justify-center bg-brand cs-border-thin transition-transform hover:-translate-y-0.5"
+                >
+                  <User className="w-5 h-5 text-cs-ink" />
+                </button>
+
+                <AnimatePresence>
+                  {isProfileMenuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 top-12 w-48 bg-cs-paper cs-border cs-shadow overflow-hidden"
+                    >
+                      <a
+                        href="/settings"
+                        onClick={() => setIsProfileMenuOpen(false)}
+                        className="flex items-center gap-2 h-11 px-4 font-mono text-xs font-bold uppercase tracking-[0.08em] text-cs-ink hover:bg-cs-panel transition-colors"
+                      >
+                        <Settings className="w-4 h-4" /> Settings
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsProfileMenuOpen(false);
+                          onLogout?.();
+                        }}
+                        className="w-full flex items-center gap-2 h-11 px-4 font-mono text-xs font-bold uppercase tracking-[0.08em] text-cs-ink border-t-[1.5px] border-cs-ink hover:bg-cs-panel transition-colors"
+                      >
+                        <LogOut className="w-4 h-4" /> Sign Out
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             )}
 
             {/* Mobile menu toggle */}
