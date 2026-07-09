@@ -329,15 +329,24 @@ export function AddEditSeriesForm({
             })}
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <CsSlug>Wanzami Original</CsSlug>
+        <label
+          className="flex items-center gap-3 cursor-pointer"
+          style={{
+            padding: "10px 14px",
+            border: "2px solid var(--cs-ink)",
+            background: isOriginal ? "var(--cs-brand)" : "var(--cs-paper)",
+          }}
+        >
           <input
             type="checkbox"
             checked={isOriginal}
             onChange={(e) => setIsOriginal(e.target.checked)}
             className="h-4 w-4"
           />
-        </div>
+          <span className="cs-mono text-xs font-bold uppercase" style={{ color: "var(--cs-ink)" }}>
+            Wanzami Original
+          </span>
+        </label>
       </SeriesFormSection>
 
       <SeriesFormSection title="Artwork and media">

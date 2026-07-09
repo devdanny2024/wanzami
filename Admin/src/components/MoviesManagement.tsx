@@ -844,15 +844,24 @@ function AddEditMovieForm({
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <label
+              className="flex items-center gap-3 cursor-pointer"
+              style={{
+                padding: "10px 14px",
+                border: "2px solid var(--cs-ink)",
+                background: isOriginal ? "var(--cs-brand)" : "var(--cs-paper)",
+              }}
+            >
               <input
                 type="checkbox"
                 checked={isOriginal}
                 onChange={(e) => setIsOriginal(e.target.checked)}
                 className="h-4 w-4"
               />
-              <CsSlug>Wanzami Original</CsSlug>
-            </div>
+              <span className="cs-mono text-xs font-bold uppercase" style={{ color: "var(--cs-ink)" }}>
+                Wanzami Original
+              </span>
+            </label>
 
             <div className="mt-4">
               <CsSlug className="mb-1">Availability</CsSlug>
