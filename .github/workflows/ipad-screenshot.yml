@@ -1,0 +1,75 @@
+name: iPad 13-inch screenshot (one-off)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  capture:
+    runs-on: macos-26
+    timeout-minutes: 30
+
+    env:
+      FLUTTER_VERSION: '3.29.3'
+      APP_DIR: wanzami_mobile_flutter
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: List available iPad simulators
+        run: xcrun simctl list devicetypes | grep -i ipad
+
+      - name: Boot iPad Pro 13-inch simulator
+        id: sim
+        shell: bash
+        run: |
+          set -euo pipefail
+          DEVICE_TYPE=$(xcrun simctl list devicetypes | grep -iE "iPad Pro 13-inch" | head -n1 | sed -E 's/.*\(([^)]+)\)/\1/')
+          if [ -z "$DEVICE_TYPE" ]; then
+            echo "No iPad Pro 13-inch device type found, falling back to any iPad Pro"
+            DEVICE_TYPE=$(xcrun simctl list devicetypes | grep -iE "iPad Pro" | head -n1 | sed -E 's/.*\(([^)]+)\)/\1/')
+          fi
+          RUNTIME=$(xcrun simctl list runtimes | grep -iE "iOS" | tail -n1 | sed -E 's/.*\(([^)]+)\) -.*/\1/')
+          echo "Using device type: $DEVICE_TYPE"
+          echo "Using runtime: $RUNTIME"
+          UDID=$(xcrun simctl create "iPad13-CI" "$DEVICE_TYPE" "$RUNTIME")
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+
+      - name: Flutter pub get
+        working-directory: ${{ env.APP_DIR }}
+        run: flutter pub get
+
+      - name: Build for simulator
+        working-directory: ${{ env.APP_DIR }}
+        run: flutter build ios --simulator --debug
+
+      - name: Install and launch on simulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          UDID="${{ steps.sim.outputs.udid }}"
+          APP_PATH=$(find "${{ env.APP_DIR }}/build/ios/iphonesimulator" -maxdepth 1 -name "*.app" | head -n1)
+          echo "Installing: $APP_PATH"
+          xcrun simctl install "$UDID" "$APP_PATH"
+          BUNDLE_ID=$(defaults read "$APP_PATH/Info" CFBundleIdentifier)
+          echo "Launching: $BUNDLE_ID"
+          xcrun simctl launch "$UDID" "$BUNDLE_ID"
+          sleep 12
+          mkdir -p screenshots
+          xcrun simctl io "$UDID" screenshot screenshots/ipad-13-inch.png
+          xcrun simctl shutdown "$UDID"
+
+      - name: Upload screenshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: ipad-13-inch-screenshot
+          path: screenshots/ipad-13-inch.png
