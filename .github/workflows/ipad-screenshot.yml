@@ -36,7 +36,7 @@ jobs:
             echo "No iPad Pro 13-inch device type found, falling back to any iPad Pro"
             DEVICE_TYPE=$(xcrun simctl list devicetypes | grep -iE "iPad Pro" | head -n1 | sed -E 's/.*\(([^)]+)\)/\1/')
           fi
-          RUNTIME=$(xcrun simctl list runtimes | grep -iE "iOS" | tail -n1 | sed -E 's/.*\(([^)]+)\) -.*/\1/')
+          RUNTIME=$(xcrun simctl list runtimes | grep -iE "iOS" | tail -n1 | sed -E 's/.* - //')
           echo "Using device type: $DEVICE_TYPE"
           echo "Using runtime: $RUNTIME"
           UDID=$(xcrun simctl create "iPad13-CI" "$DEVICE_TYPE" "$RUNTIME")
