@@ -26,6 +26,8 @@ class HomeShellPage extends StatefulWidget {
     required this.notificationRepository,
     required this.activeProfileId,
     this.initialTabIndex = 0,
+    this.isGuest = false,
+    this.onRequireLogin,
   });
 
   final VoidCallback onLogout;
@@ -34,6 +36,8 @@ class HomeShellPage extends StatefulWidget {
   final NotificationRepository notificationRepository;
   final String activeProfileId;
   final int initialTabIndex;
+  final bool isGuest;
+  final VoidCallback? onRequireLogin;
 
   @override
   State<HomeShellPage> createState() => _HomeShellPageState();
@@ -46,15 +50,19 @@ class _HomeShellPageState extends State<HomeShellPage> {
   int _unreadCount = 0;
   Timer? _notifTimer;
 
+  int get _tabCount => widget.isGuest ? 3 : 5;
+
   @override
   void initState() {
     super.initState();
-    _tabIndex = widget.initialTabIndex.clamp(0, 4).toInt();
-    _fetchUnreadCount();
-    _notifTimer = Timer.periodic(
-      const Duration(minutes: 2),
-      (_) => _fetchUnreadCount(),
-    );
+    _tabIndex = widget.initialTabIndex.clamp(0, _tabCount - 1).toInt();
+    if (!widget.isGuest) {
+      _fetchUnreadCount();
+      _notifTimer = Timer.periodic(
+        const Duration(minutes: 2),
+        (_) => _fetchUnreadCount(),
+      );
+    }
   }
 
   @override
@@ -80,6 +88,12 @@ class _HomeShellPageState extends State<HomeShellPage> {
   }
 
   Future<void> _play(MediaItem item, MediaEpisode? episode) async {
+    if (widget.isGuest) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Sign in to watch this title.')));
+      widget.onRequireLogin?.call();
+      return;
+    }
     developer.log(
       'Playback open requested (titleId=${item.id}, episodeId=${episode?.id ?? 'none'})',
       name: 'HomeShellPage',
@@ -115,6 +129,8 @@ class _HomeShellPageState extends State<HomeShellPage> {
           onPlay: _play,
           repository: widget.contentRepository,
           profileId: widget.activeProfileId,
+          isGuest: widget.isGuest,
+          onRequireLogin: widget.onRequireLogin,
         ),
       ),
     );
@@ -157,7 +173,9 @@ class _HomeShellPageState extends State<HomeShellPage> {
         refreshToken: _homeRefreshToken,
         onOpen: (item) => _openDetail(item),
         onOpenSearch: _openSearch,
-        onOpenProfile: () => setState(() => _tabIndex = 4),
+        onOpenProfile: widget.isGuest
+            ? (widget.onRequireLogin ?? () {})
+            : () => setState(() => _tabIndex = 4),
       ),
       CsBrowsePage(
         repository: widget.contentRepository,
@@ -185,14 +203,16 @@ class _HomeShellPageState extends State<HomeShellPage> {
           ),
         ),
       ),
-      TicketsPage(
-        repository: widget.contentRepository,
-        profileId: widget.activeProfileId,
-        onOpen: (item) => _openDetail(item),
-      ),
-      ProfilePage(
-          onLogout: widget.onLogout,
-          profileRepository: widget.profileRepository),
+      if (!widget.isGuest) ...[
+        TicketsPage(
+          repository: widget.contentRepository,
+          profileId: widget.activeProfileId,
+          onOpen: (item) => _openDetail(item),
+        ),
+        ProfilePage(
+            onLogout: widget.onLogout,
+            profileRepository: widget.profileRepository),
+      ],
     ];
 
     return Scaffold(
@@ -200,7 +220,33 @@ class _HomeShellPageState extends State<HomeShellPage> {
       body: Stack(
         children: [
           pages[_tabIndex],
-          Positioned(
+          if (widget.isGuest)
+            Positioned(
+              top: 0,
+              right: 0,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 8, top: 8),
+                  child: GestureDetector(
+                    onTap: widget.onRequireLogin,
+                    behavior: HitTestBehavior.opaque,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: CsTokens.paper,
+                        border: CsTokens.border(2),
+                      ),
+                      child: Text(
+                        'SIGN IN',
+                        style: CsTokens.mono(size: 11, weight: FontWeight.w800),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            )
+          else
+            Positioned(
             top: 0,
             right: 0,
             child: SafeArea(
@@ -269,13 +315,15 @@ class _HomeShellPageState extends State<HomeShellPage> {
       bottomNavigationBar: CsNavBar(
         selectedIndex: _tabIndex,
         onSelect: (value) => setState(() => _tabIndex = value),
-        items: const [
-          CsNavItem(Icons.home_outlined, Icons.home_rounded, 'Home'),
-          CsNavItem(Icons.menu_book_outlined, Icons.menu_book_rounded, 'Catalogue'),
-          CsNavItem(Icons.sensors_outlined, Icons.sensors_rounded, 'Live'),
-          CsNavItem(
-              Icons.local_activity_outlined, Icons.local_activity_rounded, 'Tickets'),
-          CsNavItem(Icons.person_outline, Icons.person_rounded, 'Profile'),
+        items: [
+          const CsNavItem(Icons.home_outlined, Icons.home_rounded, 'Home'),
+          const CsNavItem(Icons.menu_book_outlined, Icons.menu_book_rounded, 'Catalogue'),
+          const CsNavItem(Icons.sensors_outlined, Icons.sensors_rounded, 'Live'),
+          if (!widget.isGuest) ...[
+            const CsNavItem(
+                Icons.local_activity_outlined, Icons.local_activity_rounded, 'Tickets'),
+            const CsNavItem(Icons.person_outline, Icons.person_rounded, 'Profile'),
+          ],
         ],
       ),
     );

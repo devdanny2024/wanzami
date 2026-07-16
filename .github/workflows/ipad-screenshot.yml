@@ -50,7 +50,7 @@ jobs:
 
       - name: Build for simulator
         working-directory: ${{ env.APP_DIR }}
-        run: flutter build ios --simulator --debug
+        run: flutter build ios --simulator --debug --dart-define=CS_SCREENSHOT_MODE=true
 
       - name: Install and launch on simulator
         shell: bash
@@ -63,7 +63,7 @@ jobs:
           BUNDLE_ID=$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$APP_PATH/Info.plist")
           echo "Launching: $BUNDLE_ID"
           xcrun simctl launch "$UDID" "$BUNDLE_ID"
-          sleep 12
+          sleep 20
           mkdir -p screenshots
           xcrun simctl io "$UDID" screenshot screenshots/ipad-13-inch.png
           xcrun simctl shutdown "$UDID"

@@ -19,11 +19,13 @@ class LoginPage extends StatefulWidget {
     required this.controller,
     required this.onShowRegister,
     required this.env,
+    this.onBrowseAsGuest,
   });
 
   final AuthController controller;
   final VoidCallback onShowRegister;
   final AppEnv env;
+  final VoidCallback? onBrowseAsGuest;
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -335,6 +337,23 @@ class _LoginPageState extends State<LoginPage> {
                           const CsStamp('Approved'),
                         ],
                       ),
+                      if (widget.onBrowseAsGuest != null) ...[
+                        const SizedBox(height: 6),
+                        Center(
+                          child: GestureDetector(
+                            onTap: widget.onBrowseAsGuest,
+                            behavior: HitTestBehavior.opaque,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              child: Text(
+                                'BROWSE WITHOUT AN ACCOUNT',
+                                style: CsTokens.mono(size: 11, color: CsTokens.mutedInk)
+                                    .copyWith(decoration: TextDecoration.underline),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

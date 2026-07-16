@@ -636,12 +636,16 @@ class DetailPage extends StatefulWidget {
     required this.onPlay,
     required this.repository,
     required this.profileId,
+    this.isGuest = false,
+    this.onRequireLogin,
   });
 
   final MediaItem item;
   final Future<void> Function(MediaItem item, MediaEpisode? episode) onPlay;
   final ContentRepository repository;
   final String profileId;
+  final bool isGuest;
+  final VoidCallback? onRequireLogin;
 
   @override
   State<DetailPage> createState() => _DetailPageState();
@@ -767,8 +771,18 @@ class _DetailPageState extends State<DetailPage> {
     return null;
   }
 
+  void _promptLogin(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    widget.onRequireLogin?.call();
+  }
+
   Future<void> _startPlayback(
       {MediaEpisode? episode, bool pollForEntitlement = false}) async {
+    if (widget.isGuest) {
+      _promptLogin('Sign in to watch this title.');
+      return;
+    }
     if (_startingPlayback) return;
     setState(() => _startingPlayback = true);
     try {
@@ -877,6 +891,10 @@ class _DetailPageState extends State<DetailPage> {
   }
 
   Future<void> _startPayment() async {
+    if (widget.isGuest) {
+      _promptLogin('Sign in to buy this title.');
+      return;
+    }
     setState(() {
       _paying = true;
       _paymentStatus = 'Opening Paystack checkout…';

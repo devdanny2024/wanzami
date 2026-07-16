@@ -38,8 +38,14 @@ class _WanzamiAppState extends State<WanzamiApp> with WidgetsBindingObserver {
   late final ProfileRepository _profileRepository;
   late final NotificationRepository _notificationRepository;
 
+  // CI-only: boots straight into guest browse for App Store screenshot capture.
+  // Off by default; only set via --dart-define=CS_SCREENSHOT_MODE=true.
+  static const bool _screenshotMode =
+      bool.fromEnvironment('CS_SCREENSHOT_MODE', defaultValue: false);
+
   bool _showRegister = false;
   bool _showSplash = true;
+  bool _browsingAsGuest = _screenshotMode;
   bool _checkingOnboarding = false;
   bool _needsOnboarding = false;
   Map<String, dynamic>? _activeProfile;
@@ -82,6 +88,10 @@ class _WanzamiAppState extends State<WanzamiApp> with WidgetsBindingObserver {
         });
       }
       return;
+    }
+
+    if (mounted && _browsingAsGuest) {
+      setState(() => _browsingAsGuest = false);
     }
 
     if (_checkingOnboarding || _activeProfile != null) return;
@@ -172,6 +182,18 @@ class _WanzamiAppState extends State<WanzamiApp> with WidgetsBindingObserver {
                 initialTabIndex: 0,
               );
             }
+          } else if (_browsingAsGuest) {
+            page = HomeShellPage(
+              key: const ValueKey('guest-home'),
+              onLogout: () => setState(() => _browsingAsGuest = false),
+              contentRepository: _contentRepository,
+              profileRepository: _profileRepository,
+              notificationRepository: _notificationRepository,
+              activeProfileId: '',
+              initialTabIndex: 0,
+              isGuest: true,
+              onRequireLogin: () => setState(() => _browsingAsGuest = false),
+            );
           } else if (_showRegister) {
             page = RegisterPage(
               key: const ValueKey('register'),
@@ -185,6 +207,7 @@ class _WanzamiAppState extends State<WanzamiApp> with WidgetsBindingObserver {
               controller: _authController,
               onShowRegister: () => setState(() => _showRegister = true),
               env: widget.env,
+              onBrowseAsGuest: () => setState(() => _browsingAsGuest = true),
             );
           }
 
