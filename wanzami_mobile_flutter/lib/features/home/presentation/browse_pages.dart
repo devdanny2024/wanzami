@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import 'package:video_player/video_player.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:volume_controller/volume_controller.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -895,6 +896,18 @@ class _DetailPageState extends State<DetailPage> {
       _promptLogin('Sign in to buy this title.');
       return;
     }
+    // iOS does not offer in-app purchase for PPV titles; buying happens on
+    // the website instead of an embedded checkout (App Store guideline 3.1.1).
+    if (Platform.isIOS) {
+      final uri = Uri.parse('https://wanzami.tv/title/${widget.item.id}');
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!opened && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Unable to open wanzami.tv. Please try again.')),
+        );
+      }
+      return;
+    }
     setState(() {
       _paying = true;
       _paymentStatus = 'Opening Paystack checkout…';
@@ -1068,8 +1081,13 @@ class _DetailPageState extends State<DetailPage> {
                     )
                   else
                     CsTicketButton(
-                      slug: 'Admit one \u00b7 30 days',
+                      slug: Platform.isIOS
+                          ? 'Buy on wanzami.tv'
+                          : 'Admit one \u00b7 30 days',
                       title: _paying ? 'Processing\u2026' : priceLabel,
+                      icon: Platform.isIOS
+                          ? Icons.open_in_new
+                          : Icons.local_activity_outlined,
                       enabled: !_paying,
                       onTap: _startPayment,
                     ),
