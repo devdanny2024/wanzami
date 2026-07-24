@@ -154,6 +154,135 @@ const FILMMAKER_TEMPLATE_BODY = `<!DOCTYPE html>
 </body>
 </html>`;
 
+// Movie campaign template — Call Sheet branded (paper, ink, hard edges, mono
+// slugs, Bebas-style headline via bold sans fallback since custom fonts
+// don't render in most email clients). Plugged in with The Mountain Holiday;
+// swap the poster/title/meta/synopsis/watch link for future campaigns.
+const MOVIE_CAMPAIGN_LOGO_SRC = "https://www.wanzami.tv/wanzami-logo.png";
+const MOVIE_CAMPAIGN_TEMPLATE_SUBJECT = "Now streaming: The Mountain Holiday";
+const MOVIE_CAMPAIGN_TEMPLATE_BODY = `<!DOCTYPE html>
+<html lang="en">
+<body style="margin:0;padding:0;background:#161310;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+    <tr>
+      <td align="center" style="padding:32px 12px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;background:#ffffff;border:3px solid #161310;">
+
+          <!-- Sprocket strip -->
+          <tr>
+            <td style="background:#161310;padding:10px 20px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
+                ${Array.from({ length: 16 }).map(() => '<td width="6.25%" align="center"><div style="width:8px;height:11px;background:#f2ead9;"></div></td>').join('')}
+              </tr></table>
+            </td>
+          </tr>
+
+          <!-- Wordmark -->
+          <tr>
+            <td style="padding:20px 28px 0 28px;">
+              <img src="${MOVIE_CAMPAIGN_LOGO_SRC}" alt="Wanzami TV" width="40" height="40" style="display:block;border:0;outline:none;" />
+              <div style="margin-top:8px;font-family:'Courier New',Courier,monospace;font-size:11px;letter-spacing:2px;color:#6e6a64;text-transform:uppercase;">Wanzami TV Presents</div>
+            </td>
+          </tr>
+
+          <!-- Sticker -->
+          <tr>
+            <td style="padding:16px 28px 0 28px;">
+              <span style="display:inline-block;background:#fd7e14;color:#161310;font-weight:bold;font-size:11px;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;">Now Streaming</span>
+            </td>
+          </tr>
+
+          <!-- Poster -->
+          <tr>
+            <td style="padding:16px 28px 0 28px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+                <td style="background:#161310;padding:0 6px 6px 0;">
+                  <img src="https://pub-a15ea245944e42bf830fd80def9bb912.r2.dev/poster/1782851068598-05e579b0-35e8-4f07-98a5-04846ad3610c" alt="The Mountain Holiday" width="544" style="display:block;border:3px solid #161310;width:544px;max-width:100%;height:auto;" />
+                </td>
+              </tr></table>
+            </td>
+          </tr>
+
+          <!-- Title + meta -->
+          <tr>
+            <td style="padding:24px 28px 0 28px;">
+              <h1 style="margin:0;font-family:Arial Black,Arial,Helvetica,sans-serif;font-weight:900;font-size:34px;line-height:1;letter-spacing:1px;text-transform:uppercase;color:#161310;">The Mountain Holiday</h1>
+              <div style="margin-top:10px;font-family:'Courier New',Courier,monospace;font-size:12px;letter-spacing:1px;color:#6e6a64;text-transform:uppercase;">
+                <span style="border:1.5px solid #161310;color:#161310;padding:2px 6px;">18+</span>
+                &nbsp;&middot;&nbsp; Horror &nbsp;&middot;&nbsp; 2024
+              </div>
+            </td>
+          </tr>
+
+          <!-- Synopsis -->
+          <tr>
+            <td style="padding:16px 28px 0 28px;">
+              <p style="margin:0;font-size:15px;line-height:1.6;color:#333333;">
+                Hi {{name}}, dark forces from the past are waiting for a trigger to rise. Jaga and his friends head to the mountains for a graduation getaway, and their first night there changes everything. <strong>The Mountain Holiday</strong> is streaming now, only on Wanzami.
+              </p>
+            </td>
+          </tr>
+
+          <!-- CTA -->
+          <tr>
+            <td style="padding:22px 28px 0 28px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+                <td style="background:#161310;padding:0 6px 6px 0;">
+                  <a href="https://wanzami.tv/title/170" style="display:inline-block;background:#d1490f;color:#ffffff;text-decoration:none;font-weight:bold;font-size:13px;letter-spacing:1px;text-transform:uppercase;padding:14px 28px;border:3px solid #161310;">Watch Now</a>
+                </td>
+              </tr></table>
+            </td>
+          </tr>
+
+          <!-- Divider -->
+          <tr>
+            <td style="padding:28px 28px 0 28px;">
+              <div style="border-top:2px dashed #161310;"></div>
+            </td>
+          </tr>
+
+          <!-- Get the app -->
+          <tr>
+            <td style="padding:20px 28px 0 28px;" align="center">
+              <div style="font-family:'Courier New',Courier,monospace;font-size:11px;letter-spacing:2px;color:#6e6a64;text-transform:uppercase;margin-bottom:14px;">Get the app</div>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+                <td style="padding:0 6px;">
+                  <a href="https://apps.apple.com/app/id6768934942"><img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" height="44" style="display:block;border:0;height:44px;" /></a>
+                </td>
+                <td style="padding:0 6px;">
+                  <a href="https://play.google.com/store/apps/details?id=tv.wanzami.app"><img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" height="44" style="display:block;border:0;height:44px;" /></a>
+                </td>
+              </tr></table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:28px 28px 24px 28px;" align="center">
+              <div style="font-family:'Courier New',Courier,monospace;font-size:10px;letter-spacing:1px;color:#6e6a64;text-align:center;">
+                &copy; 2026 Wanzami. All rights reserved.<br/>
+                You're receiving this because you're part of the Wanzami crew.<br/>
+                <a href="{{unsubscribeUrl}}" style="color:#6e6a64;">Unsubscribe</a>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Sprocket strip -->
+          <tr>
+            <td style="background:#161310;padding:10px 20px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>
+                ${Array.from({ length: 16 }).map(() => '<td width="6.25%" align="center"><div style="width:8px;height:11px;background:#f2ead9;"></div></td>').join('')}
+              </tr></table>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
 const fieldStyle: React.CSSProperties = {
   border: '2px solid var(--cs-ink)',
   background: 'var(--cs-paper)',
@@ -384,6 +513,12 @@ export function EmailService() {
     toast.success("Loaded the filmmaker campaign template");
   };
 
+  const loadMovieCampaignTemplate = () => {
+    setTemplateSubject(MOVIE_CAMPAIGN_TEMPLATE_SUBJECT);
+    setTemplateBody(MOVIE_CAMPAIGN_TEMPLATE_BODY);
+    toast.success("Loaded the movie campaign template");
+  };
+
   const sendLive = async () => {
     if (!readyToSend) {
       toast.error("Upload recipients and complete the template before sending.");
@@ -597,6 +732,12 @@ export function EmailService() {
                   <span className="inline-flex items-center gap-2">
                     <FileText className="w-3.5 h-3.5" />
                     Load filmmaker template
+                  </span>
+                </CsButton>
+                <CsButton variant="outline" onClick={loadMovieCampaignTemplate}>
+                  <span className="inline-flex items-center gap-2">
+                    <FileText className="w-3.5 h-3.5" />
+                    Load movie campaign template
                   </span>
                 </CsButton>
               </div>
