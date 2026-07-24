@@ -65,6 +65,9 @@ const sendBatch = async (recipients: Recipient[], subject: string, html: string)
       failedRecipients.push(email);
       const error = (r.reason as any)?.message ?? String((r.reason as any) ?? "Unknown error");
       failedDetails.push({ email, error });
+    } else if (!r.value.ok) {
+      failedRecipients.push(email);
+      failedDetails.push({ email, error: r.value.error ?? "Unknown error" });
     } else {
       queuedRecipients.push(email);
     }

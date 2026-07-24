@@ -14,24 +14,39 @@ const transporter =
         port,
         auth: { user, pass },
         secure: port === 465,
+        connectionTimeout: 10_000,
+        greetingTimeout: 10_000,
+        socketTimeout: 15_000,
       })
     : null;
 
+// Email is best-effort everywhere it's called from (signup, verification,
+// welcome, receipts, etc.) — a slow or down SMTP server must never hang or
+// crash the request that triggered it, so this never throws. Callers that
+// don't check the return value are safe by default; callers that need to
+// know about failures (e.g. bulk campaign sends) can check `ok`.
 export const sendEmail = async (options: {
   to: string;
   subject: string;
   html: string;
-}) => {
+}): Promise<{ ok: boolean; error?: string }> => {
   if (!transporter) {
     console.log(
       `[MAILER MOCK] To: ${options.to}\nSubject: ${options.subject}\n${options.html}`
     );
-    return;
+    return { ok: true };
   }
-  await transporter.sendMail({
-    from,
-    to: options.to,
-    subject: options.subject,
-    html: options.html,
-  });
+  try {
+    await transporter.sendMail({
+      from,
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+    });
+    return { ok: true };
+  } catch (err: any) {
+    const message = err?.message ?? String(err);
+    console.error(`[MAILER] Failed to send to ${options.to}:`, message);
+    return { ok: false, error: message };
+  }
 };

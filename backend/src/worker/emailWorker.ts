@@ -23,15 +23,15 @@ const worker = new Worker<EmailJobData>(
 
     for (let i = 0; i < recipients.length; i++) {
       const r = recipients[i];
-      try {
-        await sendEmail({
-          to: r.email,
-          subject,
-          html: html.replace(/{{\s*name\s*}}/gi, r.name ?? "Subscriber").replace(/{{\s*email\s*}}/gi, r.email),
-        });
+      const result = await sendEmail({
+        to: r.email,
+        subject,
+        html: html.replace(/{{\s*name\s*}}/gi, r.name ?? "Subscriber").replace(/{{\s*email\s*}}/gi, r.email),
+      });
+      if (result.ok) {
         queuedRecipients.push(r.email);
-      } catch (err: any) {
-        failedRecipients.push({ email: r.email, error: err?.message ?? "Unknown error" });
+      } else {
+        failedRecipients.push({ email: r.email, error: result.error ?? "Unknown error" });
       }
       if (i % 5 === 0) {
         await job.updateProgress(Math.round(((i + 1) / recipients.length) * 100));
