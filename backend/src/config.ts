@@ -71,6 +71,12 @@ export const config = {
   // PPV access should last at least 30 days; allow higher via env but never lower.
   ppvAccessDays: Math.max(numberOrDefault(process.env.PPV_ACCESS_DAYS, 30), 30),
   supportEmail: process.env.SUPPORT_EMAIL ?? "support@wanzami.com",
+  // Internal/owner accounts that get free access to all PPV titles and are
+  // excluded from engagement analytics. Comma-separated emails.
+  internalTestEmails: (process.env.INTERNAL_TEST_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean),
   ivs: {
     region: process.env.IVS_REGION ?? process.env.AWS_REGION ?? "us-east-1",
     recordingEnabled: process.env.IVS_RECORDING_ENABLED === "true",

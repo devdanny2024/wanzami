@@ -11,6 +11,7 @@ import { AssetStatus, AvailabilityStatus } from "@prisma/client";
 import { createNotification } from "./notificationController.js";
 import { DeleteObjectsCommand, S3Client } from "@aws-sdk/client-s3";
 import { verifyAccessToken } from "../auth/jwt.js";
+import { isInternalTestAccount } from "../utils/internalAccounts.js";
 
 const kidSafeRatings = ["G", "PG", "TV-Y", "TV-G", "TV-PG", "PG-13"];
 const teenSafeRatings = ["PG-13", "TV-14"];
@@ -587,7 +588,9 @@ export const getTitleWithEpisodes = async (req: Request, res: Response) => {
 
     if (userId) {
       const user = await prisma.user.findUnique({ where: { id: userId } });
-      if (user && !user.ppvBanned) {
+      if (user && isInternalTestAccount(user.email)) {
+        ppvStreamAllowed = true;
+      } else if (user && !user.ppvBanned) {
         const active = await prisma.ppvPurchase.findFirst({
           where: {
             userId,

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "../prisma.js";
 import { AuthenticatedRequest } from "../middleware/auth.js";
 import { resolveCountry } from "../utils/country.js";
+import { isInternalTestAccount } from "../utils/internalAccounts.js";
 
 const eventTypes = [
   "PLAY_START",
@@ -38,6 +39,10 @@ const toBigInt = (value?: string | number) => {
 };
 
 export const ingestEvents = async (req: AuthenticatedRequest, res: Response) => {
+  if (isInternalTestAccount(req.user?.email)) {
+    return res.status(201).json({ count: 0 });
+  }
+
   const body = Array.isArray((req.body as any)?.events)
     ? (req.body as any).events
     : Array.isArray(req.body)

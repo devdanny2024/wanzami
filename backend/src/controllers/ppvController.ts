@@ -7,6 +7,7 @@ import { buildPpvThankYouEmail } from "../templates/ppvThankYouTemplate.js";
 import { resolveCountry } from "../utils/country.js";
 import { localizePrice } from "../utils/pricing.js";
 import { getFlutterwaveAccessToken } from "../utils/flutterwaveV4.js";
+import { isInternalTestAccount } from "../utils/internalAccounts.js";
 import crypto from "crypto";
 import { createNotification } from "./notificationController.js";
 
@@ -134,7 +135,9 @@ export const getAccess = async (req: AuthenticatedRequest, res: Response) => {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return res.status(401).json({ message: "Unauthorized" });
 
-    if (user.ppvBanned) {
+    const bypassAccess = isInternalTestAccount(user.email);
+
+    if (user.ppvBanned && !bypassAccess) {
       return res.json({
         isPpv: true,
         hasAccess: false,
@@ -146,6 +149,17 @@ export const getAccess = async (req: AuthenticatedRequest, res: Response) => {
     const title = await prisma.title.findUnique({ where: { id: titleId } });
     if (!title) {
       return res.status(404).json({ message: "Title not found" });
+    }
+
+    if (bypassAccess) {
+      return res.json({
+        isPpv: title.isPpv,
+        hasAccess: true,
+        priceNaira: null,
+        currency: null,
+        userPpvBanned: false,
+        ppvStrikeCount: user.ppvStrikeCount,
+      });
     }
 
     if (!title.isPpv) {

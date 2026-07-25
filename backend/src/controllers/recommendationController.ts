@@ -4,6 +4,7 @@ import { AuthenticatedRequest } from "../middleware/auth.js";
 import { resolveCountry } from "../utils/country.js";
 import { getCache, setCache } from "../utils/cache.js";
 import { assignVariant } from "../utils/ab.js";
+import { isInternalTestAccount } from "../utils/internalAccounts.js";
 
 const ensureProfileForUser = async (userId: bigint, profileId?: bigint) => {
   if (profileId) {
@@ -352,6 +353,8 @@ export const forYou = async (req: AuthenticatedRequest, res: Response) => {
   const profile = await ensureProfileForUser(req.user.userId, profileIdParam);
   if (!profile) return res.status(400).json({ message: "No profile found" });
 
+  const bypassAnalytics = isInternalTestAccount(req.user.email);
+
   const { experiment, variant } = assignVariant("foryou_v1", profile.id.toString(), [
     "control",
     "originals_boost",
@@ -364,22 +367,24 @@ export const forYou = async (req: AuthenticatedRequest, res: Response) => {
     if (cached) {
       res.setHeader("x-experiment", experiment);
       res.setHeader("x-variant", variant);
-      await prisma.engagementEvent.create({
-        data: {
-          profileId: profile.id,
-          eventType: "IMPRESSION",
-          occurredAt: new Date(),
-          country: profile.country || resolveCountry(req),
-          metadata: {
-            experiment,
-            variant,
-            surface: "for_you",
-            anchorCount: Array.isArray(cached.anchors) ? cached.anchors.length : 0,
-            itemCount: Array.isArray(cached.items) ? cached.items.length : 0,
-            cache: true,
+      if (!bypassAnalytics) {
+        await prisma.engagementEvent.create({
+          data: {
+            profileId: profile.id,
+            eventType: "IMPRESSION",
+            occurredAt: new Date(),
+            country: profile.country || resolveCountry(req),
+            metadata: {
+              experiment,
+              variant,
+              surface: "for_you",
+              anchorCount: Array.isArray(cached.anchors) ? cached.anchors.length : 0,
+              itemCount: Array.isArray(cached.items) ? cached.items.length : 0,
+              cache: true,
+            },
           },
-        },
-      });
+        });
+      }
       return res.json({ ...cached, experiment, variant });
     }
   }
@@ -534,6 +539,7 @@ export const forYou = async (req: AuthenticatedRequest, res: Response) => {
   if (cacheKey && cacheTtl > 0) setCache(cacheKey, payload, cacheTtl);
 
   // Log an exposure for lightweight A/B tracking
+  if (!bypassAnalytics) {
   await prisma.engagementEvent.create({
     data: {
       profileId: profile.id,
@@ -549,6 +555,7 @@ export const forYou = async (req: AuthenticatedRequest, res: Response) => {
       },
     },
   });
+  }
 
   res.setHeader("x-experiment", experiment);
   res.setHeader("x-variant", variant);
