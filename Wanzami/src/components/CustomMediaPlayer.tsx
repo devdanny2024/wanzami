@@ -633,6 +633,10 @@ export function CustomMediaPlayer({
     };
     const handlePlaying = () => {
       setIsPlaying(true);
+      // "playing" fires whenever the video actually resumes advancing, including
+      // after a mid-playback rebuffer where "canplay" doesn't reliably refire —
+      // so this is the one authoritative place to clear the buffering spinner.
+      setIsBuffering(false);
       sendPlayStart("playing");
       void enterLandscapeMode();
     };
