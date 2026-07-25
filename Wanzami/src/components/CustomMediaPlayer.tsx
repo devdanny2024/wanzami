@@ -21,6 +21,7 @@ import {
 import { fetchBecauseYouWatched, postEvents } from "@/lib/contentClient";
 import Hls from "hls.js";
 import { hasRatedEndcard, markRatedEndcard } from "@/lib/endCardCache";
+import { Sticker } from "./cs/kit";
 
 type MediaSource = {
   src: string;
@@ -124,6 +125,12 @@ export function CustomMediaPlayer({
     });
   }, [episodes]);
 
+  const seasonNumbers = useMemo(() => {
+    const set = new Set<number>();
+    normalizedEpisodes.forEach((e) => set.add(e.seasonNumber ?? 1));
+    return Array.from(set).sort((a, b) => a - b);
+  }, [normalizedEpisodes]);
+
   const buildSourcesFromEpisode = useCallback((ep?: Episode | null): MediaSource[] => {
     if (!ep?.assetVersions?.length) return [];
     const rank: Record<string, number> = { R4K: 5, R2K: 4, R1080: 3, R720: 2, R360: 1 };
@@ -203,6 +210,7 @@ export function CustomMediaPlayer({
   const [isHovering, setIsHovering] = useState(false);
   const [showQualityMenu, setShowQualityMenu] = useState(false);
   const [showEpisodePanel, setShowEpisodePanel] = useState(false);
+  const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
   const [pipAvailable, setPipAvailable] = useState(false);
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const [isBuffering, setIsBuffering] = useState(true);
@@ -231,17 +239,13 @@ export function CustomMediaPlayer({
     return window.matchMedia("(max-width: 900px)").matches;
   }, []);
 
-  const lockLandscape = useCallback(async () => {
-    if (typeof window === "undefined") return;
-    if (!shouldLockLandscape()) return;
-    const orientation = window.screen?.orientation as ScreenOrientation | undefined;
-    if (!orientation || typeof (orientation as any).lock !== "function") return;
-    try {
-      await (orientation as any).lock("landscape");
-    } catch {
-      // ignore lock failures (browser restrictions)
-    }
-  }, [shouldLockLandscape]);
+  const supportsOrientationLock = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    const orientation = window.screen?.orientation as any;
+    return Boolean(orientation && typeof orientation.lock === "function");
+  }, []);
+
+  const [forceRotate, setForceRotate] = useState(false);
 
   const unlockLandscape = useCallback(() => {
     if (typeof window === "undefined") return;
@@ -253,7 +257,54 @@ export function CustomMediaPlayer({
         // ignore
       }
     }
+    setForceRotate(false);
   }, []);
+
+  // Mobile web should always watch in landscape. Where the Screen Orientation
+  // API is supported (Android Chrome/Firefox — requires fullscreen first) we
+  // use the real lock; Safari on iOS has no such API, so we fake it with a
+  // CSS rotation of the player container instead.
+  const enterLandscapeMode = useCallback(async () => {
+    if (typeof window === "undefined") return;
+    if (!shouldLockLandscape()) return;
+    if (window.matchMedia("(orientation: landscape)").matches) return;
+
+    if (supportsOrientationLock) {
+      try {
+        const container = containerRef.current;
+        if (container && !document.fullscreenElement) {
+          await container.requestFullscreen();
+        }
+        await (window.screen.orientation as any).lock("landscape");
+        return;
+      } catch {
+        // Lock rejected (e.g. fullscreen was blocked) — fall through to the
+        // CSS fallback below.
+      }
+    }
+    setForceRotate(true);
+  }, [shouldLockLandscape, supportsOrientationLock]);
+
+  // If the viewer physically rotates the phone, drop the CSS fallback so we
+  // don't rotate an already-landscape screen a second time.
+  useEffect(() => {
+    if (!forceRotate) return;
+    const mq = window.matchMedia("(orientation: landscape)");
+    const handleOrientationChange = () => {
+      if (mq.matches) setForceRotate(false);
+    };
+    mq.addEventListener("change", handleOrientationChange);
+    return () => mq.removeEventListener("change", handleOrientationChange);
+  }, [forceRotate]);
+
+  useEffect(() => {
+    if (!forceRotate) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [forceRotate]);
 
   const updateLocalContinueWatching = useCallback(
     (payload: { completionPercent?: number; positionSec?: number; durationSec?: number }) => {
@@ -369,6 +420,17 @@ export function CustomMediaPlayer({
   const hasNext = currentEpisode
     ? normalizedEpisodes.findIndex((e) => e.id === currentEpisode.id) < normalizedEpisodes.length - 1
     : false;
+
+  const episodesForSelectedSeason = useMemo(() => {
+    if (selectedSeason == null) return normalizedEpisodes;
+    return normalizedEpisodes.filter((e) => (e.seasonNumber ?? 1) === selectedSeason);
+  }, [normalizedEpisodes, selectedSeason]);
+
+  // Default the drawer to whichever season is currently playing.
+  useEffect(() => {
+    if (!showEpisodePanel) return;
+    setSelectedSeason((prev) => prev ?? currentEpisode?.seasonNumber ?? normalizedEpisodes[0]?.seasonNumber ?? 1);
+  }, [showEpisodePanel, currentEpisode?.seasonNumber, normalizedEpisodes]);
 
   // End-card helpers
   const endCardEnabled = useMemo(() => {
@@ -572,7 +634,7 @@ export function CustomMediaPlayer({
     const handlePlaying = () => {
       setIsPlaying(true);
       sendPlayStart("playing");
-      void lockLandscape();
+      void enterLandscapeMode();
     };
 
     video.addEventListener("timeupdate", handleTimeUpdate);
@@ -592,7 +654,7 @@ export function CustomMediaPlayer({
       video.removeEventListener("waiting", handleWaiting);
       video.removeEventListener("playing", handlePlaying);
     };
-  }, [emitEvent, hasNext, startTimeSeconds, currentSrc, activeSources, sendPlayStart, maybeShowEndCard]);
+  }, [emitEvent, hasNext, startTimeSeconds, currentSrc, activeSources, sendPlayStart, maybeShowEndCard, enterLandscapeMode]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -773,7 +835,9 @@ export function CustomMediaPlayer({
           break;
         case "Escape":
           e.preventDefault();
-          if (document.fullscreenElement) {
+          if (showEpisodePanel) {
+            setShowEpisodePanel(false);
+          } else if (document.fullscreenElement) {
             document.exitFullscreen().catch(() => undefined);
           } else {
             const video = videoRef.current;
@@ -794,7 +858,7 @@ export function CustomMediaPlayer({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [adjustVolume, onClose, seekRelative, toggleFullscreen, toggleMute, togglePlay]);
+  }, [adjustVolume, onClose, seekRelative, toggleFullscreen, toggleMute, togglePlay, showEpisodePanel]);
 
   const handleQualityChange = (source: MediaSource) => {
     const video = videoRef.current;
@@ -936,6 +1000,9 @@ export function CustomMediaPlayer({
       unmounted.current = true;
       void emitEvent("PLAY_END", { reason: "unmount" }, true);
       unlockLandscape();
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => undefined);
+      }
     };
   }, [emitEvent, unlockLandscape]);
 
@@ -952,7 +1019,7 @@ export function CustomMediaPlayer({
   };
 
   const currentEpisodeLabel = currentEpisode
-    ? `S${currentEpisode.seasonNumber ?? "?"} E${currentEpisode.episodeNumber ?? "?"}`
+    ? `S${currentEpisode.seasonNumber ?? "?"} · E${currentEpisode.episodeNumber ?? "?"}`
     : null;
 
   // Load VTT preview cues when available (episode > title fallback)
@@ -1046,7 +1113,19 @@ export function CustomMediaPlayer({
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 bg-black group overflow-visible"
+      className={`bg-black group overflow-visible fixed ${forceRotate ? "" : "inset-0"}`}
+      style={
+        forceRotate
+          ? {
+              top: "50%",
+              left: "50%",
+              width: "100vh",
+              height: "100vw",
+              transform: "translate(-50%, -50%) rotate(90deg)",
+              transformOrigin: "center center",
+            }
+          : undefined
+      }
       tabIndex={0}
       role="region"
       aria-label={`${title} player`}
@@ -1071,6 +1150,29 @@ export function CustomMediaPlayer({
         controls={false}
         style={{ zIndex: 1 }}
       />
+
+      <div
+        className="absolute top-0 left-0 right-0 h-3.5 md:h-4 bg-[#0a0908] overflow-hidden pointer-events-none"
+        style={{ zIndex: 6 }}
+        aria-hidden="true"
+      >
+        <div className="flex items-center gap-3.5 pl-3.5 w-max cs-sprocket-track">
+          {Array.from({ length: 80 }).map((_, i) => (
+            <span key={i} className="block w-2 h-2 rounded-[1px] bg-black/70" />
+          ))}
+        </div>
+      </div>
+      <div
+        className="absolute bottom-0 left-0 right-0 h-3.5 md:h-4 bg-[#0a0908] overflow-hidden pointer-events-none"
+        style={{ zIndex: 6 }}
+        aria-hidden="true"
+      >
+        <div className="flex items-center gap-3.5 pl-3.5 w-max cs-sprocket-track">
+          {Array.from({ length: 80 }).map((_, i) => (
+            <span key={i} className="block w-2 h-2 rounded-[1px] bg-black/70" />
+          ))}
+        </div>
+      </div>
 
       <div
         className={`absolute inset-0 bg-gradient-to-t from-black via-transparent to-black pointer-events-none transition-opacity duration-300 ${
@@ -1102,11 +1204,27 @@ export function CustomMediaPlayer({
           >
             <ArrowLeft className="w-5 h-5 md:w-6 md:h-6" />
           </button>
-          <div className="text-white">
-            <div className="font-semibold text-lg">{title}</div>
-            {currentEpisodeLabel ? (
-              <div className="text-sm text-white/70">{currentEpisodeLabel}</div>
-            ) : null}
+          <div className="text-white min-w-0">
+            <div className="flex items-center gap-2 md:gap-3">
+              {currentEpisodeLabel ? (
+                <span
+                  className="flex-none font-mono text-[10px] font-bold uppercase tracking-widest text-cs-ink bg-brand px-2 py-1 shadow-[3px_3px_0_rgba(0,0,0,0.55)]"
+                  style={{ transform: "rotate(-2deg)" }}
+                >
+                  {currentEpisodeLabel}
+                </span>
+              ) : null}
+              <div className="min-w-0">
+                {currentEpisode ? (
+                  <div className="font-mono text-[11px] uppercase tracking-widest text-white/60 truncate">
+                    {title}
+                  </div>
+                ) : null}
+                <div className="font-heading uppercase text-lg md:text-2xl leading-none text-white truncate">
+                  {currentEpisode?.name ?? title}
+                </div>
+              </div>
+            </div>
             {playbackError ? (
               <div className="mt-2 text-xs text-red-200 bg-red-900/40 border border-red-800 rounded px-3 py-2 max-w-md">
                 {playbackError}
@@ -1134,9 +1252,10 @@ export function CustomMediaPlayer({
         >
           <button
             onClick={togglePlay}
-            className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center hover:bg-white/30 transition-all hover:scale-110 pointer-events-auto"
+            aria-label="Play"
+            className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-black/40 border-2 border-cs-paper flex items-center justify-center transition-all hover:scale-105 hover:bg-cs-rust hover:border-cs-rust active:scale-95 pointer-events-auto shadow-[6px_6px_0_rgba(0,0,0,0.5)]"
           >
-            <Play className="w-10 h-10 text-white ml-1" fill="white" />
+            <Play className="w-8 h-8 md:w-10 md:h-10 text-cs-paper ml-1" fill="currentColor" />
           </button>
         </div>
       )}
@@ -1165,10 +1284,15 @@ export function CustomMediaPlayer({
         <div className="mb-3 md:mb-4 relative">
           {previewTime !== null && duration > 0 && (
             <div
-              className="absolute bg-black/90 text-white text-xs rounded-lg shadow-lg overflow-hidden border border-white/10 pointer-events-none"
-              style={{ left: `${previewPos}%`, top: "-130px", transform: "translateX(-50%)", zIndex: 25 }}
+              className="absolute bg-cs-paper text-cs-ink text-xs border-2 border-cs-ink shadow-[4px_4px_0_rgba(0,0,0,0.55)] overflow-hidden pointer-events-none"
+              style={{
+                left: `${previewPos}%`,
+                top: "-134px",
+                transform: "translateX(-50%) rotate(-1deg)",
+                zIndex: 25,
+              }}
             >
-              <div className="w-40 h-24 bg-black flex items-center justify-center">
+              <div className="w-40 h-24 bg-cs-ink/90 flex items-center justify-center p-1">
                 {(() => {
                   const cue = previewCues.find((c) => previewTime >= c.start && previewTime <= c.end);
                   if (cue) {
@@ -1199,32 +1323,41 @@ export function CustomMediaPlayer({
                   );
                 })()}
               </div>
-              <div className="px-2 py-1 text-center border-t border-white/10">{formatTime(previewTime)}</div>
+              <div className="px-2 py-1 text-center font-mono text-[11px] font-bold border-t-2 border-cs-ink">
+                {formatTime(previewTime)}
+              </div>
             </div>
           )}
-          <input
-            type="range"
-            min={0}
-            max={duration || 0}
-            value={currentTime}
-            onChange={handleSeek}
-            onMouseMove={(e) => {
-              if (!duration) return;
-              const rect = (e.target as HTMLInputElement).getBoundingClientRect();
-              const pct = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1);
-              setPreviewPos(pct * 100);
-              setPreviewTime(pct * duration);
-            }}
-            onMouseLeave={() => {
-              setPreviewTime(null);
-            }}
-            className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"
-            style={{
-              background: `linear-gradient(to right, #e50914 0%, #e50914 ${
-                duration ? (currentTime / duration) * 100 : 0
-              }%, #4a5568 ${duration ? (currentTime / duration) * 100 : 0}%, #4a5568 100%)`,
-            }}
-          />
+          <div className="relative">
+            <input
+              type="range"
+              min={0}
+              max={duration || 0}
+              value={currentTime}
+              onChange={handleSeek}
+              onMouseMove={(e) => {
+                if (!duration) return;
+                const rect = (e.target as HTMLInputElement).getBoundingClientRect();
+                const pct = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1);
+                setPreviewPos(pct * 100);
+                setPreviewTime(pct * duration);
+              }}
+              onMouseLeave={() => {
+                setPreviewTime(null);
+              }}
+              className="cs-player-scrub w-full h-1.5 bg-white/20 appearance-none cursor-pointer"
+              style={{
+                background: `linear-gradient(to right, #fd7e14 0%, #fd7e14 ${
+                  duration ? (currentTime / duration) * 100 : 0
+                }%, rgba(255,255,255,0.22) ${duration ? (currentTime / duration) * 100 : 0}%, rgba(255,255,255,0.22) 100%)`,
+              }}
+            />
+            <div className="absolute inset-0 flex items-center pointer-events-none px-[1px]">
+              {Array.from({ length: 30 }).map((_, i) => (
+                <div key={i} className="flex-1 border-r border-black/25 h-full last:border-r-0" />
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="block md:hidden space-y-3">
@@ -1274,7 +1407,7 @@ export function CustomMediaPlayer({
               <button
                 type="button"
                 onClick={() => setShowEpisodePanel(true)}
-                className="text-white hover:scale-110 transition-transform"
+                className="text-white hover:text-brand hover:scale-110 transition-transform"
                 aria-label="Show episodes"
               >
                 <List className="w-6 h-6" />
@@ -1394,10 +1527,11 @@ export function CustomMediaPlayer({
               <button
                 type="button"
                 onClick={() => setShowEpisodePanel(true)}
-                className="text-white hover:scale-110 transition-transform"
+                className="flex items-center gap-2 px-3 py-2 border-[1.5px] border-white/35 text-white font-mono text-xs font-bold uppercase tracking-widest hover:border-brand hover:bg-brand/10 transition-colors"
                 aria-label="Show episodes"
               >
-                <List className="w-7 h-7" />
+                <List className="w-4 h-4" />
+                <span>Episodes</span>
               </button>
             ) : null}
             {activeSources.length > 0 ? (
@@ -1539,78 +1673,94 @@ export function CustomMediaPlayer({
       )}
 
       {showEpisodePanel && normalizedEpisodes.length > 0 && (
-        <div className="fixed inset-0 bg-black/95 overflow-y-auto" style={{ zIndex: 60 }}>
-          <div className="max-w-6xl mx-auto p-4 md:p-8">
-            <div className="flex items-center justify-between mb-6 md:mb-8">
-              <div className="text-white">
-                <div className="font-semibold text-lg">Episodes</div>
-                <div className="text-xs text-white/60">Season {currentEpisode?.seasonNumber ?? "?"}</div>
+        <>
+          <div
+            className="fixed inset-0 bg-black/60"
+            style={{ zIndex: 59 }}
+            onClick={() => setShowEpisodePanel(false)}
+            aria-hidden="true"
+          />
+          <div
+            className="fixed inset-x-0 bottom-0 h-[82%] bg-cs-paper text-cs-ink border-t-[3px] border-cs-ink shadow-[0_-8px_0_rgba(0,0,0,0.35)] flex flex-col md:inset-x-auto md:right-0 md:top-0 md:h-auto md:w-[420px] md:border-t-0 md:border-l-[3px] md:shadow-[-8px_0_0_rgba(0,0,0,0.35)]"
+            style={{ zIndex: 60 }}
+            role="dialog"
+            aria-label="Episode list"
+          >
+            <div className="flex items-start justify-between gap-3 px-5 pt-4 pb-3 border-b-[1.5px] border-cs-line flex-none">
+              <div className="min-w-0">
+                <p className="cs-slug mb-1">Shooting Script &middot; Up Next</p>
+                <h2 className="font-heading uppercase text-2xl leading-none truncate">{title}</h2>
               </div>
               <button
                 onClick={() => setShowEpisodePanel(false)}
-                className="text-white hover:bg-white/10 p-2 rounded-full transition-colors"
-                aria-label="Close episodes"
+                className="flex-none w-9 h-9 flex items-center justify-center bg-cs-paper border-2 border-cs-ink hover:bg-cs-ink hover:text-cs-paper transition-colors"
+                aria-label="Close episode list"
               >
-                <X className="w-6 h-6 md:w-7 md:h-7" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 md:gap-4">
-              {normalizedEpisodes.map((ep, index) => {
+            {seasonNumbers.length > 1 ? (
+              <div className="flex gap-2 px-5 pt-3 flex-none overflow-x-auto scrollbar-hide">
+                {seasonNumbers.map((season) => (
+                  <button
+                    key={season}
+                    onClick={() => setSelectedSeason(season)}
+                    className={`font-mono text-[11px] font-bold uppercase tracking-widest whitespace-nowrap px-3 py-1.5 border-[1.5px] border-cs-ink transition-colors ${
+                      selectedSeason === season
+                        ? "bg-cs-ink text-cs-paper"
+                        : "bg-cs-panel text-cs-ink hover:bg-white"
+                    }`}
+                  >
+                    Season {season}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3">
+              {episodesForSelectedSeason.map((ep) => {
                 const active = currentEpisode?.id === ep.id;
                 return (
                   <button
                     key={ep.id}
                     onClick={() => switchEpisode(ep)}
-                    className={`group cursor-pointer rounded-lg overflow-hidden transition-all hover:bg-white/10 ${
-                      active ? "ring-2 ring-[#fd7e14]" : ""
+                    className={`flex gap-3 text-left bg-cs-panel border-2 border-cs-ink p-2.5 shadow-[3px_3px_0_var(--color-cs-ink)] transition-transform hover:-translate-y-0.5 active:translate-y-px active:shadow-[2px_2px_0_var(--color-cs-ink)] ${
+                      active ? "outline outline-2 outline-brand outline-offset-2" : ""
                     }`}
                   >
-                    <div className="flex flex-col sm:flex-row gap-3 md:gap-4 p-3 md:p-4">
-                      <div className="relative flex-shrink-0 w-full sm:w-40 md:w-48 h-48 sm:h-24 md:h-28 bg-gray-800 rounded overflow-hidden">
-                        {ep.thumbnailUrl ? (
-                          <img src={ep.thumbnailUrl} alt={ep.name ?? "Episode"} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full bg-black/40 flex items-center justify-center text-white text-xs">Episode</div>
-                        )}
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <Play className="w-10 h-10 md:w-12 md:h-12 text-white" fill="white" />
+                    <div className="relative flex-none w-24 h-16 sm:w-28 sm:h-[70px] border-[1.5px] border-cs-ink bg-cs-line overflow-hidden">
+                      {ep.thumbnailUrl ? (
+                        <img src={ep.thumbnailUrl} alt={ep.name ?? "Episode"} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Play className="w-5 h-5 text-cs-ink/40" />
                         </div>
-                        {active && (
-                          <div className="absolute top-2 right-2 bg-[#fd7e14] text-white px-2 py-1 rounded text-xs md:text-sm">
-                            Playing
-                          </div>
-                        )}
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-cs-muted">
+                          E{ep.episodeNumber ?? "?"}
+                        </span>
+                        {active ? <Sticker>Now Playing</Sticker> : null}
+                        {ep.runtimeMinutes ? (
+                          <span className="font-mono text-[10px] text-cs-muted ml-auto">{ep.runtimeMinutes}m</span>
+                        ) : null}
                       </div>
-                      <div className="flex-1 min-w-0 text-left">
-                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4 mb-2">
-                          <div className="flex-1">
-                            <h3 className="text-white mb-1 text-sm md:text-base">
-                              {index + 1}. {ep.name ?? "Episode"}
-                            </h3>
-                            {ep.synopsis ? (
-                              <p className="text-gray-300 text-xs md:text-sm line-clamp-2 sm:line-clamp-none">
-                                {ep.synopsis}
-                              </p>
-                            ) : null}
-                          </div>
-                          {ep.runtimeMinutes ? (
-                            <span className="text-gray-300 text-xs md:text-sm flex-shrink-0">
-                              {ep.runtimeMinutes}m
-                            </span>
-                          ) : null}
-                        </div>
-                        <div className="text-xs text-white/70">
-                          S{ep.seasonNumber ?? "?"} · E{ep.episodeNumber ?? index + 1}
-                        </div>
-                      </div>
+                      <p className="font-heading uppercase text-sm leading-tight mb-1 truncate">
+                        {ep.name ?? "Episode"}
+                      </p>
+                      {ep.synopsis ? (
+                        <p className="text-xs text-cs-muted leading-snug line-clamp-2">{ep.synopsis}</p>
+                      ) : null}
                     </div>
                   </button>
                 );
               })}
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

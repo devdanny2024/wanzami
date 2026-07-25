@@ -184,6 +184,45 @@
   }
 }
 
+/* Video player — "Call Sheet Cinema" chrome (CustomMediaPlayer) */
+@keyframes cs-sprocket-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-224px); }
+}
+.cs-sprocket-track {
+  animation: cs-sprocket-scroll 14s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cs-sprocket-track { animation: none; }
+}
+
+.cs-player-scrub {
+  -webkit-appearance: none;
+  appearance: none;
+}
+.cs-player-scrub::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: var(--color-cs-paper);
+  border: 2px solid var(--color-cs-ink);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  margin-top: -4px;
+}
+.cs-player-scrub::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: var(--color-cs-paper);
+  border: 2px solid var(--color-cs-ink);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  border-style: solid;
+}
+
 /* Film grain (kept from previous system) */
 @keyframes grain {
   0%, 100% { transform: translate(0, 0); }
