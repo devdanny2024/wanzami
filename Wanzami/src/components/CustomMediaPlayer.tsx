@@ -193,7 +193,10 @@ export function CustomMediaPlayer({
     setCurrentSrc(pickInitialSource(activeSources) ?? activeSources[0]);
   }, [activeSources]);
 
-  const shouldAutoplay = false;
+  // Landing here always follows a "Play"/"Continue Watching" click on the
+  // previous page, so start playback immediately instead of making the
+  // viewer click again.
+  const shouldAutoplay = true;
   const hasSources = useMemo(() => {
     return Boolean(
       (activeSources && activeSources.length > 0) ||
