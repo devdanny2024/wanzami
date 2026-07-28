@@ -35,6 +35,11 @@ export default function App() {
 function AppContent() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
+  const [currentUser, setCurrentUser] = useState<{
+    name?: string | null;
+    email?: string | null;
+    role?: string | null;
+  } | null>(null);
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [paletteOpen, setPaletteOpen] = useState(false);
   const { tasks, serverJobs, removeTask, clearTasks, retryTask, retryServerJob } = useUploadQueue();
@@ -96,6 +101,14 @@ function AppContent() {
       });
       if (res.ok) {
         setIsLoggedIn(true);
+        // The session check already returns the account; keep it so the
+        // sidebar can show who is actually signed in.
+        try {
+          const data = await res.json();
+          if (data?.user) setCurrentUser(data.user);
+        } catch {
+          // A missing body shouldn't cost the user their session.
+        }
       } else {
         if (!hasActiveUploads) {
           localStorage.removeItem('accessToken');
@@ -114,6 +127,22 @@ function AppContent() {
 
   const handleLogin = () => {
     setIsLoggedIn(true);
+    // Fresh sign-in skips the session check above, so pull the account here
+    // too, otherwise the sidebar would sit blank until the next reload.
+    void (async () => {
+      const token = localStorage.getItem('accessToken');
+      if (!token) return;
+      try {
+        const res = await fetch('/api/admin/me', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data?.user) setCurrentUser(data.user);
+      } catch {
+        // Non-fatal: the sidebar falls back to a neutral label.
+      }
+    })();
   };
 
   const handleLogout = () => {
@@ -121,6 +150,7 @@ function AppContent() {
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('deviceId');
     setIsLoggedIn(false);
+    setCurrentUser(null);
     setCurrentPage('dashboard');
   };
 
@@ -181,7 +211,7 @@ function AppContent() {
 
   return (
     <div className="flex h-screen" style={{ background: 'var(--cs-paper)' }}>
-      <Sidebar currentPage={currentPage} onNavigate={navigate} />
+      <Sidebar currentPage={currentPage} onNavigate={navigate} user={currentUser} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header currentPage={currentPage} onOpenSearch={() => setPaletteOpen(true)} onLogout={handleLogout} />
         <main className="flex-1 overflow-y-auto p-8" style={{ background: 'var(--cs-paper)' }}>

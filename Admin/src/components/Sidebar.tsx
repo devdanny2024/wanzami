@@ -5,9 +5,20 @@ import { navGroups } from '../lib/nav';
 interface SidebarProps {
   currentPage: string;
   onNavigate: (page: string) => void;
+  user?: { name?: string | null; email?: string | null; role?: string | null } | null;
 }
 
-export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
+/** SUPER_ADMIN reads better as "Super Admin" in a sidebar. */
+const roleLabel = (role?: string | null) =>
+  role
+    ? role
+        .toLowerCase()
+        .split("_")
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join(" ")
+    : null;
+
+export function Sidebar({ currentPage, onNavigate, user }: SidebarProps) {
   const [openCount, setOpenCount] = useState<number>(0);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(navGroups.map((g) => [g.id, Boolean(g.defaultCollapsed)]))
@@ -140,11 +151,21 @@ export function Sidebar({ currentPage, onNavigate }: SidebarProps) {
             className="w-8 h-8 flex items-center justify-center"
             style={{ background: 'var(--cs-ink)' }}
           >
-            <span className="cs-display text-sm" style={{ color: 'var(--cs-brand)' }}>A</span>
+            <span className="cs-display text-sm" style={{ color: 'var(--cs-brand)' }}>
+              {(user?.name || user?.email || '?').trim().charAt(0).toUpperCase()}
+            </span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="cs-mono text-xs font-bold truncate" style={{ color: 'var(--cs-ink)' }}>Admin User</p>
-            <p className="cs-slug truncate" style={{ fontSize: 9 }}>admin@wanzami.com</p>
+            <p
+              className="cs-mono text-xs font-bold truncate"
+              style={{ color: 'var(--cs-ink)' }}
+              title={user?.name ?? undefined}
+            >
+              {user?.name || user?.email || 'Signed in'}
+            </p>
+            <p className="cs-slug truncate" style={{ fontSize: 9 }} title={user?.email ?? undefined}>
+              {user?.email || roleLabel(user?.role) || '—'}
+            </p>
           </div>
         </div>
       </div>
