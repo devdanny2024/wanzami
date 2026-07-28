@@ -80,7 +80,19 @@ export function UploadDock({
     () => serverJobs.filter((j) => j.status !== "COMPLETED" && j.status !== "FAILED"),
     [serverJobs]
   );
-  const failedJobs = useMemo(() => serverJobs.filter((j) => j.status === "FAILED"), [serverJobs]);
+  // Only failures the operator can still do something about. A transfer that
+  // died three weeks ago is history, not a task, and shouldn't pin this panel
+  // over the admin forever.
+  const RECENT_MS = 24 * 60 * 60 * 1000;
+  const failedJobs = useMemo(
+    () =>
+      serverJobs.filter((j) => {
+        if (j.status !== "FAILED") return false;
+        const touched = j.updatedAt ? Date.parse(j.updatedAt) : NaN;
+        return Number.isNaN(touched) ? false : Date.now() - touched < RECENT_MS;
+      }),
+    [serverJobs, RECENT_MS]
+  );
 
   const overallProgress = useMemo(
     () => (active.length > 0 ? active.reduce((sum, t) => sum + (t.progress || 0), 0) / active.length : 0),
@@ -95,7 +107,7 @@ export function UploadDock({
 
   // Show only the rows that matter for whichever tab is open.
   const queueRows = tasks.filter((t) => t.status !== "completed");
-  const jobRows = serverJobs.filter((j) => j.status !== "COMPLETED");
+  const jobRows = [...liveJobs, ...failedJobs];
 
   const statusLabel =
     tab === "queue"

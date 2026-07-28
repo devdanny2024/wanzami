@@ -5,12 +5,14 @@ import { computeProfilePreferences } from "../jobs/preferences.js";
 import { computeRecentViews } from "../jobs/recentViews.js";
 import { processAvailabilityTransitions } from "../jobs/availability.js";
 import { publishScheduledPosts } from "../jobs/blogScheduler.js";
+import { failStaleUploads } from "../jobs/staleUploads.js";
 
 const popularityCron = process.env.POPULARITY_CRON || "0 3 * * *"; // daily at 03:00
 const preferencesCron = process.env.PREFERENCES_CRON || "30 3 * * *"; // daily at 03:30
 const recentViewsCron = process.env.RECENT_VIEWS_CRON || "0 4 * * *"; // daily at 04:00
 const availabilityCron = process.env.AVAILABILITY_CRON || "*/5 * * * *"; // every 5 minutes
 const blogScheduleCron = process.env.BLOG_SCHEDULE_CRON || "* * * * *"; // every minute
+const staleUploadCron = process.env.STALE_UPLOAD_CRON || "*/15 * * * *"; // every 15 minutes
 
 cron.schedule(popularityCron, async () => {
   try {
@@ -63,6 +65,17 @@ cron.schedule(blogScheduleCron, async () => {
     }
   } catch (err) {
     console.error("[cron] blog scheduler failed", err);
+  }
+});
+
+cron.schedule(staleUploadCron, async () => {
+  try {
+    const result = await failStaleUploads();
+    if (result.failed > 0) {
+      console.log(`[cron] stale uploads: marked ${result.failed} abandoned transfer(s) failed`);
+    }
+  } catch (err) {
+    console.error("[cron] stale upload sweep failed", err);
   }
 });
 
