@@ -93,3 +93,78 @@
 .hover\:bg-\[var\(--cs-panel\)\]:hover { background: var(--cs-panel); }
 .active\:translate-y-px:active { transform: translateY(1px); }
 .disabled\:opacity-50:disabled { opacity: 0.5; }
+
+/* Blog CMS additions */
+.ml-auto { margin-left: auto; }
+.mx-1 { margin-left: 0.25rem; margin-right: 0.25rem; }
+.mx-auto { margin-left: auto; margin-right: auto; }
+.self-stretch { align-self: stretch; }
+.left-5 { left: 1.25rem; }
+.top-5 { top: 1.25rem; }
+.grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.col-span-2 { grid-column: span 2 / span 2; }
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ---------------------------------------------------------------------------
+   Blog editor — the contentEditable surface renders the same shapes the
+   storefront article will, so what the writer sees is what readers get.
+--------------------------------------------------------------------------- */
+
+.cs-editor:focus { outline: none; }
+.cs-editor > *:first-child { margin-top: 0; }
+.cs-editor p { margin: 0 0 1em; }
+.cs-editor h2 {
+  font-family: var(--font-bebas), Impact, sans-serif;
+  text-transform: uppercase;
+  font-size: 30px;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  margin: 1.4em 0 0.5em;
+}
+.cs-editor h3 {
+  font-family: var(--font-bebas), Impact, sans-serif;
+  text-transform: uppercase;
+  font-size: 22px;
+  line-height: 1.05;
+  margin: 1.3em 0 0.45em;
+}
+.cs-editor blockquote {
+  margin: 1.4em 0;
+  padding: 0.2em 0 0.2em 1.1em;
+  border-left: 4px solid var(--cs-rust);
+  font-size: 1.06em;
+  font-style: italic;
+  color: var(--cs-ink);
+}
+.cs-editor ul, .cs-editor ol { margin: 0 0 1em; padding-left: 1.5em; }
+.cs-editor li { margin-bottom: 0.35em; }
+.cs-editor a { color: var(--cs-rust); text-decoration: underline; }
+.cs-editor img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1.4em 0;
+  border: 2px solid var(--cs-ink);
+}
+.cs-editor pre {
+  margin: 1.4em 0;
+  padding: 14px 16px;
+  background: var(--cs-ink);
+  color: #f2ead9;
+  font-family: var(--font-smono), "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+.cs-editor hr {
+  margin: 1.8em 0;
+  border: none;
+  border-top: 2px dashed var(--cs-ink);
+}
