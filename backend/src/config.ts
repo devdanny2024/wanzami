@@ -71,6 +71,12 @@ export const config = {
   // PPV access should last at least 30 days; allow higher via env but never lower.
   ppvAccessDays: Math.max(numberOrDefault(process.env.PPV_ACCESS_DAYS, 30), 30),
   supportEmail: process.env.SUPPORT_EMAIL ?? "support@wanzami.com",
+  // Public origin of the admin dashboard. Every admin-facing link the backend
+  // emails out (invitations today) is built from this, so it must be the real
+  // host and never localhost in production.
+  adminAppOrigin: (
+    process.env.ADMIN_APP_ORIGIN ?? "https://admin.wanzami.tv"
+  ).replace(/\/+$/, ""),
   // Internal/owner accounts that get free access to all PPV titles and are
   // excluded from engagement analytics. Comma-separated emails.
   internalTestEmails: (process.env.INTERNAL_TEST_EMAILS ?? "")

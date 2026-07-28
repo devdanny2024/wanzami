@@ -25,6 +25,12 @@ type Invite = {
   acceptedAt?: string | null;
 };
 
+type InviteResult = {
+  link: string;
+  emailSent: boolean;
+  message?: string;
+};
+
 type Member = {
   id: string;
   email: string;
@@ -96,7 +102,7 @@ export function TeamManagement() {
     void fetchData();
   }, [fetchData]);
 
-  const createInvite = async (): Promise<string | null> => {
+  const createInvite = async (): Promise<InviteResult | null> => {
     if (!isValidEmail(inviteEmail)) {
       setInputError(true);
       toast.error("Invalid email");
@@ -114,10 +120,15 @@ export function TeamManagement() {
       if (!res.ok) {
         toast.error(data.message ?? "Unable to send invite");
         return null;
-      } else {
-        const link = `${process.env.NEXT_PUBLIC_ADMIN_ORIGIN ?? "http://localhost:3001"}/admin/accept-invite?token=${data.token}&email=${encodeURIComponent(inviteEmail)}`;
-        return link;
       }
+      // The backend builds the link from ADMIN_APP_ORIGIN so the emailed link
+      // and the copied link are always the same URL. Falling back to this
+      // browser's own origin keeps the share button honest if an older backend
+      // is deployed — never a hardcoded localhost.
+      const link =
+        data.acceptUrl ??
+        `${window.location.origin}/admin/accept-invite?token=${encodeURIComponent(data.token)}`;
+      return { link, emailSent: data.emailSent !== false, message: data.message };
     } catch (err) {
       toast.error("Unable to send invite");
       return null;
@@ -127,14 +138,19 @@ export function TeamManagement() {
   };
 
   const sendInvite = async (closeAfter = true, copyLink = false) => {
-    const link = await createInvite();
-    if (!link) return;
-    setGeneratedLink(link);
+    const result = await createInvite();
+    if (!result) return;
+    setGeneratedLink(result.link);
     if (copyLink) {
-      await navigator.clipboard.writeText(link);
+      await navigator.clipboard.writeText(result.link);
       toast.success("Link copied");
-    } else {
+    } else if (result.emailSent) {
       toast.success("Invite sent");
+    } else {
+      // Don't claim the email went out when SMTP rejected it — keep the modal
+      // open so the admin can copy the link and send it another way.
+      toast.error(result.message ?? "Invite created, but the email failed. Share the link.");
+      closeAfter = false;
     }
     setInviteEmail("");
     if (closeAfter) setShowInviteModal(false);
@@ -184,6 +200,10 @@ export function TeamManagement() {
     fetchData();
   };
 
+  // Accepted invites are history, not pending work — they show up in the team
+  // members list instead.
+  const pendingInvites = invites.filter((inv) => !inv.acceptedAt);
+
   return (
     <div className="space-y-8">
       <CsPageHeader
@@ -200,24 +220,27 @@ export function TeamManagement() {
             {loadingList && <span className="cs-mono" style={{ fontSize: 10, color: 'var(--cs-muted)' }}>···</span>}
           </div>
           <div className="space-y-3 mt-4">
-            {invites.map((inv) => (
-              <div
-                key={inv.id}
-                className="flex items-center justify-between p-3"
-                style={{ border: '1.5px solid var(--cs-line)' }}
-              >
-                <div>
-                  <p className="cs-mono text-sm font-bold" style={{ color: 'var(--cs-ink)' }}>{inv.email}</p>
-                  <p className="cs-mono mt-1" style={{ fontSize: 10, color: 'var(--cs-muted)' }}>
-                    {inv.role} · expires {new Date(inv.expiresAt).toLocaleDateString()}
-                  </p>
+            {pendingInvites.map((inv) => {
+              const expired = new Date(inv.expiresAt).getTime() < Date.now();
+              return (
+                <div
+                  key={inv.id}
+                  className="flex items-center justify-between p-3"
+                  style={{ border: '1.5px solid var(--cs-line)' }}
+                >
+                  <div>
+                    <p className="cs-mono text-sm font-bold" style={{ color: 'var(--cs-ink)' }}>{inv.email}</p>
+                    <p className="cs-mono mt-1" style={{ fontSize: 10, color: expired ? 'var(--cs-rust)' : 'var(--cs-muted)' }}>
+                      {inv.role} · {expired ? 'expired' : 'expires'} {new Date(inv.expiresAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <CsButton variant="outline" onClick={() => revokeInvite(inv.id)}>
+                    Revoke
+                  </CsButton>
                 </div>
-                <CsButton variant="outline" onClick={() => revokeInvite(inv.id)}>
-                  Revoke
-                </CsButton>
-              </div>
-            ))}
-            {invites.length === 0 && (
+              );
+            })}
+            {pendingInvites.length === 0 && (
               <p className="cs-mono text-xs" style={{ color: 'var(--cs-muted)' }}>No pending invites</p>
             )}
           </div>

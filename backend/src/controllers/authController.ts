@@ -24,6 +24,10 @@ import {
 } from "../services/googleAuth.js";
 import { appleAuthCallback as appleAuthCallbackService } from "../services/appleAuth.js";
 import { welcomeEmailTemplate } from "../templates/welcomeEmailTemplate.js";
+import {
+  adminInviteTemplate,
+  roleLabel,
+} from "../templates/adminInviteTemplate.js";
 import { createNotification } from "./notificationController.js";
 
 const registerSchema = z.object({
@@ -87,8 +91,11 @@ const inviteSchema = z.object({
 });
 
 const acceptInviteSchema = z.object({
-  token: z.string(),
-  email: z.string().email(),
+  token: z.string().min(1),
+  // The invitation itself is the source of truth for the email address. The
+  // client may echo it back for a sanity check, but it is not required and it
+  // can never be used to redirect the invite to a different mailbox.
+  email: z.string().email().optional(),
   name: z.string().min(2),
   password: z.string().min(8),
 });
@@ -180,22 +187,38 @@ const upsertDevice = async (userId: bigint, deviceId: string): Promise<{ isNew: 
   return { isNew: true };
 };
 
-const issueTokens = async (user: {
-  id: bigint;
-  email: string;
-  role: string;
-  name: string;
-}) => {
+// Admin sessions are long-lived (see adminLogin). Callers that mint a session
+// for an admin pass this so the new session matches what admin login hands out
+// instead of expiring in the default two hours.
+const adminAccessTtlSeconds = () => {
+  const adminTtlMs = durationToMs(config.adminAccessTokenTtl);
+  return adminTtlMs > 0
+    ? Math.floor(adminTtlMs / 1000)
+    : Math.floor(durationToMs(config.accessTokenTtl) / 1000) || 60 * 60;
+};
+
+const issueTokens = async (
+  user: {
+    id: bigint;
+    email: string;
+    role: string;
+    name: string;
+  },
+  accessTtlSeconds?: number
+) => {
   const deviceId = crypto.randomUUID();
   const permissions = getPermissionsForRole(user.role);
 
-  const accessToken = signAccessToken({
-    userId: user.id,
-    email: user.email,
-    role: user.role,
-    permissions,
-    deviceId,
-  });
+  const accessToken = signAccessToken(
+    {
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      permissions,
+      deviceId,
+    },
+    accessTtlSeconds
+  );
   const refreshToken = signRefreshToken({
     userId: user.id,
     deviceId,
@@ -815,6 +838,25 @@ const ensureNotLastSuperAdmin = async (userId: bigint) => {
   }
 };
 
+// Every admin-facing link we hand out is built here so there is exactly one
+// place that knows the admin host (config.adminAppOrigin / ADMIN_APP_ORIGIN).
+const buildInviteAcceptUrl = (token: string) =>
+  `${config.adminAppOrigin}/admin/accept-invite?token=${encodeURIComponent(
+    token
+  )}`;
+
+const loadInviter = async (createdBy?: bigint | null) => {
+  if (!createdBy) return null;
+  try {
+    return await prisma.user.findUnique({
+      where: { id: createdBy },
+      select: { name: true, email: true },
+    });
+  } catch {
+    return null;
+  }
+};
+
 export const inviteAdmin = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const parsed = inviteSchema.safeParse(req.body);
@@ -827,7 +869,13 @@ export const inviteAdmin = async (req: AuthenticatedRequest, res: Response) => {
     const token = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-    await prisma.invitation.create({
+    // Re-inviting the same address supersedes any invite still outstanding,
+    // so the roster never shows two live invites for one person.
+    await prisma.invitation.deleteMany({
+      where: { email: emailLower, acceptedAt: null },
+    });
+
+    const invite = await prisma.invitation.create({
       data: {
         email: emailLower,
         role,
@@ -837,24 +885,102 @@ export const inviteAdmin = async (req: AuthenticatedRequest, res: Response) => {
       },
     });
 
-    const acceptUrl = `${
-      process.env.ADMIN_APP_ORIGIN ?? "http://localhost:3001"
-    }/admin/accept-invite?token=${token}&email=${encodeURIComponent(emailLower)}`;
+    const acceptUrl = buildInviteAcceptUrl(token);
+    const inviter = await loadInviter(req.user?.userId);
 
-    try {
-      await sendEmail({
-        to: emailLower,
-        subject: "You're invited to Wanzami Admin",
-        html: verifyEmailTemplate({ name: emailLower, verifyUrl: acceptUrl }),
-      });
-    } catch (err) {
-      console.error("inviteAdmin email send failed", err);
+    // sendEmail never throws; it reports failure through `ok`. Surface that to
+    // the caller so the UI can tell the truth instead of claiming "Invite sent"
+    // when SMTP rejected it.
+    const sent = await sendEmail({
+      to: emailLower,
+      subject: `You've been invited to the Wanzami admin dashboard (${roleLabel(
+        role
+      )})`,
+      html: adminInviteTemplate({
+        email: emailLower,
+        role,
+        acceptUrl,
+        expiresAt,
+        invitedByName: inviter?.name,
+        invitedByEmail: inviter?.email,
+        adminOrigin: config.adminAppOrigin,
+      }),
+    });
+    if (!sent.ok) {
+      console.error("inviteAdmin email send failed", sent.error);
     }
 
-    return res.status(201).json({ message: "Invite sent", token });
+    return res.status(201).json({
+      message: sent.ok
+        ? "Invite sent"
+        : "Invite created, but the email could not be delivered. Share the link instead.",
+      id: invite.id.toString(),
+      token,
+      acceptUrl,
+      expiresAt,
+      emailSent: sent.ok,
+      emailError: sent.ok ? undefined : sent.error,
+    });
   } catch (err) {
     console.error("inviteAdmin error", err);
     return res.status(500).json({ message: "Failed to send invite" });
+  }
+};
+
+// Public: lets the accept-invite screen show who invited you and which role you
+// are getting before you type anything, and name the exact failure when the
+// link is no good.
+export const getInviteByToken = async (req: Request, res: Response) => {
+  try {
+    const token = typeof req.query.token === "string" ? req.query.token : "";
+    if (!token) {
+      return res
+        .status(400)
+        .json({ code: "INVALID", message: "This invitation link is missing its token." });
+    }
+
+    const invite = await prisma.invitation.findUnique({ where: { token } });
+    if (!invite) {
+      return res.status(404).json({
+        code: "INVALID",
+        message:
+          "This invitation is not valid. It may have been revoked, or the link was copied incompletely.",
+      });
+    }
+    if (invite.acceptedAt) {
+      return res.status(409).json({
+        code: "ALREADY_ACCEPTED",
+        message: "This invitation has already been used. Log in instead.",
+        email: invite.email,
+        role: invite.role,
+      });
+    }
+    if (invite.expiresAt.getTime() < Date.now()) {
+      return res.status(410).json({
+        code: "EXPIRED",
+        message: "This invitation has expired. Ask an admin to send a new one.",
+        email: invite.email,
+        role: invite.role,
+        expiresAt: invite.expiresAt,
+      });
+    }
+
+    const inviter = await loadInviter(invite.createdBy);
+
+    return res.json({
+      code: "VALID",
+      email: invite.email,
+      role: invite.role,
+      roleLabel: roleLabel(invite.role),
+      expiresAt: invite.expiresAt,
+      invitedByName: inviter?.name ?? null,
+      invitedByEmail: inviter?.email ?? null,
+    });
+  } catch (err) {
+    console.error("getInviteByToken error", err);
+    return res
+      .status(500)
+      .json({ code: "ERROR", message: "Could not load this invitation." });
   }
 };
 
@@ -899,10 +1025,10 @@ export const acceptInvite = async (req: Request, res: Response) => {
     return res.status(400).json({ errors: parsed.error.flatten() });
   }
   const { token, email, name, password } = parsed.data;
-  const emailLower = email.toLowerCase();
 
   if (!isPasswordStrong(password)) {
     return res.status(400).json({
+      code: "WEAK_PASSWORD",
       message:
         "Password too weak. Use at least 8 chars, upper, lower, number, and symbol.",
     });
@@ -911,15 +1037,33 @@ export const acceptInvite = async (req: Request, res: Response) => {
   const invite = await prisma.invitation.findUnique({
     where: { token },
   });
-  if (
-    !invite ||
-    invite.email !== emailLower ||
-    invite.expiresAt.getTime() < Date.now() ||
-    invite.acceptedAt
-  ) {
-    return res.status(400).json({ message: "Invalid or expired invite" });
+  if (!invite) {
+    return res.status(404).json({
+      code: "INVALID",
+      message:
+        "This invitation is not valid. It may have been revoked, or the link was copied incompletely.",
+    });
+  }
+  if (invite.acceptedAt) {
+    return res.status(409).json({
+      code: "ALREADY_ACCEPTED",
+      message: "This invitation has already been used. Log in instead.",
+    });
+  }
+  if (invite.expiresAt.getTime() < Date.now()) {
+    return res.status(410).json({
+      code: "EXPIRED",
+      message: "This invitation has expired. Ask an admin to send a new one.",
+    });
+  }
+  if (email && email.toLowerCase() !== invite.email) {
+    return res.status(400).json({
+      code: "EMAIL_MISMATCH",
+      message: "This invitation was issued to a different email address.",
+    });
   }
 
+  const emailLower = invite.email;
   const passwordHash = await hashPassword(password);
 
   // If the user already exists (often as a normal USER), promote/update them instead of failing.
@@ -946,18 +1090,24 @@ export const acceptInvite = async (req: Request, res: Response) => {
         },
       });
 
+  // Keep the token on the row and mark it accepted. `acceptedAt` is what blocks
+  // re-use, and keeping the token is what lets a second click on the same link
+  // say "already accepted, go log in" instead of "invalid".
   await prisma.invitation.update({
     where: { id: invite.id },
-    data: { acceptedAt: new Date(), token: crypto.randomUUID() },
+    data: { acceptedAt: new Date() },
   });
 
+  // Same session length admin login issues, so the invitee who just landed on
+  // the dashboard isn't kicked back out two hours later.
   const { accessToken, refreshToken, deviceId, permissions } = await issueTokens(
     {
       id: user.id,
       email: user.email,
       name: user.name,
       role: user.role,
-    }
+    },
+    adminAccessTtlSeconds()
   );
 
   return res.json({

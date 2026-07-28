@@ -328,3 +328,19 @@
   background: var(--cs-brand);
   border-color: var(--cs-ink);
 }
+
+/* ---------------------------------------------------------------------------
+   Spinner shim — `animate-spin` is used by src/components/ui/loader.tsx (and
+   therefore by every button with a loading state), but the frozen Tailwind
+   export never included it, so the loader sat still. Real CSS, appended here.
+--------------------------------------------------------------------------- */
+
+@keyframes cs-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: cs-spin 0.7s linear infinite;
+}

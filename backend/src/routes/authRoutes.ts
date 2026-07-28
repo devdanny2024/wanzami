@@ -18,6 +18,7 @@ import {
   listInvites,
   revokeInvite,
   acceptInvite,
+  getInviteByToken,
   listAdminUsers,
   updateUserRole,
   deleteUser,
@@ -94,6 +95,8 @@ router.delete(
   requirePermission(Permission.ADMIN_INVITES_MANAGE),
   revokeInvite
 );
+// Public: the invitee has no session yet. Both are token-gated.
+router.get("/admin/invitations/lookup", getInviteByToken);
 router.post("/admin/invitations/accept", acceptInvite);
 
 router.get(
