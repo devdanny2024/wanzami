@@ -17,7 +17,8 @@ import {
   paystackWebhook,
   adminListPurchases,
 } from "../controllers/ppvController.js";
-import { requireAuth, requireAdmin } from "../middleware/auth.js";
+import { requireAuth, requireAdmin, requireAnyPermission } from "../middleware/auth.js";
+import { Permission } from "../auth/permissions.js";
 
 const router = Router();
 
@@ -30,7 +31,14 @@ router.post("/ppv/v4/authorize", requireAuth, authorizeGeneralCharge);
 router.get("/ppv/v4/verify", requireAuth, verifyGeneralCharge);
 router.get("/ppv/access/:titleId", requireAuth, getAccess);
 router.get("/ppv/my-titles", requireAuth, myTitles);
-router.get("/admin/ppv/purchases", requireAuth, requireAdmin, adminListPurchases);
+// Purchase records are revenue data.
+router.get(
+  "/admin/ppv/purchases",
+  requireAuth,
+  requireAdmin,
+  requireAnyPermission([Permission.PAYMENTS_VIEW, Permission.PAYMENTS_MANAGE]),
+  adminListPurchases
+);
 router.post("/ppv/flutterwave/webhook", flutterwaveWebhook);
 router.get("/app-session/ppv/flutterwave/return", flutterwaveAppSessionReturn);
 router.post("/ppv/flutterwave/verify", requireAuth, verifyFlutterwavePurchase);

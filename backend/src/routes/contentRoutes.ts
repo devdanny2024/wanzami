@@ -1,5 +1,11 @@
 import { Router } from "express";
-import { requireAdmin, requireAuth } from "../middleware/auth.js";
+import {
+  requireAdmin,
+  requireAuth,
+  requirePermission,
+  requireAnyPermission,
+} from "../middleware/auth.js";
+import { Permission } from "../auth/permissions.js";
 import {
   listTitles,
   listEpisodesForTitle,
@@ -32,21 +38,32 @@ router.get("/titles/:id", getTitleWithEpisodes);
 router.get("/titles/:id/episodes", listEpisodesForTitle);
 router.get("/media/stream", streamMediaAsset);
 
-router.get("/admin/titles", requireAuth, requireAdmin, listTitles);
-router.get("/admin/titles/:id/episodes", requireAuth, requireAdmin, listEpisodesForTitle);
-router.get("/admin/titles/:id/seasons", requireAuth, requireAdmin, listSeasonsForTitle);
-router.post("/admin/titles", requireAuth, requireAdmin, createTitle);
-router.patch("/admin/titles/:id", requireAuth, requireAdmin, updateTitle);
-router.post("/admin/titles/:id/publish", requireAuth, requireAdmin, publishTitle);
-router.delete("/admin/titles/:id", requireAuth, requireAdmin, deleteTitle);
-router.post("/admin/titles/purge", requireAuth, requireAdmin, purgeAllTitles);
-router.post("/admin/titles/:id/episodes", requireAuth, requireAdmin, createEpisode);
-router.patch("/admin/episodes/:episodeId", requireAuth, requireAdmin, updateEpisode);
-router.delete("/admin/episodes/:episodeId", requireAuth, requireAdmin, deleteEpisode);
-router.post("/admin/titles/:id/seasons", requireAuth, requireAdmin, upsertSeasonsForTitle);
-router.patch("/admin/seasons/:seasonId", requireAuth, requireAdmin, updateSeason);
-router.delete("/admin/seasons/:seasonId", requireAuth, requireAdmin, deleteSeason);
-router.post("/admin/assets/presign", requireAuth, requireAdmin, presignAsset);
-router.post("/admin/assets/get-url", requireAuth, requireAdmin, presignAssetRead);
+const canReadCatalogue = requireAnyPermission([
+  Permission.MOVIES_VIEW,
+  Permission.MOVIES_MANAGE,
+]);
+const canManageCatalogue = requirePermission(Permission.MOVIES_MANAGE);
+// Blog cover images are uploaded through the same asset endpoints.
+const canPresignAssets = requireAnyPermission([
+  Permission.MOVIES_MANAGE,
+  Permission.BLOG_MANAGE,
+]);
+
+router.get("/admin/titles", requireAuth, requireAdmin, canReadCatalogue, listTitles);
+router.get("/admin/titles/:id/episodes", requireAuth, requireAdmin, canReadCatalogue, listEpisodesForTitle);
+router.get("/admin/titles/:id/seasons", requireAuth, requireAdmin, canReadCatalogue, listSeasonsForTitle);
+router.post("/admin/titles", requireAuth, requireAdmin, canManageCatalogue, createTitle);
+router.patch("/admin/titles/:id", requireAuth, requireAdmin, canManageCatalogue, updateTitle);
+router.post("/admin/titles/:id/publish", requireAuth, requireAdmin, canManageCatalogue, publishTitle);
+router.delete("/admin/titles/:id", requireAuth, requireAdmin, canManageCatalogue, deleteTitle);
+router.post("/admin/titles/purge", requireAuth, requireAdmin, canManageCatalogue, purgeAllTitles);
+router.post("/admin/titles/:id/episodes", requireAuth, requireAdmin, canManageCatalogue, createEpisode);
+router.patch("/admin/episodes/:episodeId", requireAuth, requireAdmin, canManageCatalogue, updateEpisode);
+router.delete("/admin/episodes/:episodeId", requireAuth, requireAdmin, canManageCatalogue, deleteEpisode);
+router.post("/admin/titles/:id/seasons", requireAuth, requireAdmin, canManageCatalogue, upsertSeasonsForTitle);
+router.patch("/admin/seasons/:seasonId", requireAuth, requireAdmin, canManageCatalogue, updateSeason);
+router.delete("/admin/seasons/:seasonId", requireAuth, requireAdmin, canManageCatalogue, deleteSeason);
+router.post("/admin/assets/presign", requireAuth, requireAdmin, canPresignAssets, presignAsset);
+router.post("/admin/assets/get-url", requireAuth, requireAdmin, canPresignAssets, presignAssetRead);
 
 export default router;

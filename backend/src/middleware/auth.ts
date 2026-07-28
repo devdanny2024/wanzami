@@ -45,16 +45,38 @@ export const requireAdmin = (
   return next();
 };
 
+const holds = (req: AuthenticatedRequest, permission: Permission) =>
+  Boolean(
+    req.user?.permissions?.includes(permission) ||
+      ROLE_PERMISSIONS[req.user?.role ?? ""]?.includes(permission)
+  );
+
 export const requirePermission =
   (permission: Permission) =>
   (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized" });
     }
-    const allowed =
-      req.user.permissions?.includes(permission) ||
-      ROLE_PERMISSIONS[req.user.role]?.includes(permission);
-    if (!allowed) {
+    if (!holds(req, permission)) {
+      return res.status(403).json({ message: "Insufficient permissions" });
+    }
+    return next();
+  };
+
+/**
+ * Passes when the caller holds ANY of the listed permissions. Needed because
+ * some roles carry the "manage" grant without the matching "view" one (a
+ * CONTENT_MANAGER has MOVIES_MANAGE but not MOVIES_VIEW), and because a few
+ * endpoints are legitimately shared across concerns — asset presigning serves
+ * both the video catalogue and blog cover images.
+ */
+export const requireAnyPermission =
+  (permissions: Permission[]) =>
+  (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    if (!permissions.some((p) => holds(req, p))) {
       return res.status(403).json({ message: "Insufficient permissions" });
     }
     return next();

@@ -6,6 +6,7 @@ export enum Permission {
   MOVIES_VIEW = "movies:view",
   BLOG_MANAGE = "blog:manage",
   BLOG_VIEW = "blog:view",
+  EMAIL_MANAGE = "email:manage",
   USERS_MANAGE = "users:manage",
   USERS_VIEW = "users:view",
   PAYMENTS_MANAGE = "payments:manage",
@@ -24,6 +25,7 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   CONTENT_MANAGER: [
     Permission.DASHBOARD_VIEW,
     Permission.MOVIES_MANAGE,
+    Permission.EMAIL_MANAGE,
     Permission.BLOG_VIEW,
     Permission.USERS_VIEW,
     Permission.PAYMENTS_VIEW,
@@ -50,6 +52,8 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   ],
   SUPPORT: [
     Permission.DASHBOARD_VIEW,
+    // Read-only catalogue lookup: agents answer "why can't I watch X" tickets.
+    Permission.MOVIES_VIEW,
     Permission.USERS_MANAGE,
     Permission.PAYMENTS_VIEW,
     Permission.MODERATION_MANAGE,
@@ -58,6 +62,9 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   ],
   FINANCE: [
     Permission.DASHBOARD_VIEW,
+    // The PPV revenue table joins purchases to title names, so finance needs
+    // to read the catalogue. Read-only; no write path is granted.
+    Permission.MOVIES_VIEW,
     Permission.PAYMENTS_MANAGE,
     Permission.SETTINGS_MANAGE,
     Permission.ANALYTICS_VIEW,
