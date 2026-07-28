@@ -111,9 +111,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         pathname?.startsWith("/oauth/");
       const isAuthOrOnboardingRoute = isAuthRoute || isOnboardingRoute;
       const isSplashRoute = pathname?.startsWith("/splash");
+      // Public content that must stay readable without an account. The blog
+      // exists to be found by search engines and shared, so bouncing anonymous
+      // visitors to /splash would defeat its entire purpose.
+      const isPublicRoute =
+        pathname?.startsWith("/blog") || pathname?.startsWith("/contact");
       let token = localStorage.getItem("accessToken");
 
-      if (!token && !isAuthOrOnboardingRoute && !isSplashRoute) {
+      if (!token && !isAuthOrOnboardingRoute && !isSplashRoute && !isPublicRoute) {
         const refreshed = await refreshSession();
         token = refreshed ? localStorage.getItem("accessToken") : null;
         if (!token) {
@@ -124,7 +129,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       }
 
       const profileId = localStorage.getItem("activeProfileId");
-      if (token && !profileId && !isAuthOrOnboardingRoute && !isProfileRoute) {
+      if (
+        token &&
+        !profileId &&
+        !isAuthOrOnboardingRoute &&
+        !isProfileRoute &&
+        !isPublicRoute
+      ) {
         setCanRenderShell(false);
         router.replace("/profiles");
         return;
@@ -142,18 +153,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       const expMs = getExpiryMs(token);
       const now = Date.now();
       const threshold = 5 * 60 * 1000; // 5 minutes
+      // A lapsed session shouldn't yank someone out of a public article.
+      const onPublicRoute =
+        pathname?.startsWith("/blog") || pathname?.startsWith("/contact");
+      const endSession = () => {
+        if (!onPublicRoute) logout();
+      };
 
       // If no token but refresh exists, try to refresh
       if (!token && localStorage.getItem("refreshToken")) {
         const ok = await refreshSession();
-        if (!ok) logout();
+        if (!ok) endSession();
         return;
       }
 
       if (!expMs) return;
       if (expMs <= now) {
         const ok = await refreshSession();
-        if (!ok) logout();
+        if (!ok) endSession();
         return;
       }
       if (expMs - now < threshold) {
@@ -173,7 +190,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       clearInterval(interval);
       window.removeEventListener("storage", onStorage);
     };
-  }, [logout]);
+  }, [logout, pathname, refreshSession]);
 
   // Avoid rendering the home shell before redirecting unauthenticated users to splash
   if (!canRenderShell) {
