@@ -4,11 +4,13 @@ import { computePopularitySnapshots } from "../jobs/popularity.js";
 import { computeProfilePreferences } from "../jobs/preferences.js";
 import { computeRecentViews } from "../jobs/recentViews.js";
 import { processAvailabilityTransitions } from "../jobs/availability.js";
+import { publishScheduledPosts } from "../jobs/blogScheduler.js";
 
 const popularityCron = process.env.POPULARITY_CRON || "0 3 * * *"; // daily at 03:00
 const preferencesCron = process.env.PREFERENCES_CRON || "30 3 * * *"; // daily at 03:30
 const recentViewsCron = process.env.RECENT_VIEWS_CRON || "0 4 * * *"; // daily at 04:00
 const availabilityCron = process.env.AVAILABILITY_CRON || "*/5 * * * *"; // every 5 minutes
+const blogScheduleCron = process.env.BLOG_SCHEDULE_CRON || "* * * * *"; // every minute
 
 cron.schedule(popularityCron, async () => {
   try {
@@ -50,6 +52,17 @@ cron.schedule(availabilityCron, async () => {
     }
   } catch (err) {
     console.error("[cron] availability transitions failed", err);
+  }
+});
+
+cron.schedule(blogScheduleCron, async () => {
+  try {
+    const result = await publishScheduledPosts();
+    if (result.published > 0) {
+      console.log(`[cron] blog scheduler: published ${result.published} post(s)`);
+    }
+  } catch (err) {
+    console.error("[cron] blog scheduler failed", err);
   }
 });
 
