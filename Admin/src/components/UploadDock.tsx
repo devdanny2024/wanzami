@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { Progress } from "./ui/progress";
 import { X, ChevronDown, ChevronUp } from "lucide-react";
 
 export type UploadTask = {
@@ -34,6 +33,37 @@ interface UploadDockProps {
   onRetryJob?: (id: string) => void;
 }
 
+/** Call Sheet progress bar. Square, ink-bordered, brand fill. */
+function Meter({ value }: { value: number }) {
+  const pct = Math.max(0, Math.min(100, Math.round(value || 0)));
+  return (
+    <div
+      role="progressbar"
+      aria-valuenow={pct}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      style={{ height: 8, border: "1.5px solid var(--cs-ink)", background: "var(--cs-panel)" }}
+    >
+      <div style={{ width: `${pct}%`, height: "100%", background: "var(--cs-brand)" }} />
+    </div>
+  );
+}
+
+const slug: React.CSSProperties = {
+  fontFamily: "var(--font-smono), monospace",
+  fontSize: 9,
+  fontWeight: 700,
+  letterSpacing: "0.11em",
+  textTransform: "uppercase",
+  color: "var(--cs-muted)",
+};
+
+const rowMeta: React.CSSProperties = {
+  fontFamily: "var(--font-smono), monospace",
+  fontSize: 10,
+  color: "var(--cs-muted)",
+};
+
 export function UploadDock({
   tasks,
   serverJobs,
@@ -45,118 +75,193 @@ export function UploadDock({
   const [collapsed, setCollapsed] = useState(false);
   const [tab, setTab] = useState<"queue" | "jobs">("queue");
 
-  const active = tasks.filter((t) => t.status !== "completed");
+  const active = useMemo(() => tasks.filter((t) => t.status !== "completed"), [tasks]);
+  const liveJobs = useMemo(
+    () => serverJobs.filter((j) => j.status !== "COMPLETED" && j.status !== "FAILED"),
+    [serverJobs]
+  );
+  const failedJobs = useMemo(() => serverJobs.filter((j) => j.status === "FAILED"), [serverJobs]);
+
   const overallProgress = useMemo(
     () => (active.length > 0 ? active.reduce((sum, t) => sum + (t.progress || 0), 0) / active.length : 0),
     [active]
   );
 
-  // Nothing queued, nothing processing: stay out of the way entirely.
-  if (tasks.length === 0 && serverJobs.length === 0) {
-    return null;
-  }
+  // Only surface the dock when something still needs watching or acting on.
+  // Finished work stays out of the way: a completed history is not a reason to
+  // keep a floating panel over the whole admin.
+  const hasLiveWork = active.length > 0 || liveJobs.length > 0 || failedJobs.length > 0;
+  if (!hasLiveWork) return null;
+
+  // Show only the rows that matter for whichever tab is open.
+  const queueRows = tasks.filter((t) => t.status !== "completed");
+  const jobRows = serverJobs.filter((j) => j.status !== "COMPLETED");
 
   const statusLabel =
     tab === "queue"
       ? active.length
-        ? `${active.length} active - ${tasks.length} total`
-        : `${tasks.length} completed`
-      : (() => {
-          const activeJobs = serverJobs.filter((j) => j.status !== "COMPLETED");
-          return activeJobs.length
-            ? `${activeJobs.length} processing`
-            : `${serverJobs.length} jobs`;
-        })();
+        ? `${active.length} uploading`
+        : "queue clear"
+      : liveJobs.length
+      ? `${liveJobs.length} processing`
+      : failedJobs.length
+      ? `${failedJobs.length} failed`
+      : "all clear";
 
-  if (!tasks.length && !serverJobs.length) return null;
+  const tabBtn = (isOn: boolean): React.CSSProperties => ({
+    fontFamily: "var(--font-smono), monospace",
+    fontSize: 9,
+    fontWeight: 700,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase",
+    padding: "5px 9px",
+    border: "1.5px solid var(--cs-ink)",
+    background: isOn ? "var(--cs-ink)" : "var(--cs-paper)",
+    color: isOn ? "#fff" : "var(--cs-ink)",
+  });
 
   return (
-    <div
-      className="fixed right-4 z-40 w-full max-w-md"
-      style={{ bottom: "1rem", top: "auto" }}
-    >
-      <div className="bg-neutral-900 border border-neutral-800 rounded-xl shadow-2xl backdrop-blur pointer-events-auto">
-        <div className="px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+    <div className="fixed right-4 z-40 w-full max-w-md" style={{ bottom: "1rem", top: "auto" }}>
+      <div
+        className="pointer-events-auto"
+        style={{
+          background: "var(--cs-paper)",
+          border: "2.5px solid var(--cs-ink)",
+          boxShadow: "5px 5px 0 var(--cs-ink)",
+        }}
+      >
+        {/* Header */}
+        <div
+          className="px-4 py-3 flex items-center justify-between gap-3"
+          style={{ borderBottom: collapsed ? "none" : "1.5px solid var(--cs-line)" }}
+        >
+          <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={() => setCollapsed((c) => !c)}
-              className="p-1 rounded hover:bg-neutral-800 text-neutral-300"
-              aria-label="Toggle upload queue"
+              aria-label={collapsed ? "Expand upload queue" : "Collapse upload queue"}
+              style={{
+                border: "1.5px solid var(--cs-ink)",
+                background: "var(--cs-paper)",
+                color: "var(--cs-ink)",
+                padding: 3,
+              }}
             >
-              {collapsed ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              {collapsed ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
             </button>
-            <div>
-              <p className="text-white font-semibold text-sm">Upload queue</p>
-              <p className="text-neutral-400 text-xs">{statusLabel}</p>
+            <div className="min-w-0">
+              <p style={slug}>Transfer bay</p>
+              <p
+                className="truncate"
+                style={{
+                  fontFamily: "var(--font-bebas), Impact, sans-serif",
+                  textTransform: "uppercase",
+                  fontSize: 18,
+                  lineHeight: 1,
+                  color: "var(--cs-ink)",
+                }}
+              >
+                {statusLabel}
+              </p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex rounded-lg overflow-hidden border border-neutral-800 text-xs">
-              <button
-                onClick={() => setTab("queue")}
-                className={`px-2 py-1 ${
-                  tab === "queue" ? "bg-neutral-800 text-white" : "bg-neutral-900 text-neutral-400"
-                }`}
-              >
-                This session
+
+          <div className="flex items-center gap-2">
+            <div className="flex">
+              <button onClick={() => setTab("queue")} style={tabBtn(tab === "queue")}>
+                Session
               </button>
               <button
                 onClick={() => setTab("jobs")}
-                className={`px-2 py-1 ${
-                  tab === "jobs" ? "bg-neutral-800 text-white" : "bg-neutral-900 text-neutral-400"
-                }`}
+                style={{ ...tabBtn(tab === "jobs"), borderLeft: "none" }}
               >
                 Processing
               </button>
             </div>
-            {tab === "queue" && active.length > 0 && (
-              <div className="w-32">
-                <Progress value={overallProgress} className="h-2" />
-              </div>
-            )}
             <button
               onClick={onClear}
-              className="text-xs text-neutral-400 hover:text-white"
+              style={{
+                fontFamily: "var(--font-smono), monospace",
+                fontSize: 9,
+                fontWeight: 700,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                color: "var(--cs-rust)",
+              }}
             >
               Clear
             </button>
           </div>
         </div>
+
+        {tab === "queue" && active.length > 0 ? (
+          <div className="px-4 pt-3">
+            <Meter value={overallProgress} />
+          </div>
+        ) : null}
+
         {!collapsed && (
-          <div className="max-h-64 overflow-y-auto divide-y divide-neutral-800">
+          <div className="max-h-64 overflow-y-auto">
             {tab === "queue"
-              ? tasks.map((t) => (
-                  <div key={t.id} className="px-4 py-3 flex items-center gap-3">
-                    <div className="flex-1">
-                      <p className="text-white text-sm">{t.name}</p>
-                      <p className="text-neutral-500 text-xs">
-                        {(t.size / (1024 * 1024)).toFixed(1)} MB
-                        {t.rendition ? ` - ${t.rendition}` : ""}
-                        {t.assetKind ? ` - ${t.assetKind}` : ""} - {t.status}
-                        {typeof t.progress === "number" ? ` - ${t.progress}%` : ""}
-                        {t.speedMbps ? ` - ${t.speedMbps.toFixed(1)} Mbps` : ""}
-                        {t.error ? ` - ${t.error}` : ""}
+              ? queueRows.map((t) => (
+                  <div
+                    key={t.id}
+                    className="px-4 py-3 flex items-center gap-3"
+                    style={{ borderTop: "1px solid var(--cs-line)" }}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p
+                        className="truncate"
+                        style={{
+                          fontFamily: "var(--font-smono), monospace",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          textTransform: "uppercase",
+                          color: "var(--cs-ink)",
+                        }}
+                      >
+                        {t.name}
                       </p>
-                      <Progress value={t.progress} className="h-2 mt-2" />
+                      <p style={rowMeta}>
+                        {(t.size / (1024 * 1024)).toFixed(1)} MB
+                        {t.rendition ? ` · ${t.rendition}` : ""}
+                        {t.assetKind ? ` · ${t.assetKind}` : ""} · {t.status}
+                        {typeof t.progress === "number" ? ` · ${t.progress}%` : ""}
+                        {t.speedMbps ? ` · ${t.speedMbps.toFixed(1)} Mbps` : ""}
+                      </p>
+                      {t.error ? (
+                        <p style={{ ...rowMeta, color: "var(--cs-rust)" }}>{t.error}</p>
+                      ) : null}
+                      <div className="mt-2">
+                        <Meter value={t.progress} />
+                      </div>
                     </div>
                     {t.status === "failed" && (
                       <button
                         onClick={() => onRetry(t.id)}
-                        className="text-xs text-[#fd7e14] hover:text-[#ff9940]"
+                        style={{
+                          fontFamily: "var(--font-smono), monospace",
+                          fontSize: 9,
+                          fontWeight: 700,
+                          letterSpacing: "0.08em",
+                          textTransform: "uppercase",
+                          padding: "5px 9px",
+                          border: "1.5px solid var(--cs-rust)",
+                          color: "var(--cs-rust)",
+                        }}
                       >
                         Resume
                       </button>
                     )}
                     <button
                       onClick={() => onRemove(t.id)}
-                      className="p-1 rounded hover:bg-neutral-800 text-neutral-500"
-                      aria-label="Remove"
+                      aria-label={`Remove ${t.name}`}
+                      style={{ color: "var(--cs-muted)", padding: 2 }}
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 ))
-              : serverJobs.map((j) => {
+              : jobRows.map((j) => {
                   const pct =
                     j.bytesTotal && j.bytesTotal > 0
                       ? Math.round((j.bytesUploaded / j.bytesTotal) * 100)
@@ -165,32 +270,58 @@ export function UploadDock({
                       : 0;
                   const isActive = j.status !== "COMPLETED" && j.status !== "FAILED";
                   return (
-                    <div key={j.id} className="px-4 py-3 flex items-center gap-3">
-                      <div className="flex-1">
-                        <p className="text-white text-sm">
+                    <div
+                      key={j.id}
+                      className="px-4 py-3 flex items-center gap-3"
+                      style={{ borderTop: "1px solid var(--cs-line)" }}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className="truncate"
+                          style={{
+                            fontFamily: "var(--font-smono), monospace",
+                            fontSize: 11,
+                            fontWeight: 700,
+                            textTransform: "uppercase",
+                            color: "var(--cs-ink)",
+                          }}
+                        >
                           {j.fileName || `Job ${j.id}`}
                         </p>
-                        <p className="text-neutral-500 text-xs">
-                          {j.kind ? `${j.kind}` : "Job"} - {j.status.toLowerCase()}
-                          {j.error ? ` - ${j.error}` : ""}
+                        <p style={rowMeta}>
+                          {j.kind ? `${j.kind}` : "Job"} · {j.status.toLowerCase()}
                         </p>
-                        <Progress value={pct} className="h-2 mt-2" />
+                        {j.error ? (
+                          <p style={{ ...rowMeta, color: "var(--cs-rust)" }}>{j.error}</p>
+                        ) : null}
+                        <div className="mt-2">
+                          <Meter value={pct} />
+                        </div>
                       </div>
-                      {!isActive && (
-                        <button
-                          onClick={() => onRemove(j.id)}
-                          className="p-1 rounded hover:bg-neutral-800 text-neutral-500"
-                          aria-label="Remove"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      )}
                       {j.status === "FAILED" && onRetryJob && (
                         <button
                           onClick={() => onRetryJob(j.id)}
-                          className="ml-2 text-xs text-[#fd7e14] hover:text-[#ff9940]"
+                          style={{
+                            fontFamily: "var(--font-smono), monospace",
+                            fontSize: 9,
+                            fontWeight: 700,
+                            letterSpacing: "0.08em",
+                            textTransform: "uppercase",
+                            padding: "5px 9px",
+                            border: "1.5px solid var(--cs-rust)",
+                            color: "var(--cs-rust)",
+                          }}
                         >
                           Retry
+                        </button>
+                      )}
+                      {!isActive && (
+                        <button
+                          onClick={() => onRemove(j.id)}
+                          aria-label="Dismiss job"
+                          style={{ color: "var(--cs-muted)", padding: 2 }}
+                        >
+                          <X className="w-3.5 h-3.5" />
                         </button>
                       )}
                     </div>

@@ -94,6 +94,11 @@
 .active\:translate-y-px:active { transform: translateY(1px); }
 .disabled\:opacity-50:disabled { opacity: 0.5; }
 
+/* Upload dock */
+.max-h-64 { max-height: 16rem; }
+.z-40 { z-index: 40; }
+.pt-3 { padding-top: 0.75rem; }
+
 /* Blog CMS additions */
 .ml-auto { margin-left: auto; }
 .mx-1 { margin-left: 0.25rem; margin-right: 0.25rem; }

@@ -244,8 +244,10 @@ export function PostEditor({ post, categories, onClose, onSaved, onDelete, onMan
       setError("A post needs a title and some body copy before it can go live.");
       return;
     }
+    // save() sets the status from the server's response when it succeeds, and
+    // returns null when it fails. Never assume the new status here, or a failed
+    // request leaves the CMS showing PUBLISHED while the row is still a draft.
     await save({ status: "PUBLISHED" });
-    setStatus("PUBLISHED");
   };
 
   const schedule = async () => {
@@ -258,7 +260,6 @@ export function PostEditor({ post, categories, onClose, onSaved, onDelete, onMan
       return;
     }
     await save({ status: "SCHEDULED", scheduledFor: new Date(scheduledFor).toISOString() });
-    setStatus("SCHEDULED");
   };
 
   return (
