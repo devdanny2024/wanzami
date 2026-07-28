@@ -1,19 +1,31 @@
-'use client';
+import type { Metadata } from 'next';
+import { BlogCategoryPage } from '@/components/BlogCategoryPage';
+import { fetchCategories, fetchPosts } from '@/lib/blogClient';
 
-import { BlogCategoryPage } from "@/components/BlogCategoryPage";
-import { useRouter } from "next/navigation";
+export const revalidate = 60;
 
-export default function BlogCategoryRoute({ params }: { params: { category: string } }) {
-  const router = useRouter();
-  const decoded = decodeURIComponent(params.category);
+type Params = { params: { category: string } };
 
-  return (
-    <div className="min-h-screen bg-cs-paper">
-      <BlogCategoryPage
-        category={decoded}
-        onPostClick={(post) => router.push(`/blog/post/${post.id ?? "post"}`)}
-        onBack={() => router.push("/blog")}
-      />
-    </div>
-  );
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
+  const slug = decodeURIComponent(params.category);
+  const categories = await fetchCategories();
+  const category = categories.find((c) => c.slug === slug);
+  const name = category?.name ?? slug;
+
+  return {
+    title: `${name} — Wanzami Stories`,
+    description: category?.description || `Stories filed under ${name} on Wanzami.`,
+    alternates: { canonical: `/blog/category/${slug}` },
+  };
+}
+
+export default async function BlogCategoryRoute({ params }: Params) {
+  const slug = decodeURIComponent(params.category);
+  const [{ posts }, categories] = await Promise.all([
+    fetchPosts({ category: slug, limit: 50 }),
+    fetchCategories(),
+  ]);
+  const category = categories.find((c) => c.slug === slug) ?? null;
+
+  return <BlogCategoryPage category={category} posts={posts} allCategories={categories} />;
 }

@@ -184,6 +184,75 @@
   }
 }
 
+/* ---------------------------------------------------------------------------
+   Blog article body. Mirrors the admin editor's shapes so what the writer
+   composes is what the reader gets.
+--------------------------------------------------------------------------- */
+.cs-prose {
+  color: var(--color-cs-ink);
+  font-size: 1.0625rem;
+  line-height: 1.75;
+}
+.cs-prose > *:first-child { margin-top: 0; }
+.cs-prose p { margin: 0 0 1.15em; }
+.cs-prose h2 {
+  font-family: var(--font-heading);
+  text-transform: uppercase;
+  font-size: clamp(1.7rem, 4vw, 2.3rem);
+  line-height: 1;
+  letter-spacing: 0.01em;
+  margin: 1.6em 0 0.5em;
+}
+.cs-prose h3 {
+  font-family: var(--font-heading);
+  text-transform: uppercase;
+  font-size: clamp(1.3rem, 3vw, 1.6rem);
+  line-height: 1.05;
+  margin: 1.5em 0 0.45em;
+}
+.cs-prose blockquote {
+  margin: 1.6em 0;
+  padding: 0.3em 0 0.3em 1.2em;
+  border-left: 4px solid var(--color-cs-rust);
+  font-size: 1.1em;
+  font-style: italic;
+}
+.cs-prose ul, .cs-prose ol { margin: 0 0 1.15em; padding-left: 1.5em; }
+.cs-prose li { margin-bottom: 0.4em; }
+.cs-prose a {
+  color: var(--color-cs-rust);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.cs-prose img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1.8em 0;
+  border: 2.5px solid var(--color-cs-ink);
+  box-shadow: 4px 4px 0 var(--color-cs-ink);
+}
+.cs-prose pre {
+  margin: 1.6em 0;
+  padding: 16px 18px;
+  background: var(--color-cs-ink);
+  color: var(--color-cs-paper);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+.cs-prose code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+.cs-prose hr {
+  margin: 2.2em 0;
+  border: none;
+  border-top: 2px dashed var(--color-cs-ink);
+}
+
 /* Video player — "Call Sheet Cinema" chrome (CustomMediaPlayer) */
 @keyframes cs-sprocket-scroll {
   from { transform: translateX(0); }

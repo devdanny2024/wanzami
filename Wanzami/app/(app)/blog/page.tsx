@@ -1,17 +1,25 @@
-'use client';
+import type { Metadata } from 'next';
+import { BlogHomePage } from '@/components/BlogHomePage';
+import { fetchCategories, fetchPosts } from '@/lib/blogClient';
 
-import { BlogHomePage } from "@/components/BlogHomePage";
-import { useRouter } from "next/navigation";
+export const revalidate = 60;
 
-export default function BlogRoute() {
-  const router = useRouter();
-  return (
-    <div className="min-h-screen bg-cs-paper">
-      <BlogHomePage
-        onPostClick={(post) => router.push(`/blog/post/${post.id ?? "post"}`)}
-        onCategoryClick={(category) => router.push(`/blog/category/${encodeURIComponent(category)}`)}
-        onSearchClick={() => router.push("/blog/search")}
-      />
-    </div>
-  );
+export const metadata: Metadata = {
+  title: 'Wanzami Stories — Insights from African cinema',
+  description:
+    'Insights, culture, and dispatches from the heart of African cinema. Behind the scenes, interviews, and industry stories from Wanzami.',
+  openGraph: {
+    title: 'Wanzami Stories',
+    description: 'Insights, culture, and dispatches from the heart of African cinema.',
+    type: 'website',
+  },
+};
+
+export default async function BlogRoute() {
+  const [{ posts, featured }, categories] = await Promise.all([
+    fetchPosts({ limit: 12 }),
+    fetchCategories(),
+  ]);
+
+  return <BlogHomePage posts={posts} featured={featured} categories={categories} />;
 }

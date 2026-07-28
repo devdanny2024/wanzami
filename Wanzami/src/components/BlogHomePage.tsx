@@ -1,464 +1,221 @@
+'use client';
+
+import Link from 'next/link';
 import { motion } from 'motion/react';
-import { Search, TrendingUp, Clock, BookOpen, ArrowRight, User } from 'lucide-react';
-import { ImageWithFallback } from './figma/ImageWithFallback';
+import { ArrowRight, Search } from 'lucide-react';
+import { Slug, Sticker, SectionHeading, Sprockets } from './cs/kit';
+import { formatPostDate, type BlogCategory, type BlogPost } from '@/lib/blogClient';
 
-export interface BlogPost {
-  id: number;
-  title: string;
-  subtitle?: string;
-  image: string;
-  category: string;
-  author: {
-    name: string;
-    avatar: string;
-  };
-  date: string;
-  readTime: string;
-  excerpt: string;
-  isFeatured?: boolean;
-  views?: number;
-}
+/*
+  Call Sheet editorial front page. Hard ink borders and offset shadows rather
+  than rounded cards, so the blog reads as the same production office as the
+  rest of the storefront.
+*/
 
-interface BlogHomePageProps {
-  onPostClick: (post: BlogPost) => void;
-  onCategoryClick: (category: string) => void;
-  onSearchClick: () => void;
-}
+const CoverArt = ({ post, className = '' }: { post: BlogPost; className?: string }) =>
+  post.coverImageUrl ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={post.coverImageUrl}
+      alt={post.coverImageAlt ?? ''}
+      loading="lazy"
+      className={`h-full w-full object-cover ${className}`}
+    />
+  ) : (
+    <div className="flex h-full w-full items-center justify-center bg-cs-ink" aria-hidden="true">
+      <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-cs-paper/40">Wanzami</span>
+    </div>
+  );
 
-const featuredPost: BlogPost = {
-  id: 1,
-  title: "The Rise of African Cinema: How Nollywood is Reshaping Global Storytelling",
-  subtitle: "From Lagos to Hollywood, Nigerian filmmakers are redefining what it means to tell authentic African stories",
-  image: "https://images.unsplash.com/photo-1621276336795-925346853745?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaW5lbWElMjBtb3ZpZSUyMHRoZWF0ZXIlMjBkYXJrfGVufDF8fHx8MTc2Mzc5MjY2M3ww&ixlib=rb-4.1.0&q=80&w=1080",
-  category: "Film Industry",
-  author: {
-    name: "Amaka Okafor",
-    avatar: "https://images.unsplash.com/photo-1713845784782-51b36d805391?w=100&h=100&fit=crop"
-  },
-  date: "Nov 20, 2024",
-  readTime: "8 min read",
-  excerpt: "Nigerian cinema has evolved from humble beginnings to become one of the world's largest film industries...",
-  isFeatured: true,
-  views: 12500
-};
+const Byline = ({ post }: { post: BlogPost }) => (
+  <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-cs-muted">
+    {post.author?.name ? `${post.author.name} · ` : ''}
+    {formatPostDate(post.publishedAt)} · {post.readTimeMinutes} min read
+  </p>
+);
 
-const latestPosts: BlogPost[] = [
-  {
-    id: 2,
-    title: "Behind The Scenes: Making of 'The Governor'",
-    image: "https://images.unsplash.com/photo-1713845784782-51b36d805391?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwd29tYW4lMjBwb3J0cmFpdCUyMGNpbmVtYXRpY3xlbnwxfHx8fDE3NjM3OTI2NjJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    category: "Behind The Scenes",
-    author: {
-      name: "Chidi Nwosu",
-      avatar: "https://images.unsplash.com/photo-1618051438543-9f85cab01c60?w=100&h=100&fit=crop"
-    },
-    date: "Nov 18, 2024",
-    readTime: "6 min read",
-    excerpt: "An exclusive look into the production of Wanzami's biggest political thriller...",
-    views: 8200
-  },
-  {
-    id: 3,
-    title: "Preserving Culture Through Film: Anikulapo's Impact",
-    image: "https://images.unsplash.com/photo-1657356217561-6ed26b47e116?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwY3VsdHVyZSUyMHRyYWRpdGlvbmFsfGVufDF8fHx8MTc2Mzc5MjY2M3ww&ixlib=rb-4.1.0&q=80&w=1080",
-    category: "Culture",
-    author: {
-      name: "Ngozi Adeyemi",
-      avatar: "https://images.unsplash.com/photo-1713845784782-51b36d805391?w=100&h=100&fit=crop"
-    },
-    date: "Nov 17, 2024",
-    readTime: "10 min read",
-    excerpt: "How Yoruba folklore is finding new life in contemporary Nigerian cinema...",
-    views: 6800
-  },
-  {
-    id: 4,
-    title: "The Tech Behind Wanzami: Building Africa's Streaming Future",
-    image: "https://images.unsplash.com/photo-1677435013662-ef31e32ff9f8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsYWdvcyUyMGNpdHklMjBuaWdodHxlbnwxfHx8fDE3NjM3OTI2NjJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    category: "Technology",
-    author: {
-      name: "Tunde Bakare",
-      avatar: "https://images.unsplash.com/photo-1618051438543-9f85cab01c60?w=100&h=100&fit=crop"
-    },
-    date: "Nov 16, 2024",
-    readTime: "12 min read",
-    excerpt: "Inside the infrastructure powering millions of streams across Nigeria...",
-    views: 5400
-  },
-  {
-    id: 5,
-    title: "Interview: Funke Akindele on Comedy, Culture, and Connection",
-    image: "https://images.unsplash.com/photo-1577897113176-6888367369bf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwZmFtaWx5JTIwaGFwcHl8ZW58MXx8fHwxNzYzNzkyNjYzfDA&ixlib=rb-4.1.0&q=80&w=1080",
-    category: "Interviews",
-    author: {
-      name: "Amaka Okafor",
-      avatar: "https://images.unsplash.com/photo-1713845784782-51b36d805391?w=100&h=100&fit=crop"
-    },
-    date: "Nov 15, 2024",
-    readTime: "15 min read",
-    excerpt: "The legendary actress shares insights on her journey and the evolution of Nollywood comedy...",
-    views: 15200
-  }
-];
-
-const trendingPosts: BlogPost[] = [
-  {
-    id: 6,
-    title: "Why Nigerian Stories Matter More Than Ever",
-    image: "https://images.unsplash.com/photo-1758875913518-7869eb5e1e91?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwZGFuY2UlMjBjZWxlYnJhdGlvbnxlbnwxfHx8fDE3NjM3OTI2NjR8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    category: "Culture",
-    author: {
-      name: "Yemi Alade",
-      avatar: "https://images.unsplash.com/photo-1713845784782-51b36d805391?w=100&h=100&fit=crop"
-    },
-    date: "Nov 14, 2024",
-    readTime: "7 min read",
-    excerpt: "Exploring the global impact of authentic African narratives...",
-    views: 18900
-  },
-  {
-    id: 7,
-    title: "From Script to Screen: The Journey of Blood Sisters",
-    image: "https://images.unsplash.com/photo-1618051438543-9f85cab01c60?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxuaWdlcmlhbiUyMG1hbiUyMHBvcnRyYWl0fGVufDF8fHx8MTc2Mzc5MjY2NHww&ixlib=rb-4.1.0&q=80&w=1080",
-    category: "Wanzami Originals",
-    author: {
-      name: "Kunle Afolayan",
-      avatar: "https://images.unsplash.com/photo-1618051438543-9f85cab01c60?w=100&h=100&fit=crop"
-    },
-    date: "Nov 13, 2024",
-    readTime: "9 min read",
-    excerpt: "Director's commentary on creating one of Wanzami's most successful originals...",
-    views: 11300
-  }
-];
-
-const categories = [
-  { name: "Wanzami Originals", count: 24, color: "bg-[#fd7e14]" },
-  { name: "Culture", count: 45, color: "bg-purple-600" },
-  { name: "Film Industry", count: 38, color: "bg-blue-600" },
-  { name: "Behind The Scenes", count: 31, color: "bg-green-600" },
-  { name: "Interviews", count: 22, color: "bg-red-600" },
-  { name: "Technology", count: 18, color: "bg-yellow-600" },
-  { name: "Reviews", count: 56, color: "bg-pink-600" },
-  { name: "News", count: 67, color: "bg-indigo-600" }
-];
-
-export function BlogHomePage({ onPostClick, onCategoryClick, onSearchClick }: BlogHomePageProps) {
+function FeaturedPost({ post }: { post: BlogPost }) {
   return (
-    <div className="min-h-screen bg-cs-paper pt-20 sm:pt-24 pb-12">
-      {/* Header */}
-      <div className="container-page mb-10 sm:mb-12">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-7xl mx-auto"
-        >
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5 sm:gap-6 mb-8">
-            <div>
-              <h1 className="font-heading text-cs-ink text-4xl sm:text-5xl lg:text-6xl tracking-wide leading-none mb-3">
-                Wanzami <span className="text-brand">Stories</span>
-              </h1>
-              <p className="text-cs-muted text-base sm:text-lg max-w-xl">
-                Insights, culture, and stories from the heart of African cinema
+    <motion.article
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="cs-border cs-shadow-lg bg-cs-ink"
+    >
+      <Link href={`/blog/post/${post.slug}`} className="group block">
+        <div className="relative h-[300px] overflow-hidden sm:h-[420px] md:h-[520px]">
+          <CoverArt post={post} className="transition-transform duration-700 group-hover:scale-105" />
+          <div className="absolute inset-0 bg-gradient-to-t from-cs-ink via-cs-ink/60 to-transparent" />
+
+          <div className="absolute left-4 top-4 sm:left-6 sm:top-6">
+            <Sticker>Featured story</Sticker>
+          </div>
+
+          <div className="absolute inset-x-0 bottom-0 p-5 sm:p-8 md:p-10">
+            <div className="max-w-3xl">
+              {post.category ? (
+                <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.16em] text-brand">
+                  {post.category.name}
+                </p>
+              ) : null}
+              <h2 className="font-heading text-3xl uppercase leading-[0.95] tracking-wide text-cs-paper sm:text-5xl md:text-6xl">
+                {post.title}
+              </h2>
+              {post.subtitle || post.excerpt ? (
+                <p className="mt-3 max-w-2xl text-sm leading-relaxed text-cs-paper/75 sm:text-base">
+                  {post.subtitle ?? post.excerpt}
+                </p>
+              ) : null}
+              <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.12em] text-cs-paper/60">
+                {post.author?.name ? `${post.author.name} · ` : ''}
+                {formatPostDate(post.publishedAt)} · {post.readTimeMinutes} min read
               </p>
             </div>
-
-            {/* Search */}
-            <button
-              onClick={onSearchClick}
-              className="flex items-center gap-3 bg-cs-panel hover:bg-cs-panel backdrop-blur-md border border-cs-line hover:border-brand text-cs-ink px-5 py-3 rounded-xl transition-all group w-full md:w-auto min-h-[44px]"
-            >
-              <Search className="w-5 h-5 text-brand group-hover:scale-110 transition-transform shrink-0" />
-              <span className="text-cs-muted">Search stories...</span>
-            </button>
           </div>
-        </motion.div>
-      </div>
+        </div>
+      </Link>
+    </motion.article>
+  );
+}
 
-      {/* Featured Post */}
-      <div className="container-page mb-12 sm:mb-16">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="max-w-7xl mx-auto"
-        >
-          <div
-            onClick={() => onPostClick(featuredPost)}
-            className="relative h-[380px] sm:h-[500px] md:h-[600px] rounded-2xl sm:rounded-3xl overflow-hidden cursor-pointer group"
+export function PostCard({ post, index = 0 }: { post: BlogPost; index?: number }) {
+  return (
+    <motion.article
+      initial={{ opacity: 0, y: 18 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-60px' }}
+      transition={{ duration: 0.35, delay: Math.min(index * 0.05, 0.3) }}
+      className="cs-border cs-shadow bg-cs-panel transition-transform duration-200 hover:-translate-y-1"
+    >
+      <Link href={`/blog/post/${post.slug}`} className="group block h-full">
+        <div className="h-44 overflow-hidden border-b-[2.5px] border-cs-ink sm:h-48">
+          <CoverArt post={post} className="transition-transform duration-500 group-hover:scale-105" />
+        </div>
+        <div className="p-4 sm:p-5">
+          {post.category ? (
+            <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.14em] text-cs-rust">
+              {post.category.name}
+            </p>
+          ) : null}
+          <h3 className="font-heading text-xl uppercase leading-[1.05] tracking-wide text-cs-ink sm:text-2xl">
+            {post.title}
+          </h3>
+          {post.excerpt ? (
+            <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-cs-muted">{post.excerpt}</p>
+          ) : null}
+          <div className="mt-4 border-t border-cs-line pt-3">
+            <Byline post={post} />
+          </div>
+        </div>
+      </Link>
+    </motion.article>
+  );
+}
+
+export function BlogHomePage({
+  posts,
+  featured,
+  categories,
+}: {
+  posts: BlogPost[];
+  featured: BlogPost | null;
+  categories: BlogCategory[];
+}) {
+  // The featured post owns the hero, so keep it out of the grid beneath it.
+  const gridPosts = featured ? posts.filter((p) => p.id !== featured.id) : posts;
+  const hasAnything = Boolean(featured) || gridPosts.length > 0;
+
+  return (
+    <div className="min-h-screen bg-cs-paper pb-16 pt-20 sm:pt-24">
+      <header className="container-page mb-8 sm:mb-12">
+        <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+          <div>
+            <Slug>Wanzami press · the story desk</Slug>
+            <h1 className="mt-2 font-heading text-4xl uppercase leading-[0.9] tracking-wide text-cs-ink sm:text-6xl lg:text-7xl">
+              Wanzami <span className="text-cs-rust">Stories</span>
+            </h1>
+            <p className="mt-3 max-w-xl text-base text-cs-muted sm:text-lg">
+              Insights, culture, and dispatches from the heart of African cinema.
+            </p>
+          </div>
+
+          <Link
+            href="/blog/search"
+            className="cs-border inline-flex min-h-[44px] w-full items-center gap-3 bg-cs-panel px-5 py-3 font-mono text-xs uppercase tracking-[0.08em] text-cs-ink transition-transform hover:-translate-y-0.5 md:w-auto"
           >
-            <ImageWithFallback
-              src={featuredPost.image}
-              alt={featuredPost.title}
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-            />
+            <Search className="h-4 w-4 shrink-0 text-cs-rust" />
+            Search stories
+          </Link>
+        </div>
 
-            {/* Gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
-
-            {/* Content */}
-            <div className="absolute inset-0 flex flex-col justify-end p-5 sm:p-8 md:p-12">
-              <div className="max-w-3xl">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-brand rounded-full mb-3 sm:mb-4"
+        {categories.length ? (
+          <nav aria-label="Blog categories" className="mt-6 flex flex-wrap gap-2">
+            {categories
+              .filter((c) => (c.postCount ?? 0) > 0)
+              .map((c) => (
+                <Link
+                  key={c.id}
+                  href={`/blog/category/${c.slug}`}
+                  className="cs-border-thin bg-cs-paper px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-cs-ink transition-colors hover:bg-cs-ink hover:text-cs-paper"
                 >
-                  <BookOpen className="w-4 h-4 text-cs-ink" />
-                  <span className="font-heading text-cs-ink text-sm tracking-widest">FEATURED STORY</span>
-                </motion.div>
+                  {c.name}
+                  <span className="ml-1.5 text-cs-muted">{c.postCount}</span>
+                </Link>
+              ))}
+          </nav>
+        ) : null}
+      </header>
 
-                <motion.h2
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
-                  className="font-heading text-cs-paper text-2xl sm:text-4xl lg:text-6xl tracking-wide leading-none mb-3 sm:mb-4 group-hover:text-brand transition-colors"
-                >
-                  {featuredPost.title}
-                </motion.h2>
-
-                <motion.p
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 }}
-                  className="text-cs-paper/80 text-base sm:text-lg md:text-xl mb-4 sm:mb-6 line-clamp-2 sm:line-clamp-none"
-                >
-                  {featuredPost.subtitle}
-                </motion.p>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.6 }}
-                  className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm"
-                >
-                  <div className="flex items-center gap-2">
-                    <img
-                      src={featuredPost.author.avatar}
-                      alt={featuredPost.author.name}
-                      className="w-8 h-8 rounded-full border-2 border-brand"
-                    />
-                    <span className="text-cs-paper">{featuredPost.author.name}</span>
-                  </div>
-                  <span className="text-cs-paper/70">•</span>
-                  <span className="text-cs-paper/70">{featuredPost.date}</span>
-                  <span className="text-cs-paper/70">•</span>
-                  <div className="flex items-center gap-1 text-cs-paper/70">
-                    <Clock className="w-4 h-4" />
-                    <span>{featuredPost.readTime}</span>
-                  </div>
-                </motion.div>
-              </div>
-            </div>
-
-            {/* Hover border */}
-            <div className="absolute inset-0 border-2 sm:border-4 border-transparent group-hover:border-brand transition-colors rounded-2xl sm:rounded-3xl pointer-events-none" />
+      {!hasAnything ? (
+        <div className="container-page">
+          <div className="cs-border bg-cs-panel p-10 text-center">
+            <Slug>Nothing filed yet</Slug>
+            <p className="mt-3 text-cs-muted">
+              The first Wanzami story is still in the edit. Check back shortly.
+            </p>
           </div>
-        </motion.div>
+        </div>
+      ) : (
+        <>
+          {featured ? (
+            <section className="container-page mb-12 sm:mb-16">
+              <FeaturedPost post={featured} />
+            </section>
+          ) : null}
+
+          {gridPosts.length ? (
+            <section className="container-page">
+              <div className="mb-6">
+                <SectionHeading slug="Latest filings" title="Fresh off the desk" />
+              </div>
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {gridPosts.map((post, i) => (
+                  <PostCard key={post.id} post={post} index={i} />
+                ))}
+              </div>
+            </section>
+          ) : null}
+        </>
+      )}
+
+      <div className="mt-16 bg-cs-ink py-3">
+        <Sprockets />
       </div>
 
-      <div className="max-w-7xl mx-auto container-page">
-        {/* Categories */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="mb-12 sm:mb-16"
-        >
-          <h3 className="font-heading text-cs-ink text-xl sm:text-2xl tracking-wide mb-5 sm:mb-6">Explore Topics</h3>
-          <div className="flex flex-wrap gap-2.5 sm:gap-3">
-            {categories.map((category, index) => (
-              <motion.button
-                key={category.name}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.3 + index * 0.05 }}
-                onClick={() => onCategoryClick(category.name)}
-                className="px-4 py-2 min-h-[40px] bg-cs-panel hover:bg-cs-panel border border-cs-line hover:border-brand rounded-full text-cs-ink transition-all group text-sm sm:text-base"
-              >
-                <span className="group-hover:text-brand transition-colors">
-                  {category.name}
-                </span>
-                <span className="text-cs-muted ml-2">({category.count})</span>
-              </motion.button>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Latest Posts */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="mb-16"
-        >
-          <div className="flex items-center justify-between gap-4 mb-5 sm:mb-6">
-            <h3 className="font-heading text-cs-ink text-xl sm:text-2xl tracking-wide">Latest Stories</h3>
-            <button className="text-brand hover:text-brand-dark transition-colors flex items-center gap-2 text-sm sm:text-base shrink-0">
-              View All
-              <ArrowRight className="w-5 h-5" />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
-            {latestPosts.map((post, index) => (
-              <motion.div
-                key={post.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 + index * 0.1 }}
-                onClick={() => onPostClick(post)}
-                className="bg-cs-panel rounded-2xl overflow-hidden border border-cs-line hover:border-brand transition-all cursor-pointer group"
-              >
-                <div className="relative h-52 sm:h-64 overflow-hidden">
-                  <ImageWithFallback
-                    src={post.image}
-                    alt={post.title}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-
-                  {/* Category badge */}
-                  <div className="absolute top-4 left-4">
-                    <span className="px-3 py-1 bg-brand text-cs-ink text-xs rounded-full">
-                      {post.category}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-5 sm:p-6">
-                  <h4 className="font-heading text-cs-ink text-lg sm:text-xl tracking-wide leading-tight mb-3 group-hover:text-brand transition-colors line-clamp-2">
-                    {post.title}
-                  </h4>
-                  <p className="text-cs-muted text-sm sm:text-base mb-4 line-clamp-2">
-                    {post.excerpt}
-                  </p>
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <img
-                        src={post.author.avatar}
-                        alt={post.author.name}
-                        className="w-6 h-6 rounded-full shrink-0"
-                      />
-                      <span className="text-cs-muted text-sm truncate">{post.author.name}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs text-cs-muted shrink-0">
-                      <span>{post.readTime}</span>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Trending This Week */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="mb-16"
-        >
-          <div className="flex items-center gap-2 mb-5 sm:mb-6">
-            <TrendingUp className="w-6 h-6 text-brand" />
-            <h3 className="font-heading text-cs-ink text-xl sm:text-2xl tracking-wide">Trending This Week</h3>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
-            {trendingPosts.map((post, index) => (
-              <motion.div
-                key={post.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.7 + index * 0.1 }}
-                onClick={() => onPostClick(post)}
-                className="flex gap-4 bg-cs-panel hover:cs-shadow rounded-xl p-4 border border-cs-line hover:border-brand transition-all cursor-pointer group"
-              >
-                <div className="relative w-24 h-24 sm:w-32 sm:h-32 flex-shrink-0 rounded-lg overflow-hidden">
-                  <ImageWithFallback
-                    src={post.image}
-                    alt={post.title}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                  />
-                </div>
-
-                <div className="flex-1 min-w-0 flex flex-col justify-between">
-                  <div>
-                    <span className="text-brand text-xs mb-2 block">
-                      {post.category}
-                    </span>
-                    <h4 className="font-heading text-cs-ink text-base sm:text-lg tracking-wide leading-tight mb-2 group-hover:text-brand transition-colors line-clamp-2">
-                      {post.title}
-                    </h4>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-cs-muted">
-                    <span>{post.readTime}</span>
-                    <span>•</span>
-                    <span>{post.views?.toLocaleString()} views</span>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Author Spotlight */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
-          className="mb-16"
-        >
-          <h3 className="font-heading text-cs-ink text-xl sm:text-2xl tracking-wide mb-5 sm:mb-6">Featured Writer</h3>
-          <div className="bg-cs-panel cs-border rounded-2xl p-6 sm:p-8">
-            <div className="flex flex-col md:flex-row gap-5 sm:gap-6 items-center md:items-start">
-              <img
-                src="https://images.unsplash.com/photo-1713845784782-51b36d805391?w=150&h=150&fit=crop"
-                alt="Amaka Okafor"
-                className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-brand shrink-0"
-              />
-              <div className="flex-1 text-center md:text-left">
-                <h4 className="font-heading text-cs-ink text-xl sm:text-2xl tracking-wide mb-2">Amaka Okafor</h4>
-                <p className="text-brand mb-3">Film Critic & Cultural Journalist</p>
-                <p className="text-cs-muted mb-4">
-                  Award-winning journalist covering African cinema, with over 10 years of experience documenting the evolution of Nollywood and its global impact.
-                </p>
-                <div className="flex items-center gap-4 justify-center md:justify-start text-sm text-cs-muted">
-                  <span>42 Articles</span>
-                  <span>•</span>
-                  <span>250K+ Readers</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Newsletter Signup */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.9 }}
-          className="bg-cs-panel cs-border rounded-2xl p-6 sm:p-8 md:p-12 text-center"
-        >
-          <h3 className="font-heading text-cs-ink text-2xl sm:text-3xl tracking-wide mb-3">Stay in the Loop</h3>
-          <p className="text-cs-muted mb-6 max-w-xl mx-auto">
-            Get the latest stories, behind-the-scenes content, and exclusive interviews delivered to your inbox
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-            <input
-              type="email"
-              placeholder="Enter your email"
-              className="flex-1 px-4 py-3 min-h-[44px] bg-cs-paper cs-border-thin rounded-none text-cs-ink placeholder-cs-muted focus:outline-none focus:border-cs-rust transition-colors"
-            />
-            <button className="px-6 py-3 min-h-[44px] bg-cs-rust hover:-translate-y-0.5 text-cs-paper cs-shadow-sm transition-transform font-mono font-bold uppercase tracking-[0.07em] text-sm">
-              Subscribe
-            </button>
-          </div>
-        </motion.div>
-      </div>
+      <section className="container-page mt-16">
+        <div className="cs-border cs-shadow-lg bg-cs-ink p-8 text-center sm:p-12">
+          <Slug>Next feature</Slug>
+          <h2 className="mx-auto mt-3 max-w-2xl font-heading text-3xl uppercase leading-[0.95] tracking-wide text-cs-paper sm:text-5xl">
+            Stream the stories behind the stories
+          </h2>
+          <Link
+            href="/"
+            className="mt-6 inline-flex min-h-[44px] items-center gap-2 border-[2.5px] border-cs-paper bg-cs-rust px-6 py-3 font-mono text-sm font-bold uppercase tracking-[0.07em] text-cs-paper transition-transform hover:-translate-y-0.5"
+          >
+            Browse the catalogue <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }

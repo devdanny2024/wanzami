@@ -1,16 +1,15 @@
-'use client';
+import type { Metadata } from 'next';
+import { BlogSearchPage } from '@/components/BlogSearchPage';
+import { fetchCategories } from '@/lib/blogClient';
 
-import { BlogSearchPage } from "@/components/BlogSearchPage";
-import { useRouter } from "next/navigation";
+export const revalidate = 300;
 
-export default function BlogSearchRoute() {
-  const router = useRouter();
-  return (
-    <div className="min-h-screen bg-cs-paper">
-      <BlogSearchPage
-        onPostClick={(post) => router.push(`/blog/post/${post.id ?? "post"}`)}
-        onBack={() => router.push("/blog")}
-      />
-    </div>
-  );
+export const metadata: Metadata = {
+  title: 'Search stories — Wanzami',
+  description: 'Search the Wanzami story archive by title, topic or tag.',
+};
+
+export default async function BlogSearchRoute() {
+  const categories = await fetchCategories();
+  return <BlogSearchPage categories={categories} />;
 }

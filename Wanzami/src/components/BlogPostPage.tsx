@@ -1,352 +1,186 @@
-import { motion } from 'motion/react';
-import { ArrowLeft, Clock, Share2, Twitter, Facebook, Link2, BookmarkPlus, User } from 'lucide-react';
-import { ImageWithFallback } from './figma/ImageWithFallback';
-import { BlogPost } from './BlogHomePage';
+'use client';
 
-interface BlogPostPageProps {
-  post: BlogPost | null;
-  onBack: () => void;
-  onPostClick?: (post: BlogPost) => void;
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { motion } from 'motion/react';
+import { ArrowLeft, Check, Link2, Share2 } from 'lucide-react';
+import { Slug, Sprockets } from './cs/kit';
+import { PostCard } from './BlogHomePage';
+import { formatPostDate, recordPostView, type BlogPost } from '@/lib/blogClient';
+
+function ShareRow({ title }: { title: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = async () => {
+    if (typeof window === 'undefined') return;
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard can be blocked; the native share below still works.
+    }
+  };
+
+  const nativeShare = async () => {
+    if (typeof navigator === 'undefined' || !navigator.share) {
+      void copy();
+      return;
+    }
+    try {
+      await navigator.share({ title, url: window.location.href });
+    } catch {
+      // The viewer dismissed the sheet.
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => void copy()}
+        className="cs-border-thin inline-flex min-h-[44px] items-center gap-2 bg-cs-paper px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-cs-ink transition-colors hover:bg-cs-ink hover:text-cs-paper"
+      >
+        {copied ? <Check className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+        {copied ? 'Link copied' : 'Copy link'}
+      </button>
+      <button
+        type="button"
+        onClick={() => void nativeShare()}
+        className="cs-border-thin inline-flex min-h-[44px] items-center gap-2 bg-cs-paper px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-cs-ink transition-colors hover:bg-cs-ink hover:text-cs-paper"
+      >
+        <Share2 className="h-3.5 w-3.5" />
+        Share
+      </button>
+    </div>
+  );
 }
 
-const relatedPosts: BlogPost[] = [
-  {
-    id: 10,
-    title: "The Future of African Streaming Platforms",
-    image: "https://images.unsplash.com/photo-1677435013662-ef31e32ff9f8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsYWdvcyUyMGNpdHklMjBuaWdodHxlbnwxfHx8fDE3NjM3OTI2NjJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    category: "Technology",
-    author: {
-      name: "Tunde Bakare",
-      avatar: "https://images.unsplash.com/photo-1618051438543-9f85cab01c60?w=100&h=100&fit=crop"
-    },
-    date: "Nov 12, 2024",
-    readTime: "8 min read",
-    excerpt: "How local platforms are competing with global giants...",
-    views: 7200
-  },
-  {
-    id: 11,
-    title: "Nollywood's Evolution: From VHS to 4K",
-    image: "https://images.unsplash.com/photo-1621276336795-925346853745?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaW5lbWElMjBtb3ZpZSUyMHRoZWF0ZXIlMjBkYXJrfGVufDF8fHx8MTc2Mzc5MjY2M3ww&ixlib=rb-4.1.0&q=80&w=1080",
-    category: "Film Industry",
-    author: {
-      name: "Ngozi Adeyemi",
-      avatar: "https://images.unsplash.com/photo-1713845784782-51b36d805391?w=100&h=100&fit=crop"
-    },
-    date: "Nov 10, 2024",
-    readTime: "12 min read",
-    excerpt: "Tracing the technological journey of Nigerian cinema...",
-    views: 9800
-  },
-  {
-    id: 12,
-    title: "Authentic Storytelling in Modern African Cinema",
-    image: "https://images.unsplash.com/photo-1657356217561-6ed26b47e116?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwY3VsdHVyZSUyMHRyYWRpdGlvbmFsfGVufDF8fHx8MTc2Mzc5MjY2M3ww&ixlib=rb-4.1.0&q=80&w=1080",
-    category: "Culture",
-    author: {
-      name: "Amaka Okafor",
-      avatar: "https://images.unsplash.com/photo-1713845784782-51b36d805391?w=100&h=100&fit=crop"
-    },
-    date: "Nov 8, 2024",
-    readTime: "10 min read",
-    excerpt: "Why representation matters in film and television...",
-    views: 11400
-  }
-];
+export function BlogPostPage({ post, related }: { post: BlogPost; related: BlogPost[] }) {
+  // Count the read once the article is actually on screen.
+  useEffect(() => {
+    recordPostView(post.slug);
+  }, [post.slug]);
 
-export function BlogPostPage({ post, onBack, onPostClick }: BlogPostPageProps) {
   return (
-    <div className="min-h-screen bg-cs-paper">
-      {/* Back Button */}
-      <div className="fixed top-20 sm:top-24 left-4 md:left-12 z-40">
-        <motion.button
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          onClick={onBack}
-          className="flex items-center gap-2 px-4 py-2 min-h-[40px] bg-cs-paper/90 hover:bg-cs-paper cs-border text-cs-ink rounded-full backdrop-blur-md transition-all group"
+    <div className="min-h-screen bg-cs-paper pb-16 pt-20 sm:pt-24">
+      <div className="container-page">
+        <Link
+          href="/blog"
+          className="mb-6 inline-flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-cs-muted transition-colors hover:text-cs-rust"
         >
-          <ArrowLeft className="w-5 h-5 group-hover:text-brand transition-colors" />
-          <span className="hidden md:inline">Back to Stories</span>
-        </motion.button>
+          <ArrowLeft className="h-3.5 w-3.5" /> All stories
+        </Link>
       </div>
 
-      {/* Hero Image */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="relative h-[50vh] sm:h-[60vh] md:h-[70vh]"
-      >
-        <ImageWithFallback
-          src={post?.image}
-          alt={post?.title}
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
-      </motion.div>
+      <article className="container-page">
+        <motion.header
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35 }}
+          className="mx-auto max-w-3xl"
+        >
+          {post.category ? (
+            <Link
+              href={`/blog/category/${post.category.slug}`}
+              className="cs-border-thin inline-block bg-cs-paper px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-cs-rust transition-colors hover:bg-cs-rust hover:text-cs-paper"
+            >
+              {post.category.name}
+            </Link>
+          ) : null}
 
-      {/* Article Content */}
-      <div className="relative mt-8 sm:mt-10 pb-16">
-        <div className="max-w-3xl mx-auto px-4 md:px-8">
-          {/* Article Header */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="mb-8"
-          >
-            {/* Category */}
-            <div className="mb-4">
-              <span className="inline-block px-4 py-1.5 bg-brand text-cs-ink text-sm rounded-full">
-                {post?.category}
-              </span>
-            </div>
+          <h1 className="mt-4 font-heading text-4xl uppercase leading-[0.92] tracking-wide text-cs-ink sm:text-6xl">
+            {post.title}
+          </h1>
 
-            {/* Title */}
-            <h1 className="font-heading text-cs-ink text-3xl sm:text-5xl lg:text-6xl tracking-wide leading-none mb-5 sm:mb-6">
-              {post?.title}
-            </h1>
+          {post.subtitle ? (
+            <p className="mt-4 text-lg leading-relaxed text-cs-muted sm:text-xl">{post.subtitle}</p>
+          ) : null}
 
-            {/* Subtitle */}
-            {post?.subtitle && (
-              <p className="text-cs-muted text-lg sm:text-xl md:text-2xl mb-6 sm:mb-8">
-                {post.subtitle}
-              </p>
-            )}
-
-            {/* Meta */}
-            <div className="flex flex-wrap items-center gap-4 md:gap-6 mb-6">
-              <div className="flex items-center gap-3">
-                <img
-                  src={post?.author.avatar}
-                  alt={post?.author.name}
-                  className="w-12 h-12 rounded-full border-2 border-brand"
-                />
-                <div>
-                  <div className="text-cs-ink">{post?.author.name}</div>
-                  <div className="text-cs-muted text-sm">Film Critic & Journalist</div>
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-cs-muted text-sm">
-                <span>{post?.date}</span>
-                <span>•</span>
-                <div className="flex items-center gap-1">
-                  <Clock className="w-4 h-4" />
-                  <span>{post?.readTime}</span>
-                </div>
-                {post?.views && (
-                  <>
-                    <span>•</span>
-                    <span>{post.views.toLocaleString()} views</span>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Social Share */}
-            <div className="flex items-center gap-3 pt-6 border-t border-cs-line">
-              <span className="text-cs-muted text-sm">Share:</span>
-              <button className="w-10 h-10 bg-cs-panel hover:bg-[#1DA1F2] border border-cs-line hover:border-[#1DA1F2] rounded-full flex items-center justify-center transition-all group">
-                <Twitter className="w-4 h-4 text-cs-ink" />
-              </button>
-              <button className="w-10 h-10 bg-cs-panel hover:bg-[#1877F2] border border-cs-line hover:border-[#1877F2] rounded-full flex items-center justify-center transition-all group">
-                <Facebook className="w-4 h-4 text-cs-ink" />
-              </button>
-              <button className="w-10 h-10 bg-cs-panel hover:bg-[#fd7e14] border border-cs-line hover:border-[#fd7e14] rounded-full flex items-center justify-center transition-all group">
-                <Link2 className="w-4 h-4 text-cs-ink" />
-              </button>
-              <button className="w-10 h-10 bg-cs-panel hover:bg-[#fd7e14] border border-cs-line hover:border-[#fd7e14] rounded-full flex items-center justify-center transition-all group ml-auto">
-                <BookmarkPlus className="w-4 h-4 text-cs-ink" />
-              </button>
-            </div>
-          </motion.div>
-
-          {/* Article Body */}
-          <motion.article
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="max-w-none"
-          >
-            {/* Main content - this would come from a CMS */}
-            <div className="bg-cs-panel backdrop-blur-sm rounded-2xl p-6 sm:p-8 md:p-12 border border-cs-line mb-8">
-              <p className="text-cs-muted text-lg leading-8 mb-6">
-                Nigerian cinema has evolved from humble beginnings in the late 20th century to become one of the world's largest film industries by volume, rivaling both Hollywood and Bollywood. What started as a grassroots movement of filmmakers selling VHS tapes in local markets has transformed into a billion-dollar industry that captivates audiences across Africa and beyond.
-              </p>
-
-              <p className="text-cs-muted text-lg leading-8 mb-6">
-                The journey of Nollywood is one of resilience, creativity, and cultural pride. In the face of limited resources and infrastructure, Nigerian filmmakers found innovative ways to tell their stories, creating a unique cinematic language that resonated with audiences hungry for authentic African narratives.
-              </p>
-
-              <blockquote className="my-10 sm:my-12 border-l-4 border-brand pl-5 sm:pl-6">
-                <p className="text-cs-ink text-xl sm:text-2xl italic leading-relaxed">
-                  "Nollywood is not just an industry; it's a movement. It's about reclaiming our narratives and showing the world the depth and diversity of African stories."
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-y-[1.5px] border-cs-line py-4">
+            <div>
+              {post.author?.name ? (
+                <p className="font-heading text-lg uppercase tracking-wide text-cs-ink">
+                  {post.author.name}
                 </p>
-                <p className="text-brand mt-3 text-sm">— Kunle Afolayan, Award-winning Director</p>
-              </blockquote>
-
-              <h2 className="font-heading text-cs-ink text-2xl sm:text-3xl tracking-wide mb-4 mt-10 sm:mt-12">The Digital Revolution</h2>
-
-              <p className="text-cs-muted text-lg leading-8 mb-6">
-                The advent of digital technology marked a turning point for Nollywood. Filmmakers gained access to better equipment, editing software, and distribution channels. Streaming platforms like Wanzami have democratized access to Nigerian content, allowing stories from Lagos, Abuja, and beyond to reach global audiences instantly.
-              </p>
-
-              <p className="text-cs-muted text-lg leading-8 mb-6">
-                This technological leap hasn't just improved production quality; it's transformed the entire ecosystem. Today's Nollywood productions feature world-class cinematography, sophisticated storytelling, and production values that rival international standards while maintaining the cultural authenticity that makes Nigerian cinema unique.
-              </p>
-
-              {/* Inline Image */}
-              <figure className="my-10 sm:my-12 rounded-xl overflow-hidden">
-                <ImageWithFallback
-                  src="https://images.unsplash.com/photo-1657356217561-6ed26b47e116?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwY3VsdHVyZSUyMHRyYWRpdGlvbmFsfGVufDF8fHx8MTc2Mzc5MjY2M3ww&ixlib=rb-4.1.0&q=80&w=1080"
-                  alt="Nigerian film production"
-                  className="w-full h-auto"
-                />
-                <figcaption className="text-cs-muted text-sm mt-3 text-center italic">
-                  Modern Nollywood productions blend traditional storytelling with cutting-edge technology
-                </figcaption>
-              </figure>
-
-              <h2 className="font-heading text-cs-ink text-2xl sm:text-3xl tracking-wide mb-4 mt-10 sm:mt-12">Cultural Impact and Global Recognition</h2>
-
-              <p className="text-cs-muted text-lg leading-8 mb-6">
-                The impact of Nollywood extends far beyond entertainment. It has become a cultural ambassador, reshaping global perceptions of Africa and providing a counter-narrative to stereotypical portrayals. Nigerian films explore complex themes—from family dynamics and romance to political intrigue and social issues—with nuance and authenticity.
-              </p>
-
-              <p className="text-cs-muted text-lg leading-8 mb-6">
-                International recognition has followed this cultural impact. Nigerian films and filmmakers are winning awards at prestigious festivals worldwide. Collaborations with international studios are becoming more common, yet the industry has maintained its distinct voice and perspective.
-              </p>
-
-              <h2 className="font-heading text-cs-ink text-2xl sm:text-3xl tracking-wide mb-4 mt-10 sm:mt-12">The Future is Bright</h2>
-
-              <p className="text-cs-muted text-lg leading-8 mb-6">
-                As we look to the future, Nollywood's trajectory is undeniably upward. Investment in local production is increasing, film schools are nurturing new talent, and platforms like Wanzami are providing sustainable distribution models that ensure creators can build lasting careers.
-              </p>
-
-              <p className="text-cs-muted text-lg leading-8">
-                The stories that emerge from Nigeria—and the broader African continent—are no longer peripheral to global cinema. They are central, essential, and increasingly influential. This is not just the rise of an industry; it's the affirmation of a truth that has always existed: African stories matter, and the world is finally listening.
+              ) : null}
+              <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-cs-muted">
+                {formatPostDate(post.publishedAt)} · {post.readTimeMinutes} min read
+                {post.views > 0 ? ` · ${post.views.toLocaleString()} reads` : ''}
               </p>
             </div>
+            <ShareRow title={post.title} />
+          </div>
+        </motion.header>
 
-            {/* Tags */}
-            <div className="flex flex-wrap gap-2 mb-10 sm:mb-12">
-              {['#Nollywood', '#AfricanCinema', '#FilmIndustry', '#CulturalIdentity', '#Streaming'].map((tag) => (
-                <span key={tag} className="px-4 py-2 bg-cs-panel border border-cs-line text-cs-muted text-sm rounded-full">
-                  {tag}
+        {post.coverImageUrl ? (
+          <motion.figure
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, delay: 0.05 }}
+            className="mx-auto mt-8 max-w-4xl"
+          >
+            <div className="cs-border cs-shadow-lg overflow-hidden bg-cs-ink">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={post.coverImageUrl}
+                alt={post.coverImageAlt ?? ''}
+                className="max-h-[560px] w-full object-cover"
+              />
+            </div>
+            {post.coverImageAlt ? (
+              <figcaption className="mt-2 font-mono text-[10px] uppercase tracking-[0.1em] text-cs-muted">
+                {post.coverImageAlt}
+              </figcaption>
+            ) : null}
+          </motion.figure>
+        ) : null}
+
+        <div
+          className="cs-prose mx-auto mt-10 max-w-3xl"
+          // Content is sanitized server-side on write (see blogController).
+          dangerouslySetInnerHTML={{ __html: post.content ?? '' }}
+        />
+
+        {post.tags.length ? (
+          <div className="mx-auto mt-10 max-w-3xl border-t border-cs-line pt-5">
+            <Slug>Filed under</Slug>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {post.tags.map((t) => (
+                <span
+                  key={t}
+                  className="cs-border-thin bg-cs-panel px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-cs-muted"
+                >
+                  #{t}
                 </span>
               ))}
             </div>
+          </div>
+        ) : null}
 
-            {/* Author Bio */}
-            <div className="bg-cs-panel cs-border rounded-2xl p-5 sm:p-6 mb-10 sm:mb-12">
-              <div className="flex flex-col sm:flex-row gap-4 items-start">
-                <img
-                  src={post?.author.avatar}
-                  alt={post?.author.name}
-                  className="w-16 h-16 rounded-full border-2 border-brand shrink-0"
-                />
-                <div className="flex-1">
-                  <h3 className="font-heading text-cs-ink text-xl tracking-wide mb-1">{post?.author.name}</h3>
-                  <p className="text-brand text-sm mb-2">Film Critic & Cultural Journalist</p>
-                  <p className="text-cs-muted text-sm mb-3 leading-relaxed">
-                    Award-winning journalist covering African cinema, with over 10 years of experience documenting the evolution of Nollywood and its global impact.
-                  </p>
-                  <button className="text-brand hover:text-brand-dark text-sm transition-colors">
-                    Follow →
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Related Posts */}
-            <div className="border-t border-cs-line pt-10 sm:pt-12">
-              <h3 className="font-heading text-cs-ink text-2xl md:text-3xl tracking-wide mb-6 sm:mb-8">Continue Reading</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 sm:gap-6">
-                {relatedPosts.map((relatedPost) => (
-                  <div
-                    key={relatedPost.id}
-                    onClick={() => onPostClick?.(relatedPost)}
-                    className="bg-cs-panel hover:bg-cs-ink rounded-xl overflow-hidden border border-cs-line hover:border-brand transition-all cursor-pointer group"
-                  >
-                    <div className="relative h-40 overflow-hidden">
-                      <ImageWithFallback
-                        src={relatedPost.image}
-                        alt={relatedPost.title}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                      />
-                      <div className="absolute top-2 left-2">
-                        <span className="px-2 py-1 bg-brand text-cs-ink text-xs rounded">
-                          {relatedPost.category}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="p-4">
-                      <h4 className="font-heading text-cs-ink tracking-wide leading-tight mb-2 group-hover:text-brand transition-colors line-clamp-2">
-                        {relatedPost.title}
-                      </h4>
-                      <div className="flex items-center gap-2 text-xs text-cs-muted">
-                        <span>{relatedPost.readTime}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Comments Section */}
-            <div className="border-t border-cs-line pt-10 sm:pt-12 mt-10 sm:mt-12">
-              <h3 className="font-heading text-cs-ink text-2xl tracking-wide mb-6">Join the Conversation</h3>
-              <div className="bg-cs-panel backdrop-blur-sm rounded-xl p-5 sm:p-6 border border-cs-line mb-6">
-                <textarea
-                  placeholder="Share your thoughts..."
-                  className="w-full h-32 bg-cs-panel border border-cs-line rounded-lg p-4 text-cs-ink placeholder-gray-500 focus:outline-none focus:border-brand transition-colors resize-none"
-                />
-                <div className="flex justify-end mt-3">
-                  <button className="px-6 py-2 min-h-[40px] bg-brand hover:bg-brand-dark text-cs-ink rounded-lg transition-colors font-semibold">
-                    Post Comment
-                  </button>
-                </div>
-              </div>
-
-              {/* Sample Comments */}
-              <div className="space-y-4">
-                <div className="bg-cs-panel backdrop-blur-sm rounded-xl p-5 sm:p-6 border border-cs-line">
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-full bg-cs-ink flex items-center justify-center shrink-0">
-                      <User className="w-5 h-5 text-cs-muted" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <span className="text-cs-ink">Chioma Eze</span>
-                        <span className="text-cs-muted text-sm">2 hours ago</span>
-                      </div>
-                      <p className="text-cs-muted text-sm leading-relaxed">
-                        Excellent article! As a Nigerian filmmaker, I've witnessed this evolution firsthand. The digital revolution has truly democratized our industry.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-cs-panel backdrop-blur-sm rounded-xl p-5 sm:p-6 border border-cs-line">
-                  <div className="flex items-start gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-full bg-cs-ink flex items-center justify-center shrink-0">
-                      <User className="w-5 h-5 text-cs-muted" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <span className="text-cs-ink">David Okonkwo</span>
-                        <span className="text-cs-muted text-sm">5 hours ago</span>
-                      </div>
-                      <p className="text-cs-muted text-sm leading-relaxed">
-                        I love how platforms like Wanzami are making our stories accessible globally. The future of African cinema is incredibly bright!
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.article>
+        <div className="mx-auto mt-8 max-w-3xl">
+          <ShareRow title={post.title} />
         </div>
-      </div>
+      </article>
+
+      {related.length ? (
+        <>
+          <div className="mt-16 bg-cs-ink py-3">
+            <Sprockets />
+          </div>
+          <section className="container-page mt-12">
+            <Slug>Keep reading</Slug>
+            <h2 className="mb-6 mt-2 font-heading text-3xl uppercase leading-[0.9] tracking-wide text-cs-ink sm:text-5xl">
+              More from the desk
+            </h2>
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {related.map((p, i) => (
+                <PostCard key={p.id} post={p} index={i} />
+              ))}
+            </div>
+          </section>
+        </>
+      ) : null}
     </div>
   );
 }
