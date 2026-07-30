@@ -267,6 +267,30 @@ jobs:
               f.write(f"CERT_ID={cert_id}\n")
           print(f"\nSigning ready — cert={cert_id}  profile={pp_uuid}")
 
+      - name: Resolve signing identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Don't hardcode the identity name. Apple has shipped both
+          # "iPhone Distribution: ..." and "Apple Distribution: ..." for the
+          # same IOS_DISTRIBUTION certificate type depending on account age,
+          # and a name that doesn't match what's actually in the keychain is
+          # how a build ends up ad-hoc signed while still reporting success.
+          echo "Identities in the CI keychain:"
+          security find-identity -v -p codesigning "${KC_PATH}"
+
+          IDENTITY="$(security find-identity -v -p codesigning "${KC_PATH}" \
+            | grep -oE '"(Apple|iPhone) Distribution: [^"]+"' | head -1 | tr -d '"')"
+
+          if [ -z "${IDENTITY}" ]; then
+            echo "::error::No Apple/iPhone Distribution identity found in the keychain."
+            echo "Refusing to build, an ad-hoc or development signature would be rejected by Apple (ITMS-90035)."
+            exit 1
+          fi
+
+          echo "Using signing identity: ${IDENTITY}"
+          echo "SIGN_IDENTITY=${IDENTITY}" >> "$GITHUB_ENV"
+
       - name: Flutter pub get
         working-directory: ${{ env.APP_DIR }}
         run: flutter pub get
@@ -299,6 +323,8 @@ jobs:
             <string>app-store</string>
             <key>signingStyle</key>
             <string>manual</string>
+            <key>signingCertificate</key>
+            <string>${SIGN_IDENTITY}</string>
             <key>teamID</key>
             <string>${APPLE_TEAM_ID}</string>
             <key>provisioningProfiles</key>
@@ -319,7 +345,7 @@ jobs:
 
           // CI manual signing
           CODE_SIGN_STYLE = Manual
-          CODE_SIGN_IDENTITY = iPhone Distribution
+          CODE_SIGN_IDENTITY = ${SIGN_IDENTITY}
           DEVELOPMENT_TEAM = ${APPLE_TEAM_ID}
           PROVISIONING_PROFILE = ${PP_UUID}
           OTHER_CODE_SIGN_FLAGS = --keychain ${KC_PATH}
@@ -334,6 +360,43 @@ jobs:
           flutter build ipa \
             --release \
             --export-options-plist=ios/ExportOptions.plist
+
+      - name: Verify the signature before uploading
+        shell: bash
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          set -euo pipefail
+          # Apple rejected build 24 with ITMS-90035 (invalid signature) AFTER
+          # this workflow reported success, because nothing here ever checked
+          # what the archive was actually signed with. This gate fails the
+          # build instead of shipping a binary Apple will bounce.
+          APP="$(find build/ios/archive/Runner.xcarchive/Products/Applications \
+                 -maxdepth 1 -name '*.app' | head -1)"
+          if [ -z "${APP}" ]; then
+            echo "::error::No .app found in the archive."
+            exit 1
+          fi
+          echo "Inspecting: ${APP}"
+          codesign -dv --verbose=4 "${APP}" 2>&1 | tee /tmp/sig.txt
+
+          AUTH="$(grep -m1 '^Authority=' /tmp/sig.txt || true)"
+          echo "Signing authority: ${AUTH}"
+
+          if echo "${AUTH}" | grep -qiE 'Distribution'; then
+            echo "OK: archive is distribution-signed."
+          else
+            echo "::error::Archive is NOT distribution-signed (${AUTH:-none})."
+            echo "Uploading this would fail App Store processing with ITMS-90035."
+            exit 1
+          fi
+
+          # An ad-hoc signature has no authority chain at all.
+          if grep -qi 'Signature=adhoc' /tmp/sig.txt; then
+            echo "::error::Archive is ad-hoc signed. Refusing to upload."
+            exit 1
+          fi
+
+          codesign --verify --strict --verbose=2 "${APP}"
 
       - name: Upload IPA to TestFlight
         shell: bash
