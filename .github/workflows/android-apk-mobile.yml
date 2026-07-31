@@ -1,12 +1,26 @@
-name: Android APK (mobile)
+name: Android build (mobile)
 
-# Manual-only: builds a release APK of the Flutter app and uploads it as a
-# downloadable artifact. Trigger from the Actions tab or `gh workflow run`.
+# Manual-only: builds the Flutter Android app and uploads the artifacts.
+#
+# Signing: when the ANDROID_KEYSTORE_BASE64 secret is present the build is
+# signed with the real upload key and produces a Play-ready AAB. Without it
+# app/build.gradle.kts silently falls back to the debug key, which installs
+# fine for sideloading but Play will reject. The verify step below refuses to
+# publish a debug-signed AAB rather than letting that reach the Play console.
 on:
   workflow_dispatch:
+    inputs:
+      build_aab:
+        description: 'Build a Play-ready App Bundle (requires keystore secrets)'
+        type: boolean
+        default: true
+      build_apk:
+        description: 'Build a sideloadable APK'
+        type: boolean
+        default: true
 
 jobs:
-  build-apk:
+  build:
     runs-on: ubuntu-latest
     env:
       FLUTTER_VERSION: '3.29.3'
@@ -29,17 +43,92 @@ jobs:
           cache: true
           cache-key: flutter-${{ runner.os }}-${{ env.FLUTTER_VERSION }}-${{ hashFiles('wanzami_mobile_flutter/pubspec.lock') }}
 
+      - name: Restore upload keystore
+        id: keystore
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "${KEYSTORE_B64:-}" ]; then
+            echo "No keystore secret set; this build will use the debug key."
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # key.properties and *.jks are gitignored, so both are reconstructed
+          # here from secrets. Paths must match app/build.gradle.kts, which
+          # reads key.properties from the android/ root.
+          printf '%s' "${KEYSTORE_B64}" | base64 -d > "${APP_DIR}/android/app/upload-keystore.jks"
+          cat > "${APP_DIR}/android/key.properties" <<EOF
+          storeFile=app/upload-keystore.jks
+          storePassword=${STORE_PASSWORD}
+          keyAlias=${KEY_ALIAS}
+          keyPassword=${KEY_PASSWORD}
+          EOF
+          echo "Upload keystore restored."
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+
       - name: Pub get
         working-directory: ${{ env.APP_DIR }}
         run: flutter pub get
 
+      - name: Build App Bundle
+        if: ${{ inputs.build_aab }}
+        working-directory: ${{ env.APP_DIR }}
+        run: flutter build appbundle --release
+
+      - name: Verify the bundle is upload-signed
+        if: ${{ inputs.build_aab }}
+        working-directory: ${{ env.APP_DIR }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          AAB=build/app/outputs/bundle/release/app-release.aab
+          [ -f "$AAB" ] || { echo "::error::No AAB produced."; exit 1; }
+
+          # An AAB signed with the debug key carries CN=Android Debug. Play
+          # rejects it, and it cannot upgrade an existing listing.
+          OWNER="$(keytool -printcert -jarfile "$AAB" 2>/dev/null | grep -m1 'Owner:' || true)"
+          echo "Bundle certificate: ${OWNER:-none}"
+
+          if [ "${{ steps.keystore.outputs.signed }}" != "true" ]; then
+            echo "::error::No keystore secret was available, so this bundle is debug-signed."
+            echo "Add ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD."
+            exit 1
+          fi
+          if echo "$OWNER" | grep -qi 'Android Debug'; then
+            echo "::error::Bundle is debug-signed despite a keystore being present. Play would reject it."
+            exit 1
+          fi
+          echo "OK: bundle is signed with the upload key."
+
       - name: Build release APK
+        if: ${{ inputs.build_apk }}
         working-directory: ${{ env.APP_DIR }}
         run: flutter build apk --release
 
+      - name: Upload App Bundle
+        if: ${{ inputs.build_aab }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: wanzami-release-aab
+          path: ${{ env.APP_DIR }}/build/app/outputs/bundle/release/app-release.aab
+          retention-days: 14
+
       - name: Upload APK artifact
+        if: ${{ inputs.build_apk }}
         uses: actions/upload-artifact@v4
         with:
           name: wanzami-release-apk
           path: ${{ env.APP_DIR }}/build/app/outputs/flutter-apk/app-release.apk
           retention-days: 14
+
+      - name: Remove signing material
+        if: always()
+        shell: bash
+        run: |
+          rm -f "${APP_DIR}/android/key.properties" \
+                "${APP_DIR}/android/app/upload-keystore.jks" || true
