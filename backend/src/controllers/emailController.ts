@@ -304,3 +304,97 @@ export const listSentRecipientHistory = async (req: Request, res: Response) => {
     uniqueCount: unique.size,
   });
 };
+
+/* ---------------------------------------------------------------------------
+   Campaign control. A live send is 495 recipients queued in batches, so the
+   operator needs to see it moving and be able to stop it without going
+   through an engineer.
+--------------------------------------------------------------------------- */
+
+const summariseFailure = (job: any) => ({
+  id: job.id,
+  batch: job.data?.startIndex ?? 0,
+  recipients: Array.isArray(job.data?.recipients) ? job.data.recipients.length : 0,
+  reason: job.failedReason ?? "Unknown error",
+  attempts: job.attemptsMade,
+});
+
+export const campaignStatus = async (_req: Request, res: Response) => {
+  const [counts, paused, active, failed, completed] = await Promise.all([
+    emailQueue.getJobCounts("waiting", "active", "completed", "failed", "delayed"),
+    emailQueue.isPaused(),
+    emailQueue.getActive(0, 9),
+    emailQueue.getFailed(0, 19),
+    emailQueue.getCompleted(0, 49),
+  ]);
+
+  // Each job carries a batch of recipients, so job counts alone understate the
+  // real progress. Sum the batch sizes instead.
+  const recipientsIn = (jobs: any[]) =>
+    jobs.reduce(
+      (sum, j) => sum + (Array.isArray(j.data?.recipients) ? j.data.recipients.length : 0),
+      0
+    );
+
+  const sent = completed.reduce((sum, j) => {
+    const v = j.returnvalue as { queued?: number } | undefined;
+    return sum + (v?.queued ?? 0);
+  }, 0);
+  const failedRecipients = completed.reduce((sum, j) => {
+    const v = j.returnvalue as { failed?: number } | undefined;
+    return sum + (v?.failed ?? 0);
+  }, 0);
+
+  return res.json({
+    paused,
+    counts,
+    sent,
+    failedRecipients,
+    inFlight: recipientsIn(active),
+    remaining: recipientsIn(await emailQueue.getWaiting(0, 999)),
+    subject: (active[0]?.data?.subject ?? completed[0]?.data?.subject) ?? null,
+    failures: failed.map(summariseFailure),
+  });
+};
+
+export const pauseCampaign = async (_req: Request, res: Response) => {
+  await emailQueue.pause();
+  return res.json({ paused: true });
+};
+
+export const resumeCampaign = async (_req: Request, res: Response) => {
+  await emailQueue.resume();
+  return res.json({ paused: false });
+};
+
+// Drops everything not yet started. Batches already handed to the worker will
+// finish, so this stops the bleeding rather than rewinding it.
+export const cancelCampaign = async (_req: Request, res: Response) => {
+  const waiting = await emailQueue.getWaiting(0, 9999);
+  const delayed = await emailQueue.getDelayed(0, 9999);
+  let dropped = 0;
+  for (const job of [...waiting, ...delayed]) {
+    try {
+      await job.remove();
+      dropped += 1;
+    } catch {
+      // Job started between listing and removal; leave it to finish.
+    }
+  }
+  await emailQueue.pause();
+  return res.json({ dropped, paused: true });
+};
+
+export const retryFailedBatches = async (_req: Request, res: Response) => {
+  const failed = await emailQueue.getFailed(0, 999);
+  let retried = 0;
+  for (const job of failed) {
+    try {
+      await job.retry();
+      retried += 1;
+    } catch {
+      // Ignore jobs that can no longer be retried.
+    }
+  }
+  return res.json({ retried });
+};

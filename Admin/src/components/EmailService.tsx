@@ -889,6 +889,8 @@ export function EmailService() {
               </CsButton>
             </div>
 
+            <CampaignMonitor />
+
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm" style={{ color: 'var(--cs-muted)' }}>
                 <span>Readiness</span>
@@ -924,3 +926,4 @@ export function EmailService() {
     </div>
   );
 }
+import { CampaignMonitor } from "./CampaignMonitor";

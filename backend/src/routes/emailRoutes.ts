@@ -8,6 +8,11 @@ import {
   getEmailTemplate,
   importUserRecipients,
   listSentRecipientHistory,
+  campaignStatus,
+  pauseCampaign,
+  resumeCampaign,
+  cancelCampaign,
+  retryFailedBatches,
 } from "../controllers/emailController.js";
 
 const router = Router();
@@ -22,5 +27,12 @@ router.post("/admin/email/send", requireAuth, requireAdmin, canEmail, sendCampai
 router.get("/admin/email/audience/users", requireAuth, requireAdmin, canEmail, listUserRecipients);
 router.post("/admin/email/audience/import", requireAuth, requireAdmin, canEmail, importUserRecipients);
 router.get("/admin/email/history/recipients", requireAuth, requireAdmin, canEmail, listSentRecipientHistory);
+
+// Campaign control: watch a live send and stop it without an engineer.
+router.get("/admin/email/campaign/status", requireAuth, requireAdmin, canEmail, campaignStatus);
+router.post("/admin/email/campaign/pause", requireAuth, requireAdmin, canEmail, pauseCampaign);
+router.post("/admin/email/campaign/resume", requireAuth, requireAdmin, canEmail, resumeCampaign);
+router.post("/admin/email/campaign/cancel", requireAuth, requireAdmin, canEmail, cancelCampaign);
+router.post("/admin/email/campaign/retry-failed", requireAuth, requireAdmin, canEmail, retryFailedBatches);
 
 export default router;
