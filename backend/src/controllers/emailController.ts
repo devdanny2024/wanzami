@@ -320,27 +320,48 @@ const summariseFailure = (job: any) => ({
 });
 
 export const campaignStatus = async (_req: Request, res: Response) => {
-  const [counts, paused, active, failed, completed] = await Promise.all([
+  const [counts, paused, active, failed, completed, waiting, delayed] = await Promise.all([
     emailQueue.getJobCounts("waiting", "active", "completed", "failed", "delayed"),
     emailQueue.isPaused(),
     emailQueue.getActive(0, 9),
-    emailQueue.getFailed(0, 19),
-    emailQueue.getCompleted(0, 49),
+    emailQueue.getFailed(0, 49),
+    emailQueue.getCompleted(0, 99),
+    emailQueue.getWaiting(0, 999),
+    emailQueue.getDelayed(0, 999),
   ]);
+
+  // "Current campaign" means one subject line in flight. Without this scope,
+  // an old completed/failed job (a support reply, a prior campaign) gets
+  // summed into today's numbers, which is exactly the bug this endpoint had:
+  // it reported a 3-week-old support-email timeout as a Mountain Holiday
+  // failure. The subject is taken from whatever is actually active or
+  // pending right now; only once nothing is pending does it fall back to the
+  // most recently completed subject, purely to label an idle panel.
+  const currentSubject =
+    active[0]?.data?.subject ??
+    waiting[0]?.data?.subject ??
+    delayed[0]?.data?.subject ??
+    completed[0]?.data?.subject ??
+    null;
+
+  const sameCampaign = (j: any) => currentSubject != null && j.data?.subject === currentSubject;
+
+  const scopedCompleted = completed.filter(sameCampaign);
+  const scopedFailed = failed.filter(sameCampaign);
 
   // Each job carries a batch of recipients, so job counts alone understate the
   // real progress. Sum the batch sizes instead.
   const recipientsIn = (jobs: any[]) =>
-    jobs.reduce(
+    jobs.filter(sameCampaign).reduce(
       (sum, j) => sum + (Array.isArray(j.data?.recipients) ? j.data.recipients.length : 0),
       0
     );
 
-  const sent = completed.reduce((sum, j) => {
+  const sent = scopedCompleted.reduce((sum, j) => {
     const v = j.returnvalue as { queued?: number } | undefined;
     return sum + (v?.queued ?? 0);
   }, 0);
-  const failedRecipients = completed.reduce((sum, j) => {
+  const failedRecipients = scopedCompleted.reduce((sum, j) => {
     const v = j.returnvalue as { failed?: number } | undefined;
     return sum + (v?.failed ?? 0);
   }, 0);
@@ -351,9 +372,9 @@ export const campaignStatus = async (_req: Request, res: Response) => {
     sent,
     failedRecipients,
     inFlight: recipientsIn(active),
-    remaining: recipientsIn(await emailQueue.getWaiting(0, 999)),
-    subject: (active[0]?.data?.subject ?? completed[0]?.data?.subject) ?? null,
-    failures: failed.map(summariseFailure),
+    remaining: recipientsIn(waiting) + recipientsIn(delayed),
+    subject: currentSubject,
+    failures: scopedFailed.map(summariseFailure),
   });
 };
 
