@@ -51,9 +51,10 @@ class PushService {
     if (!_ready) return;
     try {
       final messaging = FirebaseMessaging.instance;
-      if (Platform.isIOS) {
-        await messaging.requestPermission(alert: true, badge: true, sound: true);
-      }
+      // Needed on both platforms: iOS APNs authorization, and Android 13+'s
+      // POST_NOTIFICATIONS runtime permission — without it, FCM still
+      // delivers the message but the OS silently drops the display.
+      await messaging.requestPermission(alert: true, badge: true, sound: true);
       final token = await messaging.getToken();
       if (token != null) await _sendToken(token);
       messaging.onTokenRefresh.listen(_sendToken);
