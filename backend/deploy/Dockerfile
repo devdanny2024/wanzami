@@ -16,6 +16,7 @@ RUN npm ci
 RUN npx prisma generate
 
 COPY src ./src
+COPY certs ./certs
 RUN mkdir -p exports
 RUN npm run build
 
