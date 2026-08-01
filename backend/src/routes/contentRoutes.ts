@@ -43,10 +43,11 @@ const canReadCatalogue = requireAnyPermission([
   Permission.MOVIES_MANAGE,
 ]);
 const canManageCatalogue = requirePermission(Permission.MOVIES_MANAGE);
-// Blog cover images are uploaded through the same asset endpoints.
+// Blog cover images and push broadcast images are uploaded through the same asset endpoints.
 const canPresignAssets = requireAnyPermission([
   Permission.MOVIES_MANAGE,
   Permission.BLOG_MANAGE,
+  Permission.PUSH_MANAGE,
 ]);
 
 router.get("/admin/titles", requireAuth, requireAdmin, canReadCatalogue, listTitles);

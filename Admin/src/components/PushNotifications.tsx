@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { Bell, Send } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Bell, ImagePlus, Send, X } from "lucide-react";
 import { toast } from "sonner";
 import { CsBox, CsButton, CsPageHeader, CsSlug, CsStat, CsTag } from "./cs/kit";
 
@@ -31,9 +31,11 @@ export function PushNotifications() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [sending, setSending] = useState(false);
   const [history, setHistory] = useState<Broadcast[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadHistory = useCallback(async () => {
     try {
@@ -51,6 +53,32 @@ export function PushNotifications() {
   useEffect(() => {
     void loadHistory();
   }, [loadHistory]);
+
+  const uploadImage = async (file: File) => {
+    setUploadingImage(true);
+    try {
+      const presignRes = await fetch("/api/admin/assets/presign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ contentType: file.type || "application/octet-stream", kind: "notification" }),
+      });
+      const presignData = await presignRes.json();
+      if (!presignRes.ok || !presignData.url) {
+        throw new Error(presignData?.message || "Failed to presign upload");
+      }
+      const putRes = await fetch(presignData.url, {
+        method: "PUT",
+        headers: { "Content-Type": file.type || "application/octet-stream" },
+        body: file,
+      });
+      if (!putRes.ok) throw new Error("Upload failed");
+      setImageUrl(presignData.publicUrl || presignData.key);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to upload image");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const send = async () => {
     if (!title.trim() || !body.trim()) {
@@ -124,13 +152,45 @@ export function PushNotifications() {
             />
           </div>
           <div className="space-y-2">
-            <CsSlug>Image URL (optional)</CsSlug>
+            <CsSlug>Image (optional)</CsSlug>
             <input
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              style={fieldStyle}
-              placeholder="https://…"
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void uploadImage(file);
+                e.target.value = "";
+              }}
             />
+            {imageUrl ? (
+              <div className="flex items-center gap-3">
+                <img
+                  src={imageUrl}
+                  alt=""
+                  className="cs-border-thin"
+                  style={{ width: 64, height: 64, objectFit: "cover" }}
+                />
+                <CsButton variant="outline" onClick={() => setImageUrl("")}>
+                  <span className="inline-flex items-center gap-2">
+                    <X className="w-3.5 h-3.5" />
+                    Remove
+                  </span>
+                </CsButton>
+              </div>
+            ) : (
+              <CsButton
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingImage}
+              >
+                <span className="inline-flex items-center gap-2">
+                  <ImagePlus className="w-3.5 h-3.5" />
+                  {uploadingImage ? "Uploading…" : "Upload image"}
+                </span>
+              </CsButton>
+            )}
           </div>
           <div className="flex justify-end">
             <CsButton variant="rust" onClick={send} disabled={sending}>
