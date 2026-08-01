@@ -388,33 +388,26 @@ export function CreatorHub() {
     };
   }, []);
 
+  // Posts to the API rather than straight to the bucket: the bucket has no
+  // CORS policy for this origin, so a direct PUT is blocked in the browser.
   const uploadThumbnailAsset = async (file: File): Promise<string> => {
     const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
-    const presignRes = await fetch("/api/admin/assets/presign", {
+    const res = await fetch("/api/admin/assets/upload", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": file.type || "image/jpeg",
+        "x-asset-kind": "thumbnail",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ contentType: file.type || "application/octet-stream", kind: "thumbnail" }),
-    });
-
-    const presignData = await presignRes.json().catch(() => ({}));
-    if (!presignRes.ok || !presignData.url || !presignData.key) {
-      throw new Error(presignData?.message || "Failed to prepare thumbnail upload");
-    }
-
-    const putRes = await fetch(presignData.url, {
-      method: "PUT",
-      headers: { "Content-Type": file.type || "application/octet-stream" },
       body: file,
     });
 
-    if (!putRes.ok) {
-      throw new Error("Thumbnail upload failed");
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data?.message || "Thumbnail upload failed");
     }
 
-    return (presignData.publicUrl as string) || (presignData.key as string);
+    return (data.publicUrl as string) || (data.key as string);
   };
 
   const handleCreate = async () => {

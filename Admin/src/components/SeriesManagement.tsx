@@ -730,28 +730,23 @@ function AddEpisodesPanel({
     }
   };
 
+  // Posts to the API rather than straight to the bucket: the bucket has no
+  // CORS policy for this origin, so a direct PUT is blocked in the browser.
+  // The picker only accepts .vtt, so fall back to that type when the browser
+  // reports none rather than to a type the endpoint rejects.
   const uploadAsset = async (file: File, token?: string) => {
-    const res = await fetch("/api/admin/assets/presign", {
+    const res = await fetch("/api/admin/assets/upload", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": file.type || "text/vtt",
+        "x-asset-kind": "previewVtt",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ contentType: file.type || "application/octet-stream", kind: "previewVtt" }),
-    });
-    const data = await res.json();
-    if (!res.ok || !data.url || !data.key) {
-      throw new Error(data?.message || "Failed to presign upload");
-    }
-    const putRes = await fetch(data.url, {
-      method: "PUT",
-      headers: {
-        "Content-Type": file.type || "application/octet-stream",
       },
       body: file,
     });
-    if (!putRes.ok) {
-      throw new Error("Upload failed");
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data?.message || "Upload failed");
     }
     return (data.publicUrl as string) || (data.key as string);
   };

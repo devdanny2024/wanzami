@@ -167,22 +167,23 @@ export async function deleteCategory(id: string): Promise<void> {
   }
 }
 
-/** Uploads a cover image straight to S3/R2 via a presigned PUT and returns the public URL. */
+/**
+ * Uploads a cover image through the API, which writes it to the bucket
+ * server-side. Going straight to the bucket from the browser is not an option:
+ * it has no CORS policy for the dashboard origin, so the PUT never lands.
+ */
 export async function uploadCoverImage(file: File): Promise<string> {
-  const presign = await authFetch(`/admin/assets/presign`, {
+  const res = await fetch("/api/admin/assets/upload", {
     method: "POST",
-    headers: authHeader(),
-    body: JSON.stringify({ contentType: file.type || "image/jpeg", kind: "blog" }),
-  });
-  const data = unwrap(presign, "Could not start image upload");
-  if (!data?.url) throw new Error("Upload URL missing from server response");
-
-  const put = await fetch(data.url, {
-    method: "PUT",
-    headers: { "Content-Type": file.type || "image/jpeg" },
+    headers: {
+      "Content-Type": file.type || "image/jpeg",
+      "x-asset-kind": "blog",
+      ...authHeader(),
+    },
     body: file,
   });
-  if (!put.ok) throw new Error(`Image upload failed (${put.status})`);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.message || `Image upload failed (${res.status})`);
 
   if (!data.publicUrl) throw new Error("Upload succeeded but no public URL was returned");
   return data.publicUrl as string;

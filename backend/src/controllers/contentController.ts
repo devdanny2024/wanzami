@@ -1468,8 +1468,11 @@ export const uploadAsset = async (req: Request, res: Response) => {
   }
 
   const contentType = req.get("x-asset-content-type") || req.get("content-type") || "application/octet-stream";
-  if (!contentType.startsWith("image/")) {
-    return res.status(400).json({ message: "Only image uploads are supported here" });
+  // Small assets only. Video keeps going through the multipart upload flow,
+  // which talks to the bucket from the client and is not affected by CORS.
+  const allowed = contentType.startsWith("image/") || contentType.startsWith("text/vtt");
+  if (!allowed) {
+    return res.status(400).json({ message: "Only image and WebVTT uploads are supported here" });
   }
 
   const kind = (req.get("x-asset-kind") || "asset").replace(/[^a-z0-9-]/gi, "") || "asset";
