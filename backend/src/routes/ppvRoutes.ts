@@ -14,6 +14,8 @@ import {
   verifyFlutterwavePurchase,
   initiatePaystackPurchase,
   verifyPaystackPurchase,
+  createIapIntent,
+  verifyIapPurchase,
   paystackWebhook,
   adminListPurchases,
 } from "../controllers/ppvController.js";
@@ -45,6 +47,8 @@ router.post("/ppv/flutterwave/verify", requireAuth, verifyFlutterwavePurchase);
 router.post("/app-session/ppv/flutterwave/verify", verifyFlutterwavePurchase);
 router.post("/ppv/paystack/initiate", requireAuth, initiatePaystackPurchase);
 router.post("/ppv/paystack/verify", requireAuth, verifyPaystackPurchase);
+router.post("/ppv/iap/intent", requireAuth, createIapIntent);
+router.post("/ppv/iap/verify", requireAuth, verifyIapPurchase);
 router.post("/ppv/paystack/webhook", paystackWebhook);
 
 export default router;

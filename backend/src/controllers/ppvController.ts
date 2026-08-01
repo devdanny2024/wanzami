@@ -8,6 +8,8 @@ import { resolveCountry } from "../utils/country.js";
 import { localizePrice } from "../utils/pricing.js";
 import { getFlutterwaveAccessToken } from "../utils/flutterwaveV4.js";
 import { isInternalTestAccount } from "../utils/internalAccounts.js";
+import { verifyAppleTransaction, isAppleIapConfigured } from "../utils/appleIap.js";
+import { productIdForPriceNaira, priceNairaForProductId } from "../utils/ppvIapTiers.js";
 import crypto from "crypto";
 import { createNotification } from "./notificationController.js";
 
@@ -1552,6 +1554,155 @@ export const verifyPaystackPurchase = async (req: AuthenticatedRequest, res: Res
   } catch (err) {
     console.error("paystack verify error", err);
     return res.status(500).json({ message: "Verification failed" });
+  }
+};
+
+/* ---------------------------------------------------------------------------
+   Apple In-App Purchase. A StoreKit product only identifies a price tier,
+   not which title the buyer meant, so this creates a PENDING row up front
+   ("intent") the client attaches to the purchase via applicationUserName,
+   then reconciles it once the purchase completes by verifying the real
+   transaction with Apple. Mirrors the initiate/verify shape of the
+   Paystack flow above rather than inventing a different one.
+--------------------------------------------------------------------------- */
+
+export const createIapIntent = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const { titleId } = req.body as { titleId?: number | string };
+    if (!titleId) return res.status(400).json({ message: "titleId required" });
+
+    if (!isAppleIapConfigured()) {
+      return res.status(500).json({ message: "Apple In-App Purchase is not configured on this server" });
+    }
+
+    const title = await prisma.title.findUnique({ where: { id: BigInt(titleId) } });
+    if (!title) return res.status(404).json({ message: "Title not found" });
+    if (!title.isPpv) return res.status(400).json({ message: "Title is not PPV" });
+    if (!title.ppvPriceNaira || title.ppvPriceNaira <= 0) {
+      return res.status(400).json({ message: "PPV price not configured" });
+    }
+
+    const productId = productIdForPriceNaira(title.ppvPriceNaira);
+    if (!productId) {
+      // The title's price doesn't map to a declared IAP tier. This is a
+      // catalog/pricing mismatch, not a user error, so it's logged loudly
+      // rather than surfaced as a generic "purchase failed".
+      console.error(
+        `[ppv.iap] No IAP product configured for price ${title.ppvPriceNaira} (title ${title.id})`
+      );
+      return res.status(409).json({ message: "This title is not currently purchasable in the app" });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    if (user.ppvBanned) return res.status(403).json({ message: "PPV access barred" });
+
+    const active = await prisma.ppvPurchase.findFirst({
+      where: {
+        userId: req.user.userId,
+        titleId: BigInt(titleId),
+        status: "SUCCESS",
+        accessExpiresAt: { gt: now() },
+      },
+    });
+    if (active) {
+      return res.status(409).json({ message: "Already purchased" });
+    }
+
+    const intent = await prisma.ppvPurchase.create({
+      data: {
+        userId: req.user.userId,
+        titleId: BigInt(titleId),
+        amountNaira: title.ppvPriceNaira,
+        currency: title.ppvCurrency ?? "NGN",
+        gateway: "APPLE_IAP",
+        status: "PENDING",
+      },
+    });
+
+    return res.json({ intentId: intent.id.toString(), productId });
+  } catch (err) {
+    console.error("ppv iap intent error", err);
+    return res.status(500).json({ message: "Could not start purchase" });
+  }
+};
+
+export const verifyIapPurchase = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" });
+    const { intentId, transactionId } = req.body as { intentId?: string; transactionId?: string };
+    if (!intentId || !transactionId) {
+      return res.status(400).json({ message: "intentId and transactionId required" });
+    }
+
+    const intent = await prisma.ppvPurchase.findUnique({
+      where: { id: BigInt(intentId) },
+      include: { user: true, title: true },
+    });
+    if (!intent || intent.userId !== req.user.userId) {
+      return res.status(404).json({ message: "Purchase not found" });
+    }
+    if (intent.gateway !== "APPLE_IAP") {
+      return res.status(400).json({ message: "Not an Apple purchase" });
+    }
+    if (intent.status === "SUCCESS") {
+      // Idempotent: the client may retry after a network blip post-success.
+      return res.json({ verified: true, hasAccess: true });
+    }
+
+    // A different intent may already have claimed this exact transaction
+    // (retry, or a tampered client resending an old id). Guard before ever
+    // calling Apple, since the unique constraint alone would only catch it
+    // after wasting a network round trip.
+    const existingByTransaction = await prisma.ppvPurchase.findUnique({
+      where: { appleTransactionId: transactionId },
+    });
+    if (existingByTransaction && existingByTransaction.id !== intent.id) {
+      return res.status(409).json({ message: "This transaction has already been used" });
+    }
+
+    const { decoded } = await verifyAppleTransaction(transactionId);
+
+    if (decoded.bundleId && decoded.bundleId !== config.appleIap.bundleId) {
+      return res.status(400).json({ message: "Transaction belongs to a different app" });
+    }
+    if (decoded.revocationReason !== undefined || decoded.revocationDate !== undefined) {
+      return res.status(400).json({ message: "This purchase was refunded" });
+    }
+
+    const expectedPriceNaira = intent.amountNaira;
+    const expectedProductId = productIdForPriceNaira(expectedPriceNaira);
+    const purchasedTierPrice = decoded.productId ? priceNairaForProductId(decoded.productId) : null;
+    if (!decoded.productId || decoded.productId !== expectedProductId || purchasedTierPrice !== expectedPriceNaira) {
+      console.error(
+        `[ppv.iap] Product mismatch: intent ${intent.id} expected ${expectedProductId}, transaction had ${decoded.productId}`
+      );
+      return res.status(400).json({ message: "Purchase does not match the requested title's price tier" });
+    }
+
+    const expiresAt = new Date(Date.now() + ppvAccessDays * 24 * 60 * 60 * 1000);
+    await prisma.ppvPurchase.update({
+      where: { id: intent.id },
+      data: {
+        status: "SUCCESS",
+        appleTransactionId: transactionId,
+        rawPayload: decoded as any,
+        accessExpiresAt: expiresAt,
+      },
+    });
+
+    await sendPpvThankYou({
+      userEmail: intent.user?.email,
+      userName: intent.user?.name,
+      titleId: intent.titleId,
+      titleName: intent.title?.name,
+    });
+
+    return res.json({ verified: true, hasAccess: true, accessExpiresAt: expiresAt });
+  } catch (err: any) {
+    console.error("ppv iap verify error", err);
+    return res.status(502).json({ message: "Could not verify purchase with Apple" });
   }
 };
 

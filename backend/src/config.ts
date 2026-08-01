@@ -83,6 +83,16 @@ export const config = {
     .split(",")
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean),
+  // App Store Server API credentials for verifying iOS PPV purchases.
+  // The private key is the .p8 contents from an "In-App Purchase" key in
+  // App Store Connect (Users and Access > Integrations), a different key
+  // from the one CI uses for TestFlight signing.
+  appleIap: {
+    issuerId: process.env.APPLE_ASC_ISSUER_ID ?? "",
+    keyId: process.env.APPLE_ASC_KEY_ID ?? "",
+    privateKey: process.env.APPLE_ASC_PRIVATE_KEY ?? "",
+    bundleId: process.env.APPLE_BUNDLE_ID ?? "tv.wanzami.app",
+  },
   ivs: {
     region: process.env.IVS_REGION ?? process.env.AWS_REGION ?? "us-east-1",
     recordingEnabled: process.env.IVS_RECORDING_ENABLED === "true",
