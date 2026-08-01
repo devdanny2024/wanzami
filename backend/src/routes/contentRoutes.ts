@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, raw } from "express";
 import {
   requireAdmin,
   requireAuth,
@@ -17,6 +17,7 @@ import {
   publishTitle,
   presignAsset,
   presignAssetRead,
+  uploadAsset,
   streamMediaAsset,
   deleteTitle,
   createEpisode,
@@ -66,5 +67,15 @@ router.patch("/admin/seasons/:seasonId", requireAuth, requireAdmin, canManageCat
 router.delete("/admin/seasons/:seasonId", requireAuth, requireAdmin, canManageCatalogue, deleteSeason);
 router.post("/admin/assets/presign", requireAuth, requireAdmin, canPresignAssets, presignAsset);
 router.post("/admin/assets/get-url", requireAuth, requireAdmin, canPresignAssets, presignAssetRead);
+// Raw body: the dashboard posts image bytes directly. Capped well below any
+// realistic cover/notification image so this can't be used to push large media.
+router.post(
+  "/admin/assets/upload",
+  requireAuth,
+  requireAdmin,
+  canPresignAssets,
+  raw({ type: "*/*", limit: "8mb" }),
+  uploadAsset
+);
 
 export default router;

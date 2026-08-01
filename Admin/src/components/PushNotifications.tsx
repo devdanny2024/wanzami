@@ -55,24 +55,24 @@ export function PushNotifications() {
   }, [loadHistory]);
 
   const uploadImage = async (file: File) => {
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error("Image must be under 8MB");
+      return;
+    }
     setUploadingImage(true);
     try {
-      const presignRes = await fetch("/api/admin/assets/presign", {
+      const res = await fetch("/api/admin/assets/upload", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
-        body: JSON.stringify({ contentType: file.type || "application/octet-stream", kind: "notification" }),
-      });
-      const presignData = await presignRes.json();
-      if (!presignRes.ok || !presignData.url) {
-        throw new Error(presignData?.message || "Failed to presign upload");
-      }
-      const putRes = await fetch(presignData.url, {
-        method: "PUT",
-        headers: { "Content-Type": file.type || "application/octet-stream" },
+        headers: {
+          "Content-Type": file.type || "application/octet-stream",
+          "x-asset-kind": "notification",
+          ...authHeaders(),
+        },
         body: file,
       });
-      if (!putRes.ok) throw new Error("Upload failed");
-      setImageUrl(presignData.publicUrl || presignData.key);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.message || "Upload failed");
+      setImageUrl(data.publicUrl || data.key);
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to upload image");
     } finally {

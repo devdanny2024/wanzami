@@ -1,4 +1,4 @@
-const AUTH_SERVICE_URL =
+export const AUTH_SERVICE_URL =
   // Prefer server-side auth base first
   process.env.AUTH_SERVICE_URL ??
   // Fallbacks for browser-side config

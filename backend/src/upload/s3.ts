@@ -217,6 +217,32 @@ export const presignPutObject = async (key: string, contentType = "application/o
   return url;
 };
 
+/**
+ * Uploads bytes we already hold in memory. Used by the admin image upload,
+ * which proxies through the API rather than going browser-to-bucket: the
+ * media bucket has no CORS policy, so a direct PUT from the dashboard is
+ * blocked before it leaves the page.
+ */
+export const putObjectBuffer = async (
+  key: string,
+  body: Buffer,
+  contentType = "application/octet-stream"
+) => {
+  if (!config.s3.bucket) {
+    throw new Error("S3 bucket not configured");
+  }
+  const client = s3Client();
+  await client.send(
+    new PutObjectCommand({
+      Bucket: config.s3.bucket,
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+    })
+  );
+  return key;
+};
+
 export const getObjectResponse = async (key: string, bucket = config.s3.bucket) => {
   if (!bucket) {
     throw new Error("S3 bucket not configured");

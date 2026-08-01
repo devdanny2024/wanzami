@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import crypto from "crypto";
 import path from "path";
 import { prisma } from "../prisma.js";
-import { presignPutObject, presignGetObject, getObjectResponse } from "../upload/s3.js";
+import { presignPutObject, presignGetObject, getObjectResponse, putObjectBuffer } from "../upload/s3.js";
 import { config } from "../config.js";
 import { resolveCountry } from "../utils/country.js";
 import { auditLog } from "../utils/audit.js";
@@ -1452,6 +1452,41 @@ export const presignAsset = async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error("presignAsset error", err);
     return res.status(500).json({ message: "Failed to presign asset upload", error: err?.message });
+  }
+};
+
+/**
+ * Server-side image upload for the admin dashboard. The browser posts the raw
+ * bytes here instead of PUTting straight to the media bucket, which has no
+ * CORS policy allowing the dashboard origin. Small assets only — anything
+ * video-sized still goes through the multipart upload flow.
+ */
+export const uploadAsset = async (req: Request, res: Response) => {
+  const body = req.body as Buffer | undefined;
+  if (!Buffer.isBuffer(body) || body.length === 0) {
+    return res.status(400).json({ message: "Request body must be the file bytes" });
+  }
+
+  const contentType = req.get("x-asset-content-type") || req.get("content-type") || "application/octet-stream";
+  if (!contentType.startsWith("image/")) {
+    return res.status(400).json({ message: "Only image uploads are supported here" });
+  }
+
+  const kind = (req.get("x-asset-kind") || "asset").replace(/[^a-z0-9-]/gi, "") || "asset";
+  const key = `${kind}/${Date.now()}-${crypto.randomUUID()}`;
+
+  try {
+    await putObjectBuffer(key, body, contentType);
+    const publicUrl = config.mediaCdnBase
+      ? `${config.mediaCdnBase}/${key}`
+      : config.s3.bucket && config.s3.region
+        ? `https://${config.s3.bucket}.s3.${config.s3.region}.amazonaws.com/${key}`
+        : undefined;
+    void auditLog({ action: "ASSET_UPLOAD", resource: key, detail: { kind, publicUrl } });
+    return res.json({ key, publicUrl });
+  } catch (err: any) {
+    console.error("uploadAsset error", err);
+    return res.status(500).json({ message: "Failed to upload asset", error: err?.message });
   }
 };
 
