@@ -12,6 +12,7 @@ import {
   ShieldQuestion,
   Bug,
   Mail,
+  Bell,
   MessageCircle,
   Activity,
   Video,
@@ -63,6 +64,7 @@ export const navGroups: NavGroup[] = [
     label: "Community",
     items: [
       { id: "users", label: "Users", icon: Users },
+      { id: "notifications", label: "Notifications", icon: Bell },
       { id: "support", label: "Support", icon: MessageCircle },
       { id: "moderation", label: "Moderation", icon: Shield },
     ],

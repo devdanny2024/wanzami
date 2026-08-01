@@ -16,6 +16,7 @@ import emailRoutes from "./routes/emailRoutes.js";
 import supportRoutes from "./routes/supportRoutes.js";
 import liveRoutes from "./routes/liveRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
+import pushRoutes from "./routes/pushRoutes.js";
 import blogRoutes from "./routes/blogRoutes.js";
 import { recordError } from "./utils/errorLogger.js";
 import type { AuthenticatedRequest } from "./middleware/auth.js";
@@ -75,6 +76,7 @@ app.use("/api", dashboardRoutes);
 app.use("/api", supportRoutes);
 app.use("/api", liveRoutes);
 app.use("/api", notificationRoutes);
+app.use("/api", pushRoutes);
 app.use("/api", blogRoutes);
 
 const healthHandler = async (_req: express.Request, res: express.Response) => {

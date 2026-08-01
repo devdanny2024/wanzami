@@ -1,7 +1,8 @@
 import { Response } from "express";
 import { prisma } from "../prisma.js";
 import { AuthenticatedRequest } from "../middleware/auth.js";
-import { NotificationType, Prisma } from "@prisma/client";
+import { DevicePlatform, NotificationType, Prisma } from "@prisma/client";
+import { subscribeToBroadcastTopic } from "../services/pushService.js";
 
 export const getNotifications = async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user?.userId;
@@ -81,6 +82,31 @@ export const getUnreadCount = async (req: AuthenticatedRequest, res: Response) =
     return res.json({ count });
   } catch (err) {
     console.error("getUnreadCount error:", err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const registerDeviceToken = async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user?.userId;
+  if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+  const { token, platform } = req.body ?? {};
+  if (!token || !["IOS", "ANDROID"].includes(platform)) {
+    return res.status(400).json({ message: "token and platform (IOS|ANDROID) are required" });
+  }
+
+  try {
+    await prisma.deviceToken.upsert({
+      where: { token },
+      create: { token, userId, platform: platform as DevicePlatform },
+      update: { userId, platform: platform as DevicePlatform },
+    });
+    // Best-effort: a device that never gets subscribed simply misses the next
+    // broadcast rather than blocking registration for the caller.
+    subscribeToBroadcastTopic([token]).catch(() => {});
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("registerDeviceToken error:", err);
     return res.status(500).json({ message: "Internal server error" });
   }
 };

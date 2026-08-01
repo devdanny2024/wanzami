@@ -55,6 +55,7 @@ model User {
   liveChatModerationsAuthored LiveChatModeration[]   @relation("LiveChatModerationBy")
   notifications               UserNotification[]
   blogPosts                   BlogPost[]
+  deviceTokens                DeviceToken[]
 }
 
 model Session {
@@ -720,6 +721,33 @@ model UserNotification {
 
   @@index([userId, isRead, createdAt])
   @@index([userId, createdAt])
+}
+
+enum DevicePlatform {
+  IOS
+  ANDROID
+}
+
+model DeviceToken {
+  id        BigInt         @id @default(autoincrement())
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    BigInt
+  token     String         @unique
+  platform  DevicePlatform
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@index([userId])
+}
+
+model PushBroadcast {
+  id             BigInt   @id @default(autoincrement())
+  title          String
+  body           String
+  imageUrl       String?
+  sentBy         BigInt?
+  recipientCount Int      @default(0)
+  createdAt      DateTime @default(now())
 }
 
 enum BlogPostStatus {

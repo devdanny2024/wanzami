@@ -17,6 +17,7 @@ import { UploadDock } from './components/UploadDock';
 import { UploadQueueProvider, useUploadQueue } from './context/UploadQueueProvider';
 import { Logs } from './components/Logs';
 import { EmailService } from './components/EmailService';
+import { PushNotifications } from './components/PushNotifications';
 import { SupportTickets } from './components/SupportTickets';
 import { ProcessManagement } from './components/ProcessManagement';
 import { CreatorHub } from './components/CreatorHub';
@@ -196,6 +197,8 @@ function AppContent() {
         return <Logs />;
       case 'email':
         return <EmailService />;
+      case 'notifications':
+        return <PushNotifications />;
       case 'support':
         return <SupportTickets />;
       case 'processes':

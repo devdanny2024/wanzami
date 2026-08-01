@@ -51,4 +51,11 @@ class NotificationRepository {
       body: '',
     );
   }
+
+  Future<void> registerDeviceToken(String token, String platform) async {
+    await apiClient.post(
+      '${env.apiBaseUrl}/notifications/device-token',
+      body: jsonEncode({'token': token, 'platform': platform}),
+    );
+  }
 }

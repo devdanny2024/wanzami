@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 
 import '../core/env/app_env.dart';
 import '../core/network/api_client.dart';
+import '../core/push/push_service.dart';
 import '../core/theme/app_theme.dart';
 import '../features/auth/data/auth_repository.dart';
 import '../features/auth/data/token_store.dart';
@@ -37,6 +38,7 @@ class _WanzamiAppState extends State<WanzamiApp> with WidgetsBindingObserver {
   late final ContentRepository _contentRepository;
   late final ProfileRepository _profileRepository;
   late final NotificationRepository _notificationRepository;
+  late final PushService _pushService;
 
   // CI-only: boots straight into guest browse for App Store screenshot capture.
   // Off by default; only set via --dart-define=CS_SCREENSHOT_MODE=true.
@@ -66,6 +68,8 @@ class _WanzamiAppState extends State<WanzamiApp> with WidgetsBindingObserver {
     _contentRepository = ContentRepository(apiClient: _apiClient, env: widget.env);
     _profileRepository = ProfileRepository(apiClient: _apiClient, env: widget.env);
     _notificationRepository = NotificationRepository(apiClient: _apiClient, env: widget.env);
+    _pushService = PushService(notificationRepository: _notificationRepository);
+    unawaited(_pushService.init());
 
     _authController.addListener(_handleAuthStateChange);
 
@@ -93,6 +97,8 @@ class _WanzamiAppState extends State<WanzamiApp> with WidgetsBindingObserver {
     if (mounted && _browsingAsGuest) {
       setState(() => _browsingAsGuest = false);
     }
+
+    unawaited(_pushService.registerDevice());
 
     if (_checkingOnboarding || _activeProfile != null) return;
 
