@@ -46,7 +46,12 @@ android {
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        // Pinned explicitly rather than left on flutter.targetSdkVersion: Google
+        // rejected an update because the build resolved to API 35 despite
+        // compileSdk already being 36, since CI's Flutter version predates 36
+        // becoming that property's default. Pinning removes the dependency on
+        // whichever Flutter version happens to build it.
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
