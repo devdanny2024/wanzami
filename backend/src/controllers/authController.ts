@@ -604,6 +604,36 @@ export const me = async (req: AuthenticatedRequest, res: Response) => {
   });
 };
 
+// Apple 5.1.1(v) / account deletion: the authenticated user removes their own
+// account. No password re-entry — Sign in with Apple/Google users never see
+// their password (see appleAuth.ts / googleAuth.ts), so requiring one would
+// make deletion impossible for them. The client shows a confirmation dialog;
+// this endpoint trusts the authenticated request itself. A plain user delete
+// is sufficient: every FK from other tables to User already has the correct
+// ON DELETE CASCADE / SET NULL behavior in the schema.
+export const deleteOwnAccount = async (req: AuthenticatedRequest, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  const userId = req.user.userId;
+
+  // Logged before deletion since the email is gone afterward and support may
+  // need to confirm a deletion happened.
+  console.log(`Account deletion: userId=${userId.toString()} email=${req.user.email}`);
+
+  try {
+    await prisma.user.delete({ where: { id: userId } });
+  } catch (err: any) {
+    if (err?.code === "P2025") {
+      // Already gone (e.g. double-submit) — the desired end state is reached.
+      return res.json({ message: "Account deleted" });
+    }
+    throw err;
+  }
+
+  return res.json({ message: "Account deleted" });
+};
+
 export const refresh = async (req: Request, res: Response) => {
   const parsed = refreshSchema.safeParse(req.body);
   if (!parsed.success) {

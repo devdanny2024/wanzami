@@ -28,6 +28,7 @@ class HomeShellPage extends StatefulWidget {
     this.initialTabIndex = 0,
     this.isGuest = false,
     this.onRequireLogin,
+    this.onDeleteAccount,
   });
 
   final VoidCallback onLogout;
@@ -38,6 +39,10 @@ class HomeShellPage extends StatefulWidget {
   final int initialTabIndex;
   final bool isGuest;
   final VoidCallback? onRequireLogin;
+
+  /// Only ever invoked from the Profile tab, which only exists for signed-in
+  /// (non-guest) sessions — so this is always non-null on that path.
+  final Future<void> Function()? onDeleteAccount;
 
   @override
   State<HomeShellPage> createState() => _HomeShellPageState();
@@ -211,7 +216,8 @@ class _HomeShellPageState extends State<HomeShellPage> {
         ),
         ProfilePage(
             onLogout: widget.onLogout,
-            profileRepository: widget.profileRepository),
+            profileRepository: widget.profileRepository,
+            onDeleteAccount: widget.onDeleteAccount!),
       ],
     ];
 

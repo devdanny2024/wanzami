@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { AlertTriangle } from "lucide-react";
 import { Loader } from "@/components/ui/loader";
 
 type Profile = {
@@ -48,6 +49,10 @@ export default function SettingsPage() {
   const [defaultQuality, setDefaultQuality] = useState<"auto" | "hd" | "sd">("auto");
   const [emailUpdates, setEmailUpdates] = useState(true);
   const [productNews, setProductNews] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const setActiveProfileFromProfile = (profile: Profile) => {
     setActiveProfileId(profile.id);
@@ -124,6 +129,16 @@ export default function SettingsPage() {
     }
   }, [showProfileModal]);
 
+  useEffect(() => {
+    if (showDeleteModal) {
+      const original = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = original;
+      };
+    }
+  }, [showDeleteModal]);
+
     const createProfile = async () => {
     if (profiles.length >= 4) {
       toast.error("You can only have up to 4 profiles.");
@@ -179,6 +194,33 @@ export default function SettingsPage() {
       toast.success("Preferences saved");
     } catch (err: any) {
       toast.error(err.message ?? "Unable to save preferences");
+    }
+  };
+
+  const deleteAccount = async () => {
+    if (deleteConfirmText !== "DELETE") return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await fetcher("/api/user/account", { method: "DELETE" });
+      // Success: clear local auth state exactly like the app's logout flow, then leave.
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+        localStorage.removeItem("deviceId");
+        localStorage.removeItem("activeProfileId");
+        localStorage.removeItem("activeProfileName");
+        localStorage.removeItem("activeProfileAvatar");
+      }
+      toast.success("Your account has been deleted");
+      setShowDeleteModal(false);
+      router.replace("/login");
+    } catch (err: any) {
+      const msg = err.message ?? "Unable to delete your account. Please try again.";
+      setDeleteError(msg);
+      toast.error(msg);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -433,6 +475,37 @@ export default function SettingsPage() {
                 </div>
               </section>
 
+              {/* Danger zone */}
+              <section
+                className="bg-cs-panel p-5 sm:p-6 space-y-4"
+                style={{ border: "2.5px solid var(--color-cs-rust)", boxShadow: "4px 4px 0 var(--color-cs-rust)" }}
+              >
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-cs-rust shrink-0" />
+                  <h2 className="font-heading text-xl sm:text-2xl tracking-wide uppercase text-cs-rust">Danger zone</h2>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 border-t border-cs-line">
+                  <div className="space-y-1 max-w-md">
+                    <p className="text-sm text-cs-ink font-semibold">Delete account</p>
+                    <p className="text-xs text-cs-muted">
+                      Permanently deletes your account, every profile, your entire watch history, and your purchase
+                      records. This cannot be undone and there is no recovery period.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDeleteConfirmText("");
+                      setDeleteError(null);
+                      setShowDeleteModal(true);
+                    }}
+                    className="min-h-10 px-5 py-2.5 bg-cs-rust text-cs-paper font-mono text-sm font-bold uppercase tracking-[0.07em] cs-shadow-sm transition-transform hover:-translate-y-0.5 shrink-0 self-start sm:self-auto"
+                  >
+                    Delete account
+                  </button>
+                </div>
+              </section>
+
           </div>
         )}
       </div>
@@ -505,6 +578,68 @@ export default function SettingsPage() {
                   {profiles.length >= 4 ? "Profile limit reached" : "Add profile"}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center px-4">
+          <div
+            className="w-full max-w-md bg-cs-panel p-5 sm:p-6 text-cs-ink"
+            style={{ border: "2.5px solid var(--color-cs-rust)", boxShadow: "6px 6px 0 var(--color-cs-rust)" }}
+          >
+            <div className="flex items-start gap-3 mb-4">
+              <AlertTriangle className="w-6 h-6 text-cs-rust shrink-0 mt-1" />
+              <div>
+                <h3 className="font-heading text-2xl sm:text-3xl tracking-wide uppercase text-cs-rust">Delete account</h3>
+                <p className="text-cs-muted text-sm mt-1">
+                  This permanently deletes your Wanzami account. It removes all of your profiles, your entire watch
+                  history, your saved list, and your purchase records. This action cannot be undone, there is no
+                  grace period and no way to recover the data afterward.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2 mb-4">
+              <label className="block font-mono text-[11px] font-bold uppercase tracking-[0.08em] text-cs-ink">
+                Type DELETE to confirm
+              </label>
+              <input
+                autoFocus
+                className="w-full bg-cs-paper cs-border-thin px-3 py-2.5 text-sm text-cs-ink focus:outline-none focus:border-cs-rust focus:ring-1 focus:ring-cs-rust transition-colors"
+                placeholder="DELETE"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                disabled={deleting}
+              />
+            </div>
+
+            {deleteError && (
+              <p className="text-cs-rust text-sm font-mono mb-4">{deleteError}</p>
+            )}
+
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deleting}
+                className="min-h-10 px-4 py-2.5 cs-border-thin text-cs-muted hover:text-cs-ink hover:bg-cs-paper font-mono text-xs font-bold uppercase tracking-[0.08em] transition-colors disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={deleteAccount}
+                disabled={deleteConfirmText !== "DELETE" || deleting}
+                className="min-h-10 px-5 py-2.5 bg-cs-rust text-cs-paper font-mono text-xs font-bold uppercase tracking-[0.08em] cs-shadow-sm disabled:opacity-60 transition-transform hover:-translate-y-0.5 flex items-center gap-2"
+              >
+                {deleting ? (
+                  <>
+                    <Loader size={14} color="#f7f1e3" />
+                    Deleting…
+                  </>
+                ) : (
+                  "Permanently delete"
+                )}
+              </button>
             </div>
           </div>
         </div>

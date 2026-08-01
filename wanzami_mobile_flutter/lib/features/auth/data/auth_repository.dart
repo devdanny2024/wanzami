@@ -232,6 +232,28 @@ class AuthRepository {
 
   Future<bool> hasValidSession() => tryRefreshSession();
 
+  /// Permanently deletes the signed-in user's account. Hard delete, no
+  /// password re-confirmation (matches product decision — Apple/Google
+  /// sign-in users have a password they never see). Only clears the local
+  /// session on a confirmed success; a failed request leaves tokens intact
+  /// so the caller stays signed in and can show a real error.
+  Future<void> deleteAccount() async {
+    final uri = Uri.parse('${env.apiBaseUrl}/user/account');
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    final access = tokenStore.accessToken;
+    if (access != null && access.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $access';
+    }
+
+    final response = await client.delete(uri, headers: headers);
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(_extractError(response, fallback: 'Failed to delete account'));
+    }
+
+    await tokenStore.clear();
+  }
+
   Future<void> logout() async {
     final refreshToken = await tokenStore.getRefreshToken();
     if (refreshToken != null && refreshToken.isNotEmpty) {

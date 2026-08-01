@@ -7,10 +7,19 @@ import '../../profile/data/profile_repository.dart';
 /// Profile — "cast & crew": your account as a laminated crew card, profiles
 /// as the who's-watching list, and sign-out as the wrap call.
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key, required this.onLogout, required this.profileRepository});
+  const ProfilePage({
+    super.key,
+    required this.onLogout,
+    required this.profileRepository,
+    required this.onDeleteAccount,
+  });
 
   final VoidCallback onLogout;
   final ProfileRepository profileRepository;
+
+  /// Calls the DELETE /user/account endpoint and clears the local session
+  /// on success. Throws on failure — this widget owns showing that error.
+  final Future<void> Function() onDeleteAccount;
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -18,6 +27,7 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   bool _loading = true;
+  bool _deleting = false;
   Map<String, dynamic> _me = const {};
   List<Map<String, dynamic>> _profiles = const [];
 
@@ -106,6 +116,54 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _deleteProfile(Map<String, dynamic> p) async {
     await widget.profileRepository.deleteProfile((p['id']).toString());
     await _load();
+  }
+
+  Future<bool> _confirmDeleteAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: CsTokens.paper,
+        shape: Border.fromBorderSide(CsTokens.side(CsTokens.borderWidthHeavy)),
+        title: Text('DELETE ACCOUNT', style: CsTokens.display(size: 22, color: CsTokens.rust)),
+        content: const Text(
+          'This permanently deletes your Wanzami account. All profiles, '
+          'watch history, and purchases are removed and cannot be recovered. '
+          'This action cannot be undone.',
+          style: TextStyle(color: CsTokens.inkSoft, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('CANCEL', style: CsTokens.mono(size: 12, color: CsTokens.mutedInk)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('DELETE PERMANENTLY',
+                style: CsTokens.mono(size: 12, color: CsTokens.rust, weight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
+  }
+
+  Future<void> _handleDeleteAccount() async {
+    final confirmed = await _confirmDeleteAccount();
+    if (!confirmed || _deleting) return;
+
+    setState(() => _deleting = true);
+    try {
+      await widget.onDeleteAccount();
+      // On success the app-level auth listener routes back to login; no
+      // local navigation needed here.
+    } catch (e) {
+      if (mounted) {
+        setState(() => _deleting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not delete account: $e')),
+        );
+      }
+    }
   }
 
   @override
@@ -259,6 +317,64 @@ class _ProfilePageState extends State<ProfilePage> {
                                   ),
                                 ),
                               ),
+                            ),
+                          ),
+                          const SizedBox(height: 34),
+
+                          // Danger zone — kept visually separate from the
+                          // sign-out action above so it isn't tapped by accident.
+                          const CsSlug('Danger zone', color: CsTokens.rust),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: CsTokens.paper,
+                              border: Border.all(color: CsTokens.rust, width: 2.5),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Deleting your account is permanent. All profiles, '
+                                  'watch history, and purchases will be removed and '
+                                  'cannot be recovered.',
+                                  style: TextStyle(color: CsTokens.inkSoft, height: 1.4, fontSize: 13),
+                                ),
+                                const SizedBox(height: 14),
+                                Semantics(
+                                  button: true,
+                                  label: 'Delete account',
+                                  child: GestureDetector(
+                                    onTap: _deleting ? null : _handleDeleteAccount,
+                                    child: Container(
+                                      constraints: const BoxConstraints(
+                                          minHeight: CsTokens.touchTarget),
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        color: _deleting ? CsTokens.panel : CsTokens.rust,
+                                      ),
+                                      child: _deleting
+                                          ? const SizedBox(
+                                              width: 20,
+                                              height: 20,
+                                              child: CircularProgressIndicator(
+                                                color: CsTokens.rust,
+                                                strokeWidth: 2.5,
+                                              ),
+                                            )
+                                          : const Text(
+                                              'DELETE ACCOUNT',
+                                              style: TextStyle(
+                                                color: CsTokens.paper,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w800,
+                                                letterSpacing: 1.0,
+                                              ),
+                                            ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                           const SizedBox(height: 26),

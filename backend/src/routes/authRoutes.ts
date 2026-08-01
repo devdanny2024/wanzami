@@ -14,6 +14,7 @@ import {
   verifyEmail,
   resendVerification,
   updateDeviceLabel,
+  deleteOwnAccount,
   inviteAdmin,
   listInvites,
   revokeInvite,
@@ -141,5 +142,8 @@ router.post("/user/devices/:deviceId/profile", requireAuth, setDeviceProfile);
 // Billing metadata (Paystack / Flutterwave references)
 router.get("/user/billing", requireAuth, getBilling);
 router.put("/user/billing", requireAuth, upsertBilling);
+
+// Account deletion (Apple 5.1.1(v) compliance — hard delete, no password re-entry)
+router.delete("/user/account", requireAuth, deleteOwnAccount);
 
 export default router;

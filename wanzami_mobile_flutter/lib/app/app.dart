@@ -175,6 +175,10 @@ class _WanzamiAppState extends State<WanzamiApp> with WidgetsBindingObserver {
                   setState(() => _activeProfile = null);
                   _authController.logout();
                 },
+                onDeleteAccount: () async {
+                  await _authController.deleteAccount();
+                  if (mounted) setState(() => _activeProfile = null);
+                },
                 contentRepository: _contentRepository,
                 profileRepository: _profileRepository,
                 notificationRepository: _notificationRepository,

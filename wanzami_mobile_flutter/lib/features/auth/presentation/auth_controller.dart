@@ -170,4 +170,13 @@ class AuthController extends ChangeNotifier {
     status = AuthStatus.unauthenticated;
     notifyListeners();
   }
+
+  /// Permanently deletes the signed-in user's account. Rethrows on failure
+  /// so the caller can surface the error — status only flips to
+  /// unauthenticated once the delete actually succeeds.
+  Future<void> deleteAccount() async {
+    await _authRepository.deleteAccount();
+    status = AuthStatus.unauthenticated;
+    notifyListeners();
+  }
 }
