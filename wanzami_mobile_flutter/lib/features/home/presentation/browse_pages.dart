@@ -5,6 +5,7 @@ import 'dart:io' show Platform;
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import 'package:video_player/video_player.dart';
 import 'package:volume_controller/volume_controller.dart';
@@ -19,6 +20,7 @@ import '../../../core/theme/section_image_reveal.dart';
 import '../../../core/widgets/wanzami_kit.dart';
 import '../../content/data/content_models.dart';
 import '../../content/data/content_repository.dart';
+import '../../content/data/ppv_iap_tiers.dart';
 
 class BrowsePage extends StatefulWidget {
   const BrowsePage(
@@ -659,6 +661,11 @@ class _DetailPageState extends State<DetailPage> {
   String? _pendingFlutterwaveTxRef;
   String? _resumeEpisodeId;
 
+  StreamSubscription<List<PurchaseDetails>>? _iapSub;
+  ProductDetails? _iapProduct;
+  String? _pendingIapIntentId;
+  bool _iapBusy = false;
+
   void _setPaymentStatus(String? status) {
     if (!mounted) return;
     setState(() => _paymentStatus = status);
@@ -832,13 +839,140 @@ class _DetailPageState extends State<DetailPage> {
     super.initState();
     _loadAccess();
     _loadSeriesResumeEpisode();
+    if (Platform.isIOS) {
+      _iapSub = InAppPurchase.instance.purchaseStream.listen(
+        _onPurchaseUpdates,
+        onError: (_) {},
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _iapSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadAccess() async {
     try {
       final access = await widget.repository.fetchPpvAccess(widget.item.id);
       if (mounted) setState(() => _ppvAccess = access);
+      if (Platform.isIOS) await _loadIapProduct();
     } catch (_) {}
+  }
+
+  Future<void> _loadIapProduct() async {
+    final price = _ppvAccess?.priceNaira ?? widget.item.ppvPriceNaira;
+    final productId = productIdForPriceNaira(price);
+    if (productId == null) return;
+    if (!await InAppPurchase.instance.isAvailable()) return;
+    final response =
+        await InAppPurchase.instance.queryProductDetails({productId});
+    if (!mounted || response.productDetails.isEmpty) return;
+    setState(() => _iapProduct = response.productDetails.first);
+  }
+
+  void _onPurchaseUpdates(List<PurchaseDetails> purchases) {
+    for (final purchase in purchases) {
+      _handlePurchaseUpdate(purchase);
+    }
+  }
+
+  Future<void> _handlePurchaseUpdate(PurchaseDetails purchase) async {
+    final intentId = _pendingIapIntentId;
+    switch (purchase.status) {
+      case PurchaseStatus.pending:
+        _setPaymentStatus('Processing purchase…');
+        break;
+      case PurchaseStatus.error:
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text('Purchase failed: ${purchase.error?.message}')));
+        }
+        if (mounted) setState(() => _iapBusy = false);
+        _setPaymentStatus(null);
+        if (purchase.pendingCompletePurchase) {
+          await InAppPurchase.instance.completePurchase(purchase);
+        }
+        break;
+      case PurchaseStatus.canceled:
+        if (mounted) setState(() => _iapBusy = false);
+        _setPaymentStatus(null);
+        if (purchase.pendingCompletePurchase) {
+          await InAppPurchase.instance.completePurchase(purchase);
+        }
+        break;
+      case PurchaseStatus.purchased:
+      case PurchaseStatus.restored:
+        if (intentId == null) {
+          // Not a purchase this screen started (e.g. a leftover unfinished
+          // transaction from a previous session); just finish it quietly.
+          if (purchase.pendingCompletePurchase) {
+            await InAppPurchase.instance.completePurchase(purchase);
+          }
+          return;
+        }
+        try {
+          _setPaymentStatus('Verifying purchase with Apple…');
+          await widget.repository.verifyIapPurchase(
+            intentId: intentId,
+            transactionId: purchase.purchaseID ?? '',
+          );
+          await _loadAccess();
+          if (purchase.pendingCompletePurchase) {
+            await InAppPurchase.instance.completePurchase(purchase);
+          }
+          _pendingIapIntentId = null;
+          if (mounted && (_ppvAccess?.hasAccess == true)) {
+            _setPaymentStatus('Access granted. Starting playback…');
+            await _startPlayback(pollForEntitlement: true);
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Could not verify purchase: $e')));
+          }
+        } finally {
+          if (mounted) setState(() => _iapBusy = false);
+          _setPaymentStatus(null);
+        }
+        break;
+    }
+  }
+
+  Future<void> _startIapPurchase() async {
+    if (widget.isGuest) {
+      _promptLogin('Sign in to buy this title.');
+      return;
+    }
+    if (_iapProduct == null || _iapBusy) return;
+    setState(() {
+      _iapBusy = true;
+      _paymentStatus = 'Starting purchase…';
+    });
+    try {
+      final intent = await widget.repository.createIapIntent(widget.item.id);
+      final intentId = intent['intentId']?.toString();
+      final productId = intent['productId']?.toString();
+      if (intentId == null || productId != _iapProduct!.id) {
+        throw Exception('Purchase could not be started for this title');
+      }
+      _pendingIapIntentId = intentId;
+      final purchaseParam = PurchaseParam(
+        productDetails: _iapProduct!,
+        applicationUserName: intentId,
+      );
+      await InAppPurchase.instance.buyConsumable(purchaseParam: purchaseParam);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Purchase failed: $e')));
+        setState(() {
+          _iapBusy = false;
+          _paymentStatus = null;
+        });
+      }
+    }
   }
 
   Future<void> _finalizeFlutterwavePayment(
@@ -1070,11 +1204,15 @@ class _DetailPageState extends State<DetailPage> {
                     )
                   else if (Platform.isIOS)
                     CsTicketButton(
-                      slug: 'Purchase unavailable',
-                      title: 'Not available in app',
-                      icon: Icons.lock_outline,
-                      enabled: false,
-                      onTap: () {},
+                      slug: 'Admit one · 30 days',
+                      title: _iapBusy
+                          ? 'Processing…'
+                          : (_iapProduct != null
+                              ? 'Buy ticket · ${_iapProduct!.price}'
+                              : 'Buy ticket'),
+                      icon: Icons.local_activity_outlined,
+                      enabled: !_iapBusy && _iapProduct != null,
+                      onTap: _startIapPurchase,
                     )
                   else
                     CsTicketButton(
@@ -1088,7 +1226,7 @@ class _DetailPageState extends State<DetailPage> {
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        if (_paying)
+                        if (_paying || _iapBusy)
                           const SizedBox(
                             width: 14,
                             height: 14,
@@ -1097,7 +1235,7 @@ class _DetailPageState extends State<DetailPage> {
                               color: CsTokens.rust,
                             ),
                           ),
-                        if (_paying) const SizedBox(width: 8),
+                        if (_paying || _iapBusy) const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             _paymentStatus!,

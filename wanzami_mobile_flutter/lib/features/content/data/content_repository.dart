@@ -381,6 +381,35 @@ class ContentRepository {
         'Failed to verify Flutterwave (${lastStatus ?? 'no response'})');
   }
 
+  /// Starts an Apple In-App Purchase for a PPV title: creates a PENDING
+  /// purchase row server-side and returns the StoreKit product id to buy.
+  /// Mirrors initiatePaystackPurchase's shape.
+  Future<Map<String, dynamic>> createIapIntent(String titleId) async {
+    final response = await apiClient.post(
+      '${env.apiBaseUrl}/ppv/iap/intent',
+      body: jsonEncode({'titleId': titleId}),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Failed to start purchase (${response.statusCode})');
+    }
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  /// Verifies a completed Apple purchase against the App Store Server API.
+  Future<Map<String, dynamic>> verifyIapPurchase({
+    required String intentId,
+    required String transactionId,
+  }) async {
+    final response = await apiClient.post(
+      '${env.apiBaseUrl}/ppv/iap/verify',
+      body: jsonEncode({'intentId': intentId, 'transactionId': transactionId}),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Failed to verify purchase (${response.statusCode})');
+    }
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
   Future<List<MediaItem>> search(String query) async {
     final q = query.trim();
     if (q.isEmpty) return fetchTitles();
