@@ -22,3 +22,20 @@
 		header_up X-Forwarded-For {remote_host}
 	}
 }
+
+# Tagzy label-designer API (runs natively on the host under PM2, port 8020).
+# 172.18.0.1 is the docker bridge gateway = the host as seen from this container.
+tagzy.167-233-26-153.sslip.io {
+	encode zstd gzip
+	reverse_proxy 172.18.0.1:8020 {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-For {remote_host}
+	}
+}
+
+# Sidequest engine (native PM2 on the host, port 8787), fronted with TLS so the
+# ENGINE_TOKEN stops crossing the internet in cleartext. Added 2026-08-05.
+sidequest.wanzami.tv {
+	encode zstd gzip
+	reverse_proxy 172.18.0.1:8787
+}
