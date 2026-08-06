@@ -313,6 +313,14 @@ export function EmailService() {
   const [batchSize, setBatchSize] = useState<number>(50);
   const [startIndex, setStartIndex] = useState<number>(0);
   const [loadingAudience, setLoadingAudience] = useState(false);
+  const [recentPurchaseDays, setRecentPurchaseDays] = useState<number>(10);
+  const [sendingRecentPurchases, setSendingRecentPurchases] = useState(false);
+  const [lastRecentPurchaseResult, setLastRecentPurchaseResult] = useState<string | null>(null);
+  const [sendingPendingReminders, setSendingPendingReminders] = useState(false);
+  const [lastPendingReminderResult, setLastPendingReminderResult] = useState<string | null>(null);
+  const [unverifiedDays, setUnverifiedDays] = useState<string>("");
+  const [sendingUnverifiedReminders, setSendingUnverifiedReminders] = useState(false);
+  const [lastUnverifiedResult, setLastUnverifiedResult] = useState<string | null>(null);
   const token = useMemo(() => (typeof window !== "undefined" ? localStorage.getItem("accessToken") : null), []);
 
   const validTestEmails = useMemo(() => parseEmailList(testEmailsInput), [testEmailsInput]);
@@ -504,6 +512,77 @@ export function EmailService() {
       toast.error(err?.message ?? "Failed to load registered users");
     } finally {
       setLoadingAudience(false);
+    }
+  };
+
+  // These three send personalized, individual emails server-side (each
+  // recipient's own movie/days-left/verify link) rather than adding to the
+  // audience list above, which sends one identical template to everyone.
+  const sendRecentPurchaseEmails = async () => {
+    setSendingRecentPurchases(true);
+    try {
+      const res = await fetch(`/api/admin/email/ppv/recent-purchasers?days=${recentPurchaseDays}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data?.message ?? "Failed to email recent purchasers");
+        return;
+      }
+      const summary = `${data.sent} sent, ${data.skipped} skipped, last ${data.days} days`;
+      setLastRecentPurchaseResult(summary);
+      toast.success(`Emailed ${data.sent} recent purchaser${data.sent === 1 ? "" : "s"}.`);
+    } catch (err: any) {
+      toast.error(err?.message ?? "Failed to email recent purchasers");
+    } finally {
+      setSendingRecentPurchases(false);
+    }
+  };
+
+  const sendPendingPurchaseReminders = async () => {
+    setSendingPendingReminders(true);
+    try {
+      const res = await fetch("/api/admin/email/ppv/pending-reminders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data?.message ?? "Failed to send pending-purchase reminders");
+        return;
+      }
+      const summary = `${data.sent} sent to ${data.uniqueUsers} people, ${data.skipped} skipped`;
+      setLastPendingReminderResult(summary);
+      toast.success(`Reminded ${data.sent} unfinished purchase${data.sent === 1 ? "" : "s"}.`);
+    } catch (err: any) {
+      toast.error(err?.message ?? "Failed to send pending-purchase reminders");
+    } finally {
+      setSendingPendingReminders(false);
+    }
+  };
+
+  const sendUnverifiedAccountReminders = async () => {
+    setSendingUnverifiedReminders(true);
+    try {
+      const days = unverifiedDays.trim();
+      const path = `/api/admin/email/account/unverified-reminders${days ? `?days=${days}` : ""}`;
+      const res = await fetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data?.message ?? "Failed to send verification reminders");
+        return;
+      }
+      const summary = `${data.sent} sent${data.days ? `, signed up in last ${data.days} days` : ", all-time"}`;
+      setLastUnverifiedResult(summary);
+      toast.success(`Reminded ${data.sent} unverified account${data.sent === 1 ? "" : "s"}.`);
+    } catch (err: any) {
+      toast.error(err?.message ?? "Failed to send verification reminders");
+    } finally {
+      setSendingUnverifiedReminders(false);
     }
   };
 
@@ -922,6 +1001,111 @@ export function EmailService() {
             </div>
           </div>
         </CsBox>
+      </div>
+
+      <div>
+        <CsPageHeader title="PPV lifecycle emails" slug="Personalized, one email per person · sent immediately, not queued as a campaign" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
+          <CsBox className="p-5">
+            <div className="flex items-center justify-between">
+              <CsSlug>Recent purchasers</CsSlug>
+              <CsTag label="Purchase receipt" tone="neutral" />
+            </div>
+            <p className="text-sm mt-2" style={{ color: 'var(--cs-muted)' }}>
+              Resends the branded purchase-confirmation email (their movie, days of access, other titles) to everyone who bought in the last N days.
+            </p>
+            <div className="mt-4 space-y-3">
+              <div className="space-y-1">
+                <CsSlug>Days back</CsSlug>
+                <input
+                  type="number"
+                  min={1}
+                  max={90}
+                  value={recentPurchaseDays}
+                  onChange={(e) => setRecentPurchaseDays(Math.max(1, Number(e.target.value) || 1))}
+                  style={fieldStyle}
+                />
+              </div>
+              <CsButton
+                variant="rust"
+                onClick={() => void sendRecentPurchaseEmails()}
+                disabled={sendingRecentPurchases}
+                className="w-full"
+              >
+                <span className="inline-flex items-center gap-2 justify-center">
+                  <MailCheck className="w-3.5 h-3.5" />
+                  {sendingRecentPurchases ? "Sending..." : "Email recent purchasers"}
+                </span>
+              </CsButton>
+              {lastRecentPurchaseResult && (
+                <p className="text-xs" style={{ color: 'var(--cs-muted)' }}>{lastRecentPurchaseResult}</p>
+              )}
+            </div>
+          </CsBox>
+
+          <CsBox className="p-5">
+            <div className="flex items-center justify-between">
+              <CsSlug>Unfinished checkouts</CsSlug>
+              <CsTag label="1hr+ pending" tone="neutral" />
+            </div>
+            <p className="text-sm mt-2" style={{ color: 'var(--cs-muted)' }}>
+              Nudges anyone with a purchase stuck PENDING for over an hour, naming the exact movie they started buying.
+            </p>
+            <div className="mt-4 space-y-3">
+              <CsButton
+                variant="rust"
+                onClick={() => void sendPendingPurchaseReminders()}
+                disabled={sendingPendingReminders}
+                className="w-full"
+              >
+                <span className="inline-flex items-center gap-2 justify-center">
+                  <Send className="w-3.5 h-3.5" />
+                  {sendingPendingReminders ? "Sending..." : "Remind pending purchases"}
+                </span>
+              </CsButton>
+              {lastPendingReminderResult && (
+                <p className="text-xs" style={{ color: 'var(--cs-muted)' }}>{lastPendingReminderResult}</p>
+              )}
+            </div>
+          </CsBox>
+
+          <CsBox className="p-5">
+            <div className="flex items-center justify-between">
+              <CsSlug>Unverified accounts</CsSlug>
+              <CsTag label="Never confirmed email" tone="neutral" />
+            </div>
+            <p className="text-sm mt-2" style={{ color: 'var(--cs-muted)' }}>
+              Resends a fresh verify-email link to accounts that signed up but never confirmed. Leave days blank for all-time.
+            </p>
+            <div className="mt-4 space-y-3">
+              <div className="space-y-1">
+                <CsSlug>Days back (optional)</CsSlug>
+                <input
+                  type="number"
+                  min={1}
+                  placeholder="All time"
+                  value={unverifiedDays}
+                  onChange={(e) => setUnverifiedDays(e.target.value)}
+                  style={fieldStyle}
+                />
+              </div>
+              <CsButton
+                variant="outline"
+                onClick={() => void sendUnverifiedAccountReminders()}
+                disabled={sendingUnverifiedReminders}
+                className="w-full"
+              >
+                <span className="inline-flex items-center gap-2 justify-center">
+                  <Inbox className="w-3.5 h-3.5" />
+                  {sendingUnverifiedReminders ? "Sending..." : "Remind unverified accounts"}
+                </span>
+              </CsButton>
+              {lastUnverifiedResult && (
+                <p className="text-xs" style={{ color: 'var(--cs-muted)' }}>{lastUnverifiedResult}</p>
+              )}
+            </div>
+          </CsBox>
+        </div>
       </div>
     </div>
   );

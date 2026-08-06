@@ -5,7 +5,10 @@ import { sendEmail } from "../utils/mailer.js";
 import { enqueueEmailJob, emailQueue } from "../queues/emailQueue.js";
 import { prisma } from "../prisma.js";
 import { buildPlatformRefreshEmailTemplate } from "../templates/platformRefreshEmailTemplate.js";
+import { buildPpvPendingReminderEmail } from "../templates/ppvPendingReminderTemplate.js";
+import { buildAccountVerificationReminderEmail } from "../templates/accountVerificationReminderTemplate.js";
 import { hashPassword } from "../utils/password.js";
+import { sendPpvThankYou } from "./ppvController.js";
 
 const RecipientSchema = z.object({
   email: z.string().email(),
@@ -418,4 +421,121 @@ export const retryFailedBatches = async (_req: Request, res: Response) => {
     }
   }
   return res.json({ retried });
+};
+
+const DaysWindowQuerySchema = z.object({
+  days: z.coerce.number().int().min(1).max(90).optional(),
+});
+
+// Sent individually rather than through the generic campaign queue: each
+// email carries that purchase's own movie, price, and days-remaining, so a
+// single shared HTML blast can't produce it.
+export const sendRecentPurchaseEmails = async (req: Request, res: Response) => {
+  const parsed = DaysWindowQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    return res.status(400).json({ message: parsed.error.issues[0]?.message ?? "Invalid days" });
+  }
+  const days = parsed.data.days ?? 10;
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+  const purchases = await prisma.ppvPurchase.findMany({
+    where: { status: "SUCCESS", createdAt: { gte: since } },
+    include: { user: true, title: true },
+    orderBy: { createdAt: "desc" },
+  });
+
+  let sent = 0;
+  let skipped = 0;
+  for (const purchase of purchases) {
+    if (!purchase.user?.email || !purchase.title || !purchase.accessExpiresAt) {
+      skipped += 1;
+      continue;
+    }
+    await sendPpvThankYou({
+      userEmail: purchase.user.email,
+      userName: purchase.user.name,
+      title: purchase.title,
+      accessExpiresAt: purchase.accessExpiresAt,
+    });
+    sent += 1;
+  }
+
+  return res.json({ sent, skipped, total: purchases.length, days });
+};
+
+// Abandoned-checkout nudge. A one-hour floor keeps this from emailing
+// someone who is mid-checkout right now.
+const PENDING_STALE_MS = 60 * 60 * 1000;
+
+export const sendPendingPurchaseReminders = async (_req: Request, res: Response) => {
+  const staleBefore = new Date(Date.now() - PENDING_STALE_MS);
+
+  const pending = await prisma.ppvPurchase.findMany({
+    where: { status: "PENDING", createdAt: { lte: staleBefore } },
+    include: { user: true, title: true },
+    orderBy: { createdAt: "desc" },
+  });
+
+  // A user can have more than one pending row (retries); remind them once,
+  // using their most recent pending title.
+  const seenUsers = new Set<string>();
+  let sent = 0;
+  let skipped = 0;
+  for (const purchase of pending) {
+    const userId = purchase.userId.toString();
+    if (seenUsers.has(userId)) continue;
+    seenUsers.add(userId);
+
+    if (!purchase.user?.email || !purchase.title) {
+      skipped += 1;
+      continue;
+    }
+    const email = buildPpvPendingReminderEmail({
+      userName: purchase.user.name,
+      title: purchase.title,
+    });
+    await sendEmail({ to: purchase.user.email, subject: email.subject, html: email.html });
+    sent += 1;
+  }
+
+  return res.json({ sent, skipped, total: pending.length, uniqueUsers: seenUsers.size });
+};
+
+// Signed up but never confirmed their email. Issues a fresh verification
+// token per user (mirrors authController's single-user resendVerification)
+// rather than reusing whatever token was left over from signup, in case it
+// already expired.
+export const sendUnverifiedAccountReminders = async (req: Request, res: Response) => {
+  const parsed = DaysWindowQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    return res.status(400).json({ message: parsed.error.issues[0]?.message ?? "Invalid days" });
+  }
+  const since = parsed.data.days ? new Date(Date.now() - parsed.data.days * 24 * 60 * 60 * 1000) : undefined;
+
+  const users = await prisma.user.findMany({
+    where: {
+      role: "USER",
+      emailVerified: false,
+      ...(since ? { createdAt: { gte: since } } : {}),
+    },
+    select: { id: true, email: true, name: true },
+    orderBy: { createdAt: "desc" },
+  });
+
+  let sent = 0;
+  for (const user of users) {
+    const verificationToken = crypto.randomUUID();
+    const verificationTokenExpires = new Date(Date.now() + 1000 * 60 * 60 * 24);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { verificationToken, verificationTokenExpires },
+    });
+
+    const verifyUrl = `${process.env.APP_ORIGIN ?? "https://www.wanzami.tv"}/verify-email?token=${verificationToken}&email=${encodeURIComponent(user.email)}`;
+    const email = buildAccountVerificationReminderEmail({ userName: user.name, verifyUrl });
+    await sendEmail({ to: user.email, subject: email.subject, html: email.html });
+    sent += 1;
+  }
+
+  return res.json({ sent, total: users.length, days: parsed.data.days ?? null });
 };

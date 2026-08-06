@@ -289,24 +289,26 @@ const resolveFlutterwaveCallbackUrl = (req: Request, txRef: string, titleId: num
   });
 };
 
-const sendPpvThankYou = async (opts: {
+export const sendPpvThankYou = async (opts: {
   userEmail?: string | null;
   userName?: string | null;
-  titleId?: bigint;
-  titleName?: string | null;
+  title?: { id: bigint; name: string; posterUrl?: string | null } | null;
+  accessExpiresAt?: Date;
 }) => {
-  if (!opts.userEmail || !opts.titleId || !opts.titleName) return;
+  if (!opts.userEmail || !opts.title || !opts.accessExpiresAt) return;
   const recs = await prisma.title.findMany({
-    where: { isPpv: true, id: { not: opts.titleId } },
+    where: { isPpv: true, archived: false, id: { not: opts.title.id } },
     orderBy: { createdAt: "desc" },
     take: 3,
-    select: { id: true, name: true, ppvPriceNaira: true },
+    select: { id: true, name: true, posterUrl: true, ppvPriceNaira: true },
   });
   const email = buildPpvThankYouEmail({
     userName: opts.userName ?? undefined,
-    purchasedTitle: opts.titleName,
+    purchasedTitle: opts.title,
+    accessExpiresAt: opts.accessExpiresAt,
     recs: recs.map((r) => ({
       title: r.name,
+      posterUrl: r.posterUrl,
       priceNaira: r.ppvPriceNaira,
       url: `${frontendBase}/title/${r.id}`,
     })),
@@ -1217,8 +1219,8 @@ export const flutterwaveWebhook = async (req: Request, res: Response) => {
         await sendPpvThankYou({
           userEmail: purchase.user?.email,
           userName: purchase.user?.name,
-          titleId: purchase.titleId,
-          titleName: purchase.title?.name,
+          title: purchase.title,
+          accessExpiresAt: expiresAt,
         });
         void createNotification({
           userId: purchase.userId,
@@ -1467,8 +1469,8 @@ export const verifyFlutterwavePurchase = async (req: AuthenticatedRequest, res: 
         await sendPpvThankYou({
           userEmail: purchase.user?.email,
           userName: purchase.user?.name,
-          titleId: purchase.titleId,
-          titleName: purchase.title?.name,
+          title: purchase.title,
+          accessExpiresAt: expiresAt,
         });
         void createNotification({
           userId: purchase.userId,
@@ -1539,8 +1541,8 @@ export const verifyPaystackPurchase = async (req: AuthenticatedRequest, res: Res
         await sendPpvThankYou({
           userEmail: purchase.user?.email,
           userName: purchase.user?.name,
-          titleId: purchase.titleId,
-          titleName: purchase.title?.name,
+          title: purchase.title,
+          accessExpiresAt: expiresAt,
         });
       }
     } else {
@@ -1695,8 +1697,8 @@ export const verifyIapPurchase = async (req: AuthenticatedRequest, res: Response
     await sendPpvThankYou({
       userEmail: intent.user?.email,
       userName: intent.user?.name,
-      titleId: intent.titleId,
-      titleName: intent.title?.name,
+      title: intent.title,
+      accessExpiresAt: expiresAt,
     });
 
     return res.json({ verified: true, hasAccess: true, accessExpiresAt: expiresAt });
@@ -1745,8 +1747,8 @@ export const paystackWebhook = async (req: Request, res: Response) => {
         await sendPpvThankYou({
           userEmail: purchase.user?.email,
           userName: purchase.user?.name,
-          titleId: purchase.titleId,
-          titleName: purchase.title?.name,
+          title: purchase.title,
+          accessExpiresAt: expiresAt,
         });
         void createNotification({
           userId: purchase.userId,

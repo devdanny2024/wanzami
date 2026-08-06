@@ -13,6 +13,9 @@ import {
   resumeCampaign,
   cancelCampaign,
   retryFailedBatches,
+  sendRecentPurchaseEmails,
+  sendPendingPurchaseReminders,
+  sendUnverifiedAccountReminders,
 } from "../controllers/emailController.js";
 
 const router = Router();
@@ -27,6 +30,13 @@ router.post("/admin/email/send", requireAuth, requireAdmin, canEmail, sendCampai
 router.get("/admin/email/audience/users", requireAuth, requireAdmin, canEmail, listUserRecipients);
 router.post("/admin/email/audience/import", requireAuth, requireAdmin, canEmail, importUserRecipients);
 router.get("/admin/email/history/recipients", requireAuth, requireAdmin, canEmail, listSentRecipientHistory);
+
+// PPV lifecycle emails: personalized per recipient (their own movie, their
+// own days-remaining), so these send individually rather than through the
+// generic recipients-array campaign above.
+router.post("/admin/email/ppv/recent-purchasers", requireAuth, requireAdmin, canEmail, sendRecentPurchaseEmails);
+router.post("/admin/email/ppv/pending-reminders", requireAuth, requireAdmin, canEmail, sendPendingPurchaseReminders);
+router.post("/admin/email/account/unverified-reminders", requireAuth, requireAdmin, canEmail, sendUnverifiedAccountReminders);
 
 // Campaign control: watch a live send and stop it without an engineer.
 router.get("/admin/email/campaign/status", requireAuth, requireAdmin, canEmail, campaignStatus);
