@@ -1176,6 +1176,19 @@ export const listAllUsers = async (_req: AuthenticatedRequest, res: Response) =>
     orderBy: { createdAt: "desc" },
   });
 
+  const ppvByUser = await prisma.ppvPurchase.groupBy({
+    by: ["userId"],
+    where: { status: "SUCCESS" },
+    _sum: { amountNaira: true },
+    _count: { _all: true },
+  });
+  const ppvSummary = new Map(
+    ppvByUser.map((row) => [
+      row.userId.toString(),
+      { count: row._count._all, total: row._sum.amountNaira ?? 0 },
+    ])
+  );
+
   const statusForUser = async (userId: bigint, emailVerified: boolean) => {
     if (!emailVerified) return "Unverified";
     const lastSession = await prisma.session.findFirst({
@@ -1200,6 +1213,7 @@ export const listAllUsers = async (_req: AuthenticatedRequest, res: Response) =>
         select: { createdAt: true },
       });
       const profileCount = await prisma.profile.count({ where: { userId: u.id } });
+      const ppv = ppvSummary.get(u.id.toString());
       return {
         id: u.id.toString(),
         email: u.email,
@@ -1207,8 +1221,8 @@ export const listAllUsers = async (_req: AuthenticatedRequest, res: Response) =>
         name: u.name,
         createdAt: u.createdAt,
         totalWatchTime: null,
-        ppvPurchases: null,
-        totalSpent: null,
+        ppvPurchases: ppv?.count ?? 0,
+        totalSpent: ppv?.total ?? 0,
         status,
         lastLogin: lastSession?.createdAt ?? null,
         profileCount,
