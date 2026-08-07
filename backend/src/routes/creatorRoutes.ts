@@ -7,6 +7,8 @@ import {
   creatorLogin,
   refreshCreatorSession,
   getCreatorMe,
+  updateCreatorCredentials,
+  completeCreatorOnboarding,
   listCreatorSubmissions,
   createCreatorSubmission,
   getSubmissionPartUrls,
@@ -28,6 +30,8 @@ router.post("/creators/refresh", refreshCreatorSession);
 
 // Creator dashboard: requires a creator session, not an admin/user one.
 router.get("/creators/me", requireCreatorAuth, getCreatorMe);
+router.patch("/creators/me/credentials", requireCreatorAuth, updateCreatorCredentials);
+router.post("/creators/me/onboarding-complete", requireCreatorAuth, completeCreatorOnboarding);
 router.get("/creators/submissions", requireCreatorAuth, listCreatorSubmissions);
 router.post("/creators/submissions", requireCreatorAuth, createCreatorSubmission);
 router.post("/creators/submissions/:id/parts", requireCreatorAuth, getSubmissionPartUrls);

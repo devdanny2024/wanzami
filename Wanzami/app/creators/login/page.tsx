@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { login } from "@/lib/creatorClient";
+import { fetchMe, login } from "@/lib/creatorClient";
 
 const INK = "#161310";
 const PAPER = "#f2ead9";
@@ -32,7 +32,8 @@ export default function CreatorLoginPage() {
     setError(null);
     try {
       await login(email.trim(), password);
-      router.replace("/creators/dashboard");
+      const me = await fetchMe().catch(() => null);
+      router.replace(me && !me.onboarded ? "/creators/onboarding" : "/creators/dashboard");
     } catch (err: any) {
       setError(err?.message ?? "Invalid email or password");
     } finally {

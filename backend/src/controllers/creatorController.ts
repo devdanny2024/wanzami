@@ -167,8 +167,76 @@ export const getCreatorMe = async (req: CreatorAuthenticatedRequest, res: Respon
     status: account.status,
     bio: account.bio,
     reelUrl: account.reelUrl,
+    onboarded: account.onboardedAt !== null,
     createdAt: account.createdAt,
   });
+};
+
+export const completeCreatorOnboarding = async (req: CreatorAuthenticatedRequest, res: Response) => {
+  const creatorId = req.creator?.creatorId;
+  if (!creatorId) return res.status(401).json({ message: "Unauthorized" });
+
+  await prisma.creatorAccount.update({
+    where: { id: creatorId },
+    data: { onboardedAt: new Date() },
+  });
+  return res.json({ ok: true });
+};
+
+const updateCredentialsSchema = z.object({
+  currentPassword: z.string().min(1),
+  newEmail: z.string().trim().email().optional(),
+  newPassword: z.string().min(1).optional(),
+});
+
+export const updateCreatorCredentials = async (req: CreatorAuthenticatedRequest, res: Response) => {
+  const creatorId = req.creator?.creatorId;
+  if (!creatorId) return res.status(401).json({ message: "Unauthorized" });
+
+  const parsed = updateCredentialsSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ errors: parsed.error.flatten() });
+  const { currentPassword, newEmail, newPassword } = parsed.data;
+
+  if (!newEmail && !newPassword) {
+    return res.status(400).json({ message: "Provide a new email, a new password, or both" });
+  }
+
+  const account = await prisma.creatorAccount.findUnique({ where: { id: creatorId } });
+  if (!account) return res.status(404).json({ message: "Not found" });
+
+  const matches = await bcrypt.compare(currentPassword, account.password);
+  if (!matches) {
+    return res.status(401).json({ message: "Current password is incorrect" });
+  }
+
+  const data: { email?: string; password?: string } = {};
+
+  if (newEmail) {
+    const normalized = newEmail.toLowerCase();
+    if (normalized !== account.email) {
+      const existing = await prisma.creatorAccount.findUnique({ where: { email: normalized } });
+      if (existing) return res.status(409).json({ message: "That email is already in use" });
+      data.email = normalized;
+    }
+  }
+
+  if (newPassword) {
+    if (!isPasswordStrong(newPassword)) {
+      return res.status(400).json({
+        code: "WEAK_PASSWORD",
+        message: "Password too weak. Use at least 8 chars, upper, lower, number, and symbol.",
+      });
+    }
+    data.password = await hashPassword(newPassword);
+  }
+
+  try {
+    const updated = await prisma.creatorAccount.update({ where: { id: creatorId }, data });
+    return res.json({ ok: true, email: updated.email });
+  } catch (err) {
+    console.error("updateCreatorCredentials error:", err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
 };
 
 export const listCreatorSubmissions = async (req: CreatorAuthenticatedRequest, res: Response) => {

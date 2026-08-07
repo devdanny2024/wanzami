@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   clearCreatorTokens,
   fetchMe,
@@ -126,7 +127,12 @@ export default function CreatorDashboardPage() {
 
   const load = useCallback(async () => {
     try {
-      const [me, subs] = await Promise.all([fetchMe(), fetchSubmissions()]);
+      const me = await fetchMe();
+      if (!me.onboarded) {
+        router.replace("/creators/onboarding");
+        return;
+      }
+      const subs = await fetchSubmissions();
       setProfile(me);
       setSubmissions(subs);
     } catch {
@@ -134,7 +140,7 @@ export default function CreatorDashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     const { accessToken } = getCreatorTokens();
@@ -169,9 +175,14 @@ export default function CreatorDashboardPage() {
           <span className="font-mono text-[11px] sm:text-xs font-bold uppercase tracking-[0.12em]">
             Wanzami Pictures &middot; Creator Dashboard
           </span>
-          <button onClick={logout} className="font-mono text-[11px] uppercase tracking-widest underline">
-            Log out
-          </button>
+          <div className="flex items-center gap-4">
+            <Link href="/creators/settings" className="font-mono text-[11px] uppercase tracking-widest underline">
+              Settings
+            </Link>
+            <button onClick={logout} className="font-mono text-[11px] uppercase tracking-widest underline">
+              Log out
+            </button>
+          </div>
         </div>
       </header>
 

@@ -75,7 +75,7 @@ export default function CreatorSignupPage() {
         bio: bio.trim() || undefined,
         reelUrl: reelUrl.trim() || undefined,
       });
-      router.replace("/creators/dashboard");
+      router.replace("/creators/onboarding");
     } catch (err: any) {
       setError(err?.message ?? "Could not create your account. Try again in a moment.");
     } finally {

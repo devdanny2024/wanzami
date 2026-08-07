@@ -26,6 +26,7 @@ export type CreatorProfile = {
   status: "ACTIVE" | "SUSPENDED";
   bio: string | null;
   reelUrl: string | null;
+  onboarded: boolean;
   createdAt: string;
 };
 
@@ -131,6 +132,25 @@ export async function fetchSubmissions(): Promise<CreatorSubmission[]> {
   const res = await authedRequest("/creators/submissions");
   if (!res.ok) throw new Error(res.data?.message || "Could not load submissions");
   return res.data.submissions ?? [];
+}
+
+export async function completeOnboarding() {
+  const res = await authedRequest("/creators/me/onboarding-complete", { method: "POST" });
+  if (!res.ok) throw new Error(res.data?.message || "Could not save onboarding");
+  return res.data;
+}
+
+export async function updateCredentials(input: {
+  currentPassword: string;
+  newEmail?: string;
+  newPassword?: string;
+}) {
+  const res = await authedRequest("/creators/me/credentials", {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error(res.data?.message || "Could not update your account");
+  return res.data;
 }
 
 const PART_SIZE = 8 * 1024 * 1024; // 8MB, comfortably above R2's 5MB multipart minimum.

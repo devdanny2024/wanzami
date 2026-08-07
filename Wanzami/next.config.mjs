@@ -30,8 +30,9 @@ const nextConfig = {
       // beforeFiles so the host rule wins over the filesystem match for "/".
       beforeFiles: [
         // creator.wanzami.tv serves the creators call-sheet at its root, and
-        // /apply (signup), /login, /dashboard map onto the matching
-        // /creators/* pages so the subdomain reads as its own site.
+        // /apply (signup), /login, /onboarding, /dashboard, /settings map
+        // onto the matching /creators/* pages so the subdomain reads as its
+        // own site.
         //
         // Routes are listed explicitly rather than with a /:path* catch-all:
         // a catch-all also rewrites /_next/static/... asset requests on this
@@ -42,7 +43,7 @@ const nextConfig = {
           destination: "/creators",
         },
         {
-          source: "/:page(apply|login|dashboard)",
+          source: "/:page(apply|login|onboarding|dashboard|settings)",
           has: [{ type: "host", value: "creator.wanzami.tv" }],
           destination: "/creators/:page",
         },

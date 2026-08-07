@@ -833,6 +833,7 @@ model CreatorAccount {
   bio       String?
   reelUrl   String?
   status    CreatorAccountStatus @default(ACTIVE)
+  onboardedAt DateTime?
   createdAt DateTime             @default(now())
   updatedAt DateTime             @updatedAt
 
