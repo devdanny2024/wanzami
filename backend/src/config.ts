@@ -77,6 +77,15 @@ export const config = {
   adminAppOrigin: (
     process.env.ADMIN_APP_ORIGIN ?? "https://admin.wanzami.tv"
   ).replace(/\/+$/, ""),
+  // Public origin of the creator portal. A separate secret from the
+  // user/admin JWTs means a creator token can never be replayed against
+  // user or admin routes, even if a bug crossed the auth checks.
+  creatorAppOrigin: (
+    process.env.CREATOR_APP_ORIGIN ?? "https://creator.wanzami.tv"
+  ).replace(/\/+$/, ""),
+  creatorJwtSecret: process.env.CREATOR_JWT_SECRET ?? "creator-secret",
+  creatorAccessTokenTtl: process.env.CREATOR_ACCESS_TOKEN_EXPIRES_IN ?? "12h",
+  creatorRefreshTokenTtl: process.env.CREATOR_REFRESH_TOKEN_EXPIRES_IN ?? "90d",
   // Internal/owner accounts that get free access to all PPV titles and are
   // excluded from engagement analytics. Comma-separated emails.
   internalTestEmails: (process.env.INTERNAL_TEST_EMAILS ?? "")

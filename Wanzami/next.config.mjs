@@ -29,11 +29,18 @@ const nextConfig = {
     return {
       // beforeFiles so the host rule wins over the filesystem match for "/".
       beforeFiles: [
-        // creator.wanzami.tv serves the creators call-sheet at its root.
+        // creator.wanzami.tv serves the creators call-sheet at its root, and
+        // /apply, /login, /set-password, /dashboard map onto the matching
+        // /creators/* pages so the subdomain reads as its own site.
         {
           source: "/",
           has: [{ type: "host", value: "creator.wanzami.tv" }],
           destination: "/creators",
+        },
+        {
+          source: "/:path+",
+          has: [{ type: "host", value: "creator.wanzami.tv" }],
+          destination: "/creators/:path+",
         },
       ],
       afterFiles: [],

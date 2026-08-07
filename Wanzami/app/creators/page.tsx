@@ -6,8 +6,7 @@ import { ArrowRight, Check } from "lucide-react";
 import { Footer } from "@/components/Footer";
 import { fetchTitles, type Title } from "@/lib/contentClient";
 
-const APPLY_HREF =
-  "mailto:creators@wanzami.tv?subject=Creator%20application%20—%20Wanzami&body=Tell%20us%20who%20you%20are%2C%20what%20you%20make%2C%20and%20link%20us%20to%20your%20work.";
+const APPLY_HREF = "/creators/apply";
 
 // Call-sheet palette. Deliberately NOT the streaming app's black — this page is paper.
 const INK = "#161310";
@@ -125,9 +124,13 @@ export default function CreatorsPage() {
             Wanzami Pictures — Production Office
           </Link>
           <div className="flex items-center gap-3">
-            <span className="hidden font-mono text-[11px] uppercase tracking-widest sm:inline-block border-[1.5px] px-2 py-0.5" style={{ borderColor: INK }}>
-              Call sheet № 001
-            </span>
+            <Link
+              href="/creators/login"
+              className="hidden font-mono text-[11px] uppercase tracking-widest sm:inline-block border-[1.5px] px-2 py-0.5"
+              style={{ borderColor: INK }}
+            >
+              Creator login
+            </Link>
             <a
               href={APPLY_HREF}
               className="inline-flex min-h-[40px] items-center gap-2 px-4 py-2 text-sm font-bold text-[#f2ead9] transition-transform hover:-translate-y-0.5"

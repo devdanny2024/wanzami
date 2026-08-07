@@ -17,6 +17,7 @@ import supportRoutes from "./routes/supportRoutes.js";
 import liveRoutes from "./routes/liveRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import pushRoutes from "./routes/pushRoutes.js";
+import creatorRoutes from "./routes/creatorRoutes.js";
 import blogRoutes from "./routes/blogRoutes.js";
 import { recordError } from "./utils/errorLogger.js";
 import type { AuthenticatedRequest } from "./middleware/auth.js";
@@ -30,6 +31,7 @@ const allowedOrigins = [
   "https://wanzami.tv",
   "https://www.wanzami.tv",
   "https://admin.wanzami.tv",
+  "https://creator.wanzami.tv",
   "https://api.carlylehub.org",
   "https://wanzami.duckdns.org",
   "http://localhost:3000",
@@ -77,6 +79,7 @@ app.use("/api", supportRoutes);
 app.use("/api", liveRoutes);
 app.use("/api", notificationRoutes);
 app.use("/api", pushRoutes);
+app.use("/api", creatorRoutes);
 app.use("/api", blogRoutes);
 
 const healthHandler = async (_req: express.Request, res: express.Response) => {
