@@ -25,7 +25,7 @@ import {
   uploadTrailerFile,
   type CreatorSubmission,
 } from "@/lib/creatorClient";
-import { Badge, Card, Field, INK, MUTED, PANEL, PAPER, RUST, Skeleton, Slug, StepIndicator, inputStyle } from "../../_components/kit";
+import { Badge, Card, Field, INK, Logo, MUTED, PANEL, PAPER, RUST, Skeleton, Slug, StepIndicator, inputStyle } from "../../_components/kit";
 
 const STEPS = ["Details", "Assets", "Rights", "Review"];
 
@@ -698,10 +698,13 @@ export default function SubmissionWizardPage() {
     <div style={{ backgroundColor: PAPER, color: INK }} className="min-h-screen">
       <header className="sticky top-0 z-50 border-b-[3px]" style={{ backgroundColor: PAPER, borderColor: INK }}>
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <Link href="/creators/dashboard" className="inline-flex items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-[0.12em]">
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Save & exit
-          </Link>
+          <div className="flex items-center gap-4">
+            <Logo className="h-6 w-auto" />
+            <Link href="/creators/dashboard" className="inline-flex items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-[0.12em]">
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Save & exit
+            </Link>
+          </div>
           <span className="font-mono text-[11px] uppercase tracking-widest" style={{ color: MUTED }}>Draft</span>
         </div>
       </header>

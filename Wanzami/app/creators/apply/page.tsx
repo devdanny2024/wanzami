@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Footer } from "@/components/Footer";
 import { signup } from "@/lib/creatorClient";
+import { Logo } from "../_components/kit";
 
 const INK = "#161310";
 const PAPER = "#f2ead9";
@@ -91,6 +92,7 @@ export default function CreatorSignupPage() {
             href="/creators"
             className="inline-flex items-center gap-2 font-mono text-[11px] sm:text-xs font-bold uppercase tracking-[0.12em]"
           >
+            <Logo className="h-5 w-auto" />
             <ArrowLeft className="h-3.5 w-3.5" />
             Wanzami Pictures
           </Link>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Loader } from './ui/loader';
-import { CsButton, CsSlug, CsStamp } from './cs/kit';
+import { CsButton, CsLogo, CsSlug, CsStamp } from './cs/kit';
 
 interface AdminLoginProps {
   onLogin: () => void;
@@ -99,6 +99,7 @@ export function AdminLogin({ onLogin }: AdminLoginProps) {
       {/* Right — the sign-in sheet */}
       <div className="flex-1 flex items-center justify-center px-6 py-12 lg:px-8">
         <div className="w-full max-w-md">
+          <CsLogo className="h-9 w-auto mb-5" />
           <CsSlug className="mb-1">Form W-03 · Crew sign-in</CsSlug>
           <h2 className="cs-display" style={{ fontSize: 44, color: 'var(--cs-ink)' }}>
             ADMIN OFFICE

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { fetchMe, login } from "@/lib/creatorClient";
+import { Logo } from "../_components/kit";
 
 const INK = "#161310";
 const PAPER = "#f2ead9";
@@ -44,7 +45,8 @@ export default function CreatorLoginPage() {
   return (
     <div style={{ backgroundColor: PAPER, color: INK }} className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-md border-[3px] p-8" style={{ borderColor: INK, backgroundColor: PANEL }}>
-        <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-[#6b5f4d]">Creator portal</p>
+        <Logo className="h-8 w-auto" />
+        <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.08em] text-[#6b5f4d]">Creator portal</p>
         <h1 className="mt-2 font-mono text-2xl font-black uppercase tracking-tight">Log in</h1>
 
         <form onSubmit={onSubmit} className="mt-6 space-y-4">

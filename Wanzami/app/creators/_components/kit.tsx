@@ -10,6 +10,11 @@ export const RUST = "#d1490f";
 export const MUTED = "#6b5f4d";
 export const LINE = "#e2d6bd";
 
+export function Logo({ className = "h-7 w-auto" }: { className?: string }) {
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src="/wanzami-logo.png" alt="Wanzami" className={className} />;
+}
+
 export const inputStyle: React.CSSProperties = {
   width: "100%",
   border: `2px solid ${INK}`,

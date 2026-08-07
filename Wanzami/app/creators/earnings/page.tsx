@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Coins, Wallet } from "lucide-react";
 import { fetchEarnings, getCreatorTokens, type CreatorEarnings } from "@/lib/creatorClient";
-import { Card, INK, MUTED, PANEL, PAPER, RUST, Skeleton, Slug } from "../_components/kit";
+import { Card, INK, Logo, MUTED, PANEL, PAPER, RUST, Skeleton, Slug } from "../_components/kit";
 
 export default function CreatorEarningsPage() {
   const router = useRouter();
@@ -44,6 +44,7 @@ export default function CreatorEarningsPage() {
     <div style={{ backgroundColor: PAPER, color: INK }} className="min-h-screen">
       <header className="sticky top-0 z-50 border-b-[3px]" style={{ backgroundColor: PAPER, borderColor: INK }}>
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <Logo />
           <Link href="/creators/dashboard" className="inline-flex items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-[0.12em]">
             <ArrowLeft className="h-3.5 w-3.5" />
             Dashboard

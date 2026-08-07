@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, type Variants } from "motion/react";
 import { ArrowRight, Check, Clapperboard, Coins, Film, Search } from "lucide-react";
 import { completeOnboarding, fetchMe, getCreatorTokens, type CreatorProfile } from "@/lib/creatorClient";
+import { Logo } from "../_components/kit";
 
 const INK = "#161310";
 const PAPER = "#f2ead9";
@@ -136,6 +137,13 @@ export default function CreatorOnboardingPage() {
           <AnimatePresence mode="wait">
             {step === 0 && (
               <motion.div key="step-0" variants={fadeSlide} initial="initial" animate="animate" exit="exit" className="text-center">
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-4 flex justify-center"
+                >
+                  <Logo className="h-8 w-auto" />
+                </motion.div>
                 <motion.p
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1, transition: { delay: 0.1 } }}

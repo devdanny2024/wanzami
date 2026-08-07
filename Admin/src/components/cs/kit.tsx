@@ -4,6 +4,13 @@ import type { ReactNode } from "react";
    Mirrors the mobile app's callsheet_kit.dart: paper surfaces, ink borders,
    hard shadows, mono slugs, Bebas display type. */
 
+// Admin has no local copy of the mark, so this points at the storefront's
+// hosted copy, same pattern EmailService.tsx already uses for email logos.
+export function CsLogo({ className = "h-7 w-auto" }: { className?: string }) {
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src="https://www.wanzami.tv/wanzami-logo.png" alt="Wanzami" className={className} />;
+}
+
 export function CsSlug({
   children,
   className = "",

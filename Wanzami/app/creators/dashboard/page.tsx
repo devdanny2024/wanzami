@@ -31,7 +31,7 @@ import {
   type CreatorSubmission,
   type DailyAnalytics,
 } from "@/lib/creatorClient";
-import { Badge, Card, INK, MUTED, PANEL, PAPER, RUST, Skeleton, Slug } from "../_components/kit";
+import { Badge, Card, INK, Logo, MUTED, PANEL, PAPER, RUST, Skeleton, Slug } from "../_components/kit";
 import { TrendChart } from "../_components/TrendChart";
 import { NotificationBell } from "../_components/NotificationBell";
 
@@ -322,9 +322,12 @@ export default function CreatorDashboardPage() {
     <div style={{ backgroundColor: PAPER, color: INK }} className="min-h-screen">
       <header className="sticky top-0 z-50 border-b-[3px]" style={{ backgroundColor: PAPER, borderColor: INK }}>
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <span className="font-mono text-[11px] sm:text-xs font-bold uppercase tracking-[0.12em]">
-            Wanzami Pictures &middot; Creator Dashboard
-          </span>
+          <div className="flex items-center gap-2.5">
+            <Logo />
+            <span className="font-mono text-[11px] sm:text-xs font-bold uppercase tracking-[0.12em]">
+              Wanzami Pictures &middot; Creator Dashboard
+            </span>
+          </div>
           <div className="flex items-center gap-5">
             <Link
               href="/creators/earnings"

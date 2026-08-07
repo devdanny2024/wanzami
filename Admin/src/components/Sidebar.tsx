@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { navGroups } from '../lib/nav';
+import { CsLogo } from './cs/kit';
 
 interface SidebarProps {
   currentPage: string;
@@ -65,16 +66,7 @@ export function Sidebar({ currentPage, onNavigate, user }: SidebarProps) {
       {/* Wordmark */}
       <div className="p-5" style={{ borderBottom: '3px solid var(--cs-ink)' }}>
         <div className="flex items-center gap-3">
-          <div
-            className="w-10 h-10 flex items-center justify-center"
-            style={{
-              background: 'var(--cs-brand)',
-              border: '2.5px solid var(--cs-ink)',
-              boxShadow: '3px 3px 0 var(--cs-ink)',
-            }}
-          >
-            <span className="cs-display text-xl" style={{ color: 'var(--cs-ink)' }}>W</span>
-          </div>
+          <CsLogo className="h-9 w-auto shrink-0" />
           <div>
             <h2 className="cs-mono font-bold text-sm" style={{ color: 'var(--cs-ink)', letterSpacing: '0.06em' }}>
               WANZAMI TV

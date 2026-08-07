@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createDraft, getCreatorTokens } from "@/lib/creatorClient";
-import { INK, PAPER, RUST } from "../../_components/kit";
+import { INK, Logo, PAPER, RUST } from "../../_components/kit";
 
 export default function NewSubmissionPage() {
   const router = useRouter();
@@ -21,7 +21,8 @@ export default function NewSubmissionPage() {
   }, [router]);
 
   return (
-    <div style={{ backgroundColor: PAPER, color: INK }} className="min-h-screen flex items-center justify-center px-4">
+    <div style={{ backgroundColor: PAPER, color: INK }} className="min-h-screen flex flex-col items-center justify-center gap-4 px-4">
+      <Logo className="h-8 w-auto" />
       {error ? (
         <div className="text-center">
           <p className="text-sm font-medium" style={{ color: RUST }}>{error}</p>

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import { ArrowLeft, Check, KeyRound, Mail, ShieldAlert } from "lucide-react";
 import { fetchMe, getCreatorTokens, updateCredentials, type CreatorProfile } from "@/lib/creatorClient";
-import { Card, inputStyle, INK, MUTED, PAPER, RUST, Skeleton, Slug } from "../_components/kit";
+import { Card, inputStyle, INK, Logo, MUTED, PAPER, RUST, Skeleton, Slug } from "../_components/kit";
 
 const isStrongPassword = (pwd: string) =>
   pwd.length >= 8 && /[A-Z]/.test(pwd) && /[a-z]/.test(pwd) && /[0-9]/.test(pwd) && /[^A-Za-z0-9]/.test(pwd);
@@ -100,6 +100,7 @@ export default function CreatorSettingsPage() {
     <div style={{ backgroundColor: PAPER, color: INK }} className="min-h-screen">
       <header className="sticky top-0 z-50 border-b-[3px]" style={{ backgroundColor: PAPER, borderColor: INK }}>
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <Logo />
           <Link
             href="/creators/dashboard"
             className="inline-flex items-center gap-2 font-mono text-[11px] sm:text-xs font-bold uppercase tracking-[0.12em] hover:opacity-70"

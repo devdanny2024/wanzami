@@ -6,7 +6,7 @@ import Link from "next/link";
 import { motion } from "motion/react";
 import { Instagram, Twitter, Youtube, Globe, Film } from "lucide-react";
 import { fetchPublicCreatorProfile, type PublicCreatorProfile } from "@/lib/creatorClient";
-import { INK, MUTED, PANEL, PAPER, RUST, Skeleton } from "../_components/kit";
+import { INK, Logo, MUTED, PANEL, PAPER, RUST, Skeleton } from "../_components/kit";
 
 // Public page, no auth gate: this is what a viewer sees when they click
 // through from "About the creator" on a title page.
@@ -62,6 +62,14 @@ export default function PublicCreatorProfilePage() {
 
   return (
     <div style={{ backgroundColor: PAPER, color: INK }} className="min-h-screen">
+      <header className="border-b-[3px]" style={{ borderColor: INK }}>
+        <div className="mx-auto flex max-w-4xl items-center px-4 py-3 sm:px-6">
+          <Link href="/" aria-label="Wanzami">
+            <Logo />
+          </Link>
+        </div>
+      </header>
+
       <main className="mx-auto max-w-4xl px-4 py-14 sm:px-6 sm:py-20">
         <motion.div
           initial={{ opacity: 0, y: 12 }}

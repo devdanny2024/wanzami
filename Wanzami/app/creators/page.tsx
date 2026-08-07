@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
 import { Footer } from "@/components/Footer";
 import { fetchTitles, type Title } from "@/lib/contentClient";
+import { Logo } from "./_components/kit";
 
 const APPLY_HREF = "/creators/apply";
 
@@ -120,7 +121,8 @@ export default function CreatorsPage() {
         style={{ backgroundColor: PAPER, borderColor: INK }}
       >
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <Link href="/splash" className="font-mono text-[11px] sm:text-xs font-bold uppercase tracking-[0.12em]">
+          <Link href="/splash" className="inline-flex items-center gap-2.5 font-mono text-[11px] sm:text-xs font-bold uppercase tracking-[0.12em]">
+            <Logo className="h-6 w-auto" />
             Wanzami Pictures — Production Office
           </Link>
           <div className="flex items-center gap-3">
