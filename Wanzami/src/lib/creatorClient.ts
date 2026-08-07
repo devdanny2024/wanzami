@@ -134,6 +134,14 @@ export async function fetchSubmissions(): Promise<CreatorSubmission[]> {
   return res.data.submissions ?? [];
 }
 
+export type DailyAnalytics = { date: string; purchases: number; revenueNaira: number };
+
+export async function fetchSubmissionAnalytics(id: string): Promise<DailyAnalytics[]> {
+  const res = await authedRequest(`/creators/submissions/${id}/analytics`);
+  if (!res.ok) throw new Error(res.data?.message || "Could not load analytics");
+  return res.data.daily ?? [];
+}
+
 export async function completeOnboarding() {
   const res = await authedRequest("/creators/me/onboarding-complete", { method: "POST" });
   if (!res.ok) throw new Error(res.data?.message || "Could not save onboarding");

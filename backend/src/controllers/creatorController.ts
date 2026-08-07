@@ -282,6 +282,45 @@ export const listCreatorSubmissions = async (req: CreatorAuthenticatedRequest, r
   });
 };
 
+type DailyRow = { day: Date; purchases: bigint; revenueNaira: bigint | null };
+
+export const getSubmissionAnalytics = async (req: CreatorAuthenticatedRequest, res: Response) => {
+  const creatorId = req.creator?.creatorId;
+  if (!creatorId) return res.status(401).json({ message: "Unauthorized" });
+  const id = req.params.id ? BigInt(req.params.id) : null;
+  if (!id) return res.status(400).json({ message: "Missing submission id" });
+
+  const submission = await prisma.creatorSubmission.findUnique({ where: { id } });
+  if (!submission || submission.creatorId !== creatorId) {
+    return res.status(404).json({ message: "Submission not found" });
+  }
+  if (submission.status !== "APPROVED" || !submission.linkedTitleId) {
+    return res.json({ daily: [] });
+  }
+
+  // Group by calendar day in Postgres rather than in JS: 30 days is small, but
+  // this keeps the shape right if that window ever grows.
+  const rows = await prisma.$queryRaw<DailyRow[]>`
+    SELECT date_trunc('day', "createdAt") AS day,
+           count(*)::bigint AS purchases,
+           sum("amountNaira")::bigint AS "revenueNaira"
+    FROM "PpvPurchase"
+    WHERE "titleId" = ${submission.linkedTitleId}
+      AND status = 'SUCCESS'
+      AND "createdAt" >= now() - interval '30 days'
+    GROUP BY 1
+    ORDER BY 1 ASC
+  `;
+
+  return res.json({
+    daily: rows.map((r) => ({
+      date: r.day.toISOString().slice(0, 10),
+      purchases: Number(r.purchases),
+      revenueNaira: Number(r.revenueNaira ?? 0),
+    })),
+  });
+};
+
 const createSubmissionSchema = z.object({
   title: z.string().trim().min(1).max(200),
   synopsis: z.string().trim().max(2000).optional(),
