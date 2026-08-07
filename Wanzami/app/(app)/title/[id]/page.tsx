@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MovieDetailPage } from '@/components/MovieDetailPage';
+import { AboutCreator } from '@/../app/creators/_components/AboutCreator';
 import { PpvPaymentChoiceModal } from '@/components/PpvPaymentChoiceModal';
 import {
   fetchPpvAccess,
@@ -230,6 +231,7 @@ export default function TitlePage({ params }: { params: { id: string } }) {
           setPaymentChoiceOpen(true);
         }}
       />
+      <AboutCreator titleId={id} />
       <PpvPaymentChoiceModal
         open={paymentChoiceOpen}
         onOpenChange={setPaymentChoiceOpen}

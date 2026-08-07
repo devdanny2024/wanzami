@@ -43,9 +43,19 @@ const nextConfig = {
           destination: "/creators",
         },
         {
-          source: "/:page(apply|login|onboarding|dashboard|settings)",
+          source: "/:page(apply|login|onboarding|dashboard|settings|earnings)",
           has: [{ type: "host", value: "creator.wanzami.tv" }],
           destination: "/creators/:page",
+        },
+        {
+          source: "/submissions/new",
+          has: [{ type: "host", value: "creator.wanzami.tv" }],
+          destination: "/creators/submissions/new",
+        },
+        {
+          source: "/submissions/:id",
+          has: [{ type: "host", value: "creator.wanzami.tv" }],
+          destination: "/creators/submissions/:id",
         },
       ],
       afterFiles: [],

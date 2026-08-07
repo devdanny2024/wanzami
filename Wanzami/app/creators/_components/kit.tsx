@@ -118,3 +118,80 @@ export function Skeleton({ className = "" }: { className?: string }) {
     />
   );
 }
+
+export function Field({
+  label,
+  required,
+  hint,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  hint?: string;
+  children: ReactNode;
+}) {
+  return (
+    <label className="block">
+      <span className="font-mono text-[10px] uppercase tracking-[0.1em]" style={{ color: MUTED }}>
+        {label}
+        {required && <span style={{ color: RUST }}> *</span>}
+      </span>
+      <div className="mt-1.5">{children}</div>
+      {hint && (
+        <p className="mt-1 font-mono text-[10px]" style={{ color: MUTED }}>
+          {hint}
+        </p>
+      )}
+    </label>
+  );
+}
+
+export function StepIndicator({
+  steps,
+  current,
+  onStepClick,
+}: {
+  steps: string[];
+  current: number;
+  onStepClick?: (index: number) => void;
+}) {
+  return (
+    <div className="flex items-center">
+      {steps.map((label, i) => {
+        const done = i < current;
+        const active = i === current;
+        return (
+          <div key={label} className="flex items-center">
+            <button
+              type="button"
+              onClick={() => onStepClick?.(i)}
+              disabled={!onStepClick}
+              className="flex items-center gap-2"
+              style={{ cursor: onStepClick ? "pointer" : "default" }}
+            >
+              <span
+                className="flex h-7 w-7 items-center justify-center rounded-full border-2 font-mono text-[11px] font-bold"
+                style={{
+                  borderColor: active || done ? RUST : LINE,
+                  backgroundColor: done ? RUST : "transparent",
+                  color: done ? PAPER : active ? RUST : MUTED,
+                }}
+              >
+                {done ? "✓" : i + 1}
+              </span>
+              <span
+                className="hidden font-mono text-[11px] font-bold uppercase tracking-wide sm:inline"
+                style={{ color: active ? INK : MUTED }}
+              >
+                {label}
+              </span>
+            </button>
+            {i < steps.length - 1 && (
+              <div className="mx-2 h-[1.5px] w-6 sm:w-10" style={{ backgroundColor: i < current ? RUST : LINE }} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}

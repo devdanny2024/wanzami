@@ -765,8 +765,12 @@ export const uploadSubmissionDocument = async (req: CreatorAuthenticatedRequest,
     return res.status(400).json({ message: "Only image or PDF documents are supported here" });
   }
 
-  const kind = (req.get("x-document-kind") || "other").replace(/[^a-z0-9_-]/gi, "").slice(0, 40) || "other";
-  const fileName = (req.get("x-document-filename") || "document").slice(0, 200);
+  // Query params, not custom headers: the browser talks to this API directly
+  // (no same-origin proxy like Admin has), and a custom request header would
+  // need a CORS preflight allowlist change affecting every origin. Query
+  // params carry no such requirement.
+  const kind = (typeof req.query.kind === "string" ? req.query.kind : "other").replace(/[^a-z0-9_-]/gi, "").slice(0, 40) || "other";
+  const fileName = (typeof req.query.filename === "string" ? req.query.filename : "document").slice(0, 200);
   const key = `creator-documents/${creatorId}/${Date.now()}-${crypto.randomUUID()}`;
 
   try {

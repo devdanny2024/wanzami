@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence, useReducedMotion, type Variants } from "motion/react";
@@ -9,11 +9,13 @@ import {
   Check,
   ChevronDown,
   Coins,
+  FilePenLine,
   Film,
+  Plus,
   Search,
   Settings as SettingsIcon,
   Ticket,
-  UploadCloud,
+  Wallet,
   X,
 } from "lucide-react";
 import {
@@ -22,17 +24,18 @@ import {
   fetchSubmissionAnalytics,
   fetchSubmissions,
   getCreatorTokens,
-  uploadSubmission,
   type CreatorProfile,
   type CreatorSubmission,
   type DailyAnalytics,
 } from "@/lib/creatorClient";
 import { Badge, Card, INK, MUTED, PANEL, PAPER, RUST, Skeleton, Slug } from "../_components/kit";
 import { TrendChart } from "../_components/TrendChart";
+import { NotificationBell } from "../_components/NotificationBell";
 
 const submissionTone = (status: CreatorSubmission["status"]) => {
   if (status === "APPROVED") return "good" as const;
   if (status === "REJECTED") return "bad" as const;
+  if (status === "DRAFT") return "neutral" as const;
   return "pending" as const;
 };
 
@@ -51,8 +54,7 @@ function ReviewTimeline({ status }: { status: CreatorSubmission["status"] }) {
       </div>
     );
   }
-  const activeIndex =
-    status === "UPLOADING" ? -1 : REVIEW_STEPS.findIndex((s) => s.key === status || status === "APPROVED");
+  if (status === "DRAFT") return null;
   const resolvedIndex = status === "APPROVED" ? 2 : status === "IN_REVIEW" ? 1 : status === "SUBMITTED" ? 0 : -1;
 
   return (
@@ -72,173 +74,6 @@ function ReviewTimeline({ status }: { status: CreatorSubmission["status"] }) {
         );
       })}
     </div>
-  );
-}
-
-function formatBytes(bytes: number) {
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function UploadDropzone({ onUploaded }: { onUploaded: () => void }) {
-  const [title, setTitle] = useState("");
-  const [synopsis, setSynopsis] = useState("");
-  const [file, setFile] = useState<File | null>(null);
-  const [dragging, setDragging] = useState(false);
-  const [progress, setProgress] = useState<number | null>(null);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  const pickFile = (f: File | null) => {
-    setError(null);
-    setFile(f);
-  };
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!file) {
-      setError("Choose a video file first.");
-      return;
-    }
-    setError(null);
-    setProgress(0);
-    try {
-      await uploadSubmission(file, { title: title.trim(), synopsis: synopsis.trim() || undefined }, setProgress);
-      setTitle("");
-      setSynopsis("");
-      setFile(null);
-      if (fileRef.current) fileRef.current.value = "";
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 2400);
-      onUploaded();
-    } catch (err: any) {
-      setError(err?.message ?? "Upload failed");
-    } finally {
-      setProgress(null);
-    }
-  };
-
-  const uploading = progress !== null;
-
-  return (
-    <Card>
-      <div className="flex items-center justify-between">
-        <Slug>Submit a film</Slug>
-        <AnimatePresence>
-          {success && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              className="flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-wide"
-              style={{ color: INK }}
-            >
-              <Check className="h-3.5 w-3.5" style={{ color: RUST }} />
-              Uploaded
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      <form onSubmit={submit} className="mt-5 space-y-4">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <label className="block">
-            <span className="font-mono text-[10px] uppercase tracking-[0.1em]" style={{ color: MUTED }}>Title</span>
-            <input
-              className="mt-1.5 w-full border-2 px-3.5 py-2.5 text-sm"
-              style={{ borderColor: INK, backgroundColor: PAPER, color: INK }}
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              required
-              maxLength={200}
-              disabled={uploading}
-            />
-          </label>
-          <label className="block">
-            <span className="font-mono text-[10px] uppercase tracking-[0.1em]" style={{ color: MUTED }}>Synopsis (optional)</span>
-            <input
-              className="mt-1.5 w-full border-2 px-3.5 py-2.5 text-sm"
-              style={{ borderColor: INK, backgroundColor: PAPER, color: INK }}
-              value={synopsis}
-              onChange={(e) => setSynopsis(e.target.value)}
-              maxLength={2000}
-              disabled={uploading}
-            />
-          </label>
-        </div>
-
-        <label
-          onDragOver={(e) => {
-            e.preventDefault();
-            if (!uploading) setDragging(true);
-          }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragging(false);
-            if (uploading) return;
-            const dropped = e.dataTransfer.files?.[0];
-            if (dropped) pickFile(dropped);
-          }}
-          className="flex cursor-pointer flex-col items-center justify-center gap-2 border-2 border-dashed px-6 py-8 text-center transition-colors"
-          style={{
-            borderColor: dragging ? RUST : INK,
-            backgroundColor: dragging ? "#fbeee1" : PAPER,
-            opacity: uploading ? 0.6 : 1,
-            pointerEvents: uploading ? "none" : "auto",
-          }}
-        >
-          <UploadCloud className="h-7 w-7" style={{ color: dragging ? RUST : MUTED }} />
-          {file ? (
-            <div>
-              <p className="font-mono text-sm font-bold">{file.name}</p>
-              <p className="mt-0.5 font-mono text-[11px]" style={{ color: MUTED }}>{formatBytes(file.size)}</p>
-            </div>
-          ) : (
-            <div>
-              <p className="text-sm font-medium">Drag your film here, or click to browse</p>
-              <p className="mt-0.5 font-mono text-[11px]" style={{ color: MUTED }}>Any video file, no size limit</p>
-            </div>
-          )}
-          <input
-            ref={fileRef}
-            type="file"
-            accept="video/*"
-            onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
-            className="hidden"
-            disabled={uploading}
-          />
-        </label>
-
-        <AnimatePresence>
-          {uploading && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
-              <div className="h-2 w-full overflow-hidden border-[1.5px]" style={{ borderColor: INK, backgroundColor: PAPER }}>
-                <motion.div
-                  className="h-full"
-                  style={{ backgroundColor: RUST }}
-                  animate={{ width: `${progress}%` }}
-                  transition={{ ease: "easeOut", duration: 0.2 }}
-                />
-              </div>
-              <p className="mt-1.5 font-mono text-[11px]" style={{ color: MUTED }}>{progress}% uploaded</p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {error && <p className="text-sm font-medium" style={{ color: RUST }}>{error}</p>}
-
-        <button
-          type="submit"
-          disabled={uploading || !file}
-          className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-bold uppercase tracking-wider transition-transform hover:-translate-y-0.5 disabled:opacity-40 disabled:hover:translate-y-0"
-          style={{ backgroundColor: INK, color: PAPER }}
-        >
-          {uploading ? "Uploading…" : "Submit for review"}
-        </button>
-      </form>
-    </Card>
   );
 }
 
@@ -301,6 +136,16 @@ function SubmissionCard({ s }: { s: CreatorSubmission }) {
           <p className="font-mono text-[10px]" style={{ color: MUTED }}>
             {new Date(s.createdAt).toLocaleDateString()}
           </p>
+          {s.status === "DRAFT" && (
+            <Link
+              href={`/creators/submissions/${s.id}`}
+              className="mt-2 inline-flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-wide underline"
+              style={{ color: RUST }}
+            >
+              <FilePenLine className="h-3.5 w-3.5" />
+              Resume
+            </Link>
+          )}
           {s.status === "APPROVED" && (
             <div className="mt-3 space-y-1">
               {s.metrics ? (
@@ -448,6 +293,14 @@ export default function CreatorDashboardPage() {
           </span>
           <div className="flex items-center gap-5">
             <Link
+              href="/creators/earnings"
+              className="hidden items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest hover:opacity-70 sm:inline-flex"
+            >
+              <Wallet className="h-3.5 w-3.5" />
+              Earnings
+            </Link>
+            <NotificationBell />
+            <Link
               href="/creators/settings"
               className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-widest hover:opacity-70"
             >
@@ -465,9 +318,19 @@ export default function CreatorDashboardPage() {
       </header>
 
       <main className="mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-14 space-y-8">
-        <div>
-          <Slug>Welcome back</Slug>
-          <h1 className="font-heading mt-1 text-4xl uppercase tracking-wide sm:text-5xl">{profile?.name}</h1>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <Slug>Welcome back</Slug>
+            <h1 className="font-heading mt-1 text-4xl uppercase tracking-wide sm:text-5xl">{profile?.name}</h1>
+          </div>
+          <Link
+            href="/creators/submissions/new"
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold uppercase tracking-wider shadow-[4px_4px_0_#161310] transition-transform hover:-translate-y-0.5"
+            style={{ backgroundColor: RUST, color: PAPER }}
+          >
+            <Plus className="h-4 w-4" />
+            New submission
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -475,8 +338,6 @@ export default function CreatorDashboardPage() {
           <StatCardLocal label="Live" value={String(approvedCount)} icon={Check} accent />
           <StatCardLocal label="Total revenue" value={`₦${totalRevenue.toLocaleString()}`} icon={Coins} />
         </div>
-
-        <UploadDropzone onUploaded={load} />
 
         <div>
           <Slug>Your submissions</Slug>
@@ -488,8 +349,16 @@ export default function CreatorDashboardPage() {
                 </div>
                 <p className="font-heading text-2xl uppercase tracking-wide">Nothing here yet</p>
                 <p className="max-w-xs text-sm" style={{ color: "#3c342a" }}>
-                  Submit your first film above and it'll show up here with its review status.
+                  Start your first submission and it'll show up here with its review status.
                 </p>
+                <Link
+                  href="/creators/submissions/new"
+                  className="mt-2 inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold uppercase tracking-wider"
+                  style={{ backgroundColor: INK, color: PAPER }}
+                >
+                  <Plus className="h-4 w-4" />
+                  New submission
+                </Link>
               </Card>
             ) : (
               <motion.div
