@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence, useReducedMotion, type Variants } from "motion/react";
+import { toast } from "sonner";
 import {
   BarChart3,
   Check,
@@ -15,11 +16,13 @@ import {
   Search,
   Settings as SettingsIcon,
   Ticket,
+  Trash2,
   Wallet,
   X,
 } from "lucide-react";
 import {
   clearCreatorTokens,
+  deleteDraft,
   fetchMe,
   fetchSubmissionAnalytics,
   fetchSubmissions,
@@ -83,11 +86,30 @@ const cardIn: Variants = {
   animate: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] } },
 };
 
-function SubmissionCard({ s }: { s: CreatorSubmission }) {
+function SubmissionCard({ s, onDeleted }: { s: CreatorSubmission; onDeleted: (id: string) => void }) {
   const [expanded, setExpanded] = useState(false);
   const [daily, setDaily] = useState<DailyAnalytics[] | null>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const confirmDelete = async () => {
+    if (!confirmingDelete) {
+      setConfirmingDelete(true);
+      return;
+    }
+    setDeleting(true);
+    try {
+      await deleteDraft(s.id);
+      toast.success(`Deleted "${s.title}"`);
+      onDeleted(s.id);
+    } catch (err: any) {
+      toast.error(err?.message ?? "Could not delete draft");
+      setDeleting(false);
+      setConfirmingDelete(false);
+    }
+  };
 
   const hasAnalytics = s.status === "APPROVED" && s.metrics !== null;
 
@@ -137,14 +159,26 @@ function SubmissionCard({ s }: { s: CreatorSubmission }) {
             {new Date(s.createdAt).toLocaleDateString()}
           </p>
           {s.status === "DRAFT" && (
-            <Link
-              href={`/creators/submissions/${s.id}`}
-              className="mt-2 inline-flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-wide underline"
-              style={{ color: RUST }}
-            >
-              <FilePenLine className="h-3.5 w-3.5" />
-              Resume
-            </Link>
+            <div className="mt-2 flex flex-col items-end gap-2">
+              <Link
+                href={`/creators/submissions/${s.id}`}
+                className="inline-flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-wide underline"
+                style={{ color: RUST }}
+              >
+                <FilePenLine className="h-3.5 w-3.5" />
+                Resume
+              </Link>
+              <button
+                onClick={() => void confirmDelete()}
+                onBlur={() => setConfirmingDelete(false)}
+                disabled={deleting}
+                className="inline-flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-wide underline disabled:opacity-50"
+                style={{ color: confirmingDelete ? RUST : MUTED }}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                {deleting ? "Deleting…" : confirmingDelete ? "Confirm delete?" : "Delete"}
+              </button>
+            </div>
           )}
           {s.status === "APPROVED" && (
             <div className="mt-3 space-y-1">
@@ -368,7 +402,11 @@ export default function CreatorDashboardPage() {
                 className="space-y-3"
               >
                 {submissions.map((s) => (
-                  <SubmissionCard key={s.id} s={s} />
+                  <SubmissionCard
+                    key={s.id}
+                    s={s}
+                    onDeleted={(id) => setSubmissions((prev) => prev.filter((x) => x.id !== id))}
+                  />
                 ))}
               </motion.div>
             )}
