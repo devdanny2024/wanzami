@@ -15,6 +15,7 @@ export function Footer() {
       { label: 'Series', href: '/series' },
       { label: 'Live', href: '/live' },
       { label: 'Originals', href: '/originals' },
+      { label: 'Blog', href: '/blog' },
     ],
   };
 
