@@ -31,16 +31,14 @@ const nextConfig = {
       beforeFiles: [
         // creator.wanzami.tv serves the creators call-sheet at its root, and
         // /apply, /login, /set-password, /dashboard map onto the matching
-        // /creators/* pages so the subdomain reads as its own site.
+        // /creators/* pages so the subdomain reads as its own site. A single
+        // :path* rule (zero or more segments) covers both cases; splitting
+        // this into a root rule plus a separate :path+ rule previously broke
+        // the root match.
         {
-          source: "/",
+          source: "/:path*",
           has: [{ type: "host", value: "creator.wanzami.tv" }],
-          destination: "/creators",
-        },
-        {
-          source: "/:path+",
-          has: [{ type: "host", value: "creator.wanzami.tv" }],
-          destination: "/creators/:path+",
+          destination: "/creators/:path*",
         },
       ],
       afterFiles: [],
