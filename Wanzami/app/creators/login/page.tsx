@@ -75,7 +75,7 @@ export default function CreatorLoginPage() {
         </form>
 
         <p className="mt-6 text-sm text-[#6b5f4d]">
-          Not a creator yet? <a href="/creators/apply" className="underline">Apply here</a>.
+          Not a creator yet? <a href="/creators/apply" className="underline">Create an account</a>.
         </p>
       </div>
     </div>

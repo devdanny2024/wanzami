@@ -11,24 +11,27 @@ const API_BASE =
 const ACCESS_KEY = "creatorAccessToken";
 const REFRESH_KEY = "creatorRefreshToken";
 
-export type CreatorApplicationInput = {
+export type CreatorSignupInput = {
   name: string;
   email: string;
-  phone?: string;
-  bio: string;
+  password: string;
+  bio?: string;
   reelUrl?: string;
-  instagram?: string;
-  youtube?: string;
 };
 
 export type CreatorProfile = {
   id: string;
   name: string;
   email: string;
-  status: "PENDING_SETUP" | "ACTIVE" | "SUSPENDED";
-  bio: string;
+  status: "ACTIVE" | "SUSPENDED";
+  bio: string | null;
   reelUrl: string | null;
   createdAt: string;
+};
+
+export type CreatorSubmissionMetrics = {
+  purchases: number;
+  revenueNaira: number;
 };
 
 export type CreatorSubmission = {
@@ -38,6 +41,7 @@ export type CreatorSubmission = {
   status: "UPLOADING" | "SUBMITTED" | "IN_REVIEW" | "APPROVED" | "REJECTED";
   reviewNote: string | null;
   createdAt: string;
+  metrics: CreatorSubmissionMetrics | null;
 };
 
 export function getCreatorTokens() {
@@ -92,27 +96,13 @@ async function authedRequest(path: string, init?: RequestInit): Promise<{ ok: bo
   });
 }
 
-export async function submitApplication(input: CreatorApplicationInput) {
-  const res = await request("/creators/apply", { method: "POST", body: JSON.stringify(input) });
+export async function signup(input: CreatorSignupInput) {
+  const res = await request("/creators/signup", { method: "POST", body: JSON.stringify(input) });
   if (!res.ok) {
     const message =
-      res.data?.message ?? (res.data?.errors ? "Please check the form and try again" : "Could not submit application");
+      res.data?.message ?? (res.data?.errors ? "Please check the form and try again" : "Could not create your account");
     throw new Error(message);
   }
-  return res.data;
-}
-
-export async function lookupInvite(token: string) {
-  const res = await request(`/creators/invite?token=${encodeURIComponent(token)}`);
-  return res;
-}
-
-export async function setPassword(token: string, password: string) {
-  const res = await request("/creators/set-password", {
-    method: "POST",
-    body: JSON.stringify({ token, password }),
-  });
-  if (!res.ok) throw new Error(res.data?.message || "Could not set password");
   setCreatorTokens(res.data.accessToken, res.data.refreshToken);
   return res.data;
 }

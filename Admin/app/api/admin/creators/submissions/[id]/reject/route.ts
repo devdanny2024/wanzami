@@ -4,7 +4,7 @@ import { authFetch } from "@/lib/authClient";
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const body = await req.json().catch(() => ({}));
   const authorization = req.headers.get("authorization") ?? "";
-  const result = await authFetch(`/admin/creators/applications/${params.id}/reject`, {
+  const result = await authFetch(`/admin/creators/submissions/${params.id}/reject`, {
     method: "POST",
     headers: { Authorization: authorization },
     body: JSON.stringify(body),

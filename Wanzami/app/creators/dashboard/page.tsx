@@ -205,6 +205,20 @@ export default function CreatorDashboardPage() {
                     <p className="mt-1 font-mono text-[10px] text-[#6b5f4d]">
                       {new Date(s.createdAt).toLocaleDateString()}
                     </p>
+                    {s.status === "APPROVED" && (
+                      <div className="mt-2 text-right">
+                        {s.metrics ? (
+                          <>
+                            <p className="font-mono text-sm font-bold">{s.metrics.purchases} buys</p>
+                            <p className="font-mono text-[11px] text-[#6b5f4d]">
+                              ₦{s.metrics.revenueNaira.toLocaleString()}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="font-mono text-[10px] text-[#6b5f4d]">Not live yet</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

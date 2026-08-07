@@ -21,7 +21,7 @@ import { PushNotifications } from './components/PushNotifications';
 import { SupportTickets } from './components/SupportTickets';
 import { ProcessManagement } from './components/ProcessManagement';
 import { CreatorHub } from './components/CreatorHub';
-import { CreatorApplications } from './components/CreatorApplications';
+import { CreatorSubmissions } from './components/CreatorSubmissions';
 import { LiveStudio } from './components/LiveStudio';
 import { CommandPalette } from './components/CommandPalette';
 import { findNav } from './lib/nav';
@@ -209,7 +209,7 @@ function AppContent() {
       case 'creatorhub':
         return <CreatorHub />;
       case 'creatorapplications':
-        return <CreatorApplications />;
+        return <CreatorSubmissions />;
       default:
         return <Dashboard />;
     }

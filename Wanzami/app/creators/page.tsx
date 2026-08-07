@@ -86,8 +86,8 @@ const kit = [
 ];
 
 const shots = [
-  { n: "01", t: "Apply", d: "Send your reel, your short, or the film that got rejected everywhere else." },
-  { n: "02", t: "Upload", d: "One master file into Creator Hub. We do the heavy lifting." },
+  { n: "01", t: "Join", d: "Create your account in a minute. No waiting on a yes." },
+  { n: "02", t: "Submit", d: "Upload your reel, your short, or the film that got rejected everywhere else. We review it, not you." },
   { n: "03", t: "Release", d: "Your price, your countries, your date. Tease it with Coming Soon." },
   { n: "04", t: "Get paid", d: "Every buy tracked. Every payout in naira." },
 ];
@@ -136,7 +136,7 @@ export default function CreatorsPage() {
               className="inline-flex min-h-[40px] items-center gap-2 px-4 py-2 text-sm font-bold text-[#f2ead9] transition-transform hover:-translate-y-0.5"
               style={{ backgroundColor: INK }}
             >
-              Apply to join
+              Create account
               <ArrowRight className="h-4 w-4" />
             </a>
           </div>
@@ -171,7 +171,7 @@ export default function CreatorsPage() {
               className="inline-flex min-h-[52px] items-center gap-2 px-8 py-3.5 text-base font-bold text-[#f2ead9] shadow-[5px_5px_0_#161310] transition-transform hover:-translate-y-0.5"
               style={{ backgroundColor: RUST }}
             >
-              Apply to join
+              Create account
               <ArrowRight className="h-5 w-5" />
             </a>
             <Link
@@ -320,7 +320,7 @@ export default function CreatorsPage() {
                 className="inline-flex min-h-[56px] items-center gap-2 px-10 py-4 text-lg font-bold text-[#f2ead9] shadow-[6px_6px_0_#161310] transition-transform hover:-translate-y-0.5"
                 style={{ backgroundColor: RUST }}
               >
-                Apply to join
+                Create account
                 <ArrowRight className="h-5 w-5" />
               </a>
               <p className="font-mono text-[11px] uppercase tracking-wider text-[#6b5f4d]">creators@wanzami.tv</p>

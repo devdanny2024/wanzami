@@ -279,6 +279,7 @@ model Title {
   similarAsTarget  TitleSimilarity[] @relation("TargetTitle")
   ppvPurchases     PpvPurchase[]
   ppvViolations    PpvViolation[]
+  creatorSubmissions CreatorSubmission[]
 
   @@index([availability, availableFrom, leavingAt])
 }
@@ -819,51 +820,21 @@ model BlogPost {
 // system: a creator is neither a viewer nor staff, and keeping the models
 // separate means a creator token can never be mistaken for an admin or
 // viewer session, even if a bug were to cross the auth checks.
-enum CreatorApplicationStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
-
-model CreatorApplication {
-  id         BigInt                   @id @default(autoincrement())
-  name       String
-  email      String
-  phone      String?
-  bio        String
-  reelUrl    String?
-  instagram  String?
-  youtube    String?
-  status     CreatorApplicationStatus @default(PENDING)
-  reviewedBy BigInt?
-  reviewNote String?
-  reviewedAt DateTime?
-  createdAt  DateTime                 @default(now())
-
-  account CreatorAccount?
-
-  @@index([status, createdAt])
-  @@index([email])
-}
-
 enum CreatorAccountStatus {
-  PENDING_SETUP
   ACTIVE
   SUSPENDED
 }
 
 model CreatorAccount {
-  id              BigInt              @id @default(autoincrement())
-  application     CreatorApplication  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  applicationId   BigInt              @unique
-  email           String              @unique
-  name            String
-  password        String?
-  inviteToken     String?             @unique
-  inviteExpiresAt DateTime?
-  status          CreatorAccountStatus @default(PENDING_SETUP)
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  id        BigInt               @id @default(autoincrement())
+  email     String               @unique
+  name      String
+  password  String
+  bio       String?
+  reelUrl   String?
+  status    CreatorAccountStatus @default(ACTIVE)
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
 
   submissions CreatorSubmission[]
   sessions    CreatorSession[]
@@ -898,6 +869,10 @@ model CreatorSubmission {
   uploadId   String?
   status     CreatorSubmissionStatus @default(UPLOADING)
   reviewNote String?
+  // Set by admin on approval once the film has been ingested into the real
+  // catalogue, so the dashboard can show real PPV metrics for it.
+  linkedTitle   Title?               @relation(fields: [linkedTitleId], references: [id], onDelete: SetNull)
+  linkedTitleId BigInt?
   createdAt  DateTime                @default(now())
   updatedAt  DateTime                @updatedAt
 
