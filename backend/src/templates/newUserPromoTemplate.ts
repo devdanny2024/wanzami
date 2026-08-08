@@ -45,7 +45,7 @@ export function buildNewUserPromoEmail(params: {
   const bodyHtml = `
     <div style="margin:18px 0 4px;font-family:${monoFont};font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${colors.rust};">Scene 01 &mdash; Tonight's Picks</div>
     <div style="font-family:${displayFont};font-weight:700;text-transform:uppercase;font-size:30px;line-height:1.05;color:${colors.ink};margin:2px 0 14px;">Hey ${name}, pick your first film.</div>
-    <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:${colors.ink};">You joined Wanzami but haven't picked a film yet. Here's what's playing right now, own any of these for 30 days of access, watch whenever you want.</p>
+    <p style="margin:0 0 20px;font-size:14px;line-height:1.6;color:${colors.ink};">You're yet to pick a film since you joined. Pick any of these films showing right now and get 30 days of access to it.</p>
 
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 20px;">
       ${titlesHtml}
