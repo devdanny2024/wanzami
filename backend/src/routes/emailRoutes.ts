@@ -16,6 +16,7 @@ import {
   sendRecentPurchaseEmails,
   sendPendingPurchaseReminders,
   sendUnverifiedAccountReminders,
+  sendNewUserPromoEmails,
 } from "../controllers/emailController.js";
 
 const router = Router();
@@ -37,6 +38,7 @@ router.get("/admin/email/history/recipients", requireAuth, requireAdmin, canEmai
 router.post("/admin/email/ppv/recent-purchasers", requireAuth, requireAdmin, canEmail, sendRecentPurchaseEmails);
 router.post("/admin/email/ppv/pending-reminders", requireAuth, requireAdmin, canEmail, sendPendingPurchaseReminders);
 router.post("/admin/email/account/unverified-reminders", requireAuth, requireAdmin, canEmail, sendUnverifiedAccountReminders);
+router.post("/admin/email/new-users/promo", requireAuth, requireAdmin, canEmail, sendNewUserPromoEmails);
 
 // Campaign control: watch a live send and stop it without an engineer.
 router.get("/admin/email/campaign/status", requireAuth, requireAdmin, canEmail, campaignStatus);

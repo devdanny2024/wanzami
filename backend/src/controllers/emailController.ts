@@ -7,6 +7,7 @@ import { prisma } from "../prisma.js";
 import { buildPlatformRefreshEmailTemplate } from "../templates/platformRefreshEmailTemplate.js";
 import { buildPpvPendingReminderEmail } from "../templates/ppvPendingReminderTemplate.js";
 import { buildAccountVerificationReminderEmail } from "../templates/accountVerificationReminderTemplate.js";
+import { buildNewUserPromoEmail } from "../templates/newUserPromoTemplate.js";
 import { hashPassword } from "../utils/password.js";
 import { sendPpvThankYou } from "./ppvController.js";
 
@@ -538,4 +539,44 @@ export const sendUnverifiedAccountReminders = async (req: Request, res: Response
   }
 
   return res.json({ sent, total: users.length, days: parsed.data.days ?? null });
+};
+
+// New signups who haven't bought anything yet, promoting a first PPV
+// purchase with a spread of what's currently available.
+export const sendNewUserPromoEmails = async (req: Request, res: Response) => {
+  const parsed = DaysWindowQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    return res.status(400).json({ message: parsed.error.issues[0]?.message ?? "Invalid days" });
+  }
+  const days = parsed.data.days ?? 7;
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+  const [users, titles] = await Promise.all([
+    prisma.user.findMany({
+      where: {
+        role: "USER",
+        createdAt: { gte: since },
+        ppvPurchases: { none: { status: "SUCCESS" } },
+      },
+      select: { id: true, email: true, name: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.title.findMany({
+      where: { isPpv: true, archived: false },
+      orderBy: { createdAt: "desc" },
+      take: 6,
+      select: { id: true, name: true, posterUrl: true, ppvPriceNaira: true },
+    }),
+  ]);
+
+  let sent = 0;
+  if (titles.length > 0) {
+    for (const user of users) {
+      const email = buildNewUserPromoEmail({ userName: user.name, titles });
+      await sendEmail({ to: user.email, subject: email.subject, html: email.html });
+      sent += 1;
+    }
+  }
+
+  return res.json({ sent, total: users.length, titleCount: titles.length, days });
 };

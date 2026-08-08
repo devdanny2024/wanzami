@@ -5,6 +5,7 @@ import {
   MailCheck,
   Send,
   TestTube,
+  Ticket,
   Trash2,
   Upload,
   Users,
@@ -321,6 +322,9 @@ export function EmailService() {
   const [unverifiedDays, setUnverifiedDays] = useState<string>("");
   const [sendingUnverifiedReminders, setSendingUnverifiedReminders] = useState(false);
   const [lastUnverifiedResult, setLastUnverifiedResult] = useState<string | null>(null);
+  const [newUserPromoDays, setNewUserPromoDays] = useState<number>(7);
+  const [sendingNewUserPromo, setSendingNewUserPromo] = useState(false);
+  const [lastNewUserPromoResult, setLastNewUserPromoResult] = useState<string | null>(null);
   const token = useMemo(() => (typeof window !== "undefined" ? localStorage.getItem("accessToken") : null), []);
 
   const validTestEmails = useMemo(() => parseEmailList(testEmailsInput), [testEmailsInput]);
@@ -583,6 +587,28 @@ export function EmailService() {
       toast.error(err?.message ?? "Failed to send verification reminders");
     } finally {
       setSendingUnverifiedReminders(false);
+    }
+  };
+
+  const sendNewUserPromo = async () => {
+    setSendingNewUserPromo(true);
+    try {
+      const res = await fetch(`/api/admin/email/new-users/promo?days=${newUserPromoDays}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data?.message ?? "Failed to send new-user promo");
+        return;
+      }
+      const summary = `${data.sent} sent, last ${data.days} days, ${data.titleCount} titles featured`;
+      setLastNewUserPromoResult(summary);
+      toast.success(`Emailed ${data.sent} new user${data.sent === 1 ? "" : "s"}.`);
+    } catch (err: any) {
+      toast.error(err?.message ?? "Failed to send new-user promo");
+    } finally {
+      setSendingNewUserPromo(false);
     }
   };
 
@@ -1005,7 +1031,7 @@ export function EmailService() {
 
       <div>
         <CsPageHeader title="PPV lifecycle emails" slug="Personalized, one email per person · sent immediately, not queued as a campaign" />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-4">
           <CsBox className="p-5">
             <div className="flex items-center justify-between">
               <CsSlug>Recent purchasers</CsSlug>
@@ -1102,6 +1128,43 @@ export function EmailService() {
               </CsButton>
               {lastUnverifiedResult && (
                 <p className="text-xs" style={{ color: 'var(--cs-muted)' }}>{lastUnverifiedResult}</p>
+              )}
+            </div>
+          </CsBox>
+
+          <CsBox className="p-5">
+            <div className="flex items-center justify-between">
+              <CsSlug>New users</CsSlug>
+              <CsTag label="No purchase yet" tone="neutral" />
+            </div>
+            <p className="text-sm mt-2" style={{ color: 'var(--cs-muted)' }}>
+              Promotes a first PPV purchase to accounts that signed up recently and haven't bought a title yet.
+            </p>
+            <div className="mt-4 space-y-3">
+              <div className="space-y-1">
+                <CsSlug>Days back</CsSlug>
+                <input
+                  type="number"
+                  min={1}
+                  max={90}
+                  value={newUserPromoDays}
+                  onChange={(e) => setNewUserPromoDays(Math.max(1, Number(e.target.value) || 1))}
+                  style={fieldStyle}
+                />
+              </div>
+              <CsButton
+                variant="rust"
+                onClick={() => void sendNewUserPromo()}
+                disabled={sendingNewUserPromo}
+                className="w-full"
+              >
+                <span className="inline-flex items-center gap-2 justify-center">
+                  <Ticket className="w-3.5 h-3.5" />
+                  {sendingNewUserPromo ? "Sending..." : "Email new users"}
+                </span>
+              </CsButton>
+              {lastNewUserPromoResult && (
+                <p className="text-xs" style={{ color: 'var(--cs-muted)' }}>{lastNewUserPromoResult}</p>
               )}
             </div>
           </CsBox>
