@@ -534,11 +534,7 @@ export function CustomMediaPlayer({
     };
 
     if (hlsLike && typeof window !== "undefined") {
-      if (video.canPlayType("application/vnd.apple.mpegurl")) {
-        detachHls();
-        video.src = src;
-        video.load();
-      } else if (Hls.isSupported()) {
+      if (Hls.isSupported()) {
         if (!hlsRef.current) {
           const hls = new Hls({ enableWorker: true });
           hls.on(Hls.Events.ERROR, (_event, data) => {
@@ -553,6 +549,10 @@ export function CustomMediaPlayer({
         }
         hlsRef.current.loadSource(src);
         hlsRef.current.attachMedia(video);
+      } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        detachHls();
+        video.src = src;
+        video.load();
       } else {
         detachHls();
         video.src = src;
