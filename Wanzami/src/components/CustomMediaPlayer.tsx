@@ -540,7 +540,14 @@ export function CustomMediaPlayer({
         video.load();
       } else if (Hls.isSupported()) {
         if (!hlsRef.current) {
-          hlsRef.current = new Hls({ enableWorker: true });
+          const hls = new Hls({ enableWorker: true });
+          hls.on(Hls.Events.ERROR, (_event, data) => {
+            console.error("HLS error", data.type, data.details, data.fatal);
+            if (data.fatal) {
+              video.dispatchEvent(new Event("error"));
+            }
+          });
+          hlsRef.current = hls;
         } else {
           hlsRef.current.detachMedia();
         }
