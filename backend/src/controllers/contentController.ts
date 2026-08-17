@@ -330,10 +330,17 @@ export const streamMediaAsset = async (req: Request, res: Response) => {
 
     const ttlRemaining = Math.max(60, payload.exp - Math.floor(Date.now() / 1000));
 
-    // Video segments: redirect client directly to S3 — no data passes through ECS
+    // Video segments: proxy through backend to ensure CORS headers, pipe S3 response
     if (key.endsWith(".ts") || key.endsWith(".mp4") || key.endsWith(".fmp4")) {
-      const presigned = await presignGetObject(key, ttlRemaining);
-      return res.redirect(302, presigned);
+      const object = await getObjectResponse(key, bucket);
+      if (!object.Body) {
+        return res.status(404).json({ message: "Media not found" });
+      }
+      const contentType = object.ContentType || "application/octet-stream";
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      return (object.Body as any).pipe(res);
     }
 
     // Manifests (.m3u8): fetch from S3 and rewrite segment URLs
