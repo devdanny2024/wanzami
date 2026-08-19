@@ -18,6 +18,7 @@ import {
   Video,
   Clapperboard,
   UserCheck,
+  Contact,
   type LucideIcon,
 } from "lucide-react";
 
@@ -49,6 +50,7 @@ export const navGroups: NavGroup[] = [
       { id: "livestudio", label: "Live Studio", icon: Video },
       { id: "creatorhub", label: "Creator Hub", icon: Clapperboard },
       { id: "creatorapplications", label: "Creator Submissions", icon: UserCheck },
+      { id: "filmmakerleads", label: "Filmmaker Leads", icon: Contact },
       { id: "blog", label: "Blog", icon: FileText },
     ],
   },

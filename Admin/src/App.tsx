@@ -22,6 +22,7 @@ import { SupportTickets } from './components/SupportTickets';
 import { ProcessManagement } from './components/ProcessManagement';
 import { CreatorHub } from './components/CreatorHub';
 import { CreatorSubmissions } from './components/CreatorSubmissions';
+import { FilmmakerLeads } from './components/FilmmakerLeads';
 import { LiveStudio } from './components/LiveStudio';
 import { CommandPalette } from './components/CommandPalette';
 import { findNav } from './lib/nav';
@@ -210,6 +211,8 @@ function AppContent() {
         return <CreatorHub />;
       case 'creatorapplications':
         return <CreatorSubmissions />;
+      case 'filmmakerleads':
+        return <FilmmakerLeads />;
       default:
         return <Dashboard />;
     }

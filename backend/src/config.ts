@@ -15,6 +15,10 @@ export const config = {
   adminAccessTokenTtl: process.env.ADMIN_ACCESS_TOKEN_EXPIRES_IN ?? "365d",
   refreshTokenTtl: process.env.REFRESH_TOKEN_EXPIRES_IN ?? "365d",
   deviceLimit: numberOrDefault(process.env.DEVICE_LIMIT, 4),
+  // Shared secret the filmmaker-scraper uses to POST leads. Unset means the
+  // import endpoint refuses every request, which is the right default: an
+  // unauthenticated bulk-write route is worse than a broken one.
+  filmmakerImportToken: process.env.FILMMAKER_IMPORT_TOKEN ?? "",
   s3: {
     endpoint: process.env.S3_ENDPOINT,
     region: process.env.S3_REGION ?? "us-east-1",

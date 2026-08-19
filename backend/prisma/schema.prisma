@@ -969,3 +969,48 @@ model CreatorPayout {
 
   @@index([creatorId, paidAt])
 }
+
+enum FilmmakerLeadContact {
+  EMAIL
+  WHATSAPP
+}
+
+enum FilmmakerLeadConfidence {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+// Prospect list built by the filmmaker-scraper project (D:\Work\filmmaker-scraper).
+// Deliberately NOT stored as User rows: the email audience import creates real
+// users with placeholder passwords, and putting cold prospects there would skew
+// every user metric on the platform.
+model FilmmakerLead {
+  id BigInt @id @default(autoincrement())
+
+  // Channel or site title as harvested. Not necessarily a person's name.
+  name    String
+  domain  String?
+  siteUrl String?
+
+  contactType  FilmmakerLeadContact
+  contactValue String               // email address, or phone in E.164
+
+  // How the contact was found and how far it could be verified. Mirrors the
+  // scraper's grading; see that repo's CLAUDE.md for what each value means.
+  contactSource String                  // mailto | wa_link | text | obfuscated
+  verification  String                  // mx_valid | mx_invalid | format_valid
+  confidence    FilmmakerLeadConfidence
+
+  country   String?   // ISO-2, derived from dialing code where known
+  sourceUrl String?
+  scrapedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Re-running the scraper re-sends the same contacts, so imports upsert.
+  @@unique([contactType, contactValue])
+  @@index([confidence, contactType])
+  @@index([country])
+}

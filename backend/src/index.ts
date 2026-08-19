@@ -19,6 +19,7 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 import pushRoutes from "./routes/pushRoutes.js";
 import creatorRoutes from "./routes/creatorRoutes.js";
 import blogRoutes from "./routes/blogRoutes.js";
+import filmmakerLeadRoutes from "./routes/filmmakerLeadRoutes.js";
 import { recordError } from "./utils/errorLogger.js";
 import type { AuthenticatedRequest } from "./middleware/auth.js";
 import { prisma } from "./prisma.js";
@@ -81,6 +82,7 @@ app.use("/api", notificationRoutes);
 app.use("/api", pushRoutes);
 app.use("/api", creatorRoutes);
 app.use("/api", blogRoutes);
+app.use("/api", filmmakerLeadRoutes);
 
 const healthHandler = async (_req: express.Request, res: express.Response) => {
   try {
