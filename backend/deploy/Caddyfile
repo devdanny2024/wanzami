@@ -23,11 +23,27 @@
 	}
 }
 
-# Tagzy label-designer API (runs natively on the host under PM2, port 8020).
-# 172.18.0.1 is the docker bridge gateway = the host as seen from this container.
+# Language-player audio files + timing-correction persistence API.
+# Frontend (ungarisch-verstehen.vercel.app) hardcodes this bare sslip.io
+# hostname in AUDIO_BASE/CORRECTIONS_BASE, so it has to stay this exact name.
+167-233-26-153.sslip.io {
+	encode zstd gzip
+	handle_path /audio-assets/* {
+		header Access-Control-Allow-Origin *
+		reverse_proxy langplayer-audio:80
+	}
+	handle /corrections/* {
+		reverse_proxy langplayer-corrections:8010
+	}
+}
+
+# Tagzy label-designer API. The PM2/host-native venv this used to point at
+# (port 8020) turned out not to exist on disk, dead since whenever it was set
+# up, so this goes back to the tagzy-backend docker container, which has been
+# up and healthy the whole time.
 tagzy.167-233-26-153.sslip.io {
 	encode zstd gzip
-	reverse_proxy 172.18.0.1:8020 {
+	reverse_proxy tagzy-backend:8000 {
 		header_up X-Forwarded-Proto {scheme}
 		header_up X-Forwarded-For {remote_host}
 	}
