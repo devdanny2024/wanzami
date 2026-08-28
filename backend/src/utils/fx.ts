@@ -1,4 +1,5 @@
 import { config } from "../config.js";
+import { prisma } from "../prisma.js";
 
 type FxCacheEntry = {
   base: string;
@@ -64,6 +65,15 @@ export const roundMoney = (amount: number, currency: string): number => {
   return Math.round(amount * factor) / factor;
 };
 
+const getOverrideRate = async (currency: string): Promise<number | undefined> => {
+  try {
+    const row = await prisma.fxRateOverride.findUnique({ where: { currency } });
+    return row?.rate;
+  } catch {
+    return undefined;
+  }
+};
+
 export const convertCurrency = async (
   amount: number,
   fromCurrency: string,
@@ -77,8 +87,9 @@ export const convertCurrency = async (
   if (fromUpper === toUpper || !toUpper) {
     return { amount: roundMoney(amount, fromUpper), currency: fromUpper, rate: 1 };
   }
-  const rates = await getRates(fromUpper);
-  const rate = rates[toUpper];
+  // An admin-set rate always wins over the live API, since it's the only way
+  // to keep pricing correct when the free FX provider is down or wrong.
+  const rate = (await getOverrideRate(toUpper)) ?? (await getRates(fromUpper))[toUpper];
   if (!rate) {
     return { amount: roundMoney(amount, fromUpper), currency: fromUpper, rate: 1 };
   }

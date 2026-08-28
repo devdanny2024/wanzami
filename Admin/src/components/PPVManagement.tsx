@@ -2,7 +2,18 @@ import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { authFetch } from '@/lib/authClient';
 import { fetchPpvPurchases, type PpvPurchase } from '@/lib/paymentsClient';
-import { CsBox, CsEmpty, CsPageHeader, CsSlug, CsStat, CsTable, CsTag, type CsColumn } from './cs/kit';
+import { CsBox, CsButton, CsEmpty, CsPageHeader, CsSlug, CsStat, CsTable, CsTag, type CsColumn } from './cs/kit';
+
+const fieldStyle: React.CSSProperties = {
+  border: '2px solid var(--cs-ink)',
+  background: 'var(--cs-paper)',
+  color: 'var(--cs-ink)',
+  fontFamily: 'var(--font-smono), monospace',
+  fontSize: 12,
+  padding: '9px 12px',
+};
+
+type FxOverride = { currency: string; rate: number; updatedAt: string };
 
 type TitleRow = {
   id: number | string;
@@ -29,6 +40,34 @@ export function PPVManagement() {
   const [purchases, setPurchases] = useState<PpvPurchase[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [fxOverrides, setFxOverrides] = useState<FxOverride[]>([]);
+  const [fxLiveRates, setFxLiveRates] = useState<Record<string, number>>({});
+  const [fxLoading, setFxLoading] = useState(true);
+  const [fxCurrency, setFxCurrency] = useState('');
+  const [fxNairaPerUnit, setFxNairaPerUnit] = useState('');
+  const [fxSaving, setFxSaving] = useState(false);
+
+  const authHeaders = () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
+  const loadFxRates = async () => {
+    setFxLoading(true);
+    try {
+      const res = await authFetch('/admin/ppv/fx-rates', { headers: authHeaders() });
+      if (res.ok) {
+        const data = res.data as { overrides?: FxOverride[]; liveRates?: Record<string, number> };
+        setFxOverrides(data.overrides ?? []);
+        setFxLiveRates(data.liveRates ?? {});
+      } else {
+        toast.error('Failed to load FX rates');
+      }
+    } finally {
+      setFxLoading(false);
+    }
+  };
+
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -54,7 +93,52 @@ export function PPVManagement() {
       }
     };
     void load();
+    void loadFxRates();
   }, []);
+
+  const saveFxRate = async () => {
+    const currency = fxCurrency.trim().toUpperCase();
+    const nairaPerUnit = Number(fxNairaPerUnit);
+    if (!/^[A-Z]{3}$/.test(currency)) {
+      toast.error('Currency must be a 3-letter code, e.g. USD');
+      return;
+    }
+    if (!Number.isFinite(nairaPerUnit) || nairaPerUnit <= 0) {
+      toast.error('Enter how many naira 1 unit of that currency is worth');
+      return;
+    }
+    setFxSaving(true);
+    try {
+      const res = await authFetch('/admin/ppv/fx-rates', {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({ currency, rate: 1 / nairaPerUnit }),
+      });
+      if (!res.ok) {
+        toast.error((res.data as any)?.message ?? 'Failed to save rate');
+        return;
+      }
+      toast.success(`${currency} rate saved`);
+      setFxCurrency('');
+      setFxNairaPerUnit('');
+      await loadFxRates();
+    } finally {
+      setFxSaving(false);
+    }
+  };
+
+  const removeFxRate = async (currency: string) => {
+    const res = await authFetch(`/admin/ppv/fx-rates/${currency}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    });
+    if (!res.ok && res.status !== 204) {
+      toast.error('Failed to remove override');
+      return;
+    }
+    toast.success(`${currency} back to the live rate`);
+    await loadFxRates();
+  };
 
   const ppvTitles: PpvTitleRow[] = useMemo(() => {
     const byTitle = new Map<string, { purchases: number; revenue: number }>();
@@ -167,6 +251,88 @@ export function PPVManagement() {
             emptySlug="Nothing on sale"
             emptyBody="No titles have PPV enabled. Turn PPV on for a title in Movies or Series to sell tickets."
           />
+        </div>
+      </CsBox>
+
+      <CsBox className="p-5">
+        <div className="flex items-center justify-between">
+          <CsSlug>FX rates · what buyers outside Nigeria are charged</CsSlug>
+        </div>
+        <p className="mt-2 text-xs" style={{ color: 'var(--cs-muted)' }}>
+          Prices are set in naira. When a rate is set here it replaces the live exchange rate for
+          that currency. Remove it to go back to the live rate.
+        </p>
+
+        <div className="mt-4 flex flex-wrap items-end gap-3">
+          <div>
+            <CsSlug className="mb-2">Currency</CsSlug>
+            <input
+              value={fxCurrency}
+              onChange={(e) => setFxCurrency(e.target.value.toUpperCase())}
+              placeholder="USD"
+              maxLength={3}
+              style={{ ...fieldStyle, width: 90 }}
+            />
+          </div>
+          <div>
+            <CsSlug className="mb-2">1 unit = ₦</CsSlug>
+            <input
+              value={fxNairaPerUnit}
+              onChange={(e) => setFxNairaPerUnit(e.target.value)}
+              placeholder="1500"
+              inputMode="decimal"
+              style={{ ...fieldStyle, width: 140 }}
+            />
+          </div>
+          <CsButton onClick={saveFxRate} disabled={fxSaving} variant="rust">
+            {fxSaving ? 'Saving…' : 'Save rate'}
+          </CsButton>
+        </div>
+
+        <div className="mt-5">
+          {fxLoading ? (
+            <div className="h-16" style={{ background: 'var(--cs-panel)', border: '1.5px solid var(--cs-line)' }} />
+          ) : fxOverrides.length === 0 ? (
+            <p className="text-xs" style={{ color: 'var(--cs-muted)' }}>
+              No admin rates set. Every currency is priced off the live exchange rate.
+            </p>
+          ) : (
+            <table className="w-full text-xs">
+              <thead>
+                <tr style={{ borderBottom: '1.5px solid var(--cs-line)' }}>
+                  <th className="text-left py-2 cs-mono" style={{ color: 'var(--cs-muted)' }}>Currency</th>
+                  <th className="text-right py-2 cs-mono" style={{ color: 'var(--cs-muted)' }}>Admin rate</th>
+                  <th className="text-right py-2 cs-mono" style={{ color: 'var(--cs-muted)' }}>Live rate</th>
+                  <th className="text-right py-2" />
+                </tr>
+              </thead>
+              <tbody>
+                {fxOverrides.map((o) => {
+                  const liveRate = fxLiveRates[o.currency];
+                  return (
+                    <tr key={o.currency} style={{ borderBottom: '1px solid var(--cs-line)' }}>
+                      <td className="py-2 cs-mono font-bold" style={{ color: 'var(--cs-ink)' }}>{o.currency}</td>
+                      <td className="py-2 text-right cs-mono" style={{ color: 'var(--cs-ink)' }}>
+                        1 {o.currency} = {formatCurrency(Math.round(1 / o.rate))}
+                      </td>
+                      <td className="py-2 text-right cs-mono" style={{ color: 'var(--cs-muted)' }}>
+                        {liveRate ? `1 ${o.currency} = ${formatCurrency(Math.round(1 / liveRate))}` : '—'}
+                      </td>
+                      <td className="py-2 text-right">
+                        <button
+                          onClick={() => removeFxRate(o.currency)}
+                          className="cs-mono text-xs underline"
+                          style={{ color: 'var(--cs-rust)' }}
+                        >
+                          Remove
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
       </CsBox>
 

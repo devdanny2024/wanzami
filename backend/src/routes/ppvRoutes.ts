@@ -19,7 +19,8 @@ import {
   paystackWebhook,
   adminListPurchases,
 } from "../controllers/ppvController.js";
-import { requireAuth, requireAdmin, requireAnyPermission } from "../middleware/auth.js";
+import { listFxRates, upsertFxRate, deleteFxRate } from "../controllers/fxController.js";
+import { requireAuth, requireAdmin, requireAnyPermission, requirePermission } from "../middleware/auth.js";
 import { Permission } from "../auth/permissions.js";
 
 const router = Router();
@@ -40,6 +41,28 @@ router.get(
   requireAdmin,
   requireAnyPermission([Permission.PAYMENTS_VIEW, Permission.PAYMENTS_MANAGE]),
   adminListPurchases
+);
+// FX rate overrides for non-NGN PPV pricing.
+router.get(
+  "/admin/ppv/fx-rates",
+  requireAuth,
+  requireAdmin,
+  requireAnyPermission([Permission.PAYMENTS_VIEW, Permission.PAYMENTS_MANAGE]),
+  listFxRates
+);
+router.put(
+  "/admin/ppv/fx-rates",
+  requireAuth,
+  requireAdmin,
+  requirePermission(Permission.PAYMENTS_MANAGE),
+  upsertFxRate
+);
+router.delete(
+  "/admin/ppv/fx-rates/:currency",
+  requireAuth,
+  requireAdmin,
+  requirePermission(Permission.PAYMENTS_MANAGE),
+  deleteFxRate
 );
 router.post("/ppv/flutterwave/webhook", flutterwaveWebhook);
 router.get("/app-session/ppv/flutterwave/return", flutterwaveAppSessionReturn);
