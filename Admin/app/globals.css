@@ -93,6 +93,8 @@
 .hover\:bg-\[var\(--cs-panel\)\]:hover { background: var(--cs-panel); }
 .active\:translate-y-px:active { transform: translateY(1px); }
 .disabled\:opacity-50:disabled { opacity: 0.5; }
+.top-2 { top: 0.5rem; }
+.left-2 { left: 0.5rem; }
 
 /* Upload dock */
 .max-h-64 { max-height: 16rem; }
