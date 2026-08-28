@@ -381,19 +381,16 @@ export function MoviesManagement() {
                   <div className="absolute top-2 left-2">
                     <CsTag label={status.label} tone={status.tone} />
                   </div>
-                  <div
-                    className="absolute inset-x-0 bottom-0 p-2.5"
-                    style={{ background: "linear-gradient(to top, rgba(22,19,16,0.85), rgba(22,19,16,0.2), transparent)" }}
-                  >
-                    <p className="cs-mono text-xs font-bold uppercase truncate" style={{ color: "#fff", letterSpacing: "0.04em" }}>
-                      {movie.name}
-                    </p>
-                  </div>
                 </div>
                 <div
-                  className="flex items-center justify-between gap-2 px-3 py-2.5"
+                  className="px-3 pt-2.5"
                   style={{ borderTop: "1.5px solid var(--cs-line)" }}
                 >
+                  <p className="cs-mono text-xs font-bold uppercase truncate" style={{ color: "var(--cs-ink)", letterSpacing: "0.04em" }}>
+                    {movie.name}
+                  </p>
+                </div>
+                <div className="flex items-center justify-between gap-2 px-3 pt-1.5 pb-2.5">
                   <div className="flex items-center gap-2 min-w-0">
                     <button
                       onClick={edit}
