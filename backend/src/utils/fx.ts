@@ -25,9 +25,8 @@ const normalizeRates = (raw: any): Record<string, number> => {
 
 const fetchRates = async (base: string): Promise<Record<string, number>> => {
   const baseUpper = base.toUpperCase();
-  const url = new URL(config.fx.apiBase);
-  url.searchParams.set("base", baseUpper);
-  const res = await fetch(url.toString());
+  const url = `${config.fx.apiBase.replace(/\/+$/, "")}/${baseUpper}`;
+  const res = await fetch(url);
   if (!res.ok) {
     throw new Error(`FX rates request failed (${res.status})`);
   }

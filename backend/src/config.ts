@@ -67,7 +67,7 @@ export const config = {
   },
   apiPublicUrl: process.env.API_PUBLIC_URL ?? process.env.BACKEND_URL ?? "",
   fx: {
-    apiBase: process.env.FX_API_BASE ?? "https://api.exchangerate.host/latest",
+    apiBase: process.env.FX_API_BASE ?? "https://open.er-api.com/v6/latest",
     cacheTtlMs: numberOrDefault(process.env.FX_CACHE_TTL_MS, 6 * 60 * 60 * 1000),
   },
   // Optional CDN base for media playback (e.g., CloudFront): https://cdn.yourdomain.com
