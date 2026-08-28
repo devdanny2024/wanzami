@@ -99,6 +99,47 @@ export const listTitles = async (_req: Request, res: Response) => {
   });
 };
 
+export const getAdminTitle = async (req: Request, res: Response) => {
+  const titleId = req.params.id ? BigInt(req.params.id) : null;
+  if (!titleId) {
+    return res.status(400).json({ message: "Missing title id" });
+  }
+
+  const title = await prisma.title.findUnique({
+    where: { id: titleId },
+    include: { assetVersions: { orderBy: { createdAt: "desc" } } },
+  });
+  if (!title) {
+    return res.status(404).json({ message: "Title not found" });
+  }
+
+  const requestOrigin = getRequestOrigin(req);
+  const assetVersions = await Promise.all(
+    title.assetVersions.map(async (a) => ({
+      id: a.id.toString(),
+      rendition: a.rendition,
+      url: await resolvePlaybackUrl(a.url, { origin: requestOrigin, rendition: a.rendition }),
+      sizeBytes: a.sizeBytes ? Number(a.sizeBytes) : undefined,
+      durationSec: a.durationSec ?? undefined,
+      status: a.status,
+    }))
+  );
+
+  return res.json({
+    title: {
+      id: title.id.toString(),
+      name: title.name,
+      description: title.description,
+      posterUrl: title.posterUrl,
+      thumbnailUrl: title.thumbnailUrl,
+      archived: title.archived,
+      pendingReview: title.pendingReview,
+      isPpv: title.isPpv,
+      assetVersions,
+    },
+  });
+};
+
 const parseKidMode = (req: Request) => {
   const q = (req.query.kidMode as string | undefined)?.toLowerCase();
   if (q === "true" || q === "1") return true;

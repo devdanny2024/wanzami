@@ -8,6 +8,7 @@ import {
 import { Permission } from "../auth/permissions.js";
 import {
   listTitles,
+  getAdminTitle,
   listEpisodesForTitle,
   listPublicTitles,
   searchPublicTitles,
@@ -52,6 +53,7 @@ const canPresignAssets = requireAnyPermission([
 ]);
 
 router.get("/admin/titles", requireAuth, requireAdmin, canReadCatalogue, listTitles);
+router.get("/admin/titles/:id", requireAuth, requireAdmin, canReadCatalogue, getAdminTitle);
 router.get("/admin/titles/:id/episodes", requireAuth, requireAdmin, canReadCatalogue, listEpisodesForTitle);
 router.get("/admin/titles/:id/seasons", requireAuth, requireAdmin, canReadCatalogue, listSeasonsForTitle);
 router.post("/admin/titles", requireAuth, requireAdmin, canManageCatalogue, createTitle);
