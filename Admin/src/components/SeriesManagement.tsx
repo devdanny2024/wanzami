@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Edit, Search, Upload, Layers, Trash2, Eye } from "lucide-react";
+import { Plus, Edit, Search, Upload, Layers, Trash2, Eye, Link2 } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { AddEditSeriesForm } from "./AddEditSeriesForm";
 import { useUploadQueue } from "@/context/UploadQueueProvider";
@@ -8,6 +8,9 @@ import { MovieTitle } from "./MoviesManagement"; // reuse shape for series title
 import { titleStatus } from "../lib/status";
 import { toast } from "sonner";
 import { CsBox, CsButton, CsPageHeader, CsSlug, CsTag, type CsColumn } from "./cs/kit";
+
+const STOREFRONT =
+  process.env.NEXT_PUBLIC_STOREFRONT_URL?.replace(/\/+$/, "") || "https://www.wanzami.tv";
 
 type SeriesTitle = MovieTitle & {
   episodeCount?: number;
@@ -286,6 +289,21 @@ export function SeriesManagement() {
                       {item.name}
                     </span>
                     <div className="flex gap-1 shrink-0">
+                      <button
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(`${STOREFRONT}/title/${item.id}`);
+                            toast.success("Link copied");
+                          } catch {
+                            toast.error("Couldn't copy link");
+                          }
+                        }}
+                        title="Copy shareable link"
+                        className="transition-colors hover:bg-[var(--cs-panel)]"
+                        style={{ border: "1.5px solid var(--cs-line)", color: "var(--cs-ink)", padding: 6 }}
+                      >
+                        <Link2 className="w-3.5 h-3.5" />
+                      </button>
                       <button
                         onClick={() => {
                           setEditingSeries(item);
