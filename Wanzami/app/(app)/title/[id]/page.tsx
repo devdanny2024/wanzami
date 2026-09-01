@@ -12,7 +12,10 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
 
   const image = title.thumbnailUrl || title.posterUrl || undefined;
   const description = title.description ? title.description.slice(0, 200) : undefined;
-  const url = `https://wanzami.tv/title/${params.id}`;
+  // wanzami.tv (no www) 307-redirects to www.wanzami.tv at the DNS/Vercel
+  // level, and some link-preview crawlers don't follow redirects, so point
+  // og:url straight at the domain that actually serves the page.
+  const url = `https://www.wanzami.tv/title/${params.id}`;
 
   return {
     title: `${title.name} | Wanzami`,
