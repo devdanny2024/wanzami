@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FileDrop } from "./FileDrop";
-import { Plus, Edit, Trash2, Search, Eye, Rocket, ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { Plus, Edit, Trash2, Search, Eye, Rocket, ChevronLeft, ChevronRight, Check, Link2 } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { useUploadQueue } from "@/context/UploadQueueProvider";
 import { toast } from "sonner";
 import { authFetch } from "@/lib/authClient";
 import { titleStatus } from "../lib/status";
 import { CsBox, CsButton, CsPageHeader, CsSlug, CsTag, type CsColumn } from "./cs/kit";
+
+const STOREFRONT =
+  process.env.NEXT_PUBLIC_STOREFRONT_URL?.replace(/\/+$/, "") || "https://www.wanzami.tv";
 
 export type MovieTitle = {
   id: string;
@@ -366,6 +369,14 @@ export function MoviesManagement() {
               });
               void reloadMovies();
             };
+            const copyLink = async () => {
+              try {
+                await navigator.clipboard.writeText(`${STOREFRONT}/title/${movie.id}`);
+                toast.success("Link copied");
+              } catch {
+                toast.error("Couldn't copy link");
+              }
+            };
             const edit = () => {
               setEditingMovie(movie);
               setIsAddDialogOpen(true);
@@ -412,6 +423,14 @@ export function MoviesManagement() {
                     )}
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      onClick={copyLink}
+                      title="Copy shareable link"
+                      className="transition-colors hover:bg-[var(--cs-panel)]"
+                      style={{ border: "1.5px solid var(--cs-line)", color: "var(--cs-ink)", padding: 6 }}
+                    >
+                      <Link2 className="w-4 h-4" />
+                    </button>
                     <button
                       onClick={() => openPreview(movie)}
                       title="Preview"

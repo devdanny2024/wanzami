@@ -116,9 +116,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       // visitors to /splash would defeat its entire purpose.
       const isPublicRoute =
         pathname?.startsWith("/blog") || pathname?.startsWith("/contact");
+      // Individual title pages render a public teaser (poster, synopsis, buy/
+      // sign-up CTA) for anonymous visitors, so a shared movie link actually
+      // shows the movie instead of bouncing to /splash. A logged-in user with
+      // no active profile still gets sent to /profiles below as usual.
+      const isTitleRoute = pathname?.startsWith("/title/");
       let token = localStorage.getItem("accessToken");
 
-      if (!token && !isAuthOrOnboardingRoute && !isSplashRoute && !isPublicRoute) {
+      if (!token && !isAuthOrOnboardingRoute && !isSplashRoute && !isPublicRoute && !isTitleRoute) {
         const refreshed = await refreshSession();
         token = refreshed ? localStorage.getItem("accessToken") : null;
         if (!token) {
@@ -155,7 +160,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       const threshold = 5 * 60 * 1000; // 5 minutes
       // A lapsed session shouldn't yank someone out of a public article.
       const onPublicRoute =
-        pathname?.startsWith("/blog") || pathname?.startsWith("/contact");
+        pathname?.startsWith("/blog") ||
+        pathname?.startsWith("/contact") ||
+        pathname?.startsWith("/title/");
       const endSession = () => {
         if (!onPublicRoute) logout();
       };
