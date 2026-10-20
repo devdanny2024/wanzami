@@ -1,5 +1,6 @@
 import { Hero } from "./Hero";
 import { ContentRow } from "./ContentRow";
+import { DiscoverEntry } from "./DiscoverEntry";
 import { MovieData } from "./MovieCard";
 import { LiveRow } from "./LiveRow";
 import { RowSkeleton } from "./Skeletons";
@@ -123,6 +124,7 @@ export function HomePage({
           <div className="container-page text-cs-rust">Failed to load movies: {error}</div>
         ) : hasCatalog ? (
           <>
+            <DiscoverEntry />
             {forYouItems.length > 0 && (
               <ContentRow title="For You" movies={forYouItems} onMovieClick={onMovieClick} />
             )}

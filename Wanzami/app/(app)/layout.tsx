@@ -73,6 +73,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (pathname.startsWith("/payment")) return "payment";
     if (pathname.startsWith("/contact")) return "contact";
     if (pathname.startsWith("/live")) return "live";
+    if (pathname.startsWith("/discover")) return "discover";
     if (pathname.startsWith("/movies")) return "movies";
     if (pathname.startsWith("/series")) return "series";
     if (pathname.startsWith("/kids")) return "kids";

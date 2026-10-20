@@ -142,6 +142,7 @@ export function Navbar({
       { key: 'live', label: 'Live', page: 'live', href: '/live', active: currentPage === 'live' },
       { key: 'movies', label: 'Movies', page: 'movies', href: '/movies', active: currentPage === 'movies' },
       { key: 'series', label: 'Series', page: 'series', href: '/series', active: currentPage === 'series' },
+      { key: 'discover', label: 'Discover', page: 'discover', href: '/discover', active: currentPage === 'discover' },
     ];
     // Member-only shelves. Rendering these to a signed-out visitor sends them
     // straight into the auth gate, which is a dead end on any public route.
