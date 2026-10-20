@@ -240,6 +240,9 @@ model Title {
   name                String
   description         String?
   genres              String[]           @default([])
+  // Discover: spoken languages and editorial shelves, stored as slugs (see utils/discoverTaxonomy.ts).
+  languages           String[]           @default([])
+  collections         String[]           @default([])
   cast                String[]           @default([])
   crew                String[]           @default([])
   castMeta            Json?

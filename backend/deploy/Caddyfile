@@ -55,3 +55,15 @@ sidequest.wanzami.tv {
 	encode zstd gzip
 	reverse_proxy 172.18.0.1:8787
 }
+
+# Localink backend (native PM2 on the host, port 4200). Added 2026-09-05.
+localink.167-233-26-153.sslip.io {
+	encode zstd gzip
+	reverse_proxy 172.18.0.1:4200
+}
+
+# Tribalink backend (same PM2 process as Localink above, port 4200). Added 2026-10-12.
+tribalink.167-233-26-153.sslip.io {
+	encode zstd gzip
+	reverse_proxy 172.18.0.1:4200
+}

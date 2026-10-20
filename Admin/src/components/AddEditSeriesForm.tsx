@@ -3,6 +3,7 @@ import { MovieTitle } from "./MoviesManagement"; // reuse shape
 import { useUploadQueue } from "@/context/UploadQueueProvider";
 import { FileDrop } from "./FileDrop";
 import { CsButton, CsSlug } from "./cs/kit";
+import { DiscoverFields } from "./DiscoverFields";
 
 const GENRE_OPTIONS = [
   "Action",
@@ -58,6 +59,8 @@ export function AddEditSeriesForm({
   const [releaseYear, setReleaseYear] = useState("");
   const [genres, setGenres] = useState<string[]>(series?.genres ?? []);
   const [language, setLanguage] = useState(series?.language ?? "en");
+  const [discoverLanguages, setDiscoverLanguages] = useState<string[]>((series as any)?.languages ?? []);
+  const [discoverCollections, setDiscoverCollections] = useState<string[]>((series as any)?.collections ?? []);
   const [maturityRating, setMaturityRating] = useState<string>(series?.maturityRating ?? "");
   const [countryAvailability, setCountryAvailability] = useState<string[]>(series?.countryAvailability ?? []);
   const [isOriginal, setIsOriginal] = useState<boolean>(!!series?.isOriginal);
@@ -81,6 +84,8 @@ export function AddEditSeriesForm({
     setReleaseYear(series?.releaseDate ? new Date(series.releaseDate).getFullYear().toString() : "");
     setGenres(series?.genres ?? []);
     setLanguage(series?.language ?? "en");
+    setDiscoverLanguages((series as any)?.languages ?? []);
+    setDiscoverCollections((series as any)?.collections ?? []);
     setMaturityRating(series?.maturityRating ?? "");
     setCountryAvailability(series?.countryAvailability ?? []);
     setIsOriginal(!!series?.isOriginal);
@@ -141,6 +146,8 @@ export function AddEditSeriesForm({
         type: "SERIES",
         genres,
         language,
+        languages: discoverLanguages,
+        collections: discoverCollections,
         maturityRating,
         countryAvailability,
         isOriginal,
@@ -278,6 +285,13 @@ export function AddEditSeriesForm({
             })}
           </div>
         </div>
+        <DiscoverFields
+          languages={discoverLanguages}
+          collections={discoverCollections}
+          genres={genres}
+          onLanguages={setDiscoverLanguages}
+          onCollections={setDiscoverCollections}
+        />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <CsSlug className="mb-1">Language</CsSlug>

@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "node -e \"console.log('No tests defined')\"",
     "video:studio": "remotion studio remotion/index.ts",
-    "video:render": "remotion render remotion/index.ts WanzamiPromo out/wanzami-promo.mp4"
+    "video:render": "remotion render remotion/index.ts WanzamiPromo out/wanzami-promo.mp4",
+    "test:discover": "node --experimental-strip-types --test src/lib/discover.test.ts"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.3",
