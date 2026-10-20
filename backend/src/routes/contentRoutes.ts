@@ -31,10 +31,12 @@ import {
   purgeAllTitles,
 } from "../controllers/contentController.js";
 
+import { getDiscoverArt, resetDiscoverArt, setDiscoverArt } from "../controllers/discoverArtController.js";
 const router = Router();
 
 // Public catalog
 router.get("/titles", listPublicTitles);
+router.get("/discover/art", getDiscoverArt);
 router.get("/search/titles", searchPublicTitles);
 router.get("/titles/:id", getTitleWithEpisodes);
 router.get("/titles/:id/episodes", listEpisodesForTitle);
@@ -57,6 +59,8 @@ router.get("/admin/titles/:id", requireAuth, requireAdmin, canReadCatalogue, get
 router.get("/admin/titles/:id/episodes", requireAuth, requireAdmin, canReadCatalogue, listEpisodesForTitle);
 router.get("/admin/titles/:id/seasons", requireAuth, requireAdmin, canReadCatalogue, listSeasonsForTitle);
 router.post("/admin/titles", requireAuth, requireAdmin, canManageCatalogue, createTitle);
+router.put("/admin/discover/art", requireAuth, requireAdmin, canManageCatalogue, setDiscoverArt);
+router.delete("/admin/discover/art/:kind/:slug", requireAuth, requireAdmin, canManageCatalogue, resetDiscoverArt);
 router.patch("/admin/titles/:id", requireAuth, requireAdmin, canManageCatalogue, updateTitle);
 router.post("/admin/titles/:id/publish", requireAuth, requireAdmin, canManageCatalogue, publishTitle);
 router.delete("/admin/titles/:id", requireAuth, requireAdmin, canManageCatalogue, deleteTitle);
