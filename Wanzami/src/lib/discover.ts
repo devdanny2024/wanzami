@@ -302,15 +302,52 @@ export function labelFor(kind: DiscoverKind | "sub", slug: string): string {
   return list.find((f) => f.slug === slug)?.label ?? slug;
 }
 
-/** Approved category artwork, keyed "kind/slug" -> image path under /public.
-    Empty until the production art lands (stock studies in the proposal are
-    concept references, not shippable). Tiles without art fall back to a Call
-    Sheet typographic tile, so nothing is ever blank. */
-export const CATEGORY_ART: Partial<Record<string, string>> = {
-  // "language/yoruba": "/category-art/language/yoruba.webp",
+/** Category photography. Each door has a default cinematic photograph (the studies from the
+    approved proposal, cropped 16:9 in /public/category-art/photos). Editors can replace any
+    door's image from Admin > Discover; that override is stored in the database and wins. */
+const P = (key: string) => `/category-art/photos/${key}.webp`;
+export const DEFAULT_ART: Record<string, string> = {
+  "language/english": P("8407a47f"),
+  "language/yoruba": P("8a5098d9"),
+  "language/igbo": P("e8f5fa05"),
+  "language/hausa": P("eb122b60"),
+  "language/pidgin": P("578b06a1"),
+  "language/indigenous": P("84d5f908"),
+  "genre/drama": P("e8f5fa05"),
+  "genre/comedy": P("3988fd29"),
+  "genre/romance": P("c539245c"),
+  "genre/thriller": P("d63fd84a"),
+  "genre/crime": P("8407a47f"),
+  "genre/action": P("578b06a1"),
+  "genre/horror": P("3982fd76"),
+  "genre/epic": P("84d5f908"),
+  "genre/family": P("3988fd29"),
+  "genre/political": P("eb122b60"),
+  "genre/faith": P("8a5098d9"),
+  "genre/documentary": P("8407a47f"),
+  "genre/youth": P("3988fd29"),
+  "genre/animation": P("3988fd29"),
+  "genre/shorts": P("e8f5fa05"),
+  "collection/select": P("e8f5fa05"),
+  "collection/shorts": P("8407a47f"),
+  "collection/new-voices": P("578b06a1"),
+  "collection/classics-room": P("84d5f908"),
+  "collection/folklore": P("3982fd76"),
+  "collection/home-away": P("8a5098d9"),
+  "collection/behind-the-frame": P("8407a47f"),
+  "collection/women-in-focus": P("8a5098d9"),
+  "collection/family-room": P("3988fd29"),
+  "collection/love-actually": P("c539245c"),
+  "collection/money-and-power": P("eb122b60"),
+  "collection/the-dark-side": P("d63fd84a"),
 };
 
-export const categoryArt = (kind: DiscoverKind, slug: string): string | undefined => CATEGORY_ART[`${kind}/${slug}`];
+/** Image for a door: the Admin override if one exists, else the default photograph. */
+export const categoryArt = (
+  kind: DiscoverKind,
+  slug: string,
+  overrides?: Record<string, string> | null,
+): string | undefined => overrides?.[`${kind}/${slug}`] ?? DEFAULT_ART[`${kind}/${slug}`];
 
 /** Copy, straight from the approved proposal. */
 export const EMPTY_STATE = {

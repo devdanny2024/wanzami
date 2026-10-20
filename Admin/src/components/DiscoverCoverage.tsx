@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { authFetch } from "@/lib/authClient";
 import { CsBox, CsButton, CsEmpty, CsPageHeader, CsSlug, CsStat } from "./cs/kit";
@@ -7,6 +7,8 @@ import {
   COLLECTION_OPTIONS,
   GENRE_OPTIONS,
   LANGUAGE_OPTIONS,
+  DEFAULT_ART,
+  absoluteArt,
   collectionsOf,
   coverage,
   genreSlugsOf,
@@ -27,7 +29,103 @@ type AdminTitle = {
   collections?: string[];
 };
 
-function DoorList({ heading, options, counts, note }: { heading: string; options: Option[]; counts: Record<string, number>; note: string }) {
+type ArtApi = {
+  overrides: Record<string, string>;
+  busy: string | null;
+  upload: (kind: "language" | "genre" | "collection", slug: string, file: File) => void;
+  reset: (kind: "language" | "genre" | "collection", slug: string) => void;
+};
+
+function DoorRow({ kind, o, n, art }: { kind: "language" | "genre" | "collection"; o: Option; n: number; art: ArtApi }) {
+  const key = `${kind}/${o.slug}`;
+  const custom = art.overrides[key];
+  const src = absoluteArt(custom ?? DEFAULT_ART[key] ?? "");
+  const input = useRef<HTMLInputElement>(null);
+  const busy = art.busy === key;
+  return (
+    <li className="flex items-center justify-between gap-3 py-2" style={{ borderTop: "1px solid var(--cs-line, #d9cfba)" }}>
+      <div className="flex min-w-0 items-center gap-3">
+        {src ? (
+          <img
+            src={src}
+            alt=""
+            loading="lazy"
+            style={{ width: 72, height: 40, objectFit: "cover", border: "1.5px solid var(--cs-ink)", background: "var(--cs-ink)" }}
+          />
+        ) : (
+          <div style={{ width: 72, height: 40, border: "1.5px solid var(--cs-ink)", background: "var(--cs-panel)" }} />
+        )}
+        <div className="min-w-0">
+          <p className="truncate text-sm" style={{ color: "var(--cs-ink)" }}>{o.label}</p>
+          <p className="cs-mono text-[10px] font-bold uppercase" style={{ color: custom ? "var(--cs-rust)" : "var(--cs-muted)" }}>
+            {custom ? "Custom image" : "Default image"}
+          </p>
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <span className="cs-mono text-xs font-bold" style={{ color: "var(--cs-ink)" }}>{n}</span>
+        <span
+          className="cs-mono text-[10px] font-bold uppercase"
+          style={{
+            padding: "2px 8px",
+            border: "1.5px solid " + (n > 0 ? "var(--cs-ink)" : "var(--cs-muted)"),
+            background: n > 0 ? "var(--cs-ink)" : "transparent",
+            color: n > 0 ? "#fff" : "var(--cs-muted)",
+          }}
+        >
+          {n > 0 ? "Live" : "Hidden"}
+        </span>
+        <input
+          ref={input}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) art.upload(kind, o.slug, f);
+            e.target.value = "";
+          }}
+        />
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => input.current?.click()}
+          className="cs-mono cs-border-thin text-[10px] font-bold uppercase disabled:opacity-50"
+          style={{ padding: "3px 8px", background: "var(--cs-paper)" }}
+        >
+          {busy ? "Saving..." : "Image"}
+        </button>
+        {custom ? (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => art.reset(kind, o.slug)}
+            className="cs-mono text-[10px] font-bold uppercase underline disabled:opacity-50"
+            style={{ color: "var(--cs-rust)" }}
+          >
+            Reset
+          </button>
+        ) : null}
+      </div>
+    </li>
+  );
+}
+
+function DoorList({
+  heading,
+  kind,
+  options,
+  counts,
+  note,
+  art,
+}: {
+  heading: string;
+  kind: "language" | "genre" | "collection";
+  options: Option[];
+  counts: Record<string, number>;
+  note: string;
+  art: ArtApi;
+}) {
   const live = options.filter((o) => (counts[o.slug] ?? 0) > 0).length;
   return (
     <CsBox className="p-5">
@@ -37,28 +135,9 @@ function DoorList({ heading, options, counts, note }: { heading: string; options
       </div>
       <p className="cs-mono mt-1 mb-3" style={{ fontSize: 10, color: "var(--cs-muted)" }}>{note}</p>
       <ul>
-        {options.map((o) => {
-          const n = counts[o.slug] ?? 0;
-          return (
-            <li key={o.slug} className="flex items-center justify-between py-1.5" style={{ borderTop: "1px solid var(--cs-line, #d9cfba)" }}>
-              <span className="text-sm" style={{ color: "var(--cs-ink)" }}>{o.label}</span>
-              <span className="flex items-center gap-3">
-                <span className="cs-mono text-xs font-bold" style={{ color: "var(--cs-ink)" }}>{n} {n === 1 ? "film" : "films"}</span>
-                <span
-                  className="cs-mono text-[10px] font-bold uppercase"
-                  style={{
-                    padding: "2px 8px",
-                    border: "1.5px solid " + (n > 0 ? "var(--cs-ink)" : "var(--cs-muted)"),
-                    background: n > 0 ? "var(--cs-ink)" : "transparent",
-                    color: n > 0 ? "#fff" : "var(--cs-muted)",
-                  }}
-                >
-                  {n > 0 ? "Live" : "Hidden"}
-                </span>
-              </span>
-            </li>
-          );
-        })}
+        {options.map((o) => (
+          <DoorRow key={o.slug} kind={kind} o={o} n={counts[o.slug] ?? 0} art={art} />
+        ))}
       </ul>
     </CsBox>
   );
@@ -137,6 +216,8 @@ export function DiscoverCoverage() {
   const [titles, setTitles] = useState<AdminTitle[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "needs">("needs");
+  const [overrides, setOverrides] = useState<Record<string, string>>({});
+  const [busyArt, setBusyArt] = useState<string | null>(null);
   const token = useMemo(() => (typeof window !== "undefined" ? localStorage.getItem("accessToken") : null), []);
 
   const load = useCallback(async () => {
@@ -156,9 +237,71 @@ export function DiscoverCoverage() {
     }
   }, [token]);
 
+  const loadArt = useCallback(async () => {
+    try {
+      const res = await authFetch("/discover/art");
+      if (res.ok) setOverrides(((res.data as any)?.art ?? {}) as Record<string, string>);
+    } catch {
+      // defaults still show
+    }
+  }, []);
+
   useEffect(() => {
     void load();
-  }, [load]);
+    void loadArt();
+  }, [load, loadArt]);
+
+  const authHeaders = (): Record<string, string> => (token ? { Authorization: `Bearer ${token}` } : {});
+
+  const uploadArt = async (kind: "language" | "genre" | "collection", slug: string, file: File) => {
+    if (!file.type.startsWith("image/")) return toast.error("Choose an image file (JPG, PNG or WebP)");
+    if (file.size > 8 * 1024 * 1024) return toast.error("Image must be under 8MB");
+    const key = `${kind}/${slug}`;
+    setBusyArt(key);
+    try {
+      const up = await fetch("/api/admin/assets/upload", {
+        method: "POST",
+        headers: { "Content-Type": file.type, "x-asset-kind": "category-art", ...authHeaders() },
+        body: file,
+      });
+      const uploaded = await up.json().catch(() => ({}));
+      if (!up.ok) throw new Error(uploaded?.message || "Upload failed");
+      const imageUrl = uploaded.publicUrl || uploaded.key;
+      const res = await authFetch("/admin/discover/art", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ kind, slug, imageUrl }),
+      });
+      if (!res.ok) throw new Error((res.data as any)?.message || `Could not save (${res.status})`);
+      setOverrides((prev) => ({ ...prev, [key]: imageUrl }));
+      toast.success("Image updated. It shows on the website within a minute.");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not update the image");
+    } finally {
+      setBusyArt(null);
+    }
+  };
+
+  const resetArt = async (kind: "language" | "genre" | "collection", slug: string) => {
+    const key = `${kind}/${slug}`;
+    setBusyArt(key);
+    try {
+      const res = await authFetch(`/admin/discover/art/${kind}/${slug}`, { method: "DELETE", headers: authHeaders() });
+      if (!res.ok) throw new Error((res.data as any)?.message || `Could not reset (${res.status})`);
+      setOverrides((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      toast.success("Back to the default image");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not reset the image");
+    } finally {
+      setBusyArt(null);
+    }
+  };
+
+  const art: ArtApi = { overrides, busy: busyArt, upload: uploadArt, reset: resetArt };
 
   const live = useMemo(() => titles.filter((t) => !t.archived && !t.pendingReview), [titles]);
   const cov = useMemo(() => coverage(live), [live]);
@@ -191,9 +334,9 @@ export function DiscoverCoverage() {
       </div>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-        <DoorList heading="Language" options={LANGUAGE_OPTIONS} counts={cov.language} note="Set per title (several allowed)." />
-        <DoorList heading="Genre" options={GENRE_OPTIONS} counts={cov.genre} note="From each title's genres." />
-        <DoorList heading="Collections" options={COLLECTION_OPTIONS} counts={cov.collection} note="Editorial shelves, set per title." />
+        <DoorList heading="Language" kind="language" options={LANGUAGE_OPTIONS} counts={cov.language} note="Set per title (several allowed). Click Image to change a tile's photo." art={art} />
+        <DoorList heading="Genre" kind="genre" options={GENRE_OPTIONS} counts={cov.genre} note="From each title's genres. Click Image to change a tile's photo." art={art} />
+        <DoorList heading="Collections" kind="collection" options={COLLECTION_OPTIONS} counts={cov.collection} note="Editorial shelves, set per title. Click Image to change a tile's photo." art={art} />
       </div>
 
       <CsBox className="p-5">
