@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { authFetch } from "@/lib/authClient";
 import { titleStatus } from "../lib/status";
 import { CsBox, CsButton, CsPageHeader, CsSlug, CsTag, type CsColumn } from "./cs/kit";
+import { DiscoverFields } from "./DiscoverFields";
 
 const STOREFRONT =
   process.env.NEXT_PUBLIC_STOREFRONT_URL?.replace(/\/+$/, "") || "https://www.wanzami.tv";
@@ -31,6 +32,8 @@ export type MovieTitle = {
   episodeCount?: number;
   releaseDate?: string | null;
   language?: string | null;
+  languages?: string[];
+  collections?: string[];
   runtimeMinutes?: number | null;
   maturityRating?: string | null;
   countryAvailability?: string[];
@@ -484,6 +487,8 @@ function AddEditMovieForm({
   const [description, setDescription] = useState(movie?.description ?? "");
   const [genres, setGenres] = useState<string[]>([]);
   const [language, setLanguage] = useState(movie?.language ?? "en");
+  const [discoverLanguages, setDiscoverLanguages] = useState<string[]>(movie?.languages ?? []);
+  const [discoverCollections, setDiscoverCollections] = useState<string[]>(movie?.collections ?? []);
   const [runtimeMinutes, setRuntimeMinutes] = useState<string>(movie?.runtimeMinutes ? String(movie.runtimeMinutes) : "");
   const [maturityRating, setMaturityRating] = useState<string>(movie?.maturityRating ?? "");
   const [releaseDate, setReleaseDate] = useState<string>(movie?.releaseDate?.slice(0, 10) ?? "");
@@ -521,6 +526,8 @@ function AddEditMovieForm({
     setTrailerUrlText(movie?.trailerUrl ?? "");
     setShortTrailerUrlText((movie as any)?.shortTrailerUrl ?? "");
     setLanguage((movie as any)?.language ?? "en");
+    setDiscoverLanguages(((movie as any)?.languages ?? []) as string[]);
+    setDiscoverCollections(((movie as any)?.collections ?? []) as string[]);
     setRuntimeMinutes((movie as any)?.runtimeMinutes ? String((movie as any).runtimeMinutes) : "");
     setMaturityRating((movie as any)?.maturityRating ?? "");
     setReleaseDate((movie as any)?.releaseDate?.slice(0, 10) ?? "");
@@ -560,6 +567,8 @@ function AddEditMovieForm({
         leavingAt:
           availability === "LEAVING_SOON" && leavingAt ? new Date(leavingAt).toISOString() : undefined,
         genres,
+        languages: discoverLanguages,
+        collections: discoverCollections,
       };
       if (trailerFile) {
         // Uploaded after save via queue.
@@ -796,6 +805,16 @@ function AddEditMovieForm({
                   ))}
                 </select>
               </div>
+            </div>
+
+            <div className="mb-3">
+              <DiscoverFields
+                languages={discoverLanguages}
+                collections={discoverCollections}
+                genres={genres}
+                onLanguages={setDiscoverLanguages}
+                onCollections={setDiscoverCollections}
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4 mb-3">

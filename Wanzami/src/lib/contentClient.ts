@@ -51,6 +51,9 @@ export type Title = {
   cast?: string[];
   crew?: string[];
   language?: string | null;
+  /** Discover: spoken languages and editorial collections, stored as slugs. */
+  languages?: string[];
+  collections?: string[];
   maturityRating?: string | null;
   runtimeMinutes?: number | null;
   countryAvailability?: string[];

@@ -5,6 +5,7 @@ import { Header } from './components/Header';
 import { Dashboard } from './components/Dashboard';
 import { MoviesManagement } from './components/MoviesManagement';
 import { SeriesManagement } from './components/SeriesManagement';
+import { DiscoverCoverage } from './components/DiscoverCoverage';
 import { PPVManagement } from './components/PPVManagement';
 import { BlogManagement } from './components/BlogManagement';
 import { UserManagement } from './components/UserManagement';
@@ -177,6 +178,8 @@ function AppContent() {
         return <MoviesManagement />;
       case 'series':
         return <SeriesManagement />;
+      case 'discover':
+        return <DiscoverCoverage />;
       case 'ppv':
         return <PPVManagement />;
       case 'blog':
