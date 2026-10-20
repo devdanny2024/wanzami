@@ -158,6 +158,16 @@ export async function fetchTitles(country?: string): Promise<Title[]> {
   return ((data?.titles as Title[]) ?? []).map((title) => normalizeTitleImages(title));
 }
 
+/** Admin-set replacement images for Discover doors, keyed "kind/slug". Empty when none are set. */
+export async function fetchDiscoverArt(): Promise<Record<string, string>> {
+  const res = await fetchWithTimeout(`${API_BASE}/discover/art`, { cache: "no-store" });
+  const data = await handleJsonResponse(res);
+  const art = (data?.art ?? {}) as Record<string, string>;
+  return Object.fromEntries(
+    Object.entries(art).map(([k, v]) => [k, v.startsWith("/") ? v : resolveCdnImageUrl(v) ?? v]),
+  );
+}
+
 export async function fetchTitleWithEpisodes(
   id: string,
   opts?: { country?: string; accessToken?: string | null; profileId?: string | null }

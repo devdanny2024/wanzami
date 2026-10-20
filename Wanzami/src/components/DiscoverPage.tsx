@@ -1,12 +1,12 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Play, X } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Slug, Stamp } from './cs/kit';
 import type { MovieData } from './MovieCard';
-import type { Title } from '@/lib/contentClient';
+import { fetchDiscoverArt, type Title } from '@/lib/contentClient';
 import {
   INDIGENOUS_LANGUAGES,
   EMPTY_STATE,
@@ -85,6 +85,7 @@ function CategoryTile({
   index,
   count,
   selected,
+  art,
   onToggle,
 }: {
   kind: DiscoverKind;
@@ -92,9 +93,9 @@ function CategoryTile({
   index: number;
   count: number;
   selected: boolean;
+  art?: string;
   onToggle: () => void;
 }) {
-  const art = categoryArt(kind, facet.slug);
   const [artFailed, setArtFailed] = useState(false);
   const showArt = Boolean(art) && !artFailed;
   const num = String(index + 1).padStart(2, '0');
@@ -225,6 +226,18 @@ export function DiscoverPage({
   const showEmpty = params.get('all') === '1';
   const [sort, setSort] = useState<SortKey>('featured');
   const [showAllGenres, setShowAllGenres] = useState(false);
+  const [artOverrides, setArtOverrides] = useState<Record<string, string>>({});
+
+  // Admin-set images replace the defaults; if this fails the default photographs simply stay.
+  useEffect(() => {
+    let on = true;
+    fetchDiscoverArt()
+      .then((a) => on && setArtOverrides(a))
+      .catch(() => undefined);
+    return () => {
+      on = false;
+    };
+  }, []);
 
   const live = useMemo(() => titles.filter((t) => !t.archived), [titles]);
 
@@ -331,6 +344,7 @@ export function DiscoverPage({
                     index={facetsFor(tab).findIndex((f) => f.slug === facet.slug)}
                     count={counts[facet.slug] ?? 0}
                     selected={filters[tab].includes(facet.slug)}
+                    art={categoryArt(tab, facet.slug, artOverrides)}
                     onToggle={() => go(toggleFilter(filters, tab, facet.slug))}
                   />
                 ))}

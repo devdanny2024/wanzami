@@ -1026,3 +1026,17 @@ model FilmmakerLead {
   @@index([confidence, contactType])
   @@index([country])
 }
+
+// Discover: an Admin-set image for one language / genre / collection door.
+// Only overrides are stored; doors without a row use the default photograph
+// shipped with the website.
+model CategoryArt {
+  id        Int      @id @default(autoincrement())
+  kind      String
+  slug      String
+  imageUrl  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([kind, slug])
+}

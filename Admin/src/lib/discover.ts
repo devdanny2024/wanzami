@@ -109,3 +109,23 @@ export function coverage<T extends TitleLike>(titles: T[]) {
   }
   return { language, genre, collection };
 }
+
+/* Default photograph per door. These ship with the website (/public/category-art/photos);
+   an image set in Admin > Discover overrides them. Keep in sync with the website's DEFAULT_ART. */
+export const SITE_BASE = "https://www.wanzami.tv";
+const P = (key: string) => `/category-art/photos/${key}.webp`;
+export const DEFAULT_ART: Record<string, string> = {
+  "language/english": P("8407a47f"), "language/yoruba": P("8a5098d9"), "language/igbo": P("e8f5fa05"),
+  "language/hausa": P("eb122b60"), "language/pidgin": P("578b06a1"), "language/indigenous": P("84d5f908"),
+  "genre/drama": P("e8f5fa05"), "genre/comedy": P("3988fd29"), "genre/romance": P("c539245c"),
+  "genre/thriller": P("d63fd84a"), "genre/crime": P("8407a47f"), "genre/action": P("578b06a1"),
+  "genre/horror": P("3982fd76"), "genre/epic": P("84d5f908"), "genre/family": P("3988fd29"),
+  "genre/political": P("eb122b60"), "genre/faith": P("8a5098d9"), "genre/documentary": P("8407a47f"),
+  "genre/youth": P("3988fd29"), "genre/animation": P("3988fd29"), "genre/shorts": P("e8f5fa05"),
+  "collection/select": P("e8f5fa05"), "collection/shorts": P("8407a47f"), "collection/new-voices": P("578b06a1"),
+  "collection/classics-room": P("84d5f908"), "collection/folklore": P("3982fd76"), "collection/home-away": P("8a5098d9"),
+  "collection/behind-the-frame": P("8407a47f"), "collection/women-in-focus": P("8a5098d9"), "collection/family-room": P("3988fd29"),
+  "collection/love-actually": P("c539245c"), "collection/money-and-power": P("eb122b60"), "collection/the-dark-side": P("d63fd84a"),
+};
+
+export const absoluteArt = (url: string) => (url.startsWith("/") ? `${SITE_BASE}${url}` : url);

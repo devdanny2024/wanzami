@@ -55,3 +55,26 @@ export const parseLanguages = (input: unknown): TaxonomyResult => {
 };
 
 export const parseCollections = (input: unknown): TaxonomyResult => check(input, COLLECTION_SLUGS);
+
+/* Doors that have a tile (and so an image): the six top-level languages, the 15 genres, the 12 collections. */
+export const ART_KINDS = ["language", "genre", "collection"] as const;
+export type ArtKind = (typeof ART_KINDS)[number];
+
+export const TILE_LANGUAGE_SLUGS = ["english", "yoruba", "igbo", "hausa", "pidgin", "indigenous"] as const;
+
+export const GENRE_SLUGS = [
+  "drama", "comedy", "romance", "thriller", "crime", "action", "horror", "epic",
+  "family", "political", "faith", "documentary", "youth", "animation", "shorts",
+] as const;
+
+const ART_SLUGS: Record<ArtKind, readonly string[]> = {
+  language: TILE_LANGUAGE_SLUGS,
+  genre: GENRE_SLUGS,
+  collection: COLLECTION_SLUGS,
+};
+
+export const isArtDoor = (kind: unknown, slug: unknown): kind is ArtKind =>
+  typeof kind === "string" &&
+  (ART_KINDS as readonly string[]).includes(kind) &&
+  typeof slug === "string" &&
+  ART_SLUGS[kind as ArtKind].includes(slug);

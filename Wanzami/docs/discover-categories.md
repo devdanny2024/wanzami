@@ -27,13 +27,13 @@ Empty doors are hidden (the proposal's "hide empty shelves"). Add `?all=1` to se
 door, for design review while the catalogue is still thinly tagged.
 
 ## Still to do (not in this change)
-1. **Data**: add `languages String[]` and `collections String[]` to `Title` (Prisma migration),
-   return them from `GET /titles`, and add fields for them in the Admin title form.
+1. **Data (done)**: `languages` / `collections` exist on `Title`, are returned by the API and editable in Admin.
    Today every title is tagged English only, so Yoruba/Igbo/Hausa/Pidgin stay hidden until tagged.
-2. **Artwork**: tiles fall back to a typographic Call Sheet tile. Drop approved art into
-   `public/category-art/<kind>/<slug>.webp` (16:9, 1600x900) and register it in
-   `CATEGORY_ART` in `src/lib/discover.ts`. The Unsplash studies in the proposal are concept
-   references, not shippable assets. Record the licence and credit for whatever is used.
+2. **Artwork (done)**: every door has a default cinematic photograph (the proposal's studies, originals
+   downloaded from Unsplash and cropped 16:9; see `public/category-art/CREDITS.md`). Editors can replace any
+   door's image in **Admin > Discover** (Image / Reset); the website picks the change up within about a minute.
+   Overrides live in the `CategoryArt` table; the public `GET /discover/art` returns them.
+   Still to do: swap the concept photos for approved Wanzami film stills as they become available.
 3. **Mobile app**: the proposal's pages 8 and 9 (Flutter) are a follow-up; the matching rule
    and taxonomy here are the reference.
 4. **Short films** is also a format filter in the proposal; it is a plain genre tag for now,
