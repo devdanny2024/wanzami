@@ -81,7 +81,12 @@ export const verifyAppleTransaction = async (
       lastError = err;
       const status = err?.httpStatusCode;
       const isNotFound = status === 404 || /transaction.*not.*found/i.test(String(err?.message ?? ""));
-      if (environment === Environment.PRODUCTION && isNotFound) {
+      // Apple answers 401 on the production endpoint while an app is not yet
+      // live on the App Store (e.g. during App Review, whose purchases are all
+      // sandbox) even though the same credentials authenticate fine against
+      // sandbox, so a 401 here must also fall through to the sandbox attempt.
+      const isProductionNotLive = status === 401;
+      if (environment === Environment.PRODUCTION && (isNotFound || isProductionNotLive)) {
         continue; // try sandbox next
       }
       throw err;

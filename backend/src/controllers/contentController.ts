@@ -12,6 +12,7 @@ import { createNotification } from "./notificationController.js";
 import { DeleteObjectsCommand, S3Client } from "@aws-sdk/client-s3";
 import { verifyAccessToken } from "../auth/jwt.js";
 import { isInternalTestAccount } from "../utils/internalAccounts.js";
+import { parseCollections, parseLanguages } from "../utils/discoverTaxonomy.js";
 
 const kidSafeRatings = ["G", "PG", "TV-Y", "TV-G", "TV-PG", "PG-13"];
 const teenSafeRatings = ["PG-13", "TV-14"];
@@ -825,6 +826,8 @@ export const createTitle = async (req: Request, res: Response) => {
     previewVttUrl,
   releaseYear,
   genres,
+  languages,
+  collections,
   cast,
   crew,
   language,
@@ -854,6 +857,8 @@ export const createTitle = async (req: Request, res: Response) => {
     previewVttUrl?: string;
     releaseYear?: number | string;
     genres?: string[];
+    languages?: string[];
+    collections?: string[];
     cast?: string[];
     crew?: string[];
     language?: string;
@@ -885,6 +890,13 @@ export const createTitle = async (req: Request, res: Response) => {
   if (!name || !type) {
     return res.status(400).json({ message: "name and type are required" });
   }
+  const parsedLanguages = parseLanguages(languages);
+  const parsedCollections = parseCollections(collections);
+  if (parsedLanguages.invalid.length || parsedCollections.invalid.length) {
+    return res.status(400).json({
+      message: `Unknown values: ${[...parsedLanguages.invalid, ...parsedCollections.invalid].join(", ")}`,
+    });
+  }
   const parsedReleaseDate =
     releaseYear && !Number.isNaN(Number(releaseYear)) ? new Date(`${releaseYear}-01-01T00:00:00.000Z`) : undefined;
   const parsedRuntime =
@@ -912,6 +924,8 @@ export const createTitle = async (req: Request, res: Response) => {
       introEndSec: parseOptionalNumber(introEndSec),
       releaseDate: parsedReleaseDate,
       genres: Array.isArray(genres) ? genres.map(String) : [],
+      languages: parsedLanguages.values,
+      collections: parsedCollections.values,
       cast: Array.isArray(cast) ? cast.map(String) : [],
       crew: Array.isArray(crew) ? crew.map(String) : [],
       language: language ?? undefined,
@@ -970,6 +984,8 @@ export const updateTitle = async (req: Request, res: Response) => {
     archived,
     releaseYear,
     genres,
+    languages,
+    collections,
     cast,
     crew,
     language,
@@ -998,6 +1014,8 @@ export const updateTitle = async (req: Request, res: Response) => {
     archived?: boolean;
     releaseYear?: number | string;
     genres?: string[];
+    languages?: string[];
+    collections?: string[];
     cast?: string[];
     crew?: string[];
     language?: string;
@@ -1031,6 +1049,16 @@ export const updateTitle = async (req: Request, res: Response) => {
     data.releaseDate = new Date(`${releaseYear}-01-01T00:00:00.000Z`);
   }
   if (genres !== undefined) data.genres = Array.isArray(genres) ? genres.map(String) : [];
+  if (languages !== undefined) {
+    const parsed = parseLanguages(languages);
+    if (parsed.invalid.length) return res.status(400).json({ message: `Unknown languages: ${parsed.invalid.join(", ")}` });
+    data.languages = parsed.values;
+  }
+  if (collections !== undefined) {
+    const parsed = parseCollections(collections);
+    if (parsed.invalid.length) return res.status(400).json({ message: `Unknown collections: ${parsed.invalid.join(", ")}` });
+    data.collections = parsed.values;
+  }
   if (cast !== undefined) data.cast = Array.isArray(cast) ? cast.map(String) : [];
   if (crew !== undefined) data.crew = Array.isArray(crew) ? crew.map(String) : [];
   if (language !== undefined) data.language = language;
