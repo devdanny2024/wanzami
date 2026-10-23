@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import { fetchBecauseYouWatched, postEvents } from "@/lib/contentClient";
 import Hls from "hls.js";
+import { PlaybackWatermark } from "./PlaybackWatermark";
+import { accountIdFromToken } from "@/lib/playbackProtection";
 import { hasRatedEndcard, markRatedEndcard } from "@/lib/endCardCache";
 import { Sticker } from "./cs/kit";
 
@@ -95,6 +97,8 @@ export function CustomMediaPlayer({
 }: CustomMediaPlayerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const [protectionPaused, setProtectionPaused] = useState(false);
+  const watermarkAccountId = useMemo(() => accountIdFromToken(accessToken), [accessToken]);
   const hasAppliedStart = useRef(false);
   const hideControlsTimer = useRef<NodeJS.Timeout | null>(null);
   const lastTapRef = useRef<number | null>(null);
@@ -1127,7 +1131,7 @@ export function CustomMediaPlayer({
   return (
     <div
       ref={containerRef}
-      className={`bg-black group overflow-visible fixed ${forceRotate ? "" : "inset-0"}`}
+      className={`bg-black group overflow-visible fixed select-none ${forceRotate ? "" : "inset-0"}`}
       style={
         forceRotate
           ? {
@@ -1143,6 +1147,8 @@ export function CustomMediaPlayer({
       tabIndex={0}
       role="region"
       aria-label={`${title} player`}
+      onContextMenu={(e) => e.preventDefault()}
+      onDragStart={(e) => e.preventDefault()}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
       onMouseMove={() => setIsHovering(true)}
@@ -1162,8 +1168,42 @@ export function CustomMediaPlayer({
           togglePlay();
         }}
         controls={false}
+        disablePictureInPicture
+        disableRemotePlayback
+        controlsList="nodownload noremoteplayback"
+        draggable={false}
         style={{ zIndex: 1 }}
       />
+
+      <PlaybackWatermark
+        accountId={watermarkAccountId}
+        profileId={profileId}
+        onTamper={() => {
+          videoRef.current?.pause();
+          setProtectionPaused(true);
+        }}
+      />
+
+      {protectionPaused ? (
+        <div
+          className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/90 px-6 text-center text-white"
+          style={{ zIndex: 60 }}
+          role="alertdialog"
+          aria-label="Playback paused"
+        >
+          <p className="font-heading text-3xl uppercase tracking-wide">Playback paused</p>
+          <p className="max-w-md text-sm text-white/70">
+            Something changed on this page that is not allowed while a film is playing. Reload the page to keep watching.
+          </p>
+          <button
+            type="button"
+            className="cs-border bg-brand px-5 py-3 font-mono text-xs font-bold uppercase tracking-widest text-cs-ink"
+            onClick={() => window.location.reload()}
+          >
+            Reload
+          </button>
+        </div>
+      ) : null}
 
       <div
         className="absolute top-0 left-0 right-0 h-3.5 md:h-4 bg-[#0a0908] overflow-hidden pointer-events-none"
